@@ -88,15 +88,6 @@ function NavLinks() {
   );
 }
 
-function SideMenu() {
-  return (
-    <View>
-      test
-      <MenuSideBar />
-    </View>
-  );
-}
-
 export default function RootLayout() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 

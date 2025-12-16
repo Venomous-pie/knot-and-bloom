@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Text, View, Animated, Pressable, StyleSheet } from "react-native";
 import { X } from "lucide-react-native";
 import { ShoppingBag, Heart, UserRound } from "lucide-react-native";
+import { Link, RelativePathString, usePathname } from "expo-router";
 
 const styles = StyleSheet.create({
     backdrop: {
@@ -45,7 +46,8 @@ const styles = StyleSheet.create({
     menuItem: {
         fontSize: 16,
         color: '#333',
-        paddingVertical: 8,
+        padding: 4,
+        borderRadius: 5,
     },
     buttonItemHovered: {
         backgroundColor: '#b36979ff',
@@ -60,7 +62,31 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 8,
     },
+    underline: {
+        height: 2,
+        backgroundColor: '#B36979',
+        marginTop: 4,
+        width: 0,
+        // @ts-ignore
+        transition: 'width 0.3s ease',
+    },
+    underlineHovered: {
+        width: '100%',
+    },
 });
+
+const sidebarLinks: { title: string, href: RelativePathString }[] = [
+    { title: 'Custom Order~', href: "/custom-order" as RelativePathString },
+    { title: 'Contact Us', href: "/contact-us" as RelativePathString },
+    { title: 'About Shop', href: "/about-shop" as RelativePathString },
+
+    { title: 'Tops', href: "/products/tops" as RelativePathString },
+    { title: 'Hair Tie', href: "/products/hair-tie" as RelativePathString },
+    { title: 'Mini Stuffed Toy', href: "/products/mini-stuffed-toy" as RelativePathString },
+    { title: 'Fuzzy Wire Bouquet', href: "/products/fuzzy-wire-bouquet" as RelativePathString },
+    { title: 'Crochet Flower Bouquet', href: "/products/crochet-flower-bouquet" as RelativePathString },
+    { title: 'Crochet Key Chains', href: "/products/crochet-key-chains" as RelativePathString },
+]
 
 interface MenuSideBarProps {
     isOpen: boolean;
@@ -71,9 +97,13 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
     const slideAnim = useRef(new Animated.Value(300)).current; // Start off-screen
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    const [shouldRender, setShouldRender] = React.useState(false);
+
+    const pathname = usePathname();
+
     useEffect(() => {
         if (isOpen) {
-            // Slide in and fade in backdrop
+            setShouldRender(true);
             Animated.parallel([
                 Animated.timing(slideAnim, {
                     toValue: 0,
@@ -87,7 +117,6 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                 }),
             ]).start();
         } else {
-            // Slide out and fade out backdrop
             Animated.parallel([
                 Animated.timing(slideAnim, {
                     toValue: 300,
@@ -99,11 +128,13 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                     duration: 300,
                     useNativeDriver: true,
                 }),
-            ]).start();
+            ]).start(() => {
+                setShouldRender(false);
+            });
         }
     }, [isOpen]);
 
-    if (!isOpen) return null;
+    if (!shouldRender) return null;
 
     return (
         <>
@@ -141,51 +172,82 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                 <View style={{ flex: 1, justifyContent: 'space-between' }}>
                     <View style={styles.menuItems}>
                         <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#B36979' }}>Other</Text>
-                        <Text style={styles.menuItem}>Custom Order~</Text>
-                        <Text style={styles.menuItem}>Contact Us</Text>
-                        <Text style={styles.menuItem}>About Shop</Text>
+                        {sidebarLinks.slice(0, 3).map((link) => {
+                            const isActive = pathname === link.href;
+                            return (
+                                <Link key={link.title} href={link.href} asChild>
+                                    <Pressable style={styles.menuItem} onPress={onClose} >
+                                        {({ hovered }) => {
+                                            return (
+                                                <>
+                                                    <Text key={link.title} >{link.title}</Text>
+                                                    <View style={[styles.underline, (hovered || isActive) && styles.underlineHovered]} />
+                                                </>
+                                            );
+                                        }}
+                                    </Pressable>
+                                </Link>
+                            );
+                        })}
                         <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#B36979' }}>Categories</Text>
-                        <Text style={styles.menuItem}>Tops</Text>
-                        <Text style={styles.menuItem}>Hair Tie</Text>
-                        <Text style={styles.menuItem}>Mini Stuffed Toy</Text>
-                        <Text style={styles.menuItem}>Fuzzy Wire Bouquet</Text>
-                        <Text style={styles.menuItem}>Crochet Flower Bouquet</Text>
-                        <Text style={styles.menuItem}>Crochet Key Chains</Text>
+                        {sidebarLinks.slice(3).map((link) => {
+                            const isActive = pathname === link.href;
+                            return (
+                                <Link key={link.title} href={link.href} asChild>
+                                    <Pressable style={styles.menuItem} onPress={onClose} >
+                                        {({ hovered }) => {
+                                            return (
+                                                <>
+                                                    <Text key={link.title} >{link.title}</Text>
+                                                    <View style={[styles.underline, (hovered || isActive) && styles.underlineHovered]} />
+                                                </>
+                                            );
+                                        }}
+                                    </Pressable>
+                                </Link>
+                            );
+                        })}
                     </View>
-                    <View style={{ gap: 8, borderTopWidth: 1, paddingTop: 20}}>
+                    <View style={{ gap: 8, borderTopWidth: 1, paddingTop: 20 }}>
+
                         <Pressable
-                            onPress={() => alert("Chat with Us")}
-                            style={({ hovered }) => [
-                                styles.buttonItem,
-                                hovered && styles.buttonItemHovered,
-                            ]}
-                        >
-                            <ShoppingBag size={16} />
-                            <Text style={{ color: 'black', fontSize: 12, }}>My Orders</Text>
+                            onPress={() => alert("Chat with Us")}>
+                            {({ hovered }) => {
+                                return (
+                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                        <ShoppingBag size={16} />
+                                        <Text style={[hovered && styles.buttonItemHovered]}>My Orders</Text>
+                                    </View>
+                                );
+                            }}
                         </Pressable>
+
                         <Pressable
-                            onPress={() => alert("Chat with Us")}
-                            style={({ hovered }) => [
-                                styles.buttonItem,
-                                hovered && styles.buttonItemHovered,
-                            ]}
-                        >
-                            <Heart size={16} />
-                            <Text style={{ color: 'black', fontSize: 12, }}>My Wishlist</Text>
+                            onPress={() => alert("Wishlist Page")}>
+                            {({ hovered }) => {
+                                return (
+                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                        <Heart size={16} />
+                                        <Text style={[hovered && styles.buttonItemHovered]}>Wishlist</Text>
+                                    </View>
+                                );
+                            }}
                         </Pressable>
+
                         <Pressable
-                            onPress={() => alert("Chat with Us")}
-                            style={({ hovered }) => [
-                                styles.buttonItem,
-                                hovered && styles.buttonItemHovered,
-                            ]}
-                        >
-                            <UserRound size={16} />
-                            <Text style={{ color: 'black', fontSize: 12, }}>Account</Text>
+                            onPress={() => alert("User Profile Page")}>
+                            {({ hovered }) => {
+                                return (
+                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                        <UserRound size={16} />
+                                        <Text style={[hovered && styles.buttonItemHovered]}>Profile</Text>
+                                    </View>
+                                );
+                            }}
                         </Pressable>
                     </View>
                 </View>
-            </Animated.View>
+            </Animated.View >
         </>
     );
 }

@@ -8,6 +8,12 @@ const categoryTitles: Record<string, string> = {
     crochet: "Crochet",
     "fuzzy-wire-art": "Fuzzy Wire Art",
     accessories: "Accessories",
+    tops: "Tops",
+    "hair-tie": "Hair Ties",
+    "mini-stuffed-toy": "Mini Stuffed Toys",
+    "fuzzy-wire-bouquet": "Fuzzy Wire Bouquets",
+    "crochet-flower-bouquet": "Crochet Flower Bouquets",
+    "crochet-key-chains": "Crochet Key Chains",
 }
 
 export default function CategoryPage() {

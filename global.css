@@ -1,6 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+#root {
+    background-image: url('/assets/pattern.png');
+    background-repeat: repeat;
+    opacity: 0.5;
+}
+
+* {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
 
 * {
     -webkit-user-select: text;

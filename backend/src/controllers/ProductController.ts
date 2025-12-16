@@ -1,16 +1,44 @@
-import { ZodError } from "zod";
+import { base64, ZodError } from "zod";
 import prisma from "../utils/prisma.js";
 import { productSchema, type ProductInput } from "../validators/productValidator.js";
 import { getProductsQuerySchema, type GetProductOptions } from "../validators/productValidator.js";
-import type { GetProductsResult } from "../types/product.js"
+import type { GetProductsResult, ProductSKU } from "../types/product.js"
 import { ValidationError, DuplicateProductError } from "../error/errorHandler.js";
+import { SKUGenerator } from "../services/skuGenerator.js";
+import { ProductDescriptionGenerator } from "../services/productDescriptionGenerator.js";
 
 // Admin sides
 export const postProduct = async (input: unknown) => {
     // Parse and validate input
     let parsedInput: ProductInput;
+    let generatedSku;
+    let generatedDescription;
+    let discountedPrice;
+
+    const isDiscounted = false;
+
     try {
         parsedInput = productSchema.parse(input);
+
+        generatedSku = await SKUGenerator({
+            category: parsedInput.category,
+            variants: parsedInput.variants
+        });
+
+        generatedDescription = await ProductDescriptionGenerator({
+            name: parsedInput.name,
+            category: parsedInput.category,
+            variants: parsedInput.variants,
+            basePrice: String(parsedInput.basePrice),
+            discountedPrice: String(parsedInput.discountedPrice)
+        });
+
+        if (isDiscounted) {
+            discountedPrice = ((Number(parsedInput.basePrice) - Number(discountedPrice)) / Number(parsedInput.basePrice)) * 100;
+        } else if (discountedPrice !== "") {
+            discountedPrice = null;
+        }
+
     } catch (error) {
         if (error instanceof ZodError) {
             throw new ValidationError(error.issues);
@@ -29,14 +57,14 @@ export const postProduct = async (input: unknown) => {
     const product = await prisma.product.create({
         data: {
             name: parsedInput.name,
-            sku: parsedInput.sku,
+            sku: generatedSku,
             category: parsedInput.category,
             variants: parsedInput.variants ?? null,
             basePrice: parsedInput.basePrice,
             discountedPrice: parsedInput.discountedPrice ?? null,
             stock: parsedInput.stock ?? 0,
             image: parsedInput.image ?? null,
-            description: parsedInput.description ?? null,
+            description: generatedDescription ?? null,
         },
     });
 
@@ -46,7 +74,7 @@ export const postProduct = async (input: unknown) => {
 //Customer sides
 export const getProducts = async (options: unknown): Promise<GetProductsResult> => {
     let parsedInput: GetProductOptions;
-    
+
     try {
         parsedInput = getProductsQuerySchema.parse(options);
     } catch (error) {
@@ -93,7 +121,6 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         },
     };
 };
-
 
 export const searchProducts = async (searchTerm: string, limit = 20) => {
     if (!searchTerm || searchTerm.trim().length === 0) {

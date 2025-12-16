@@ -2,7 +2,7 @@ import type { Product } from "../../generated/prisma/index.js";
 
 interface ProductInput {
     name: string,
-    sku: string,
+    sku: string | undefined,
     category: string,
     variants?: string,
     basePrice: string,
@@ -31,4 +31,19 @@ interface GetProductsResult {
     };
 }
 
-export type { ProductInput, GetProductsOptions, GetProductsResult }
+interface ProductSKU {
+    category: string;
+    variants: string | undefined;
+}
+
+interface ProductDescription {
+    name: string,
+    category: string,
+    variants: string | undefined,
+    basePrice: string,
+    discountedPrice: string
+}
+
+
+
+export type { ProductInput, GetProductsOptions, GetProductsResult, ProductSKU, ProductDescription }

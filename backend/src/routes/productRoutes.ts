@@ -1,12 +1,12 @@
 import Router from 'express';
-import { postProduct, getProducts } from '../controllers/ProductController.js'
+import { postProduct, getProducts, searchProducts } from '../controllers/ProductController.js'
 import { ValidationError, DuplicateProductError, NotFoundError } from '../error/errorHandler.js';
 
 const router = Router();
 
 router.post('/post-product', async (req, res) => {
     try {
-        console.log("Request body:", req.body); // Debug log
+        // console.log("Request body:", req.body); 
         const product = await postProduct(req.body);
 
         res.status(201).json({
@@ -53,7 +53,7 @@ router.post('/post-product', async (req, res) => {
     }
 });
 
-router.get('/get-products', async (req, res) => {
+router.get('/get-product', async (req, res) => {
     try {
         const result = await getProducts(req.query);
 
@@ -81,6 +81,40 @@ router.get('/get-products', async (req, res) => {
 
 });
 
+router.get('/search-product', async (req, res) => {
+    try {
+        const { searchTerm, limit } = req.query;
 
+        if (typeof searchTerm !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'searchTerm query parameter is required and must be a string.',
+            });
+        }
 
+        const parsedLimit = limit ? parseInt(limit as string) : 20;
+
+        const products = await searchProducts(searchTerm, parsedLimit);
+
+        return res.json({
+            success: true,
+            data: products,
+            count: products.length
+        });
+
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                success: false,
+                message: error.message || 'Validation failed',
+            });
+        }
+
+        console.error('Search error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to search products',
+        });
+    }
+});
 export default router;

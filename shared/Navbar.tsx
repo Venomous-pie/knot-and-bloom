@@ -1,12 +1,15 @@
-import React, { useEffect } from "react";
+import '@/global.css';
 import { useFonts } from "expo-font";
 import { Link, RelativePathString, Stack, usePathname } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
-import { Pressable, StyleSheet, Image, Text, View } from "react-native";
-import '@/global.css';
-import { Heart, UserRound, Menu } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import { Dimensions, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+
+const { width } = Dimensions.get('window');
+
 import DropdownMenu from "@/shared/DropdownMenu";
 import MenuSideBar from "@/shared/MenuSideBar";
+import { Heart, Menu, Search, UserRound } from "lucide-react-native";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,6 +50,46 @@ const styles = StyleSheet.create({
         fontFamily: 'Montserrat-Regular',
     },
 
+    searchBar: {
+        width: '100%',
+        height: 30,
+        maxWidth: 400,
+        maxHeight: 50,
+        borderWidth: 1,
+        borderColor: 'transparent',
+        backgroundColor: '#f0f0f0ff',
+        outline: 'solid',
+        outlineColor: 'gray',
+        borderRadius: 9999,
+        flexDirection: 'row-reverse',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 15,
+    },
+
+    isFocused: {
+        borderWidth: 1,
+        borderColor: '#B36979',
+        borderStyle: 'dashed'
+    },
+
+    searchInput: {
+        fontSize: 8,
+        justifyContent: 'center',
+        borderWidth: 0,
+        backgroundColor: 'transparent',
+        outlineStyle: 'none' as any
+    },
+
+    rightIcons: {
+        marginRight: width * 0.1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+        alignContent: "center",
+        alignItems: 'center'
+    },
 })
 
 const navLinks: { title: string, href: RelativePathString }[] = [
@@ -90,6 +133,7 @@ function NavLinks() {
 
 export default function NavBar() {
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+    const [isFocused, setIsFocused] = useState(false);
 
     const [fontsLoaded] = useFonts({
         'Lovingly': require('@/assets/fonts/Lovingly/Lovingly.otf'),
@@ -126,7 +170,22 @@ export default function NavBar() {
                     headerTitle: () => <NavLinks />,
                     headerRight: () => {
                         return (
-                            <View style={{ marginRight: visualViewport?.width! * 0.1, flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+                            <View style={styles.rightIcons}>
+                                <Pressable style={styles.navlinkContainer}>
+                                    <View style={[
+                                        styles.searchBar,
+                                        isFocused && styles.isFocused]}
+                                    >
+                                        <Search size={18} color={'#00000070'} />
+                                        <TextInput
+                                            style={styles.searchInput}
+                                            placeholder="Search for products..."
+                                            placeholderTextColor='#adadadff'
+                                            onFocus={() => setIsFocused(true)}
+                                            onBlur={() => setIsFocused(false)}
+                                        />
+                                    </View>
+                                </Pressable>
                                 <Pressable
                                     onPress={() => alert("Wishlist Page")}
                                     style={({ hovered }) => [

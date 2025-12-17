@@ -59,7 +59,7 @@ router.get('/get-product', async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: result.products,
+            products: result.products,
             total: result.total,
             pagination: result.pagination,
         });

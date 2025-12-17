@@ -6,6 +6,7 @@ import type { GetProductsResult, ProductSKU } from "../types/product.js"
 import { ValidationError, DuplicateProductError } from "../error/errorHandler.js";
 import { SKUGenerator } from "../services/skuGenerator.js";
 import { ProductDescriptionGenerator } from "../services/productDescriptionGenerator.js";
+import { CalculateDiscount } from "../utils/discount.js";
 
 // Admin sides
 export const postProduct = async (input: unknown) => {
@@ -13,9 +14,7 @@ export const postProduct = async (input: unknown) => {
     let parsedInput: ProductInput;
     let generatedSku;
     let generatedDescription;
-    let discountedPrice;
-
-    const isDiscounted = false;
+    let calculatedDiscount;
 
     try {
         parsedInput = productSchema.parse(input);
@@ -33,11 +32,10 @@ export const postProduct = async (input: unknown) => {
             discountedPrice: String(parsedInput.discountedPrice)
         });
 
-        if (isDiscounted) {
-            discountedPrice = ((Number(parsedInput.basePrice) - Number(discountedPrice)) / Number(parsedInput.basePrice)) * 100;
-        } else if (discountedPrice !== "") {
-            discountedPrice = null;
-        }
+        calculatedDiscount = CalculateDiscount({
+            basePrice: Number(parsedInput.basePrice),
+            discountedPercentage: parsedInput.discountPercentage
+        });
 
     } catch (error) {
         if (error instanceof ZodError) {
@@ -61,7 +59,8 @@ export const postProduct = async (input: unknown) => {
             category: parsedInput.category,
             variants: parsedInput.variants ?? null,
             basePrice: parsedInput.basePrice,
-            discountedPrice: parsedInput.discountedPrice ?? null,
+            discountedPrice: calculatedDiscount.discountedPrice ?? null,
+            discountPercentage: parsedInput.discountPercentage ?? null,
             stock: parsedInput.stock ?? 0,
             image: parsedInput.image ?? null,
             description: generatedDescription ?? null,

@@ -5,15 +5,10 @@ export const productSchema = z.object({
     sku: z.string(),
     category: z.string(),
     variants: z.string().optional(),
-    basePrice: z.union([
-        z.string(),
-        z.number()
-    ]),
-    discountedPrice: z.union([
-        z.string(),
-        z.number()
-    ]).optional(),
-    stock: z.number().optional(),
+    basePrice: z.coerce.number().positive(),
+    discountedPrice: z.coerce.number().positive().optional(),
+    discountPercentage: z.coerce.number().min(0).max(100).optional(),
+    stock: z.coerce.number().int().min(0).optional(),
     image: z.string().optional(),
     description: z.string().optional(),
 });

@@ -1,9 +1,9 @@
-import {PriceInput}
+import type { PriceInput } from '../types/product.js'
 
-export const calculateDiscount = (basePriceInput: PriceInput, discountedPriceInput?: PriceInput): DiscountResult => {
-    const basePrice = Number(basePriceInput);
+export const CalculateDiscount = (priceInput: PriceInput) => {
+    const basePrice = priceInput.basePrice;
 
-    if (!Number.isFinite(basePrice) || basePrice <= 0) {
+    if (!isFinite(basePrice) || basePrice <= 0) {
         return {
             basePrice: 0,
             discountedPrice: null,
@@ -12,9 +12,9 @@ export const calculateDiscount = (basePriceInput: PriceInput, discountedPriceInp
     }
 
     if (
-        discountedPriceInput === null ||
-        discountedPriceInput === undefined ||
-        discountedPriceInput === ""
+        priceInput.discountedPercentage === null ||
+        priceInput.discountedPercentage === undefined ||
+        priceInput.discountedPercentage === 0
     ) {
         return {
             basePrice,
@@ -23,11 +23,12 @@ export const calculateDiscount = (basePriceInput: PriceInput, discountedPriceInp
         };
     }
 
-    const discountedPrice = Number(discountedPriceInput);
+    const discountPercentage = priceInput.discountedPercentage;
 
     if (
-        !Number.isFinite(discountedPrice) ||
-        discountedPrice >= basePrice
+        !isFinite(discountPercentage) ||
+        discountPercentage <= 0 ||
+        discountPercentage >= 100
     ) {
         return {
             basePrice,
@@ -36,13 +37,11 @@ export const calculateDiscount = (basePriceInput: PriceInput, discountedPriceInp
         };
     }
 
-    const discountPercentage = Math.round(
-        ((basePrice - discountedPrice) / basePrice) * 100
-    );
+    const discountedPrice = basePrice * (1 - discountPercentage / 100);
 
     return {
         basePrice,
-        discountedPrice,
+        discountedPrice: Math.round(discountedPrice * 100) / 100, // Round to 2 decimals
         discountPercentage,
     };
 };

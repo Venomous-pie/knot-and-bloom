@@ -8,17 +8,17 @@ datasource db {
 }
 
 model Product {
-  uid             Int      @id @default(autoincrement())
-  name            String
-  sku             String   @unique
-  category        String
-  variants        String?
-  basePrice       Decimal
-  discountedPrice Decimal?
-  stock           Int
-  image           String?
-  description     String?
-  uploaded        DateTime @default(now())
-  updated         DateTime @updatedAt
+  uid                Int      @id @default(autoincrement())
+  name               String
+  sku                String   @unique
+  category           String
+  variants           String?
+  basePrice          Decimal
+  discountedPrice    Decimal?
+  discountPercentage Int?
+  stock              Int
+  image              String?
+  description        String?
+  uploaded           DateTime @default(now())
+  updated            DateTime @updatedAt
 }
- 

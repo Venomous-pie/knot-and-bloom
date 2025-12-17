@@ -1,15 +1,16 @@
 import type { Product } from "../../generated/prisma/index.js";
 
 interface ProductInput {
-    name: string,
-    sku: string | undefined,
-    category: string,
-    variants?: string,
-    basePrice: string,
-    discountedPrice?: string,
-    stock: number,
-    image?: string,
-    description?: string,
+    name: string;
+    sku: string | undefined;
+    category: string;
+    variants?: string;
+    basePrice: number;
+    discountedPrice?: number;
+    discountPercentage?: number;
+    stock: number;
+    image?: string;
+    description?: string;
 }
 
 interface GetProductsOptions {
@@ -37,13 +38,16 @@ interface ProductSKU {
 }
 
 interface ProductDescription {
-    name: string,
-    category: string,
-    variants: string | undefined,
-    basePrice: string,
-    discountedPrice: string
+    name: string;
+    category: string;
+    variants: string | undefined;
+    basePrice: string;
+    discountedPrice: string;
 }
 
+interface PriceInput {
+    basePrice: number;
+    discountedPercentage?: number | null | undefined;
+}
 
-
-export type { ProductInput, GetProductsOptions, GetProductsResult, ProductSKU, ProductDescription }
+export type { ProductInput, GetProductsOptions, GetProductsResult, ProductSKU, ProductDescription, PriceInput }

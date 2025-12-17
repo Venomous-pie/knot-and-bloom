@@ -32,7 +32,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>13/13</span>
+                <span class='fraction'>14/14</span>
             </div>
         
             
@@ -109,13 +109,12 @@
 <a name='L44'></a><a href='#L44'>44</a>
 <a name='L45'></a><a href='#L45'>45</a>
 <a name='L46'></a><a href='#L46'>46</a>
-<a name='L47'></a><a href='#L47'>47</a>
-<a name='L48'></a><a href='#L48'>48</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L47'></a><a href='#L47'>47</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">12x</span>
+<span class="cline-any cline-yes">13x</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -123,21 +122,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -148,9 +134,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -159,7 +157,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { PriceInput } from '../types/product.js'
 &nbsp;
-export const calculateDiscount = (priceInput: PriceInput) =&gt; {
+export const CalculateDiscount = (priceInput: PriceInput) =&gt; {
     const basePrice = priceInput.basePrice;
 &nbsp;
     if (!isFinite(basePrice) || basePrice &lt;= 0) {
@@ -171,9 +169,9 @@ export const calculateDiscount = (priceInput: PriceInput) =&gt; {
     }
 &nbsp;
     if (
-        priceInput.discountedPrice === null ||
-        priceInput.discountedPrice === undefined ||
-        priceInput.discountedPrice === 0
+        priceInput.discountedPercentage === null ||
+        priceInput.discountedPercentage === undefined ||
+        priceInput.discountedPercentage === 0
     ) {
         return {
             basePrice,
@@ -182,11 +180,12 @@ export const calculateDiscount = (priceInput: PriceInput) =&gt; {
         };
     }
 &nbsp;
-    const discountedPrice = priceInput.discountedPrice;
+    const discountPercentage = priceInput.discountedPercentage;
 &nbsp;
     if (
-        !isFinite(discountedPrice) ||
-        discountedPrice &gt;= basePrice
+        !isFinite(discountPercentage) ||
+        discountPercentage &lt;= 0 ||
+        discountPercentage &gt;= 100
     ) {
         return {
             basePrice,
@@ -195,13 +194,11 @@ export const calculateDiscount = (priceInput: PriceInput) =&gt; {
         };
     }
 &nbsp;
-    const discountPercentage = Math.round(
-        ((basePrice - discountedPrice) / basePrice) * 100
-    );
+    const discountedPrice = basePrice * (1 - discountPercentage / 100);
 &nbsp;
     return {
         basePrice,
-        discountedPrice,
+        discountedPrice: Math.round(discountedPrice * 100) / 100, // Round to 2 decimals
         discountPercentage,
     };
 };</pre></td></tr></table></pre>
@@ -211,7 +208,7 @@ export const calculateDiscount = (priceInput: PriceInput) =&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-12-17T01:10:28.046Z
+                at 2025-12-17T01:49:13.928Z
             </div>
         <script src="prettify.js"></script>
         <script>

@@ -16,6 +16,7 @@ export const productSchema = z.object({
 export const getProductsQuerySchema = z.object({
     category: z.string().optional(),
     searchTerm: z.string().optional(),
+    newArrival: z.coerce.boolean().optional().default(false),
     limit: z.coerce.number().int().positive().optional(),
     offset: z.coerce.number().int().nonnegative().optional(),
 });

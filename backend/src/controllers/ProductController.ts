@@ -1,8 +1,8 @@
-import { base64, ZodError } from "zod";
+import { ZodError } from "zod";
 import prisma from "../utils/prisma.js";
 import { productSchema, type ProductInput } from "../validators/productValidator.js";
 import { getProductsQuerySchema, type GetProductOptions } from "../validators/productValidator.js";
-import type { GetProductsResult, ProductSKU } from "../types/product.js"
+import type { GetProductsResult } from "../types/product.js"
 import { ValidationError, DuplicateProductError } from "../error/errorHandler.js";
 import { SKUGenerator } from "../services/skuGenerator.js";
 import { ProductDescriptionGenerator } from "../services/productDescriptionGenerator.js";
@@ -83,7 +83,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         throw error;
     }
 
-    const { category, searchTerm, limit = 30, offset = 0, } = parsedInput;
+    const { category, searchTerm, newArrival = false, limit = 30, offset = 0, } = parsedInput;
 
     const whereClause: any = {};
 
@@ -96,6 +96,15 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
             { name: { contains: searchTerm, mode: 'insensitive' } },
             { description: { contains: searchTerm, mode: 'insensitive' } },
         ];
+    }
+
+    if (newArrival) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        whereClause.uploaded = {
+            gte: sevenDaysAgo,
+        };
     }
 
     const [products, total] = await Promise.all([

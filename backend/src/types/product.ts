@@ -16,6 +16,7 @@ interface ProductInput {
 interface GetProductsOptions {
     category?: string;
     limit?: number;
+    newArrival: boolean;
     offset?: number;
     searchTerm?: string;
 }

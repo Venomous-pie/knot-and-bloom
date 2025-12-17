@@ -1,9 +1,9 @@
 import { describe, it, expect } from '@jest/globals';
-import { calculateDiscount } from '../src/utils/discount.js';
+import { CalculateDiscount } from '../src/utils/discount.js';
 
-describe('calculateDiscount', () => {
+describe('CalculateDiscount', () => {
   it('should return zero values for invalid basePrice (not finite)', () => {
-    const result = calculateDiscount({ basePrice: NaN, discountedPrice: 50 });
+    const result = CalculateDiscount({ basePrice: NaN, discountedPercentage: 20 });
     expect(result).toEqual({
       basePrice: 0,
       discountedPrice: null,
@@ -12,7 +12,7 @@ describe('calculateDiscount', () => {
   });
 
   it('should return zero values for invalid basePrice (<= 0)', () => {
-    const result = calculateDiscount({ basePrice: 0, discountedPrice: 50 });
+    const result = CalculateDiscount({ basePrice: 0, discountedPercentage: 20 });
     expect(result).toEqual({
       basePrice: 0,
       discountedPrice: null,
@@ -21,7 +21,7 @@ describe('calculateDiscount', () => {
   });
 
   it('should return zero values for invalid basePrice (negative)', () => {
-    const result = calculateDiscount({ basePrice: -10, discountedPrice: 50 });
+    const result = CalculateDiscount({ basePrice: -10, discountedPercentage: 20 });
     expect(result).toEqual({
       basePrice: 0,
       discountedPrice: null,
@@ -29,8 +29,8 @@ describe('calculateDiscount', () => {
     });
   });
 
-  it('should return basePrice and null discountedPrice when discountedPrice is null', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: null });
+  it('should return basePrice and null discountedPrice when discountedPercentage is null', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: null });
     expect(result).toEqual({
       basePrice: 100,
       discountedPrice: null,
@@ -38,8 +38,8 @@ describe('calculateDiscount', () => {
     });
   });
 
-  it('should return basePrice and null discountedPrice when discountedPrice is undefined', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: undefined });
+  it('should return basePrice and null discountedPrice when discountedPercentage is undefined', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: undefined });
     expect(result).toEqual({
       basePrice: 100,
       discountedPrice: null,
@@ -47,8 +47,8 @@ describe('calculateDiscount', () => {
     });
   });
 
-  it('should return basePrice and null discountedPrice when discountedPrice is 0', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: 0 });
+  it('should return basePrice and null discountedPrice when discountedPercentage is 0', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: 0 });
     expect(result).toEqual({
       basePrice: 100,
       discountedPrice: null,
@@ -56,8 +56,8 @@ describe('calculateDiscount', () => {
     });
   });
 
-  it('should return basePrice and null discountedPrice when discountedPrice is not finite', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: NaN });
+  it('should return basePrice and null discountedPrice when discountedPercentage is not finite', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: NaN });
     expect(result).toEqual({
       basePrice: 100,
       discountedPrice: null,
@@ -65,8 +65,8 @@ describe('calculateDiscount', () => {
     });
   });
 
-  it('should return basePrice and null discountedPrice when discountedPrice >= basePrice', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: 100 });
+  it('should return basePrice and null discountedPrice when discountedPercentage <= 0', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: -5 });
     expect(result).toEqual({
       basePrice: 100,
       discountedPrice: null,
@@ -74,8 +74,17 @@ describe('calculateDiscount', () => {
     });
   });
 
-  it('should return basePrice and null discountedPrice when discountedPrice > basePrice', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: 150 });
+  it('should return basePrice and null discountedPrice when discountedPercentage >= 100', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: 100 });
+    expect(result).toEqual({
+      basePrice: 100,
+      discountedPrice: null,
+      discountPercentage: 0,
+    });
+  });
+
+  it('should return basePrice and null discountedPrice when discountedPercentage > 100', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: 150 });
     expect(result).toEqual({
       basePrice: 100,
       discountedPrice: null,
@@ -84,7 +93,7 @@ describe('calculateDiscount', () => {
   });
 
   it('should calculate discount correctly for valid inputs', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: 80 });
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: 20 });
     expect(result).toEqual({
       basePrice: 100,
       discountedPrice: 80,
@@ -92,17 +101,17 @@ describe('calculateDiscount', () => {
     });
   });
 
-  it('should round discount percentage correctly', () => {
-    const result = calculateDiscount({ basePrice: 100, discountedPrice: 85 });
+  it('should round discountedPrice to 2 decimal places', () => {
+    const result = CalculateDiscount({ basePrice: 100, discountedPercentage: 33.333 });
     expect(result).toEqual({
       basePrice: 100,
-      discountedPrice: 85,
-      discountPercentage: 15,
+      discountedPrice: 66.67,
+      discountPercentage: 33.333,
     });
   });
 
-  it('should handle floating point basePrice and discountedPrice', () => {
-    const result = calculateDiscount({ basePrice: 99.99, discountedPrice: 79.99 });
+  it('should handle floating point basePrice and discountedPercentage', () => {
+    const result = CalculateDiscount({ basePrice: 99.99, discountedPercentage: 20 });
     expect(result).toEqual({
       basePrice: 99.99,
       discountedPrice: 79.99,

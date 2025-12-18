@@ -1,4 +1,5 @@
 import type { ProductPageProps } from "@/types/products";
+import { Link, RelativePathString } from "expo-router";
 import React from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 
@@ -37,51 +38,56 @@ export default function ProductPage({ category, title, products = [], loading, e
 
             <FlatList
                 data={products}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => String(item.uid)}
                 numColumns={2}
                 contentContainerStyle={styles.productList}
                 renderItem={({ item }) => (
-                    <View style={styles.productCard}>
-                        <View style={styles.imageContainer}>
-                            {item.image ? (
-                                <Text style={styles.imagePlaceholder}>🖼️</Text>
-                            ) : (
-                                <Text style={styles.imagePlaceholder}>📦</Text>
-                            )}
-                        </View>
-
-                        <View style={styles.productInfo}>
-                            <Text style={styles.productName} numberOfLines={2}>
-                                {item.name}
-                            </Text>
-
-                            <View style={styles.priceContainer}>
-                                {Number(item.discountedPrice) ? (
-                                    <>
-                                        <Text style={styles.originalPrice}>
-                                            ₱{Number(item.basePrice).toFixed(2)}
-                                        </Text>
-                                        <Text style={styles.discountedPrice}>
-                                            ₱{Number(item.discountedPrice)?.toFixed(2)}
-                                        </Text>
-                                        <View style={styles.discountBadge}>
-                                            <Text style={styles.discountText}>
-                                                -{Number(item.discountPercentage)}%
-                                            </Text>
-                                        </View>
-                                    </>
+                    <Link
+                        href={`/product/${item.uid}` as RelativePathString}
+                        asChild
+                    >
+                        <View style={styles.productCard}>
+                            <View style={styles.imageContainer}>
+                                {item.image ? (
+                                    <Text style={styles.imagePlaceholder}>🖼️</Text>
                                 ) : (
-                                    <Text style={styles.price}>
-                                        ₱{Number(item.basePrice).toFixed(2)}
-                                    </Text>
+                                    <Text style={styles.imagePlaceholder}>📦</Text>
                                 )}
                             </View>
 
-                            <Text style={styles.stock}>
-                                {item.stock > 0 ? `In stock: ${item.stock}` : 'Out of stock'}
-                            </Text>
+                            <View style={styles.productInfo}>
+                                <Text style={styles.productName} numberOfLines={2}>
+                                    {item.name}
+                                </Text>
+
+                                <View style={styles.priceContainer}>
+                                    {Number(item.discountedPrice) ? (
+                                        <>
+                                            <Text style={styles.originalPrice}>
+                                                ₱{Number(item.basePrice).toFixed(2)}
+                                            </Text>
+                                            <Text style={styles.discountedPrice}>
+                                                ₱{Number(item.discountedPrice)?.toFixed(2)}
+                                            </Text>
+                                            <View style={styles.discountBadge}>
+                                                <Text style={styles.discountText}>
+                                                    -{Number(item.discountPercentage)}%
+                                                </Text>
+                                            </View>
+                                        </>
+                                    ) : (
+                                        <Text style={styles.price}>
+                                            ₱{Number(item.basePrice).toFixed(2)}
+                                        </Text>
+                                    )}
+                                </View>
+
+                                <Text style={styles.stock}>
+                                    {item.stock > 0 ? `In stock: ${item.stock}` : 'Out of stock'}
+                                </Text>
+                            </View>
                         </View>
-                    </View>
+                    </Link>
                 )}
             />
         </View>
@@ -151,6 +157,10 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
         maxWidth: '46%',
+    },
+    productCardPressed: {
+        opacity: 0.7,
+        transform: [{ scale: 0.98 }],
     },
     imageContainer: {
         width: '100%',

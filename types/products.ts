@@ -1,5 +1,5 @@
 interface Product {
-    id: string;
+    uid: number;
     name: string;
     sku: string;
     category: string;
@@ -53,4 +53,4 @@ interface ProductPageProps {
     error: string | null;
 }
 
-export { Product, GetProductsParams, GetProductsResponse, CreateProductData, ProductPageProps };
+export { CreateProductData, GetProductsParams, GetProductsResponse, Product, ProductPageProps };

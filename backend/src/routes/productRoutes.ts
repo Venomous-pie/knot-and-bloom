@@ -1,5 +1,5 @@
 import Router from 'express';
-import { getProducts, postProduct, searchProducts } from '../controllers/ProductController.js';
+import { getProductById, getProducts, postProduct, searchProducts } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError } from '../error/errorHandler.js';
 
 const router = Router();
@@ -117,4 +117,37 @@ router.get('/search-product', async (req, res) => {
         });
     }
 });
+
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const product = await getProductById(id);
+
+        return res.status(200).json({
+            success: true,
+            product: product,
+        });
+    } catch (error) {
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found',
+            });
+        }
+
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid product ID',
+            });
+        }
+
+        console.error('Get product error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch product',
+        });
+    }
+});
+
 export default router;

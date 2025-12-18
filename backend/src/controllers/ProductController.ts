@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import { DuplicateProductError, ValidationError } from "../error/errorHandler.js";
+import { DuplicateProductError, NotFoundError, ValidationError } from "../error/errorHandler.js";
 import type { GetProductsResult } from "../types/product.js";
 import { CalculateDiscount } from "../utils/discount.js";
 import prisma from "../utils/prisma.js";
@@ -133,4 +133,25 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
     });
 
     return products;
+};
+
+export const getProductById = async (productId: string) => {
+    const parsedId = parseInt(productId);
+
+    if (isNaN(parsedId)) {
+        throw new ValidationError([{
+            message: "Invalid product ID",
+            path: ['productId']
+        }]);
+    }
+
+    const product = await prisma.product.findUnique({
+        where: { uid: parsedId }
+    });
+
+    if (!product) {
+        throw new NotFoundError('Product', productId);
+    }
+
+    return product;
 };

@@ -40,7 +40,7 @@ export default function CategoryPage() {
                 let fetchedProducts = response.data.products || [];
 
                 if (highlighted_id) {
-                    const highlightedIndex = fetchedProducts.findIndex(p => p.id === highlighted_id);
+                    const highlightedIndex = fetchedProducts.findIndex(p => String(p.uid) === highlighted_id);
                     if (highlightedIndex > -1) {
                         const [highlightedProduct] = fetchedProducts.splice(highlightedIndex, 1);
                         fetchedProducts.unshift(highlightedProduct);

@@ -106,7 +106,7 @@ const SearchBarDropdown = ({ products, onClose }: { products: Product[], onClose
             <View style={styles.container}>
                 <FlatList
                     data={displayProducts}
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => String(item.uid)}
                     renderItem={({ item }) => (
                         <Pressable
                             style={({ pressed }) => [
@@ -115,7 +115,7 @@ const SearchBarDropdown = ({ products, onClose }: { products: Product[], onClose
                             ]}
                             onPress={() => {
                                 const slug = getCategorySlug(item.category);
-                                router.push(`/products/${slug}?highlighted_id=${item.id}`);
+                                router.push(`/products/${slug}?highlighted_id=${item.uid}`);
                                 onClose();
                             }}
                         >
@@ -142,7 +142,7 @@ const SearchBarDropdown = ({ products, onClose }: { products: Product[], onClose
                                     ) : (
                                         <Text style={styles.price}>
                                             ₱{Number(item.basePrice).toFixed(2)}
-                                        </Text> 
+                                        </Text>
                                     )}
                                 </View>
                             </View>

@@ -1,10 +1,19 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import { InferenceClient } from "@huggingface/inference";
-import type { ProductDescription } from '../types/product.js';
 
-const client = new InferenceClient(process.env.HF_TOKEN);
+export interface ProductDescription {
+    name: string;
+    category: string;
+    variants?: string;
+    basePrice: string;
+    discountedPrice?: string;
+}
+
+// NOTE: In a real production app, you should not expose API tokens in the frontend code.
+// Ideally, use a proxy server or Edge Function.
+// For this task, we assume the token is available via EXPO_PUBLIC_HF_TOKEN or similar env variable.
+const HF_TOKEN = process.env.EXPO_PUBLIC_HF_TOKEN || "hf_..."; // Replace or ensure env var is set
+
+const client = new InferenceClient(HF_TOKEN);
 
 export const ProductDescriptionGenerator = async (product: ProductDescription) => {
     const systemPrompt = `
@@ -40,13 +49,18 @@ export const ProductDescriptionGenerator = async (product: ProductDescription) =
         - If variants exist, mention that customers can choose their favorite
         `;
 
-    const descriptionCompletion = await client.chatCompletion({
-        model: "meta-llama/Llama-3.1-8B-Instruct:cerebras",
-        messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-        ],
-    });
+    try {
+        const descriptionCompletion = await client.chatCompletion({
+            model: "meta-llama/Llama-3.1-8B-Instruct:cerebras",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+            ],
+        });
 
-    return descriptionCompletion.choices[0]?.message?.content ?? null;
+        return descriptionCompletion.choices[0]?.message?.content ?? null;
+    } catch (error) {
+        console.error("Error generating description:", error);
+        return null; // Or throw error to handle in UI
+    }
 };

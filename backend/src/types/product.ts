@@ -33,22 +33,4 @@ interface GetProductsResult {
     };
 }
 
-interface ProductSKU {
-    category: string;
-    variants: string | undefined;
-}
-
-interface ProductDescription {
-    name: string;
-    category: string;
-    variants: string | undefined;
-    basePrice: string;
-    discountedPrice: string;
-}
-
-interface PriceInput {
-    basePrice: number;
-    discountedPercentage?: number | null | undefined;
-}
-
-export type { ProductInput, GetProductsOptions, GetProductsResult, ProductSKU, ProductDescription, PriceInput }
+export type { GetProductsOptions, GetProductsResult, ProductInput };

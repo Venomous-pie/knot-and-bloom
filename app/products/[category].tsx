@@ -1,25 +1,13 @@
-import React, { useEffect, useState } from "react";
 import ProductPage from "@/components/ProductPage";
 import { router, useLocalSearchParams } from "expo-router";
-import { productAPI } from "../api/api";
-import { Product } from "../types/products";
+import React, { useEffect, useState } from "react";
+import { productAPI } from "../../api/api";
+import { Product } from "../../types/products";
 
-const categoryTitles: Record<string, string> = {
-    popular: "Popular Products",
-    "new-arrival": "New Arrivals",
-    crochet: "Crochet",
-    "fuzzy-wire-art": "Fuzzy Wire Art",
-    accessories: "Accessories",
-    tops: "Tops",
-    "hair-tie": "Hair Ties",
-    "mini-stuffed-toy": "Mini Stuffed Toys",
-    "fuzzy-wire-bouquet": "Fuzzy Wire Bouquets",
-    "crochet-flower-bouquet": "Crochet Flower Bouquets",
-    "crochet-key-chains": "Crochet Key Chains",
-};
+import { categoryTitles } from "@/constants/categories";
 
 export default function CategoryPage() {
-    const { category } = useLocalSearchParams<{ category: string }>();
+    const { category, highlighted_id } = useLocalSearchParams<{ category: string, highlighted_id: string }>();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -41,7 +29,7 @@ export default function CategoryPage() {
 
                 // Handle special categories
                 if (category === "new-arrival") {
-                    params.newArrival = true; // ✅ Fixed: matches backend
+                    params.newArrival = true;
                 } else if (category === "popular") {
                     // will come back for this logic
                 } else {
@@ -49,9 +37,19 @@ export default function CategoryPage() {
                 }
 
                 const response = await productAPI.getProducts(params);
-                setProducts(response.data.products || []);
-                console.log(response.data.products);
-                
+                let fetchedProducts = response.data.products || [];
+
+                if (highlighted_id) {
+                    const highlightedIndex = fetchedProducts.findIndex(p => p.id === highlighted_id);
+                    if (highlightedIndex > -1) {
+                        const [highlightedProduct] = fetchedProducts.splice(highlightedIndex, 1);
+                        fetchedProducts.unshift(highlightedProduct);
+                    }
+                }
+
+                setProducts(fetchedProducts);
+                console.log(fetchedProducts);
+
             } catch (err: any) {
                 console.error("Error fetching products:", err);
                 setError(err.response?.data?.error || "Failed to load products");
@@ -61,7 +59,7 @@ export default function CategoryPage() {
         };
 
         fetchProducts();
-    }, [category]);
+    }, [category, highlighted_id]);
 
     if (!category || !categoryTitles[category]) {
         return null;

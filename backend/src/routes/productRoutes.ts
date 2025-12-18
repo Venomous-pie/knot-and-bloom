@@ -1,6 +1,6 @@
 import Router from 'express';
-import { postProduct, getProducts, searchProducts } from '../controllers/ProductController.js'
-import { ValidationError, DuplicateProductError, NotFoundError } from '../error/errorHandler.js';
+import { getProducts, postProduct, searchProducts } from '../controllers/ProductController.js';
+import { DuplicateProductError, NotFoundError, ValidationError } from '../error/errorHandler.js';
 
 const router = Router();
 
@@ -98,7 +98,7 @@ router.get('/search-product', async (req, res) => {
 
         return res.json({
             success: true,
-            data: products,
+            products: products,
             count: products.length
         });
 

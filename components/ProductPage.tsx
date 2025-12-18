@@ -1,6 +1,6 @@
+import type { ProductPageProps } from "@/types/products";
 import React from "react";
-import { Text, View, FlatList, ActivityIndicator, StyleSheet } from "react-native";
-import type { ProductPageProps } from "@/app/types/products";
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 
 export default function ProductPage({ category, title, products = [], loading, error }: ProductPageProps) {
     if (loading) {
@@ -59,10 +59,10 @@ export default function ProductPage({ category, title, products = [], loading, e
                                 {Number(item.discountedPrice) ? (
                                     <>
                                         <Text style={styles.originalPrice}>
-                                            ${Number(item.basePrice).toFixed(2)}
+                                            ₱{Number(item.basePrice).toFixed(2)}
                                         </Text>
                                         <Text style={styles.discountedPrice}>
-                                            ${Number(item.discountedPrice)?.toFixed(2)}
+                                            ₱{Number(item.discountedPrice)?.toFixed(2)}
                                         </Text>
                                         <View style={styles.discountBadge}>
                                             <Text style={styles.discountText}>
@@ -72,7 +72,7 @@ export default function ProductPage({ category, title, products = [], loading, e
                                     </>
                                 ) : (
                                     <Text style={styles.price}>
-                                        ${Number(item.basePrice).toFixed(2)}
+                                        ₱{Number(item.basePrice).toFixed(2)}
                                     </Text>
                                 )}
                             </View>

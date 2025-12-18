@@ -4,6 +4,7 @@ dotenv.config();
 import cors from 'cors';
 import express from 'express';
 import productRoutes from './routes/productRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
 import prisma from './utils/prisma.js';
 
 const app = express();
@@ -26,6 +27,7 @@ app.get('/', (req, res) => {
 
 // Api Routes
 app.use('/api/products', productRoutes);
+app.use('/api/customers', customerRoutes);
 
 
 // Error handling middleware

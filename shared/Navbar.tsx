@@ -1,4 +1,6 @@
+import { productAPI } from "@/api/api";
 import '@/global.css';
+import { Product } from "@/types/products";
 import { useFonts } from "expo-font";
 import { Link, RelativePathString, Stack, usePathname } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
@@ -10,6 +12,7 @@ const { width } = Dimensions.get('window');
 import DropdownMenu from "@/shared/DropdownMenu";
 import MenuSideBar from "@/shared/MenuSideBar";
 import { Heart, Menu, Search, UserRound } from "lucide-react-native";
+import SearchBarDropdown from "./SearchBarDropdown";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -71,7 +74,7 @@ const styles = StyleSheet.create({
     isFocused: {
         borderWidth: 1,
         borderColor: '#B36979',
-        borderStyle: 'dashed'
+        borderStyle: 'solid'
     },
 
     searchInput: {
@@ -89,6 +92,10 @@ const styles = StyleSheet.create({
         gap: 10,
         alignContent: "center",
         alignItems: 'center'
+    },
+
+    dropdownContainer: {
+        position: 'relative',
     },
 })
 
@@ -134,6 +141,7 @@ function NavLinks() {
 export default function NavBar() {
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [isFocused, setIsFocused] = useState(false);
+    const [products, setProducts] = useState<Product[]>([]);
 
     const [fontsLoaded] = useFonts({
         'Lovingly': require('@/assets/fonts/Lovingly/Lovingly.otf'),
@@ -149,6 +157,15 @@ export default function NavBar() {
     if (!fontsLoaded) {
         return null;
     }
+
+    const handleSearch = async (search: string) => {
+        try {
+            const result = await productAPI.searchProducts(search);
+            setProducts(result.data.products);
+        } catch (error) {
+            console.error("Error searching products", error);
+        }
+    };
 
     return (
         <>
@@ -171,7 +188,7 @@ export default function NavBar() {
                     headerRight: () => {
                         return (
                             <View style={styles.rightIcons}>
-                                <Pressable style={styles.navlinkContainer}>
+                                <View style={[styles.navlinkContainer, { position: 'relative', zIndex: 10 }]}>
                                     <View style={[
                                         styles.searchBar,
                                         isFocused && styles.isFocused]}
@@ -183,9 +200,16 @@ export default function NavBar() {
                                             placeholderTextColor='#adadadff'
                                             onFocus={() => setIsFocused(true)}
                                             onBlur={() => setIsFocused(false)}
+                                            onChangeText={(text) => handleSearch(text)}
                                         />
                                     </View>
-                                </Pressable>
+                                    {products.length > 0 && (
+                                        <View style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 5 }}>
+                                            <SearchBarDropdown products={products} onClose={() => setProducts([])} />
+                                        </View>
+                                    )}
+                                </View>
+
                                 <Pressable
                                     onPress={() => alert("Wishlist Page")}
                                     style={({ hovered }) => [

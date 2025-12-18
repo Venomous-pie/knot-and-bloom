@@ -1,4 +1,7 @@
-import type { ProductSKU } from "../types/product.js";
+export interface ProductSKU {
+    category: string;
+    variants?: string;
+}
 
 const CategoryCodes: Record<string, string> = {
     "popular": "POP",
@@ -29,7 +32,7 @@ export const SKUGenerator = async (productData: ProductSKU): Promise<string> => 
 
     if (productData.variants) {
         variantCode = `${productData.variants.substring(0, 3).toUpperCase()}`;
-        parts.push(variantCode);    
+        parts.push(variantCode);
     }
 
     parts.push(uniqueId);

@@ -18,3 +18,10 @@ export class NotFoundError extends Error {
         this.name = "NotFoundError";
     }
 }
+
+export class DuplicateCustomerError extends Error {
+    constructor(email: string) {
+        super(`Customer with email "${email}" already exists`);
+        this.name = "DuplicateCustomerError";
+    }
+}

@@ -22,3 +22,27 @@ model Product {
   uploaded           DateTime @default(now())
   updated            DateTime @updatedAt
 }
+
+model Customer {
+  uid      Int      @id @default(autoincrement())
+  name     String
+  email    String   @unique
+  password String
+  phone    String?
+  address  String?
+  uploaded DateTime @default(now())
+  updated  DateTime @updatedAt
+  orders   Order[]
+  role     String   @default("USER")
+}
+
+model Order {
+  uid        Int      @id @default(autoincrement())
+  customer   Customer @relation(fields: [customerId], references: [uid])
+  customerId Int
+  products   String
+  discount   Decimal?
+  total      Decimal
+  uploaded   DateTime @default(now())
+  updated    DateTime @updatedAt
+}

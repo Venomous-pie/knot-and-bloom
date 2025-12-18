@@ -1,36 +1,18 @@
 import { ZodError } from "zod";
-import prisma from "../utils/prisma.js";
-import { productSchema, type ProductInput } from "../validators/productValidator.js";
-import { getProductsQuerySchema, type GetProductOptions } from "../validators/productValidator.js";
-import type { GetProductsResult } from "../types/product.js"
-import { ValidationError, DuplicateProductError } from "../error/errorHandler.js";
-import { SKUGenerator } from "../services/skuGenerator.js";
-import { ProductDescriptionGenerator } from "../services/productDescriptionGenerator.js";
+import { DuplicateProductError, ValidationError } from "../error/errorHandler.js";
+import type { GetProductsResult } from "../types/product.js";
 import { CalculateDiscount } from "../utils/discount.js";
+import prisma from "../utils/prisma.js";
+import { getProductsQuerySchema, productSchema, type GetProductOptions, type ProductInput } from "../validators/productValidator.js";
 
 // Admin sides
 export const postProduct = async (input: unknown) => {
     // Parse and validate input
     let parsedInput: ProductInput;
-    let generatedSku;
-    let generatedDescription;
     let calculatedDiscount;
 
     try {
         parsedInput = productSchema.parse(input);
-
-        generatedSku = await SKUGenerator({
-            category: parsedInput.category,
-            variants: parsedInput.variants
-        });
-
-        generatedDescription = await ProductDescriptionGenerator({
-            name: parsedInput.name,
-            category: parsedInput.category,
-            variants: parsedInput.variants,
-            basePrice: String(parsedInput.basePrice),
-            discountedPrice: String(parsedInput.discountedPrice)
-        });
 
         calculatedDiscount = CalculateDiscount({
             basePrice: Number(parsedInput.basePrice),
@@ -55,7 +37,7 @@ export const postProduct = async (input: unknown) => {
     const product = await prisma.product.create({
         data: {
             name: parsedInput.name,
-            sku: generatedSku,
+            sku: parsedInput.sku,
             category: parsedInput.category,
             variants: parsedInput.variants ?? null,
             basePrice: parsedInput.basePrice,
@@ -63,7 +45,7 @@ export const postProduct = async (input: unknown) => {
             discountPercentage: parsedInput.discountPercentage ?? null,
             stock: parsedInput.stock ?? 0,
             image: parsedInput.image ?? null,
-            description: generatedDescription ?? null,
+            description: parsedInput.description ?? null,
         },
     });
 

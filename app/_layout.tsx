@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/app/auth";
 import NavBar from "@/shared/Navbar";
 import * as SplashScreen from 'expo-splash-screen';
 import React from "react";
@@ -8,9 +9,11 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   return (
-    <View style={styles.container}>
-      <NavBar />
-    </View>
+    <AuthProvider>
+      <View style={styles.container}>
+        <NavBar />
+      </View>
+    </AuthProvider>
   );
 }
 

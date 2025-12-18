@@ -102,7 +102,7 @@ export const productAPI = {
     getProductById: (id: string) =>
         apiClient.get<{ success: boolean; product: Product }>(`/products/${id}`),
 
-    updateProduct: (id: string, data: Partial<CreateProductData>) =>
+    updateProduct: (id: string, data: any) =>
         apiClient.put<Product>(`/products/${id}`, data),
 
     deleteProduct: (id: string) =>

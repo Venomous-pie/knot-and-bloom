@@ -25,7 +25,7 @@ export interface Product {
 interface GetProductsParams {
     category?: string;
     searchTerm?: string;
-    newArrivals?: boolean;
+    newArrival?: boolean;
     limit?: number;
     offset?: number;
 }

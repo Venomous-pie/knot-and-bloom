@@ -150,4 +150,33 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        // console.log("Updating product:", id, req.body);
+        const product = await import('../controllers/ProductController.js').then(m => m.updateProduct(id, req.body));
+
+        return res.status(200).json({
+            success: true,
+            message: "Product updated successfully",
+            data: product,
+        });
+    } catch (error) {
+        console.error("Update error:", error);
+
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ success: false, message: error.message });
+        }
+        if (error instanceof ValidationError) {
+            return res.status(400).json({ success: false, error: "Validation failed", issues: error.issues });
+        }
+        // Duplicate handling (e.g. SKU collision)
+        if (error && (error as any).code === 'P2002') {
+            return res.status(409).json({ success: false, error: "Duplicate field (likely SKU) found." });
+        }
+
+        return res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Internal error" });
+    }
+});
+
 export default router;

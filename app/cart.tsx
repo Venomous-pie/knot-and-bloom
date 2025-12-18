@@ -1,0 +1,516 @@
+import { cartAPI } from "@/api/api";
+import { useAuth } from "@/app/auth";
+import { CartItem } from "@/types/cart";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Pressable,
+    StyleSheet,
+    Text,
+    View
+} from "react-native";
+
+const { width } = Dimensions.get('window');
+
+// Simple Checkbox Component since we might not have a UI library installed
+const SimpleCheckbox = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
+    <Pressable
+        style={[styles.checkbox, checked && styles.checkboxChecked]}
+        onPress={onChange}
+    >
+        {checked && <Text style={styles.checkmark}>✓</Text>}
+    </Pressable>
+);
+
+export default function CartPage() {
+    const { user } = useAuth();
+    const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [subtotal, setSubtotal] = useState(0);
+    const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+    const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            fetchCart();
+        } else {
+            // Redirect or show login prompt if not authenticated
+            setLoading(false);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        calculateSubtotal();
+    }, [cartItems, selectedItems]);
+
+    const fetchCart = async () => {
+        try {
+            setLoading(true);
+            if (!user?.uid) return;
+            const response = await cartAPI.getCart(user.uid);
+            setCartItems(response.data.cart.items);
+            // Default select all? Or none? Let's select all by default for convenience
+            const allIds = new Set(response.data.cart.items.map(item => item.uid));
+            setSelectedItems(allIds);
+        } catch (error) {
+            console.error("Failed to fetch cart:", error);
+            Alert.alert("Error", "Could not load your cart.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateSubtotal = () => {
+        let total = 0;
+        cartItems.forEach(item => {
+            if (selectedItems.has(item.uid)) {
+                // Use variant price if available, otherwise product discounted/base price
+                const price = Number(
+                    item.productVariant?.price ??
+                    item.product.discountedPrice ??
+                    item.product.basePrice
+                );
+                total += price * item.quantity;
+            }
+        });
+        setSubtotal(total);
+    };
+
+    const handleQuantityChange = async (item: CartItem, change: number) => {
+        const newQuantity = item.quantity + change;
+        if (newQuantity < 1) return;
+
+        try {
+            // Optimistic update
+            const updatedItems = cartItems.map(i =>
+                i.uid === item.uid ? { ...i, quantity: newQuantity } : i
+            );
+            setCartItems(updatedItems);
+
+            await cartAPI.updateCartItem(item.uid, newQuantity);
+        } catch (error) {
+            console.error("Failed to update quantity:", error);
+            // Revert on failure
+            fetchCart();
+        }
+    };
+
+    const handleRemoveItem = async (itemId: number) => {
+        Alert.alert(
+            "Remove Item",
+            "Are you sure you want to remove this item?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const updatedItems = cartItems.filter(i => i.uid !== itemId);
+                            setCartItems(updatedItems);
+                            const newSelected = new Set(selectedItems);
+                            newSelected.delete(itemId);
+                            setSelectedItems(newSelected);
+
+                            await cartAPI.removeFromCart(itemId);
+                        } catch (error) {
+                            console.error("Failed to remove item:", error);
+                            fetchCart();
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const toggleSelection = (itemId: number) => {
+        const newSelected = new Set(selectedItems);
+        if (newSelected.has(itemId)) {
+            newSelected.delete(itemId);
+        } else {
+            newSelected.add(itemId);
+        }
+        setSelectedItems(newSelected);
+    };
+
+    const handleCheckout = async () => {
+        if (selectedItems.size === 0) {
+            Alert.alert("No Items Selected", "Please select items to checkout.");
+            return;
+        }
+
+        try {
+            setCheckoutLoading(true);
+            if (!user?.uid) return;
+
+            const response = await cartAPI.checkout(user.uid, Array.from(selectedItems));
+
+            Alert.alert(
+                "Order Placed!",
+                "Your order has been successfully placed.",
+                [{ text: "OK", onPress: () => fetchCart() }]
+            );
+
+        } catch (error: any) {
+            console.error("Checkout failed:", error);
+            Alert.alert("Checkout Failed", error.response?.data?.message || "Something went wrong.");
+        } finally {
+            setCheckoutLoading(false);
+        }
+    };
+
+    const renderItem = ({ item }: { item: CartItem }) => (
+        <View style={styles.cartItem}>
+            <View style={styles.itemHeader}>
+                <SimpleCheckbox
+                    checked={selectedItems.has(item.uid)}
+                    onChange={() => toggleSelection(item.uid)}
+                />
+            </View>
+
+            <View style={styles.imageContainer}>
+                {item.product.image ? (
+                    // Placeholder handling since images are strings in schema currently
+                    <Text style={{ fontSize: 24 }}>🖼️</Text>
+                ) : (
+                    <Text style={{ fontSize: 24 }}>📦</Text>
+                )}
+            </View>
+
+            <View style={styles.itemDetails}>
+                <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
+                {item.productVariant && <Text style={styles.variantText}>Variant: {item.productVariant.name}</Text>}
+                <Text style={styles.itemPrice}>
+                    ₱{Number(
+                        item.productVariant?.price ??
+                        item.product.discountedPrice ??
+                        item.product.basePrice
+                    ).toFixed(2)}
+                </Text>
+
+                <View style={styles.controlsContainer}>
+                    <View style={styles.quantityControls}>
+                        <Pressable
+                            style={styles.qtyBtn}
+                            onPress={() => handleQuantityChange(item, -1)}
+                        >
+                            <Text style={styles.qtyBtnText}>-</Text>
+                        </Pressable>
+                        <Text style={styles.quantityText}>{item.quantity}</Text>
+                        <Pressable
+                            style={styles.qtyBtn}
+                            onPress={() => handleQuantityChange(item, 1)}
+                        >
+                            <Text style={styles.qtyBtnText}>+</Text>
+                        </Pressable>
+                    </View>
+
+                    <Pressable onPress={() => handleRemoveItem(item.uid)}>
+                        <Text style={styles.removeText}>Remove</Text>
+                    </Pressable>
+                </View>
+            </View>
+        </View>
+    );
+
+    if (!user) {
+        return (
+            <View style={styles.centered}>
+                <Text style={styles.messageText}>Please log in to view your cart.</Text>
+                <Pressable style={styles.loginBtn} onPress={() => router.push('/auth')}>
+                    <Text style={styles.loginBtnText}>Go to Login</Text>
+                </Pressable>
+            </View>
+        );
+    }
+
+    if (loading) {
+        return (
+            <View style={styles.centered}>
+                <ActivityIndicator size="large" color="#8b5cf6" />
+                <Text style={{ marginTop: 10 }}>Loading Cart...</Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            <Text style={styles.headerTitle}>Shopping Cart ({cartItems.length})</Text>
+
+            <FlatList
+                data={cartItems}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.uid.toString()}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>Your cart is empty.</Text>
+                        <Pressable style={styles.shopBtn} onPress={() => router.push('/')}>
+                            <Text style={styles.shopBtnText}>Start Shopping</Text>
+                        </Pressable>
+                    </View>
+                }
+            />
+
+            {cartItems.length > 0 && (
+                <View style={styles.footer}>
+                    <View style={styles.summaryContainer}>
+                        <View style={styles.summaryRow}>
+                            <Text style={styles.summaryLabel}>Selected Total:</Text>
+                            <Text style={styles.summaryValue}>₱{subtotal.toFixed(2)}</Text>
+                        </View>
+                        {(() => {
+                            // Calculate savings
+                            let savings = 0;
+                            cartItems.forEach(item => {
+                                if (selectedItems.has(item.uid)) {
+                                    // Calculate savings only if not using a variant-specific price (assuming variants don't have separate discount logic yet)
+                                    // If using product price, compare base vs discounted
+                                    if (!item.productVariant?.price && item.product.discountedPrice) {
+                                        const original = Number(item.product.basePrice);
+                                        const discounted = Number(item.product.discountedPrice);
+                                        savings += (original - discounted) * item.quantity;
+                                    }
+                                }
+                            });
+
+                            if (savings > 0) {
+                                return (
+                                    <View style={styles.summaryRow}>
+                                        <Text style={styles.savingsLabel}>You Saved:</Text>
+                                        <Text style={styles.savingsValue}>₱{savings.toFixed(2)}</Text>
+                                    </View>
+                                );
+                            }
+                            return null;
+                        })()}
+                    </View>
+                    <Pressable
+                        style={[
+                            styles.checkoutBtn,
+                            (selectedItems.size === 0 || checkoutLoading) && styles.disabledBtn
+                        ]}
+                        onPress={handleCheckout}
+                        disabled={selectedItems.size === 0 || checkoutLoading}
+                    >
+                        {checkoutLoading ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text style={styles.checkoutBtnText}>Checkout ({selectedItems.size})</Text>
+                        )}
+                    </Pressable>
+                </View>
+            )}
+        </View >
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f8f9fa',
+    },
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        padding: 20,
+        color: '#111827',
+    },
+    listContent: {
+        paddingHorizontal: 20,
+        paddingBottom: 100,
+    },
+    cartItem: {
+        flexDirection: 'row',
+        backgroundColor: 'white',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+    },
+    itemHeader: {
+        marginRight: 10,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderWidth: 2,
+        borderColor: '#8b5cf6',
+        borderRadius: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: '#8b5cf6',
+    },
+    checkmark: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    imageContainer: {
+        width: 80,
+        height: 80,
+        backgroundColor: '#e5e7eb',
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    itemDetails: {
+        flex: 1,
+    },
+    itemName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1f2937',
+        marginBottom: 4,
+    },
+    variantText: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginBottom: 4,
+    },
+    itemPrice: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#10b981',
+        marginBottom: 8,
+    },
+    controlsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    quantityControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+    },
+    qtyBtn: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+    },
+    qtyBtnText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    quantityText: {
+        paddingHorizontal: 8,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    removeText: {
+        fontSize: 12,
+        color: '#ef4444',
+        fontWeight: '500',
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        padding: 20,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    summaryContainer: {
+        marginBottom: 16,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    summaryLabel: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    summaryValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#10b981',
+    },
+    savingsLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#ef4444',
+    },
+    savingsValue: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#ef4444',
+    },
+    checkoutBtn: {
+        backgroundColor: '#8b5cf6',
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    disabledBtn: {
+        backgroundColor: '#d1d5db',
+    },
+    checkoutBtnText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    messageText: {
+        fontSize: 16,
+        color: '#374151',
+        marginBottom: 20,
+    },
+    loginBtn: {
+        backgroundColor: '#8b5cf6',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    loginBtnText: {
+        color: 'white',
+        fontWeight: '600',
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        marginTop: 50,
+    },
+    emptyText: {
+        fontSize: 18,
+        color: '#6b7280',
+        marginBottom: 20,
+    },
+    shopBtn: {
+        backgroundColor: '#8b5cf6',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
+    },
+    shopBtnText: {
+        color: 'white',
+        fontWeight: '600',
+    },
+});

@@ -3,7 +3,6 @@ import { useAuth } from "@/app/auth";
 import { categoryTitles } from "@/constants/categories";
 import { ProductDescriptionGenerator } from "@/services/descriptionGenerator";
 import { SKUGenerator } from "@/services/skuGenerator";
-import { CreateProductData } from "@/types/products";
 import { RelativePathString, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -29,14 +28,19 @@ export default function PostProductPage() {
     const [formData, setFormData] = useState({
         name: "",
         sku: "",
-        category: "",
-        variants: "",
         basePrice: "",
         discountPercentage: "",
-        stock: "",
         image: "",
         description: "",
     });
+
+    // Separate state for categories (multi-select)
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+    // Separate state for variants array
+    const [variants, setVariants] = useState<Array<{ name: string; stock: string; price: string; image: string }>>([
+        { name: "", stock: "", price: "", image: "" }
+    ]);
 
     if (authLoading || !user || user.role !== 'ADMIN') {
         return (
@@ -53,49 +57,56 @@ export default function PostProductPage() {
     };
 
     const handleSubmit = async () => {
-        if (!formData.name || !formData.category || !formData.basePrice) {
-            Alert.alert("Error", "Name, Category, and Base Price are required.");
-            if (typeof window !== 'undefined') {
-                alert("Name, Category, and Base Price are required.");
-            }
+        if (!formData.name || selectedCategories.length === 0 || !formData.basePrice) {
+            Alert.alert("Error", "Name, at least one Category, and Base Price are required.");
             return;
         }
 
-        const submissionData: CreateProductData = {
+        // Validate variants
+        const validVariants = variants.filter(v => v.name.trim() !== "");
+        if (validVariants.length === 0) {
+            Alert.alert("Error", "At least one variant is required.");
+            return;
+        }
+
+        // Format variants for backend
+        const formattedVariants = validVariants.map(v => ({
+            name: v.name,
+            stock: parseInt(v.stock) || 0,
+            price: v.price ? parseFloat(v.price) : null,
+            image: v.image || null
+        }));
+
+        const submissionData: any = {
             ...formData,
+            categories: selectedCategories,
             basePrice: parseFloat(formData.basePrice) || 0,
             discountPercentage: parseFloat(formData.discountPercentage) || 0,
-            stock: parseInt(formData.stock) || 0,
+            variants: formattedVariants
         };
 
         try {
             setLoading(true);
             await productAPI.createProduct(submissionData);
             Alert.alert("Success", "Product created successfully!");
-            if (typeof window !== 'undefined') {
-                alert("Product created successfully!");
-            }
             router.back();
         } catch (error: any) {
             console.error(error);
-            Alert.alert("Error", "Failed to create product");
-            if (typeof window !== 'undefined') {
-                alert("Failed to create product: " + (error.response?.data?.message || error.message));
-            }
+            Alert.alert("Error", "Failed to create product: " + (error.response?.data?.message || error.message));
         } finally {
             setLoading(false);
         }
     };
 
     const handleGenerateSku = async () => {
-        if (!formData.category) {
-            Alert.alert("Required", "Please select a category first");
+        if (selectedCategories.length === 0) {
+            Alert.alert("Required", "Please select at least one category first");
             return;
         }
         try {
             const sku = await SKUGenerator({
-                category: formData.category,
-                variants: formData.variants || undefined
+                category: selectedCategories[0], // Use first category for SKU
+                variants: variants.filter(v => v.name.trim() !== "")
             });
             handleChange("sku", sku);
         } catch (e) {
@@ -105,8 +116,8 @@ export default function PostProductPage() {
     };
 
     const handleGenerateDescription = async () => {
-        if (!formData.name || !formData.category || !formData.basePrice) {
-            Alert.alert("Required", "Please fill Name, Category, and Price first");
+        if (!formData.name || selectedCategories.length === 0 || !formData.basePrice) {
+            Alert.alert("Required", "Please fill Name, Category,and Price first");
             return;
         }
         try {
@@ -121,8 +132,8 @@ export default function PostProductPage() {
 
             const description = await ProductDescriptionGenerator({
                 name: formData.name,
-                category: formData.category,
-                variants: formData.variants || undefined,
+                category: selectedCategories[0], // Use first category
+                variants: variants.filter(v => v.name.trim() !== ""),
                 basePrice: formData.basePrice,
                 discountedPrice: discountedPrice
             });
@@ -133,6 +144,22 @@ export default function PostProductPage() {
             console.error(e);
             Alert.alert("Error", "Failed to generate description");
         }
+    };
+
+    const addVariant = () => {
+        setVariants([...variants, { name: "", stock: "", price: "", image: "" }]);
+    };
+
+    const removeVariant = (index: number) => {
+        if (variants.length > 1) {
+            setVariants(variants.filter((_, i) => i !== index));
+        }
+    };
+
+    const updateVariant = (index: number, field: string, value: string) => {
+        const updated = [...variants];
+        updated[index] = { ...updated[index], [field]: value };
+        setVariants(updated);
     };
 
     return (
@@ -168,25 +195,33 @@ export default function PostProductPage() {
                         />
                     </View>
                     <View style={[styles.formGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Category *</Text>
+                        <Text style={styles.label}>Categories * (select multiple)</Text>
                         <View style={styles.categoryContainer}>
-                            {/* Simple Category Selector using buttons for now since Picker can be tricky on cross-platform without native-base etc */}
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryList}>
-                                {categories.map((cat) => (
-                                    <Pressable
-                                        key={cat}
-                                        style={[
-                                            styles.categoryChip,
-                                            formData.category === cat && styles.categoryChipSelected
-                                        ]}
-                                        onPress={() => handleChange("category", cat)}
-                                    >
-                                        <Text style={[
-                                            styles.categoryText,
-                                            formData.category === cat && styles.categoryTextSelected
-                                        ]}>{cat}</Text>
-                                    </Pressable>
-                                ))}
+                                {categories.map((cat) => {
+                                    const isSelected = selectedCategories.includes(cat);
+                                    return (
+                                        <Pressable
+                                            key={cat}
+                                            style={[
+                                                styles.categoryChip,
+                                                isSelected && styles.categoryChipSelected
+                                            ]}
+                                            onPress={() => {
+                                                if (isSelected) {
+                                                    setSelectedCategories(selectedCategories.filter(c => c !== cat));
+                                                } else {
+                                                    setSelectedCategories([...selectedCategories, cat]);
+                                                }
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.categoryText,
+                                                isSelected && styles.categoryTextSelected
+                                            ]}>{cat}</Text>
+                                        </Pressable>
+                                    );
+                                })}
                             </ScrollView>
                         </View>
                     </View>
@@ -217,28 +252,78 @@ export default function PostProductPage() {
                     </View>
                 </View>
 
-                <View style={styles.row}>
-                    <View style={[styles.formGroup, { flex: 1, marginRight: 10 }]}>
-                        <Text style={styles.label}>Stock</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={formData.stock}
-                            onChangeText={(text) => handleChange("stock", text)}
-                            keyboardType="numeric"
-                            placeholder="0"
-                            placeholderTextColor="#999"
-                        />
+                {/* Variants Section */}
+                <View style={styles.formGroup}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={styles.label}>Product Variants *</Text>
+                        <Pressable onPress={addVariant} style={styles.addVariantButton}>
+                            <Text style={styles.addVariantButtonText}>+ Add Variant</Text>
+                        </Pressable>
                     </View>
-                    <View style={[styles.formGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Variants</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={formData.variants}
-                            onChangeText={(text) => handleChange("variants", text)}
-                            placeholder="e.g. Red, Blue"
-                            placeholderTextColor="#999"
-                        />
-                    </View>
+
+                    {variants.map((variant, index) => (
+                        <View key={index} style={styles.variantRow}>
+                            <View style={{ flex: 2, marginRight: 8 }}>
+                                <Text style={styles.variantLabel}>Name *</Text>
+                                <TextInput
+                                    style={styles.variantInput}
+                                    value={variant.name}
+                                    onChangeText={(text) => updateVariant(index, "name", text)}
+                                    placeholder="e.g. Small Red"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                                <Text style={styles.variantLabel}>Stock *</Text>
+                                <TextInput
+                                    style={styles.variantInput}
+                                    value={variant.stock}
+                                    onChangeText={(text) => updateVariant(index, "stock", text)}
+                                    placeholder="0"
+                                    keyboardType="numeric"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                                <Text style={styles.variantLabel}>Price</Text>
+                                <TextInput
+                                    style={styles.variantInput}
+                                    value={variant.price}
+                                    onChangeText={(text) => updateVariant(index, "price", text)}
+                                    placeholder="Optional"
+                                    keyboardType="numeric"
+                                    placeholderTextColor="#999"
+                                />
+                            </View>
+                            {variants.length > 1 && (
+                                <Pressable
+                                    onPress={() => removeVariant(index)}
+                                    style={styles.removeButton}
+                                >
+                                    <Text style={styles.removeButtonText}>✕</Text>
+                                </Pressable>
+                            )}
+                        </View>
+                    ))}
+
+                    {/* Variant Images Section */}
+                    {variants.map((variant, index) => variant.name.trim() && (
+                        <View key={`img-${index}`} style={styles.variantImageRow}>
+                            <Text style={styles.variantImageLabel}>
+                                Image for "{variant.name}"
+                            </Text>
+                            <TextInput
+                                style={styles.input}
+                                value={variant.image}
+                                onChangeText={(text) => updateVariant(index, "image", text)}
+                                placeholder="https://example.com/variant-image.jpg"
+                                placeholderTextColor="#999"
+                            />
+                        </View>
+                    ))}
+                    <Text style={styles.helperText}>
+                        Add variants like sizes, colors, etc. Each variant can have its own stock and optional price override.
+                    </Text>
                 </View>
 
                 <View style={styles.formGroup}>
@@ -382,5 +467,70 @@ const styles = StyleSheet.create({
     categoryTextSelected: {
         color: '#B36979',
         fontWeight: '600',
+    },
+    addVariantButton: {
+        backgroundColor: '#B36979',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+    },
+    addVariantButtonText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    variantRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        marginBottom: 12,
+        backgroundColor: '#fafafa',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+    },
+    variantLabel: {
+        fontSize: 11,
+        color: '#666',
+        marginBottom: 4,
+        fontWeight: '500',
+    },
+    variantInput: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 6,
+        padding: 8,
+        fontSize: 14,
+        backgroundColor: 'white',
+        color: '#333',
+    },
+    removeButton: {
+        width: 28,
+        height: 28,
+        backgroundColor: '#ff4444',
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 4,
+    },
+    removeButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    helperText: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    variantImageRow: {
+        marginBottom: 12,
+    },
+    variantImageLabel: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 6,
+        fontWeight: '500',
     },
 });

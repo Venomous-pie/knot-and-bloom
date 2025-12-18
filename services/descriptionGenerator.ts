@@ -3,7 +3,7 @@ import { InferenceClient } from "@huggingface/inference";
 export interface ProductDescription {
     name: string;
     category: string;
-    variants?: string;
+    variants?: Array<{ name: string }>;
     basePrice: string;
     discountedPrice?: string;
 }
@@ -33,12 +33,17 @@ export const ProductDescriptionGenerator = async (product: ProductDescription) =
         - Output ONLY the description text
         `;
 
+    // Format variants for the prompt
+    const variantsList = product.variants && product.variants.length > 0
+        ? product.variants.map(v => v.name).join(', ')
+        : 'None';
+
     const userPrompt = `
         Write a product description using the details below.
 
         Name: ${product.name}
         Category: ${product.category}
-        Variants: ${product.variants ?? "None"}
+        Variants: ${variantsList}
         Base Price: ${product.basePrice}
         Discounted Price: ${product.discountedPrice ?? "None"}
 

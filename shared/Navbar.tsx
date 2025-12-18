@@ -221,7 +221,6 @@ export default function NavBar() {
                                 </Pressable>
 
                                 <Pressable
-                                    onPress={() => alert("Profile Page")}
                                     style={({ hovered }) => [
                                         styles.iconButton,
                                         hovered && styles.iconHovered,
@@ -229,8 +228,19 @@ export default function NavBar() {
                                 >
                                     <UserRound size={18} />
                                 </Pressable>
+                                <Link href='/cart' asChild>
+                                    <Pressable
+                                        style={({ hovered }) => [
+                                            styles.iconButton,
+                                            hovered && styles.iconHovered,
+                                        ]}
+                                    >
+                                        <Text style={{ fontSize: 18 }}>🛒</Text>
+                                    </Pressable>
+                                </Link>
                                 <Pressable
                                     onPress={() => setIsMenuOpen(true)}
+
                                     style={({ hovered }) => [
                                         styles.iconButton,
                                         hovered && styles.iconHovered,

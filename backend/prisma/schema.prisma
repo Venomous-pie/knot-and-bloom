@@ -8,19 +8,33 @@ datasource db {
 }
 
 model Product {
-  uid                Int      @id @default(autoincrement())
+  uid                Int              @id @default(autoincrement())
   name               String
-  sku                String   @unique
-  category           String
-  variants           String?
+  sku                String           @unique
+  categories         String[] // Array of categories
   basePrice          Decimal
   discountedPrice    Decimal?
   discountPercentage Int?
-  stock              Int
   image              String?
   description        String?
-  uploaded           DateTime @default(now())
-  updated            DateTime @updatedAt
+  uploaded           DateTime         @default(now())
+  updated            DateTime         @updatedAt
+  variants           ProductVariant[]
+  cartItems          CartItem[]
+}
+
+model ProductVariant {
+  uid       Int        @id @default(autoincrement())
+  product   Product    @relation(fields: [productId], references: [uid], onDelete: Cascade)
+  productId Int
+  name      String // "Small Red", "Large Blue", or "Default"
+  sku       String     @unique
+  stock     Int        @default(0)
+  price     Decimal? // Optional variant-specific price override
+  image     String? // Optional variant-specific image
+  cartItems CartItem[]
+
+  @@unique([productId, name])
 }
 
 model Customer {
@@ -33,7 +47,27 @@ model Customer {
   uploaded DateTime @default(now())
   updated  DateTime @updatedAt
   orders   Order[]
+  cart     Cart? // One-to-one relation with Cart
   role     String   @default("USER")
+}
+
+model Cart {
+  uid        Int        @id @default(autoincrement())
+  customer   Customer   @relation(fields: [customerId], references: [uid])
+  customerId Int        @unique // Ensure 1-to-1
+  items      CartItem[]
+  updated    DateTime   @updatedAt
+}
+
+model CartItem {
+  uid              Int             @id @default(autoincrement())
+  cart             Cart            @relation(fields: [cartId], references: [uid])
+  cartId           Int
+  product          Product         @relation(fields: [productId], references: [uid])
+  productId        Int
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [uid])
+  productVariantId Int?
+  quantity         Int             @default(1)
 }
 
 model Order {

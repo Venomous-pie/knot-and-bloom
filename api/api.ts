@@ -3,7 +3,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 import type { CreateProductData, GetProductsParams, GetProductsResponse, Product } from '../types/products';
 
 // Base URL for the API - replace with your actual API base URL
-const BASE_URL = 'http://localhost:8080/api';
+const BASE_URL = 'http://localhost:3030/api';
 
 const api: AxiosInstance = axios.create({
     baseURL: BASE_URL,
@@ -112,6 +112,28 @@ export const productAPI = {
 export const authAPI = {
     login: (data: any) => apiClient.post('/customers/login', data),
     register: (data: any) => apiClient.post('/customers/register', data),
+};
+
+export const cartAPI = {
+    addToCart: (customerId: number, productId: number, quantity: number, variant?: string | null) => {
+        return apiClient.post('/cart/add', { customerId, productId, quantity, variant });
+    },
+
+    getCart: (customerId: number) => {
+        return apiClient.get<{ cart: import('../types/cart').Cart }>(`/cart/${customerId}`);
+    },
+
+    updateCartItem: (itemId: number, quantity: number) => {
+        return apiClient.patch(`/cart/item/${itemId}`, { quantity });
+    },
+
+    removeFromCart: (itemId: number) => {
+        return apiClient.delete(`/cart/item/${itemId}`);
+    },
+
+    checkout: (customerId: number, selectedItemIds: number[]) => {
+        return apiClient.post('/cart/checkout', { customerId, selectedItemIds });
+    }
 };
 
 export default api;

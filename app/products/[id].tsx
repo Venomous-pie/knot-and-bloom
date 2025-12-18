@@ -1,4 +1,5 @@
-import { productAPI } from "@/api/api";
+import { cartAPI, productAPI } from "@/api/api";
+import { useAuth } from "@/app/auth";
 import type { Product } from "@/types/products";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -10,7 +11,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    View
+    View,
 } from "react-native";
 
 const { width } = Dimensions.get('window');
@@ -61,19 +62,67 @@ export default function ProductDetailPage() {
         fetchProduct();
     }, [id]);
 
-    const handleAddToCart = () => {
-        if (!product) return;
+    const { user } = useAuth(); // Assuming useAuth is available in this scope or import it
+    // ... other imports ...
+
+    // ... inside component ...
+    const handleAddToCart = async () => {
+        console.log("handleAddToCart: Function called");
+        console.log("handleAddToCart: Current State", {
+            product: product ? { uid: product.uid, name: product.name } : 'null',
+            user: user ? { uid: user.uid } : 'null',
+            variantsList,
+            selectedVariant
+        });
+
+        if (!product) {
+            console.log("handleAddToCart: Aborting - No product");
+            return;
+        }
 
         if (variantsList.length > 0 && !selectedVariant) {
+            console.log("handleAddToCart: Aborting - Variant not selected");
             Alert.alert("Select a Variant", "Please select a variant before adding to cart.");
             return;
         }
 
-        Alert.alert(
-            "Added to Cart",
-            `${product.name} ${selectedVariant ? `(${selectedVariant})` : ''} added to your cart!`
-        );
-        // Implement actual add to cart logic here later
+        if (!user) {
+            console.log("handleAddToCart: Aborting - No user logged in");
+            Alert.alert("Login Required", "Please log in to add items to your cart.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Login", onPress: () => router.push('/auth') }
+            ]);
+            return;
+        }
+
+        try {
+            console.log("handleAddToCart: Sending API request...", {
+                userId: user.uid,
+                productId: product.uid,
+                quantity: 1,
+                variant: selectedVariant
+            });
+
+            const response = await cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant);
+
+            console.log("handleAddToCart: API Success", response.data);
+
+            Alert.alert(
+                "Added to Cart",
+                `${product.name} has been added to your cart.`,
+                [
+                    { text: "Continue Shopping", style: "cancel" },
+                    { text: "View Cart", onPress: () => router.push('/cart') }
+                ]
+            );
+        } catch (error: any) {
+            console.error("handleAddToCart: API Failed", error);
+            if (error.response) {
+                console.error("handleAddToCart: Error Response Data", error.response.data);
+                console.error("handleAddToCart: Error Status", error.response.status);
+            }
+            Alert.alert("Error", "Failed to add item to cart.");
+        }
     };
 
     if (loading) {
@@ -200,13 +249,24 @@ export default function ProductDetailPage() {
 
                 {/* Action Buttons */}
                 <View style={styles.buttonContainer}>
+                    {/* Debug Info */}
+                    <View style={{ padding: 10, backgroundColor: '#eee', marginBottom: 10 }}>
+                        <Text>Debug: Stock={product.stock}, InStock={isInStock ? 'Yes' : 'No'}</Text>
+                        <Text>Debug: Variants={variantsList.length}, Selected={selectedVariant}</Text>
+                    </View>
+
                     <Pressable
-                        style={[
+                        style={({ pressed }) => [
                             styles.addToCartButton,
-                            !isInStock && styles.disabledButton
+                            !isInStock && styles.disabledButton,
+                            pressed && { opacity: 0.7 }
                         ]}
                         disabled={!isInStock}
-                        onPress={handleAddToCart}
+                        onPress={() => {
+                            console.log("Button Pressed Immediately");
+                            alert("Button Clicked!"); // Direct browser alert to prove clickability
+                            handleAddToCart();
+                        }}
                     >
                         <Text style={styles.addToCartText}>
                             {isInStock ? '🛒 Add to Cart' : 'Out of Stock'}

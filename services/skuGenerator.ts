@@ -1,6 +1,6 @@
 export interface ProductSKU {
     category: string;
-    variants?: string;
+    variants?: Array<{ name: string }>;
 }
 
 const CategoryCodes: Record<string, string> = {
@@ -30,8 +30,9 @@ export const SKUGenerator = async (productData: ProductSKU): Promise<string> => 
 
     const parts = [categoryCode]
 
-    if (productData.variants) {
-        variantCode = `${productData.variants.substring(0, 3).toUpperCase()}`;
+    // If variants exist, use the first variant's name for the code
+    if (productData.variants && productData.variants.length > 0 && productData.variants[0].name) {
+        variantCode = productData.variants[0].name.substring(0, 3).toUpperCase().replace(/\s/g, '');
         parts.push(variantCode);
     }
 

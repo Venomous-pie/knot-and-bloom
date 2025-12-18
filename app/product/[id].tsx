@@ -1,4 +1,5 @@
-import { productAPI } from "@/api/api";
+import { cartAPI, productAPI } from "@/api/api";
+import { useAuth } from "@/app/auth";
 import type { Product } from "@/types/products";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
-    const [variantsList, setVariantsList] = useState<string[]>([]);
+    const { user } = useAuth();
 
     useEffect(() => {
         if (!id) {
@@ -39,16 +40,9 @@ export default function ProductDetailPage() {
                 const fetchedProduct = response.data.product;
                 setProduct(fetchedProduct);
 
-                // Parse variants if they exist
-                if (fetchedProduct.variants) {
-                    const parsedVariants = fetchedProduct.variants
-                        .split(',')
-                        .map(v => v.trim())
-                        .filter(v => v.length > 0);
-                    setVariantsList(parsedVariants);
-                    if (parsedVariants.length > 0) {
-                        setSelectedVariant(parsedVariants[0]);
-                    }
+                // Set first variant as selected if variants exist
+                if (fetchedProduct.variants && fetchedProduct.variants.length > 0) {
+                    setSelectedVariant(fetchedProduct.variants[0].name);
                 }
             } catch (err: any) {
                 console.error("Error fetching product:", err);
@@ -61,19 +55,63 @@ export default function ProductDetailPage() {
         fetchProduct();
     }, [id]);
 
-    const handleAddToCart = () => {
-        if (!product) return;
+    const handleAddToCart = async () => {
+        console.log("🔘 handleAddToCart: Function called");
+        console.log("🔘 Current State:", {
+            product: product ? { uid: product.uid, name: product.name } : 'null',
+            user: user ? { uid: user.uid } : 'null',
+            variants: product?.variants,
+            selectedVariant
+        });
 
-        if (variantsList.length > 0 && !selectedVariant) {
+        if (!product) {
+            console.log("❌ Aborting - No product");
+            return;
+        }
+
+        if (product.variants.length > 0 && !selectedVariant) {
+            console.log("❌ Aborting - Variant not selected");
             Alert.alert("Select a Variant", "Please select a variant before adding to cart.");
             return;
         }
 
-        Alert.alert(
-            "Added to Cart",
-            `${product.name} ${selectedVariant ? `(${selectedVariant})` : ''} added to your cart!`
-        );
-        // Implement actual add to cart logic here later
+        if (!user) {
+            console.log("❌ Aborting - No user logged in");
+            Alert.alert("Login Required", "Please log in to add items to your cart.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Login", onPress: () => router.push('/auth') }
+            ]);
+            return;
+        }
+
+        try {
+            console.log("📡 Sending API request...", {
+                userId: user.uid,
+                productId: product.uid,
+                quantity: 1,
+                variant: selectedVariant
+            });
+
+            const response = await cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant);
+
+            console.log("✅ API Success:", response.data);
+
+            Alert.alert(
+                "Added to Cart",
+                `${product.name} ${selectedVariant ? `(${selectedVariant})` : ''} has been added to your cart.`,
+                [
+                    { text: "Continue Shopping", style: "cancel" },
+                    { text: "View Cart", onPress: () => router.push('/cart') }
+                ]
+            );
+        } catch (error: any) {
+            console.error("❌ API Failed:", error);
+            if (error.response) {
+                console.error("Error Response Data:", error.response.data);
+                console.error("Error Status:", error.response.status);
+            }
+            Alert.alert("Error", "Failed to add item to cart. Please try again.");
+        }
     };
 
     if (loading) {
@@ -102,7 +140,9 @@ export default function ProductDetailPage() {
     }
 
     const hasDiscount = product.discountedPrice && Number(product.discountedPrice) > 0;
-    const isInStock = product.stock > 0;
+    // Calculate total stock from all variants
+    const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+    const isInStock = totalStock > 0;
 
     return (
         <ScrollView style={styles.container}>
@@ -115,78 +155,112 @@ export default function ProductDetailPage() {
                 )}
             </View>
 
-            {/* Product Info Section */}
-            <View style={styles.contentContainer}>
-                {/* Category Badge */}
-                <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryText}>{product.category}</Text>
-                </View>
-
+            {/* Product Details */}
+            <View style={styles.detailsContainer}>
                 {/* Product Name */}
                 <Text style={styles.productName}>{product.name}</Text>
 
-                {/* SKU */}
-                <Text style={styles.sku}>SKU: {product.sku}</Text>
-
-                {/* Price Section */}
-                <View style={styles.priceSection}>
-                    {hasDiscount ? (
-                        <View style={styles.discountedPriceContainer}>
-                            <Text style={styles.originalPrice}>
-                                ₱{Number(product.basePrice).toFixed(2)}
-                            </Text>
-                            <Text style={styles.discountedPrice}>
-                                ₱{Number(product.discountedPrice).toFixed(2)}
-                            </Text>
-                            <View style={styles.discountBadge}>
-                                <Text style={styles.discountText}>
-                                    {product.discountPercentage}% OFF
+                {/* Categories */}
+                {product.categories && product.categories.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
+                        {product.categories.map((cat, index) => (
+                            <View key={index} style={{
+                                backgroundColor: '#E8D5D9',
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                borderRadius: 16,
+                                marginRight: 8,
+                                marginBottom: 8,
+                            }}>
+                                <Text style={{ color: '#B36979', fontSize: 12, fontWeight: '600' }}>
+                                    {cat}
                                 </Text>
                             </View>
-                        </View>
-                    ) : (
-                        <Text style={styles.price}>
-                            ₱{Number(product.basePrice).toFixed(2)}
-                        </Text>
-                    )}
+                        ))}
+                    </View>
+                )}
+
+                {/*Price Section */}
+                <View style={styles.priceSection}>
+                    {(() => {
+                        // Determine price to show: Selected Variant Price > Product Discounted Price > Product Base Price
+                        const selectedVariantObj = selectedVariant
+                            ? product.variants.find(v => v.name === selectedVariant)
+                            : null;
+
+                        // Use variant price if available, otherwise fallback to product price
+                        const displayPrice = selectedVariantObj?.price
+                            ? Number(selectedVariantObj.price)
+                            : Number(product.discountedPrice || product.basePrice);
+
+                        // If variant has specific price, don't show discount styling unless we implement variant-specific discounts later
+                        // For now, if variant price is used, treat it as the final price
+                        const isVariantPrice = !!selectedVariantObj?.price;
+
+                        if (hasDiscount && !isVariantPrice) {
+                            return (
+                                <>
+                                    <Text style={styles.discountedPrice}>
+                                        ${Number(product.discountedPrice).toFixed(2)}
+                                    </Text>
+                                    <Text style={styles.originalPrice}>
+                                        ${Number(product.basePrice).toFixed(2)}
+                                    </Text>
+                                    {product.discountPercentage && (
+                                        <View style={styles.discountBadge}>
+                                            <Text style={styles.discountText}>-{product.discountPercentage}%</Text>
+                                        </View>
+                                    )}
+                                </>
+                            );
+                        } else {
+                            return (
+                                <Text style={styles.price}>${displayPrice.toFixed(2)}</Text>
+                            );
+                        }
+                    })()}
                 </View>
 
                 {/* Stock Status */}
-                <View style={[
-                    styles.stockBadge,
-                    isInStock ? styles.inStockBadge : styles.outOfStockBadge
-                ]}>
+                <View style={styles.stockContainer}>
                     <Text style={[
                         styles.stockText,
                         isInStock ? styles.inStockText : styles.outOfStockText
                     ]}>
-                        {isInStock ? `✓ In Stock (${product.stock} available)` : '✗ Out of Stock'}
+                        {isInStock ? `✓ In Stock (${totalStock} available)` : '✗ Out of Stock'}
                     </Text>
                 </View>
 
                 {/* Variants Selection */}
-                {variantsList.length > 0 && (
-                    <View style={styles.section}>
+                {product.variants.length > 0 && (
+                    <View style={styles.variantsSection}>
                         <Text style={styles.sectionTitle}>Select Variant</Text>
-                        <View style={styles.variantsContainer}>
-                            {variantsList.map((variant, index) => (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {product.variants.map((variant, index) => (
                                 <Pressable
-                                    key={index}
+                                    key={variant.uid}
                                     style={[
-                                        styles.variantChip,
-                                        selectedVariant === variant && styles.variantChipSelected
+                                        styles.variantButton,
+                                        selectedVariant === variant.name && styles.selectedVariantButton
                                     ]}
-                                    onPress={() => setSelectedVariant(variant)}
+                                    onPress={() => setSelectedVariant(variant.name)}
                                 >
                                     <Text style={[
                                         styles.variantText,
-                                        selectedVariant === variant && styles.variantTextSelected
+                                        selectedVariant === variant.name && styles.selectedVariantText
                                     ]}>
-                                        {variant}
+                                        {variant.name}
+                                    </Text>
+                                    <Text style={[
+                                        styles.variantStock,
+                                        selectedVariant === variant.name && styles.selectedVariantStock,
+                                        variant.stock === 0 && styles.outOfStockText
+                                    ]}>
+                                        {variant.stock > 0 ? `${variant.stock} in stock` : 'Out of stock'}
                                     </Text>
                                 </Pressable>
                             ))}
-                        </View>
+                        </ScrollView>
                     </View>
                 )}
 
@@ -201,9 +275,10 @@ export default function ProductDetailPage() {
                 {/* Action Buttons */}
                 <View style={styles.buttonContainer}>
                     <Pressable
-                        style={[
+                        style={({ pressed }) => [
                             styles.addToCartButton,
-                            !isInStock && styles.disabledButton
+                            !isInStock && styles.disabledButton,
+                            pressed && { opacity: 0.6, transform: [{ scale: 0.98 }] }
                         ]}
                         disabled={!isInStock}
                         onPress={handleAddToCart}

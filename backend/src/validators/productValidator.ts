@@ -1,14 +1,13 @@
 import { z } from 'zod';
 
 export const productSchema = z.object({
-    name: z.string(),
-    sku: z.string(),
-    category: z.string(),
-    variants: z.string().optional(),
-    basePrice: z.coerce.number().positive(),
-    discountedPrice: z.coerce.number().positive().optional(),
-    discountPercentage: z.coerce.number().min(0).max(100).optional(),
-    stock: z.coerce.number().int().min(0).optional(),
+    name: z.string().min(1, "Product name is required"),
+    sku: z.string().optional(),
+    categories: z.array(z.string()).min(1, "At least one category is required"), // Changed to array
+    variants: z.any().optional(), // Accept any format for now
+    basePrice: z.number().positive("Base price must be positive"),
+    discountPercentage: z.number().min(0).max(100).optional(),
+    stock: z.number().int().min(0).optional(),
     image: z.string().optional(),
     description: z.string().optional(),
 });

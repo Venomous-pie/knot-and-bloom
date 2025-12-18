@@ -1,17 +1,26 @@
-interface Product {
+interface ProductVariant {
+    uid: number;
+    productId: number;
+    name: string;
+    sku: string;
+    stock: number;
+    price?: number;
+}
+
+export interface Product {
     uid: number;
     name: string;
     sku: string;
-    category: string;
-    variants?: string;
-    basePrice: number;
-    discountedPrice?: number;
+    categories: string[]; // Array of categories
+    basePrice: string;
+    discountedPrice?: string;
     discountPercentage?: number;
-    stock: number;
     image?: string;
     description?: string;
-    uploaded: Date;
-}
+    uploaded: string;
+    updated: string;
+    variants: ProductVariant[];
+}  // Array of variants instead of string
 
 interface GetProductsParams {
     category?: string;
@@ -53,4 +62,5 @@ interface ProductPageProps {
     error: string | null;
 }
 
-export { CreateProductData, GetProductsParams, GetProductsResponse, Product, ProductPageProps };
+export { CreateProductData, GetProductsParams, GetProductsResponse, Product, ProductPageProps, ProductVariant };
+

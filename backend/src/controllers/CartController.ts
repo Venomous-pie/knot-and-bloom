@@ -140,11 +140,14 @@ export const updateCartItem = async (req: Request, res: Response): Promise<void>
 export const removeFromCart = async (req: Request, res: Response): Promise<void> => {
     try {
         const { itemId } = req.params;
+        console.log(`Backend: removeFromCart called with itemId: ${itemId}, type: ${typeof itemId}`);
 
         // Use deleteMany to avoid error if item doesn't exist (idempotent)
         const result = await prisma.cartItem.deleteMany({
             where: { uid: Number(itemId) }
         });
+
+        console.log(`Backend: Delete result:`, result);
 
         if (result.count === 0) {
             console.log(`Remove item: Item ${itemId} not found (already deleted?)`);

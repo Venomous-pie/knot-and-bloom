@@ -1,5 +1,6 @@
 import { cartAPI, productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
+import { useCart } from "@/app/context/CartContext";
 import type { Product } from "@/types/products";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -55,14 +56,11 @@ export default function ProductDetailPage() {
         fetchProduct();
     }, [id]);
 
+    const { refreshCart, triggerCartAnimation } = useCart();
+    const buttonRef = React.useRef<View>(null);
+
     const handleAddToCart = async () => {
         console.log("🔘 handleAddToCart: Function called");
-        console.log("🔘 Current State:", {
-            product: product ? { uid: product.uid, name: product.name } : 'null',
-            user: user ? { uid: user.uid } : 'null',
-            variants: product?.variants,
-            selectedVariant
-        });
 
         if (!product) {
             console.log("❌ Aborting - No product");
@@ -84,7 +82,30 @@ export default function ProductDetailPage() {
             return;
         }
 
+        // Calculate total stock from all variants
+        const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+        const isInStock = totalStock > 0;
+
+        if (!isInStock) {
+            Alert.alert("Out of Stock", "This item is currently unavailable.");
+            return;
+        }
+
+        // Check variant specific stock if selected
+        if (selectedVariant) {
+            const variant = product.variants.find(v => v.name === selectedVariant);
+            if (variant && variant.stock <= 0) {
+                Alert.alert("Out of Stock", "The selected variant is out of stock.");
+                return;
+            }
+        }
+
         try {
+            // Trigger animation
+            buttonRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                triggerCartAnimation({ x: pageX + width / 2, y: pageY + height / 2 });
+            });
+
             console.log("📡 Sending API request...", {
                 userId: user.uid,
                 productId: product.uid,
@@ -95,6 +116,8 @@ export default function ProductDetailPage() {
             const response = await cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant);
 
             console.log("✅ API Success:", response.data);
+
+            await refreshCart();
 
             Alert.alert(
                 "Added to Cart",
@@ -201,10 +224,10 @@ export default function ProductDetailPage() {
                             return (
                                 <>
                                     <Text style={styles.discountedPrice}>
-                                        ${Number(product.discountedPrice).toFixed(2)}
+                                        ₱{Number(product.discountedPrice).toFixed(2)}
                                     </Text>
                                     <Text style={styles.originalPrice}>
-                                        ${Number(product.basePrice).toFixed(2)}
+                                        ₱{Number(product.basePrice).toFixed(2)}
                                     </Text>
                                     {product.discountPercentage && (
                                         <View style={styles.discountBadge}>
@@ -215,7 +238,7 @@ export default function ProductDetailPage() {
                             );
                         } else {
                             return (
-                                <Text style={styles.price}>${displayPrice.toFixed(2)}</Text>
+                                <Text style={styles.price}>₱{displayPrice.toFixed(2)}</Text>
                             );
                         }
                     })()}
@@ -275,6 +298,7 @@ export default function ProductDetailPage() {
                 {/* Action Buttons */}
                 <View style={styles.buttonContainer}>
                     <Pressable
+                        ref={buttonRef}
                         style={({ pressed }) => [
                             styles.addToCartButton,
                             !isInStock && styles.disabledButton,
@@ -351,7 +375,7 @@ const styles = StyleSheet.create({
     imagePlaceholder: {
         fontSize: 80,
     },
-    contentContainer: {
+    detailsContainer: {
         padding: 20,
     },
     categoryBadge: {
@@ -438,6 +462,9 @@ const styles = StyleSheet.create({
     outOfStockText: {
         color: '#991b1b',
     },
+    stockContainer: {
+        marginBottom: 16,
+    },
     section: {
         marginBottom: 24,
     },
@@ -447,30 +474,40 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 12,
     },
-    variantsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
+    variantsSection: {
+        marginBottom: 24,
     },
-    variantChip: {
-        paddingVertical: 8,
+    variantButton: {
+        paddingVertical: 10,
         paddingHorizontal: 16,
-        borderRadius: 20,
-        backgroundColor: '#f3f4f6',
+        borderRadius: 12,
+        backgroundColor: 'white',
         borderWidth: 1,
         borderColor: '#e5e7eb',
+        marginRight: 12,
+        minWidth: 100,
+        alignItems: 'center',
     },
-    variantChipSelected: {
-        backgroundColor: '#8b5cf6',
+    selectedVariantButton: {
         borderColor: '#8b5cf6',
+        backgroundColor: '#f5f3ff',
+        borderWidth: 2,
     },
     variantText: {
-        color: '#374151',
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: '600',
+        color: '#374151',
     },
-    variantTextSelected: {
-        color: 'white',
+    selectedVariantText: {
+        color: '#8b5cf6',
+    },
+    variantStock: {
+        fontSize: 12,
+        color: '#9ca3af',
+        marginTop: 4,
+    },
+    selectedVariantStock: {
+        color: '#8b5cf6',
     },
     description: {
         fontSize: 16,

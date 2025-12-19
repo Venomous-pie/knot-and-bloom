@@ -1,4 +1,6 @@
 import { productAPI } from "@/api/api";
+import { useAuth } from "@/app/auth";
+import { useCart } from "@/app/context/CartContext";
 import '@/global.css';
 import { Product } from "@/types/products";
 import { useFonts } from "expo-font";
@@ -45,6 +47,13 @@ const styles = StyleSheet.create({
     iconButton: {
         width: 40,
         height: 40,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    textButton: {
+        height: 40,
+        paddingHorizontal: 12,
         alignItems: "center",
         justifyContent: "center",
     },
@@ -108,7 +117,7 @@ const navLinks: { title: string, href: RelativePathString }[] = [
     { title: 'Accessories', href: "/products/accessories" as RelativePathString },
 ]
 
-function NavLinks() {
+function NavLinks({ activeMenu, setActiveMenu }: { activeMenu: string | null, setActiveMenu: (menu: string | null) => void }) {
     const pathname = usePathname();
 
     return (
@@ -132,16 +141,25 @@ function NavLinks() {
                 ));
             })}
             {navLinks.length > 3 && (
-                <DropdownMenu links={navLinks.slice(3)} />
+                <DropdownMenu
+                    items={navLinks.slice(3)}
+                    isOpen={activeMenu === 'more'}
+                    onOpenChange={(open) => setActiveMenu(open ? 'more' : null)}
+                />
             )}
         </View>
     );
 }
 
+
 export default function NavBar() {
+    const { user, logout } = useAuth();
+    const { cartCount, setCartIconPosition } = useCart();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [isFocused, setIsFocused] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
+    const [activeMenu, setActiveMenu] = useState<string | null>(null);
+    const cartIconRef = React.useRef<View>(null);
 
     const [fontsLoaded] = useFonts({
         'Lovingly': require('@/assets/fonts/Lovingly/Lovingly.otf'),
@@ -167,6 +185,11 @@ export default function NavBar() {
         }
     };
 
+    const handleLogout = async () => {
+        await logout();
+        router.push("/");
+    };
+
     return (
         <>
             <Stack
@@ -184,7 +207,7 @@ export default function NavBar() {
                             </Link>
                         );
                     },
-                    headerTitle: () => <NavLinks />,
+                    headerTitle: () => <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />,
                     headerRight: () => {
                         return (
                             <View style={styles.rightIcons}>
@@ -220,24 +243,81 @@ export default function NavBar() {
                                     <Heart size={18} />
                                 </Pressable>
 
-                                <Pressable
-                                    style={({ hovered }) => [
-                                        styles.iconButton,
-                                        hovered && styles.iconHovered,
-                                    ]}
-                                    onPress={() => router.push("/auth/login" as RelativePathString)}
+                                {(user) ? (
+                                    <DropdownMenu
+                                        items={[
+                                            { title: 'Edit Profile', href: '/profile' as RelativePathString },
+                                            { title: 'My Orders', href: '/profile/orders' as RelativePathString },
+                                            { title: 'Log Out', onPress: handleLogout },
+                                        ]}
+                                        style={({ hovered }) => [
+                                            styles.iconButton,
+                                            hovered && styles.iconHovered,
+                                        ]}
+                                        isOpen={activeMenu === 'profile'}
+                                        onOpenChange={(open) => setActiveMenu(open ? 'profile' : null)}
+                                    >
+                                        <UserRound size={18} />
+                                    </DropdownMenu>
+                                ) : (
+                                    <Pressable
+                                        style={({ hovered }) => [
+                                            styles.textButton,
+                                            hovered && styles.iconHovered,
+                                        ]}
+                                        onPress={() => router.push("/auth/login" as RelativePathString)}
+                                    >
+                                        {({ hovered }) => (
+                                            <Text style={{ color: hovered ? 'white' : '#B36979' }}>Sign In</Text>
+                                        )}
+                                    </Pressable>
+                                )}
+
+                                <View
+                                    ref={cartIconRef}
+                                    onLayout={() => {
+                                        cartIconRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                                            if (setCartIconPosition) {
+                                                setCartIconPosition({ x: pageX + width / 2, y: pageY + height / 2 });
+                                            }
+                                        });
+                                    }}
                                 >
-                                    <UserRound size={18} />
-                                </Pressable>
-                                <Pressable
-                                    style={({ hovered }) => [
-                                        styles.iconButton,
-                                        hovered && styles.iconHovered,
-                                    ]}
-                                    onPress={() => router.push("/cart" as RelativePathString)}
-                                >
-                                    <Handbag size={18} />
-                                </Pressable>
+                                    <Pressable
+                                        style={({ hovered }) => [
+                                            styles.iconButton,
+                                            hovered && styles.iconHovered,
+                                            { position: 'relative' } // Needed for absolute positioning of badge
+                                        ]}
+                                        onPress={() => router.push("/cart" as RelativePathString)}
+                                    >
+                                        <Handbag size={18} />
+                                        {cartCount > 0 && (
+                                            <View style={{
+                                                position: 'absolute',
+                                                top: -5,
+                                                right: -5,
+                                                backgroundColor: '#B36979',
+                                                borderRadius: 10,
+                                                minWidth: 16,
+                                                height: 16,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                paddingHorizontal: 4,
+                                                borderWidth: 1,
+                                                borderColor: 'white'
+                                            }}>
+                                                <Text style={{
+                                                    color: 'white',
+                                                    fontSize: 10,
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {cartCount}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                </View>
                                 <Pressable
                                     onPress={() => setIsMenuOpen(true)}
 

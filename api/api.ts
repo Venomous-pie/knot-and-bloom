@@ -136,4 +136,14 @@ export const cartAPI = {
     }
 };
 
+export const customerAPI = {
+    getProfile: () => apiClient.get<import('../types/user').User>('/customers/profile'),
+    updateProfile: (data: any) => apiClient.put('/customers/profile', data),
+};
+
+export const orderAPI = {
+    getOrders: () => apiClient.get('/orders'),
+    getOrderById: (id: string) => apiClient.get(`/orders/${id}`),
+};
+
 export default api;

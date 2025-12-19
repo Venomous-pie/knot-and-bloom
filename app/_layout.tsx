@@ -1,4 +1,6 @@
 import { AuthProvider } from "@/app/auth";
+import { CartProvider } from "@/app/context/CartContext";
+import CartAnimationOverlay from "@/components/CartAnimationOverlay";
 import NavBar from "@/shared/Navbar";
 import * as SplashScreen from 'expo-splash-screen';
 import React from "react";
@@ -10,9 +12,12 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <View style={styles.container}>
-        <NavBar />
-      </View>
+      <CartProvider>
+        <View style={styles.container}>
+          <NavBar />
+          <CartAnimationOverlay />
+        </View>
+      </CartProvider>
     </AuthProvider>
   );
 }

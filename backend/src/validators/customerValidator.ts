@@ -21,5 +21,13 @@ export const customerLoginSchema = z.object({
     password: z.string(),
 });
 
+export const customerUpdateSchema = z.object({
+    name: z.string().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+});
+
+export type CustomerUpdateInput = z.infer<typeof customerUpdateSchema>;
+
 export type CustomerLoginInput = z.infer<typeof customerLoginSchema>;
 export type CustomerInput = z.infer<typeof customerSchema>;

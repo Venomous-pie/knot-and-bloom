@@ -13,6 +13,7 @@ interface AuthContextType {
     login: (data: any) => Promise<void>;
     register: (data: any) => Promise<void>;
     logout: () => Promise<void>;
+    refreshUser: () => Promise<void>;
 }
 
-export { User, AuthContextType }
+export { AuthContextType, User };

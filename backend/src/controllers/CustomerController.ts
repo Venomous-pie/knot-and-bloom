@@ -4,7 +4,7 @@ import { ZodError } from "zod";
 import { DuplicateCustomerError, ValidationError } from "../error/errorHandler.js";
 import { type AuthPayload } from "../types/auth.js";
 import prisma from "../utils/prisma.js";
-import { customerLoginSchema, customerSchema, type CustomerInput, type CustomerLoginInput } from "../validators/customerValidator.js";
+import { customerLoginSchema, customerSchema, customerUpdateSchema, type CustomerInput, type CustomerLoginInput, type CustomerUpdateInput } from "../validators/customerValidator.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
@@ -95,4 +95,49 @@ const customerLoginController = async (input: unknown) => {
     }
 }
 
-export default { customerRegisterController, customerLoginController }
+const getCustomerProfile = async (userId: number) => {
+    const customer = await prisma.customer.findUnique({
+        where: { uid: userId },
+    });
+
+    if (!customer) {
+        throw new Error("Customer not found");
+    }
+
+    const { password, ...customerData } = customer;
+    return customerData;
+};
+
+const updateCustomerProfile = async (userId: number, input: unknown) => {
+    let parsedInput: CustomerUpdateInput;
+
+    try {
+        parsedInput = customerUpdateSchema.parse(input);
+
+        // Remove undefined keys to avoid exactOptionalPropertyTypes issues
+        const updateData = Object.fromEntries(
+            Object.entries(parsedInput).filter(([_, v]) => v !== undefined)
+        );
+
+        const customer = await prisma.customer.update({
+            where: { uid: userId },
+            data: updateData
+        });
+
+        const { password, ...customerData } = customer;
+        return customerData;
+
+    } catch (error) {
+        if (error instanceof ZodError) {
+            throw new ValidationError(error.issues);
+        }
+        throw error;
+    }
+}
+
+export default {
+    customerRegisterController,
+    customerLoginController,
+    getCustomerProfile,
+    updateCustomerProfile
+}

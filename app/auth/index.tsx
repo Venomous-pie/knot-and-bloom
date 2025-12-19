@@ -1,8 +1,8 @@
-import { authAPI } from '@/api/api';
+import api, { authAPI } from '@/api/api';
+import type { AuthContextType, User } from '@/types/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RelativePathString, useRouter, useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { User, AuthContextType } from '@/types/user';
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
@@ -10,6 +10,7 @@ const AuthContext = createContext<AuthContextType>({
     login: async () => { },
     register: async () => { },
     logout: async () => { },
+    refreshUser: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -70,8 +71,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         router.replace('/auth/login' as RelativePathString);
     };
 
+    const refreshUser = async () => {
+        try {
+            const response = await api.get('/customers/profile');
+            const userData = response.data;
+            if (userData) {
+                await AsyncStorage.setItem('authUser', JSON.stringify(userData));
+                setUser(userData);
+            }
+        } catch (error) {
+            console.error("Failed to refresh user", error);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

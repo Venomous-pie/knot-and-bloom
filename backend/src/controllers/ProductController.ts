@@ -107,7 +107,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
     const whereClause: any = {};
 
     if (category) {
-        whereClause.category = category;
+        whereClause.categories = { has: category };
     }
 
     if (searchTerm) {

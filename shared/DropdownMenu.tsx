@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
-import { Link, usePathname, RelativePathString } from 'expo-router';
+import { Link, RelativePathString, usePathname } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
 
 const styles = StyleSheet.create({
     navlinkContainer: {
@@ -25,7 +25,9 @@ const styles = StyleSheet.create({
     dropdown: {
         position: 'absolute',
         top: '100%',
-        right: 0,
+        left: '50%',
+        // @ts-ignore
+        transform: [{ translateX: '-50%' }],
         marginTop: 8,
         backgroundColor: 'white',
         borderRadius: 8,
@@ -50,7 +52,7 @@ const styles = StyleSheet.create({
         color: '#B36979',
     },
     backdrop: {
-        position: 'fixed',
+        position: 'fixed' as any, // Cast for web compatibility if needed, though usually fixed isn't valid in RN, works in RNWeb
         top: 0,
         left: 0,
         right: 0,
@@ -59,23 +61,52 @@ const styles = StyleSheet.create({
     },
 });
 
-
-interface DropdownMenuProps {
-    links: { title: string, href: RelativePathString }[];
+export interface DropdownItem {
+    title: string;
+    href?: RelativePathString;
+    onPress?: () => void;
 }
 
-export default function DropdownMenu({ links }: DropdownMenuProps) {
-    const [isOpen, setIsOpen] = useState(false);
+interface DropdownMenuProps {
+    items: DropdownItem[];
+    children?: React.ReactNode; // Custom trigger
+    style?: PressableProps['style'];
+    isOpen?: boolean;
+    onOpenChange?: (isOpen: boolean) => void;
+}
+
+export default function DropdownMenu({ items, children, style, isOpen: controlledIsOpen, onOpenChange }: DropdownMenuProps) {
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const pathname = usePathname();
 
-    const isAnyLinkActive = links.some(link => pathname === link.href);
+    const isControlled = controlledIsOpen !== undefined;
+    const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+
+    const handleToggle = () => {
+        const newState = !isOpen;
+        if (isControlled && onOpenChange) {
+            onOpenChange(newState);
+        } else {
+            setInternalIsOpen(newState);
+        }
+    };
+
+    const handleClose = () => {
+        if (isControlled && onOpenChange) {
+            onOpenChange(false);
+        } else {
+            setInternalIsOpen(false);
+        }
+    };
+
+    const isAnyLinkActive = items.some(item => item.href && pathname === item.href);
 
     useEffect(() => {
         Animated.timing(rotateAnim, {
             toValue: isOpen ? 1 : 0,
             duration: 200,
-            useNativeDriver: true,
+            useNativeDriver: true, // Note: transform support for native driver is generally fine
         }).start();
     }, [isOpen]);
 
@@ -87,43 +118,65 @@ export default function DropdownMenu({ links }: DropdownMenuProps) {
     return (
         <View style={styles.dropdownContainer}>
             <Pressable
-                onPress={() => setIsOpen(!isOpen)}
-                style={styles.navlinkContainer}
+                onPress={handleToggle}
+                style={style || (children ? {} : styles.navlinkContainer)} // Use provided style, or default logic
             >
-                {({ hovered }) => (
-                    <>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                            <Text>More</Text>
-                            <Animated.View style={{ transform: [{ rotate }] }}>
-                                <ChevronDown size={16} color="#333" />
-                            </Animated.View>
-                        </View> 
-                        <View style={[styles.underline, (hovered || isAnyLinkActive) && styles.underlineHovered]} />
-                    </>
+                {({ hovered, pressed }) => (
+                    children ? (
+                        <>
+                            {children}
+                        </>
+                    ) : (
+                        <>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                <Text>More</Text>
+                                <Animated.View style={{ transform: [{ rotate }] }}>
+                                    <ChevronDown size={16} color="#333" />
+                                </Animated.View>
+                            </View>
+                            <View style={[styles.underline, (hovered || isAnyLinkActive) && styles.underlineHovered]} />
+                        </>
+                    )
+
                 )}
             </Pressable>
 
             {isOpen && (
                 <View style={styles.dropdown}>
-                    {links.map((link) => {
-                        const isLinkActive = pathname === link.href;
+                    {items.map((item, index) => {
+                        const isLinkActive = item.href ? pathname === item.href : false;
+
+                        const content = (
+                            <Pressable
+                                onPress={() => {
+                                    handleClose();
+                                    if (item.onPress) item.onPress();
+                                }}
+                                style={styles.dropdownItem}
+                            >
+                                {({ hovered }) => (
+                                    <Text style={[
+                                        styles.dropdownText,
+                                        (hovered || isLinkActive) && styles.dropdownTextHovered
+                                    ]}>
+                                        {item.title}
+                                    </Text>
+                                )}
+                            </Pressable>
+                        );
+
+                        if (item.href) {
+                            return (
+                                <Link key={item.title || index} href={item.href} asChild>
+                                    {content}
+                                </Link>
+                            );
+                        }
 
                         return (
-                            <Link key={link.title} href={link.href} asChild>
-                                <Pressable
-                                    onPress={() => setIsOpen(false)}
-                                    style={styles.dropdownItem}
-                                >
-                                    {({ hovered }) => (
-                                        <Text style={[
-                                            styles.dropdownText,
-                                            (hovered || isLinkActive) && styles.dropdownTextHovered
-                                        ]}>
-                                            {link.title}
-                                        </Text>
-                                    )}
-                                </Pressable>
-                            </Link>
+                            <React.Fragment key={item.title || index}>
+                                {content}
+                            </React.Fragment>
                         );
                     })}
                 </View>
@@ -132,7 +185,7 @@ export default function DropdownMenu({ links }: DropdownMenuProps) {
             {isOpen && (
                 <Pressable
                     style={styles.backdrop}
-                    onPress={() => setIsOpen(false)}
+                    onPress={handleClose}
                 />
             )}
         </View>

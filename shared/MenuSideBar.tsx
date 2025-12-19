@@ -1,8 +1,7 @@
-import React, { useEffect, useRef } from "react";
-import { Text, View, Animated, Pressable, StyleSheet } from "react-native";
-import { X } from "lucide-react-native";
-import { ShoppingBag, Heart, UserRound } from "lucide-react-native";
 import { Link, RelativePathString, usePathname } from "expo-router";
+import { Facebook, Heart, Instagram, ShoppingBag, UserRound, X } from "lucide-react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 const styles = StyleSheet.create({
     backdrop: {
@@ -28,26 +27,40 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 5,
+        display: 'flex',
+        flexDirection: 'column',
     },
     closeButton: {
         alignSelf: 'flex-end',
         padding: 8,
-        marginBottom: 20,
     },
     title: {
-        fontSize: 24,
+        fontSize: 18,
         fontWeight: 'bold',
-        color: '#B36979',
-        marginBottom: 20,
+        color: '#333',
+    },
+    subtitle: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 4,
     },
     menuItems: {
-        gap: 20,
+        gap: 10,
     },
     menuItem: {
         fontSize: 16,
         color: '#333',
-        padding: 4,
-        borderRadius: 5,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+    },
+    menuItemActive: {
+        backgroundColor: '#fce4ec', // Light pink background for active
+        color: '#B36979',
+        fontWeight: '600',
+    },
+    menuItemHovered: {
+        backgroundColor: '#f5f5f5',
     },
     buttonItemHovered: {
         backgroundColor: '#b36979ff',
@@ -56,23 +69,24 @@ const styles = StyleSheet.create({
     buttonItem: {
         borderColor: '#B36979',
         borderWidth: 1,
-        padding: 8,
+        padding: 10,
         borderRadius: 8,
         alignItems: 'center',
         flexDirection: 'row',
-        gap: 8,
+        gap: 12,
     },
-    underline: {
-        height: 2,
-        backgroundColor: '#B36979',
-        marginTop: 4,
-        width: 0,
-        // @ts-ignore
-        transition: 'width 0.3s ease',
+    footer: {
+        marginTop: 'auto',
+        borderTopWidth: 1,
+        borderColor: '#eee',
+        paddingTop: 20,
+        alignItems: 'center',
+        gap: 10,
     },
-    underlineHovered: {
-        width: '100%',
-    },
+    footerText: {
+        fontSize: 12,
+        color: '#999',
+    }
 });
 
 const sidebarLinks: { title: string, href: RelativePathString }[] = [
@@ -88,6 +102,12 @@ const sidebarLinks: { title: string, href: RelativePathString }[] = [
     { title: 'Crochet Key Chains', href: "/products/crochet-key-chains" as RelativePathString },
 ]
 
+import { useAuth } from "@/app/auth";
+import { router } from "expo-router";
+// (styles are skipped)
+
+// (imports)
+
 interface MenuSideBarProps {
     isOpen: boolean;
     onClose: () => void;
@@ -97,6 +117,8 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
     const slideAnim = useRef(new Animated.Value(300)).current; // Start off-screen
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+
+    const { user, logout } = useAuth();
     const [shouldRender, setShouldRender] = React.useState(false);
 
     const pathname = usePathname();
@@ -134,6 +156,12 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
         }
     }, [isOpen]);
 
+    const handleLogout = async () => {
+        await logout();
+        onClose();
+        router.replace("/");
+    };
+
     if (!shouldRender) return null;
 
     return (
@@ -160,47 +188,69 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                     }
                 ]}
             >
-                {/* Close Button */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderColor: '#ccc', borderBottomWidth: 1, marginBottom: 20 }}>
-                    <Text style={styles.title}>Menu</Text>
-                    <Pressable onPress={onClose} style={styles.closeButton}>
-                        <X size={24} />
-                    </Pressable>
+                {/* Header Section */}
+                <View style={{ marginBottom: 20 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View>
+                            <Text style={styles.subtitle}>{user ? "Hello," : "Welcome,"}</Text>
+                            <Text style={styles.title}>{user ? (user.name || user.email) : "Guest"}</Text>
+                        </View>
+                        <Pressable onPress={onClose} style={styles.closeButton}>
+                            <X size={24} color="#333" />
+                        </Pressable>
+                    </View>
+                    <View style={{ height: 1, backgroundColor: '#eee', marginTop: 15 }} />
                 </View>
 
-                {/* Add your menu items here */}
-                <View style={{ flex: 1, justifyContent: 'space-between' }}>
+                {/* Content */}
+                <View style={{ flex: 1 }}>
+                    {/* Links */}
                     <View style={styles.menuItems}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#B36979' }}>Other</Text>
+                        <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Pages</Text>
                         {sidebarLinks.slice(0, 3).map((link) => {
                             const isActive = pathname === link.href;
                             return (
                                 <Link key={link.title} href={link.href} asChild>
-                                    <Pressable style={styles.menuItem} onPress={onClose} >
+                                    <Pressable onPress={onClose} >
                                         {({ hovered }) => {
                                             return (
-                                                <>
-                                                    <Text key={link.title} >{link.title}</Text>
-                                                    <View style={[styles.underline, (hovered || isActive) && styles.underlineHovered]} />
-                                                </>
+                                                <View style={[
+                                                    styles.menuItem,
+                                                    isActive && styles.menuItemActive,
+                                                    (hovered && !isActive) && styles.menuItemHovered
+                                                ]}>
+                                                    <Text style={{
+                                                        color: isActive ? '#B36979' : '#333',
+                                                        fontWeight: isActive ? '600' : '400'
+                                                    }}>{link.title}</Text>
+                                                </View>
                                             );
                                         }}
                                     </Pressable>
                                 </Link>
                             );
                         })}
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#B36979' }}>Categories</Text>
+
+                        <View style={{ height: 10 }} />
+
+                        <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Categories</Text>
                         {sidebarLinks.slice(3).map((link) => {
                             const isActive = pathname === link.href;
                             return (
                                 <Link key={link.title} href={link.href} asChild>
-                                    <Pressable style={styles.menuItem} onPress={onClose} >
+                                    <Pressable onPress={onClose} >
                                         {({ hovered }) => {
                                             return (
-                                                <>
-                                                    <Text key={link.title} >{link.title}</Text>
-                                                    <View style={[styles.underline, (hovered || isActive) && styles.underlineHovered]} />
-                                                </>
+                                                <View style={[
+                                                    styles.menuItem,
+                                                    isActive && styles.menuItemActive,
+                                                    (hovered && !isActive) && styles.menuItemHovered
+                                                ]}>
+                                                    <Text style={{
+                                                        color: isActive ? '#B36979' : '#333',
+                                                        fontWeight: isActive ? '600' : '400'
+                                                    }}>{link.title}</Text>
+                                                </View>
                                             );
                                         }}
                                     </Pressable>
@@ -208,44 +258,85 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                             );
                         })}
                     </View>
-                    <View style={{ gap: 8, borderTopWidth: 1, paddingTop: 20 }}>
 
-                        <Pressable
-                            onPress={() => alert("Chat with Us")}>
-                            {({ hovered }) => {
-                                return (
-                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                        <ShoppingBag size={16} />
-                                        <Text style={[hovered && styles.buttonItemHovered]}>My Orders</Text>
-                                    </View>
-                                );
-                            }}
+                    {/* Profile Actions */}
+                    <View style={{ gap: 8, marginTop: 30 }}>
+                        {user ? (
+                            <View style={{ gap: 10 }}>
+                                <Link href={"/profile/orders" as any} asChild>
+                                    <Pressable
+                                        style={{ flex: 1 }}
+                                        onPress={() => onClose()}>
+                                        {({ hovered }) => (
+                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
+                                                <ShoppingBag size={18} color={hovered ? 'white' : 'black'} />
+                                                <Text style={[hovered && styles.buttonItemHovered]}>Orders</Text>
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                </Link>
+
+                                <Link href={"/wishlist" as any} asChild>
+                                    <Pressable
+                                        style={{ flex: 1 }}
+                                        onPress={() => onClose()}>
+                                        {({ hovered }) => (
+                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
+                                                <Heart size={18} color={hovered ? 'white' : 'black'} />
+                                                <Text style={[hovered && styles.buttonItemHovered]}>Wishlist</Text>
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                </Link>
+                                {/* Profile Accordion Removed */}
+                            </View>
+                        ) : (
+                            <View style={{ gap: 8 }}>
+                                <Pressable
+                                    onPress={() => {
+                                        onClose();
+                                        router.push("/auth/login" as RelativePathString);
+                                    }}>
+                                    {({ hovered }) => {
+                                        return (
+                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                                <UserRound size={18} color={hovered ? 'white' : 'black'} />
+                                                <Text style={[hovered && styles.buttonItemHovered]}>Sign In</Text>
+                                            </View>
+                                        );
+                                    }}
+                                </Pressable>
+                                <Pressable
+                                    onPress={() => {
+                                        onClose();
+                                        router.push("/auth/register" as RelativePathString);
+                                    }}>
+                                    {({ hovered }) => {
+                                        return (
+                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                                <UserRound size={18} color={hovered ? 'white' : 'black'} />
+                                                <Text style={[hovered && styles.buttonItemHovered]}>Register</Text>
+                                            </View>
+                                        );
+                                    }}
+                                </Pressable>
+                            </View>
+                        )}
+                    </View>
+                </View>
+
+                {/* Footer */}
+                <View style={styles.footer}>
+                    <Text style={[styles.footerText, { fontFamily: 'Lovingly', fontSize: 16, color: '#B36979' }]}>Thanks for Shopping</Text>
+                    <View style={{ flexDirection: 'row', gap: 15 }}>
+                        <Pressable onPress={() => { }}>
+                            <Instagram size={20} color="#999" />
                         </Pressable>
-
-                        <Pressable
-                            onPress={() => alert("Wishlist Page")}>
-                            {({ hovered }) => {
-                                return (
-                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                        <Heart size={16} />
-                                        <Text style={[hovered && styles.buttonItemHovered]}>Wishlist</Text>
-                                    </View>
-                                );
-                            }}
-                        </Pressable>
-
-                        <Pressable
-                            onPress={() => alert("User Profile Page")}>
-                            {({ hovered }) => {
-                                return (
-                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                        <UserRound size={16} />
-                                        <Text style={[hovered && styles.buttonItemHovered]}>Profile</Text>
-                                    </View>
-                                );
-                            }}
+                        <Pressable onPress={() => { }}>
+                            <Facebook size={20} color="#999" />
                         </Pressable>
                     </View>
+                    <Text style={styles.footerText}>Version 1.0.0</Text>
                 </View>
             </Animated.View >
         </>

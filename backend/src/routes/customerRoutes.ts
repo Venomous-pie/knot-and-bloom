@@ -1,8 +1,45 @@
 import Router from 'express';
 import customerController from '../controllers/CustomerController.js';
 import { DuplicateCustomerError, ValidationError } from '../error/errorHandler.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = Router();
+
+router.get('/profile', authenticate, async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const customer = await customerController.getCustomerProfile(userId);
+        res.json(customer);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to fetch profile" });
+    }
+});
+
+router.put('/profile', authenticate, async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const customer = await customerController.updateCustomerProfile(userId, req.body);
+
+        res.json({
+            success: true,
+            message: "Profile updated successfully.",
+            data: customer
+        });
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            return res.status(400).json({
+                success: false,
+                error: "Validation failed",
+                issues: error.issues
+            });
+        }
+        res.status(500).json({ error: "Failed to update profile" });
+    }
+});
 
 router.post('/register', async (req, res) => {
     try {

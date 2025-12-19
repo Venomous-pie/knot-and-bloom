@@ -1,11 +1,11 @@
 import { cartAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
+import { useCart } from "@/app/context/CartContext";
 import { CartItem } from "@/types/cart";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Dimensions,
     FlatList,
     Pressable,
@@ -28,6 +28,7 @@ const SimpleCheckbox = ({ checked, onChange }: { checked: boolean, onChange: () 
 
 export default function CartPage() {
     const { user } = useAuth();
+    const { refreshCart } = useCart();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [subtotal, setSubtotal] = useState(0);
@@ -52,13 +53,16 @@ export default function CartPage() {
             setLoading(true);
             if (!user?.uid) return;
             const response = await cartAPI.getCart(user.uid);
+            console.log("🛒 Fetched Cart:", response.data.cart.items.length, "items");
             setCartItems(response.data.cart.items);
             // Default select all? Or none? Let's select all by default for convenience
             const allIds = new Set(response.data.cart.items.map(item => item.uid));
             setSelectedItems(allIds);
         } catch (error) {
             console.error("Failed to fetch cart:", error);
-            Alert.alert("Error", "Could not load your cart.");
+            if (typeof window !== 'undefined') {
+                window.alert("Error: Could not load your cart.");
+            }
         } finally {
             setLoading(false);
         }
@@ -100,31 +104,33 @@ export default function CartPage() {
     };
 
     const handleRemoveItem = async (itemId: number) => {
-        Alert.alert(
-            "Remove Item",
-            "Are you sure you want to remove this item?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Remove",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            const updatedItems = cartItems.filter(i => i.uid !== itemId);
-                            setCartItems(updatedItems);
-                            const newSelected = new Set(selectedItems);
-                            newSelected.delete(itemId);
-                            setSelectedItems(newSelected);
+        console.log("🗑️ Attempting to remove item:", itemId);
 
-                            await cartAPI.removeFromCart(itemId);
-                        } catch (error) {
-                            console.error("Failed to remove item:", error);
-                            fetchCart();
-                        }
-                    }
+        if (typeof window !== 'undefined') {
+            const confirmed = window.confirm("Are you sure you want to remove this item?");
+
+            if (confirmed) {
+                try {
+                    // Optimistic Update
+                    const updatedItems = cartItems.filter(i => i.uid !== itemId);
+                    setCartItems(updatedItems);
+                    const newSelected = new Set(selectedItems);
+                    newSelected.delete(itemId);
+                    setSelectedItems(newSelected);
+
+                    console.log("📡 Sending delete request for item:", itemId);
+                    await cartAPI.removeFromCart(itemId);
+
+                    // Refresh global cart state (badge)
+                    await refreshCart();
+                } catch (error) {
+                    console.error("Failed to remove item:", error);
+                    // Revert on failure
+                    fetchCart();
+                    window.alert("Error: Failed to remove item. Please try again.");
                 }
-            ]
-        );
+            }
+        }
     };
 
     const toggleSelection = (itemId: number) => {
@@ -139,7 +145,9 @@ export default function CartPage() {
 
     const handleCheckout = async () => {
         if (selectedItems.size === 0) {
-            Alert.alert("No Items Selected", "Please select items to checkout.");
+            if (typeof window !== 'undefined') {
+                window.alert("No Items Selected: Please select items to checkout.");
+            }
             return;
         }
 
@@ -149,15 +157,16 @@ export default function CartPage() {
 
             const response = await cartAPI.checkout(user.uid, Array.from(selectedItems));
 
-            Alert.alert(
-                "Order Placed!",
-                "Your order has been successfully placed.",
-                [{ text: "OK", onPress: () => fetchCart() }]
-            );
+            if (typeof window !== 'undefined') {
+                window.alert("Order Placed! Your order has been successfully placed.");
+            }
+            fetchCart();
 
         } catch (error: any) {
             console.error("Checkout failed:", error);
-            Alert.alert("Checkout Failed", error.response?.data?.message || "Something went wrong.");
+            if (typeof window !== 'undefined') {
+                window.alert("Checkout Failed: " + (error.response?.data?.message || "Something went wrong."));
+            }
         } finally {
             setCheckoutLoading(false);
         }

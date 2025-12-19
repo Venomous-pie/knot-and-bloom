@@ -1,9 +1,10 @@
 import { useAuth } from "@/app/auth";
 import { navLinks, sidebarLinks } from "@/constants/categories";
+import { isMobile } from "@/constants/layout";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
 import { Facebook, Heart, Instagram, ShoppingBag, UserRound, X } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 const styles = StyleSheet.create({
     backdrop: {
@@ -20,10 +21,8 @@ const styles = StyleSheet.create({
         top: 0,
         right: 0,
         height: '100%',
-        width: 300,
         backgroundColor: 'white',
         zIndex: 1000,
-        padding: 20,
         shadowColor: '#000',
         shadowOffset: { width: -2, height: 0 },
         shadowOpacity: 0.25,
@@ -101,6 +100,10 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
     const slideAnim = useRef(new Animated.Value(300)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    const { width } = useWindowDimensions();
+    const mobile = isMobile(width);
+    const sidebarWidth = mobile ? 250 : 300;
+
     const { user } = useAuth();
     const [shouldRender, setShouldRender] = React.useState(false);
 
@@ -161,6 +164,8 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                 style={[
                     styles.sidebar,
                     {
+                        width: sidebarWidth,
+                        padding: mobile ? 15 : 20,
                         transform: [{ translateX: slideAnim }]
                     }
                 ]}
@@ -169,21 +174,23 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                 <View style={{ marginBottom: 20 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <View>
-                            <Text style={styles.subtitle}>{user ? "Hello," : "Welcome,"}</Text>
-                            <Text style={styles.title}>{user ? (user.name || user.email) : "Guest"}</Text>
+                            <Text style={[styles.subtitle, { fontSize: mobile ? 12 : 14 }]}>{user ? "Hello," : "Welcome,"}</Text>
+                            <Text style={[styles.title, { fontSize: mobile ? 16 : 18 }]}>{user ? (user.name || user.email) : "Guest"}</Text>
                         </View>
                         <Pressable onPress={onClose} style={styles.closeButton}>
                             <X size={24} color="#333" />
                         </Pressable>
                     </View>
-                    <View style={{ height: 1, backgroundColor: '#eee', marginTop: 15 }} />
                 </View>
-
                 {/* Content */}
-                <View style={{ flex: 1 }}>
+                <ScrollView
+                    style={{ flex: 1 }}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                >
                     {/* Main Navigation Links */}
-                    <View style={styles.menuItems}>
-                        <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Navigation</Text>
+                    <View style={[styles.menuItems, { gap: mobile ? 8 : 10}]}>
+                        <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Navigation</Text>
                         {navLinks.map((link) => {
                             const isActive = pathname === link.href;
                             return (
@@ -194,11 +201,13 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                 <View style={[
                                                     styles.menuItem,
                                                     isActive && styles.menuItemActive,
-                                                    (hovered && !isActive) && styles.menuItemHovered
+                                                    (hovered && !isActive) && styles.menuItemHovered,
+                                                    { paddingVertical: mobile ? 4 : 10 }
                                                 ]}>
                                                     <Text style={{
                                                         color: isActive ? '#B36979' : '#333',
-                                                        fontWeight: isActive ? '600' : '400'
+                                                        fontWeight: isActive ? '600' : '400',
+                                                        fontSize: mobile ? 14 : 16
                                                     }}>{link.title}</Text>
                                                 </View>
                                             );
@@ -212,7 +221,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
 
                         {/* Links */}
                         <View style={styles.menuItems}>
-                            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Pages</Text>
+                            <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Pages</Text>
                             {sidebarLinks.slice(0, 3).map((link) => {
                                 const isActive = pathname === link.href;
                                 return (
@@ -223,11 +232,13 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                     <View style={[
                                                         styles.menuItem,
                                                         isActive && styles.menuItemActive,
-                                                        (hovered && !isActive) && styles.menuItemHovered
+                                                        (hovered && !isActive) && styles.menuItemHovered,
+                                                        { paddingVertical: mobile ? 4 : 10 }
                                                     ]}>
                                                         <Text style={{
                                                             color: isActive ? '#B36979' : '#333',
-                                                            fontWeight: isActive ? '600' : '400'
+                                                            fontWeight: isActive ? '600' : '400',
+                                                            fontSize: mobile ? 14 : 16
                                                         }}>{link.title}</Text>
                                                     </View>
                                                 );
@@ -239,7 +250,9 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
 
                             <View style={{ height: 10 }} />
 
-                            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Categories</Text>
+                            <View style={{ height: 10 }} />
+
+                            <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Categories</Text>
                             {sidebarLinks.slice(3).map((link) => {
                                 const isActive = pathname === link.href;
                                 return (
@@ -250,11 +263,13 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                     <View style={[
                                                         styles.menuItem,
                                                         isActive && styles.menuItemActive,
-                                                        (hovered && !isActive) && styles.menuItemHovered
+                                                        (hovered && !isActive) && styles.menuItemHovered,
+                                                        { paddingVertical: mobile ? 4 : 10 }
                                                     ]}>
                                                         <Text style={{
                                                             color: isActive ? '#B36979' : '#333',
-                                                            fontWeight: isActive ? '600' : '400'
+                                                            fontWeight: isActive ? '600' : '400',
+                                                            fontSize: mobile ? 14 : 16
                                                         }}>{link.title}</Text>
                                                     </View>
                                                 );
@@ -266,7 +281,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                         </View>
                     </View>
 
-                </View>
+                </ScrollView>
 
                 <View style={styles.footer}>
                     {user ? (
@@ -343,7 +358,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                             <Facebook size={20} color="#999" />
                         </Pressable>
                     </View>
-                    <Text style={styles.footerText}>Version 1.0.0</Text>
+                    <Text style={[styles.footerText, { fontSize: mobile ? 14 : 16 }]}>Version 1.0.0</Text>
                 </View>
             </Animated.View >
         </>

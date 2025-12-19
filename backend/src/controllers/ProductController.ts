@@ -153,11 +153,16 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
 };
 
 export const searchProducts = async (searchTerm: string, limit = 20) => {
+    // If searchTerm is empty, return suggested/recently uploaded products
     if (!searchTerm || searchTerm.trim().length === 0) {
-        throw new ValidationError([{
-            message: "Search term is required",
-            path: ['searchTerm']
-        }]);
+        const products = await prisma.product.findMany({
+            take: limit,
+            orderBy: { uploaded: 'desc' },
+            include: {
+                variants: true
+            }
+        });
+        return products;
     }
 
     const products = await prisma.product.findMany({

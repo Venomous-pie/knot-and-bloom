@@ -1,17 +1,17 @@
 import { productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
-import '@/global.css';
-import { Product } from "@/types/products";
-import { Link, RelativePathString, router, Stack, usePathname } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, Image, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { navLinks } from "@/constants/categories";
 import { getNavbarMargin, isMobile } from "@/constants/layout";
+import '@/global.css';
 import DropdownMenu from "@/shared/DropdownMenu";
 import MenuSideBar from "@/shared/MenuSideBar";
+import { Product } from "@/types/products";
+import { Link, RelativePathString, router, Stack, usePathname } from "expo-router";
 import { Handbag, Heart, Menu, Search, UserRound, X } from "lucide-react-native";
-import SearchBarDropdown from "./SearchBarDropdown";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import SearchBarDropdown from "./SearchResults";
 
 const styles = StyleSheet.create({
     iconHovered: {
@@ -58,21 +58,19 @@ const styles = StyleSheet.create({
     },
 
     searchBar: {
-        width: '100%',
-        height: 30,
+        height: 40, // increased slightly to match iconButton size for smoother transition
         maxWidth: 400,
-        maxHeight: 50,
         borderWidth: 1,
         borderColor: 'transparent',
         backgroundColor: '#f0f0f0ff',
-        outline: 'solid',
-        outlineColor: 'gray',
+
         borderRadius: 9999,
         flexDirection: 'row-reverse',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 15,
+        paddingVertical: 0,
+        paddingHorizontal: 0,
+        overflow: 'hidden', // Ensure content is hidden when collapsed
     },
 
     mobileSearchBar: {
@@ -80,31 +78,49 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
 
-    searchAccordion: {
-        position: 'fixed' as any,
-        top: 60, // Account for navbar height
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderColor: '#eee',
-        padding: 15,
-        zIndex: 999,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-
-    searchBackdrop: {
+    searchModal: {
         position: 'fixed' as any,
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        zIndex: 998,
+        backgroundColor: 'white',
+        zIndex: 1001,
+        padding: 20,
+        paddingTop: 60,
+    },
+
+    searchModalBackdrop: {
+        position: 'fixed' as any,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1000,
+    },
+
+    searchModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        gap: 15,
+    },
+
+    searchModalTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#333',
+        flex: 1,
+    },
+
+    searchModalCloseButton: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 20,
+        backgroundColor: '#f0f0f0',
     },
 
     isFocused: {
@@ -114,7 +130,7 @@ const styles = StyleSheet.create({
     },
 
     searchInput: {
-        fontSize: 8,
+        fontSize: 14,
         justifyContent: 'center',
         borderWidth: 0,
         backgroundColor: 'transparent',
@@ -175,25 +191,59 @@ export default function NavBar() {
     const [isFocused, setIsFocused] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
+    const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const cartIconRef = React.useRef<View>(null);
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
     const navMargin = getNavbarMargin(width);
 
-    // Animation for search accordion
-    const searchAccordionHeight = useRef(new Animated.Value(0)).current;
-    const searchAccordionOpacity = useRef(new Animated.Value(0)).current;
+    const [searchQuery, setSearchQuery] = useState('');
+    const [desktopSearchExpanded, setDesktopSearchExpanded] = useState(false);
+    const desktopInputRef = useRef<TextInput>(null);
+    const isCollapsing = useRef(false);
+
+    const expandedAnim = useRef(new Animated.Value(0)).current;
+
+    const navSearchWidth = expandedAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [40, 300]
+    });
+
+    const searchBarBg = expandedAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['rgba(240,240,240,0)', '#f0f0f0']
+    });
+
+    const inputOpacity = expandedAnim.interpolate({
+        inputRange: [0, 0.8, 1],
+        outputRange: [0, 0, 1]
+    });
+
+    // Animation for search modal
+    const searchModalSlide = useRef(new Animated.Value(1000)).current;
+    const searchModalOpacity = useRef(new Animated.Value(0)).current;
+
+    // Fetch suggestions on component mount for better UX
+    useEffect(() => {
+        if (mobile && suggestedProducts.length === 0) {
+            productAPI.searchProducts('', 4)
+                .then(res => {
+                    setSuggestedProducts(res.data.products);
+                })
+                .catch(err => console.error('Error fetching suggestions:', err));
+        }
+    }, [mobile]);
 
     useEffect(() => {
-        if (isSearchOpen) {
+        if (isSearchOpen && mobile) {
             Animated.parallel([
-                Animated.timing(searchAccordionHeight, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: false,
+                Animated.spring(searchModalSlide, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    friction: 8,
                 }),
-                Animated.timing(searchAccordionOpacity, {
+                Animated.timing(searchModalOpacity, {
                     toValue: 1,
                     duration: 300,
                     useNativeDriver: true,
@@ -201,19 +251,19 @@ export default function NavBar() {
             ]).start();
         } else {
             Animated.parallel([
-                Animated.timing(searchAccordionHeight, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: false,
+                Animated.timing(searchModalSlide, {
+                    toValue: 1000,
+                    duration: 250,
+                    useNativeDriver: true,
                 }),
-                Animated.timing(searchAccordionOpacity, {
+                Animated.timing(searchModalOpacity, {
                     toValue: 0,
-                    duration: 300,
+                    duration: 250,
                     useNativeDriver: true,
                 }),
             ]).start();
         }
-    }, [isSearchOpen]);
+    }, [isSearchOpen, mobile]);
 
     const handleSearch = async (search: string) => {
         try {
@@ -223,6 +273,39 @@ export default function NavBar() {
             console.error("Error searching products", error);
         }
     };
+
+    const toggleDesktopSearch = () => {
+        if (isCollapsing.current) return;
+
+        if (desktopSearchExpanded) {
+            collapseDesktopSearch();
+        } else {
+            expandDesktopSearch();
+        }
+    };
+
+    const expandDesktopSearch = () => {
+        setDesktopSearchExpanded(true);
+        Animated.timing(expandedAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: false,
+        }).start(() => {
+            desktopInputRef.current?.focus();
+        });
+    };
+
+    const collapseDesktopSearch = () => {
+        setDesktopSearchExpanded(false);
+        Keyboard.dismiss();
+        desktopInputRef.current?.blur();
+        Animated.timing(expandedAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+        }).start();
+    };
+
 
     const handleLogout = async () => {
         await logout();
@@ -238,22 +321,34 @@ export default function NavBar() {
                     headerLeft: () => {
                         return (
                             <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginLeft: width * navMargin }}>
-                                {mobile && (
-                                    <Pressable
-                                        onPress={() => setIsMenuOpen(true)}
-                                        style={({ hovered }) => [
-                                            styles.iconButton,
-                                            hovered && styles.iconHovered,
-                                        ]}
-                                    >
-                                        <Menu size={18} />
-                                    </Pressable>
-                                )}
                                 <Link href='/' asChild>
                                     <View style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
-                                        <Image source={require('../assets/yarn.png')} style={{ width: 40, height: 40, resizeMode: 'contain' }} />
-                                        <Text style={{ fontFamily: 'Lovingly', color: '#B36979', marginTop: 10, fontWeight: 'bold' }}>Knot</Text>
-                                        <Text style={{ fontFamily: 'Lovingly', color: '#567F4F', marginTop: 10, fontWeight: 'bold' }}>&Bloom</Text>
+                                        <Image
+                                            source={require('../assets/yarn.png')}
+                                            style={{
+                                                width: mobile ? 30 : 40,
+                                                height: mobile ? 30 : 40,
+                                                resizeMode: 'contain'
+                                            }}
+                                        />
+                                        <Text style={{
+                                            fontFamily: 'Lovingly',
+                                            color: '#B36979',
+                                            marginTop: mobile ? 5 : 10,
+                                            fontWeight: 'bold',
+                                            fontSize: mobile ? 12 : 14
+                                        }}>
+                                            Knot
+                                        </Text>
+                                        <Text style={{
+                                            fontFamily: 'Lovingly',
+                                            color: '#567F4F',
+                                            marginTop: mobile ? 5 : 10,
+                                            fontWeight: 'bold',
+                                            fontSize: mobile ? 12 : 14
+                                        }}>
+                                            &Bloom
+                                        </Text>
                                     </View>
                                 </Link>
                             </View>
@@ -262,23 +357,42 @@ export default function NavBar() {
                     headerTitle: () => !mobile ? <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} /> : null,
                     headerRight: () => {
                         return (
-                            <View style={[styles.rightIcons, { marginRight: width * navMargin }]}>
+                            <View style={[styles.rightIcons, { marginRight: width * navMargin, gap: mobile ? 5 : 10 }]}>
                                 {!mobile && (
                                     <View style={[styles.navlinkContainer, { position: 'relative', zIndex: 10 }]}>
-                                        <View style={[
+
+                                        <Animated.View style={[
                                             styles.searchBar,
-                                            isFocused && styles.isFocused]}
+                                            isFocused && styles.isFocused,
+                                            { width: navSearchWidth, backgroundColor: searchBarBg }
+                                        ]}
                                         >
-                                            <Search size={18} color={'#00000070'} />
-                                            <TextInput
-                                                style={styles.searchInput}
-                                                placeholder="Search for products..."
-                                                placeholderTextColor='#adadadff'
-                                                onFocus={() => setIsFocused(true)}
-                                                onBlur={() => setIsFocused(false)}
-                                                onChangeText={(text) => handleSearch(text)}
-                                            />
-                                        </View>
+                                            <Pressable onPress={toggleDesktopSearch} style={{ padding: 10 }}>
+                                                <Search size={18} color={'#000000ff'} />
+                                            </Pressable>
+
+                                            <Animated.View style={{ flex: 1, opacity: inputOpacity }}>
+                                                <TextInput
+                                                    ref={desktopInputRef}
+                                                    style={[styles.searchInput, { width: '100%', height: '100%', paddingLeft: 10 }]}
+                                                    placeholder="Search for products..."
+                                                    placeholderTextColor='#adadadff'
+                                                    onFocus={() => setIsFocused(true)}
+                                                    onBlur={() => {
+                                                        setIsFocused(false);
+                                                        // Always collapse on blur, but delay clearing flag to prevent immediate re-open if toggling
+                                                        isCollapsing.current = true;
+                                                        setTimeout(() => { isCollapsing.current = false; }, 200);
+                                                        collapseDesktopSearch();
+                                                    }}
+                                                    onChangeText={(text) => {
+                                                        setSearchQuery(text);
+                                                        handleSearch(text);
+                                                    }}
+                                                    value={searchQuery}
+                                                />
+                                            </Animated.View>
+                                        </Animated.View>
                                         {products.length > 0 && (
                                             <View style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 5 }}>
                                                 <SearchBarDropdown products={products} onClose={() => setProducts([])} />
@@ -286,6 +400,7 @@ export default function NavBar() {
                                         )}
                                     </View>
                                 )}
+
 
                                 {mobile && (
                                     <Pressable
@@ -295,7 +410,7 @@ export default function NavBar() {
                                         ]}
                                         onPress={() => setIsSearchOpen(!isSearchOpen)}
                                     >
-                                        <Search size={18} />
+                                        <Search size={mobile ? 16 : 18} />
                                     </Pressable>
                                 )}
 
@@ -306,7 +421,7 @@ export default function NavBar() {
                                     ]}
                                     onPress={() => router.push("/wishlist" as RelativePathString)}
                                 >
-                                    <Heart size={18} />
+                                    <Heart size={mobile ? 16 : 18} />
                                 </Pressable>
 
                                 {(user) ? (
@@ -323,7 +438,7 @@ export default function NavBar() {
                                         isOpen={activeMenu === 'profile'}
                                         onOpenChange={(open) => setActiveMenu(open ? 'profile' : null)}
                                     >
-                                        <UserRound size={18} />
+                                        <UserRound size={mobile ? 16 : 18} />
                                     </DropdownMenu>
                                 ) : (
                                     <Pressable
@@ -357,7 +472,7 @@ export default function NavBar() {
                                         ]}
                                         onPress={() => router.push("/cart" as RelativePathString)}
                                     >
-                                        <Handbag size={18} />
+                                        <Handbag size={mobile ? 16 : 18} />
                                         {cartCount > 0 && (
                                             <View style={{
                                                 position: 'absolute',
@@ -384,68 +499,108 @@ export default function NavBar() {
                                         )}
                                     </Pressable>
                                 </View>
-                            </View>
+
+                                <Pressable
+                                    onPress={() => setIsMenuOpen(true)}
+                                    style={({ hovered }) => [
+                                        styles.iconButton,
+                                        hovered && styles.iconHovered,
+                                    ]}
+                                >
+                                    <Menu size={mobile ? 16 : 18} />
+                                </Pressable>
+                            </View >
                         );
                     },
                 }}
             />
-            {mobile && (
-                <>
-                    {isSearchOpen && (
-                        <Pressable
-                            style={styles.searchBackdrop}
-                            onPress={() => setIsSearchOpen(false)}
-                        />
-                    )}
-                    <Animated.View
-                        style={[
-                            styles.searchAccordion,
-                            {
-                                maxHeight: searchAccordionHeight.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0, 300], // Max height of accordion
-                                }),
-                                opacity: searchAccordionOpacity,
-                                overflow: 'hidden',
-                            },
-                        ]}
-                        pointerEvents={isSearchOpen ? 'auto' : 'none'}
-                    >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                            <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#333' }}>Search Products</Text>
+            {
+                mobile && isSearchOpen && (
+                    <>
+                        <Animated.View
+                            style={[
+                                styles.searchModalBackdrop,
+                                { opacity: searchModalOpacity }
+                            ]}
+                        >
                             <Pressable
+                                style={{ flex: 1 }}
                                 onPress={() => setIsSearchOpen(false)}
-                                style={[styles.iconButton, { width: 32, height: 32 }]}
-                            >
-                                <X size={18} color="#666" />
-                            </Pressable>
-                        </View>
-                        <View style={[
-                            styles.searchBar,
-                            styles.mobileSearchBar,
-                            isFocused && styles.isFocused
-                        ]}>
-                            <Search size={18} color={'#00000070'} />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Search for products..."
-                                placeholderTextColor='#adadadff'
-                                onFocus={() => setIsFocused(true)}
-                                onBlur={() => setIsFocused(false)}
-                                onChangeText={(text) => handleSearch(text)}
-                                autoFocus={isSearchOpen}
                             />
-                        </View>
-                        {products.length > 0 && (
-                            <View style={{ marginTop: 10 }}>
-                                <SearchBarDropdown products={products} onClose={() => setProducts([])} />
+                        </Animated.View>
+                        <Animated.View
+                            style={[
+                                styles.searchModal,
+                                {
+                                    transform: [{ translateY: searchModalSlide }],
+                                },
+                            ]}
+                        >
+                            <View style={styles.searchModalHeader}>
+                                <Text style={styles.searchModalTitle}>Search</Text>
+                                <Pressable
+                                    onPress={() => setIsSearchOpen(false)}
+                                    style={styles.searchModalCloseButton}
+                                >
+                                    <X size={24} color="#666" />
+                                </Pressable>
                             </View>
-                        )}
-                    </Animated.View>
-                </>
-            )}
+
+                            <View style={[
+                                styles.searchBar,
+                                { maxWidth: '100%', height: 50 },
+                                isFocused && styles.isFocused
+                            ]}>
+                                <Search size={20} color={'#00000070'} />
+                                <TextInput
+                                    style={[styles.searchInput, { fontSize: 16 }]}
+                                    placeholder="Search for products..."
+                                    placeholderTextColor='#adadadff'
+                                    onFocus={() => setIsFocused(true)}
+                                    onBlur={() => setIsFocused(false)}
+                                    onChangeText={(text) => {
+                                        setSearchQuery(text);
+                                        handleSearch(text);
+                                    }}
+                                    value={searchQuery}
+                                    autoFocus
+                                />
+                            </View>
+
+                            {searchQuery && products.length > 0 && (
+                                <View style={{ marginTop: 20, flex: 1 }}>
+                                    <SearchBarDropdown
+                                        products={products}
+                                        onClose={() => setProducts([])}
+                                        mode="grid"
+                                        title="Search Results"
+                                    />
+                                </View>
+                            )}
+
+                            {!searchQuery && suggestedProducts.length > 0 && (
+                                <View style={{ marginTop: 20, flex: 1 }}>
+                                    <SearchBarDropdown
+                                        products={suggestedProducts}
+                                        onClose={() => { }}
+                                        mode="grid"
+                                        title="Suggested for you"
+                                    />
+                                </View>
+                            )}
+
+                            {!searchQuery && suggestedProducts.length === 0 && (
+                                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
+                                    <Search size={48} color="#ccc" />
+                                    <Text style={{ marginTop: 16, fontSize: 16, color: '#999' }}>Start typing to search products</Text>
+                                </View>
+                            )}
+                        </Animated.View>
+                    </>
+                )
+            }
             <MenuSideBar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-        </View>
+        </View >
     );
 
 }

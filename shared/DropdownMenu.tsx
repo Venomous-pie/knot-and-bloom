@@ -1,7 +1,8 @@
+import { isMobile } from '@/constants/layout';
 import { Link, RelativePathString, usePathname } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, PressableProps, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 const styles = StyleSheet.create({
     navlinkContainer: {
@@ -79,6 +80,8 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const pathname = usePathname();
+    const { width } = useWindowDimensions();
+    const mobile = isMobile(width);
 
     const isControlled = controlledIsOpen !== undefined;
     const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
@@ -156,8 +159,8 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                             >
                                 {({ hovered }) => (
                                     <Text style={[
-                                        styles.dropdownText,
-                                        (hovered || isLinkActive) && styles.dropdownTextHovered
+                                        (hovered || isLinkActive) && styles.dropdownTextHovered,
+                                        { fontSize: mobile ? 12 : 14 }
                                     ]}>
                                         {item.title}
                                     </Text>

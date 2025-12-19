@@ -85,16 +85,17 @@ router.get('/search-product', async (req, res) => {
     try {
         const { searchTerm, limit } = req.query;
 
-        if (typeof searchTerm !== 'string') {
+        // searchTerm can be empty string for suggested products
+        if (searchTerm !== undefined && typeof searchTerm !== 'string') {
             return res.status(400).json({
                 success: false,
-                message: 'searchTerm query parameter is required and must be a string.',
+                message: 'searchTerm query parameter must be a string.',
             });
         }
 
         const parsedLimit = limit ? parseInt(limit as string) : 20;
 
-        const products = await searchProducts(searchTerm, parsedLimit);
+        const products = await searchProducts(searchTerm as string || '', parsedLimit);
 
         return res.json({
             success: true,

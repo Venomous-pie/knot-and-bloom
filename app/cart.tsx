@@ -16,7 +16,6 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// Simple Checkbox Component since we might not have a UI library installed
 const SimpleCheckbox = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
     <Pressable
         style={[styles.checkbox, checked && styles.checkboxChecked]}

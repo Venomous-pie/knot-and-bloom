@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
         color: '#B36979',
     },
     backdrop: {
-        position: 'fixed' as any, // Cast for web compatibility if needed, though usually fixed isn't valid in RN, works in RNWeb
+        position: 'fixed' as any,
         top: 0,
         left: 0,
         right: 0,
@@ -69,7 +69,7 @@ export interface DropdownItem {
 
 interface DropdownMenuProps {
     items: DropdownItem[];
-    children?: React.ReactNode; // Custom trigger
+    children?: React.ReactNode;
     style?: PressableProps['style'];
     isOpen?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
@@ -106,7 +106,7 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
         Animated.timing(rotateAnim, {
             toValue: isOpen ? 1 : 0,
             duration: 200,
-            useNativeDriver: true, // Note: transform support for native driver is generally fine
+            useNativeDriver: true,
         }).start();
     }, [isOpen]);
 
@@ -119,7 +119,7 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
         <View style={styles.dropdownContainer}>
             <Pressable
                 onPress={handleToggle}
-                style={style || (children ? {} : styles.navlinkContainer)} // Use provided style, or default logic
+                style={style || (children ? {} : styles.navlinkContainer)}
             >
                 {({ hovered, pressed }) => (
                     children ? (

@@ -328,8 +328,8 @@ export default function NavBar() {
                                             style={{
                                                 width: mobile ? 30 : 40,
                                                 height: mobile ? 30 : 40,
-                                                resizeMode: 'contain'
                                             }}
+                                            resizeMode='contain'
                                         />
                                         <Text style={{
                                             fontFamily: 'Lovingly',

@@ -59,7 +59,7 @@ export default function CartAnimationOverlay() {
     });
 
     return (
-        <View style={styles.overlay} pointerEvents="none">
+        <View style={styles.overlay}>
             <Animated.View
                 style={[
                     styles.flyingItem,
@@ -86,6 +86,7 @@ const styles = StyleSheet.create({
         elevation: 9999, // Android
         justifyContent: 'flex-start',
         alignItems: 'flex-start', // Important so translation starts from 0,0
+        pointerEvents: 'none' as any,
     },
     flyingItem: {
         position: 'absolute',
@@ -97,10 +98,7 @@ const styles = StyleSheet.create({
         borderRadius: 15,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.25)',
         elevation: 5,
     }
 });

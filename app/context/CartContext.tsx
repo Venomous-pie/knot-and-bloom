@@ -74,3 +74,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         </CartContext.Provider>
     );
 };
+
+// Default export required for expo-router
+export default function CartLayout({ children }: { children: React.ReactNode }) {
+    return <CartProvider>{children}</CartProvider>;
+}

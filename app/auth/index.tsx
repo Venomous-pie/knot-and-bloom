@@ -90,3 +90,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         </AuthContext.Provider>
     );
 };
+
+// Default export required for expo-router
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+    return <AuthProvider>{children}</AuthProvider>;
+}

@@ -151,7 +151,7 @@ const SearchBarDropdown = ({ products, onClose, mode = 'list', title }: SearchBa
                                     pressed && styles.itemPressed
                                 ]}
                                 onPress={() => {
-                                    const slug = getCategorySlug(item.category);
+                                    const slug = getCategorySlug(item.categories[0]);
                                     router.push(`/products/${slug}?highlighted_id=${item.uid}`);
                                     onClose();
                                 }}
@@ -165,7 +165,7 @@ const SearchBarDropdown = ({ products, onClose, mode = 'list', title }: SearchBa
                                 )}
                                 <View style={styles.textContainer}>
                                     <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                                    <Text style={styles.category}>{item.category}</Text>
+                                    <Text style={styles.category}>{item.categories[0]}</Text>
                                     <View style={styles.priceContainer}>
                                         {Number(item.discountedPrice) ? (
                                             <>

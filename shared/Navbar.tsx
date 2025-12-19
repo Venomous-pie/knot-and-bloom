@@ -571,7 +571,10 @@ export default function NavBar() {
                                 <View style={{ marginTop: 20, flex: 1 }}>
                                     <SearchBarDropdown
                                         products={products}
-                                        onClose={() => setProducts([])}
+                                        onClose={() => {
+                                            setProducts([]);
+                                            setIsSearchOpen(false);
+                                        }}
                                         mode="grid"
                                         title="Search Results"
                                     />
@@ -582,7 +585,7 @@ export default function NavBar() {
                                 <View style={{ marginTop: 20, flex: 1 }}>
                                     <SearchBarDropdown
                                         products={suggestedProducts}
-                                        onClose={() => { }}
+                                        onClose={() => setIsSearchOpen(false)}
                                         mode="grid"
                                         title="Suggested for you"
                                     />

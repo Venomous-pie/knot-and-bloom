@@ -2,7 +2,7 @@ import { productAPI } from "@/api/api";
 import '@/global.css';
 import { Product } from "@/types/products";
 import { useFonts } from "expo-font";
-import { Link, RelativePathString, Stack, usePathname } from "expo-router";
+import { Link, RelativePathString, router, Stack, usePathname } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from "react";
 import { Dimensions, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -11,7 +11,7 @@ const { width } = Dimensions.get('window');
 
 import DropdownMenu from "@/shared/DropdownMenu";
 import MenuSideBar from "@/shared/MenuSideBar";
-import { Heart, Menu, Search, UserRound } from "lucide-react-native";
+import { Handbag, Heart, Menu, Search, UserRound } from "lucide-react-native";
 import SearchBarDropdown from "./SearchBarDropdown";
 
 SplashScreen.preventAutoHideAsync();
@@ -211,11 +211,11 @@ export default function NavBar() {
                                 </View>
 
                                 <Pressable
-                                    onPress={() => alert("Wishlist Page")}
                                     style={({ hovered }) => [
                                         styles.iconButton,
                                         hovered && styles.iconHovered,
                                     ]}
+                                    onPress={() => router.push("/wishlist" as RelativePathString)}
                                 >
                                     <Heart size={18} />
                                 </Pressable>
@@ -225,19 +225,19 @@ export default function NavBar() {
                                         styles.iconButton,
                                         hovered && styles.iconHovered,
                                     ]}
+                                    onPress={() => router.push("/auth/login" as RelativePathString)}
                                 >
                                     <UserRound size={18} />
                                 </Pressable>
-                                <Link href='/cart' asChild>
-                                    <Pressable
-                                        style={({ hovered }) => [
-                                            styles.iconButton,
-                                            hovered && styles.iconHovered,
-                                        ]}
-                                    >
-                                        <Text style={{ fontSize: 18 }}>🛒</Text>
-                                    </Pressable>
-                                </Link>
+                                <Pressable
+                                    style={({ hovered }) => [
+                                        styles.iconButton,
+                                        hovered && styles.iconHovered,
+                                    ]}
+                                    onPress={() => router.push("/cart" as RelativePathString)}
+                                >
+                                    <Handbag size={18} />
+                                </Pressable>
                                 <Pressable
                                     onPress={() => setIsMenuOpen(true)}
 

@@ -84,7 +84,7 @@ export default function ProductPage({ category, title, products = [], loading, e
 
                                 <Text style={styles.stock}>
                                     {(() => {
-                                        const totalStock = item.variants?.reduce((acc, v) => acc + v.stock, 0) || item.stock || 0;
+                                        const totalStock = item.variants?.reduce((acc, v) => acc + v.stock, 0) || 0;
                                         return totalStock > 0 ? `In stock: ${totalStock}` : 'Out of stock';
                                     })()}
                                 </Text>

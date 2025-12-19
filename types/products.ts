@@ -7,11 +7,11 @@ interface ProductVariant {
     price?: number;
 }
 
-export interface Product {
+interface Product {
     uid: number;
     name: string;
     sku: string;
-    categories: string[]; // Array of categories
+    categories: string[];
     basePrice: string;
     discountedPrice?: string;
     discountPercentage?: number;
@@ -20,7 +20,7 @@ export interface Product {
     uploaded: string;
     updated: string;
     variants: ProductVariant[];
-}  // Array of variants instead of string
+}
 
 interface GetProductsParams {
     category?: string;

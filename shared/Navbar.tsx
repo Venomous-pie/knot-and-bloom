@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     },
 
     searchBar: {
-        height: 40, // increased slightly to match iconButton size for smoother transition
+        height: 35, 
         maxWidth: 400,
         borderWidth: 1,
         borderColor: 'transparent',
@@ -368,7 +368,7 @@ export default function NavBar() {
                                         ]}
                                         >
                                             <Pressable onPress={toggleDesktopSearch} style={{ padding: 10 }}>
-                                                <Search size={18} color={'#000000ff'} />
+                                                <Search size={18} color={isFocused ? '#b4b4b4ff' : '#000000'} />
                                             </Pressable>
 
                                             <Animated.View style={{ flex: 1, opacity: inputOpacity }}>
@@ -380,7 +380,6 @@ export default function NavBar() {
                                                     onFocus={() => setIsFocused(true)}
                                                     onBlur={() => {
                                                         setIsFocused(false);
-                                                        // Always collapse on blur, but delay clearing flag to prevent immediate re-open if toggling
                                                         isCollapsing.current = true;
                                                         setTimeout(() => { isCollapsing.current = false; }, 200);
                                                         collapseDesktopSearch();

@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     menuItem: {
-        fontSize: 16,
+        fontSize: 12,
         color: '#333',
         paddingVertical: 10,
         paddingHorizontal: 12,
@@ -71,8 +71,8 @@ const styles = StyleSheet.create({
     buttonItem: {
         borderColor: '#B36979',
         borderWidth: 1,
-        padding: 10,
-        borderRadius: 8,
+        padding: 8,
+        borderRadius: 12,
         alignItems: 'center',
         flexDirection: 'row',
         gap: 12,
@@ -207,7 +207,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                     <Text style={{
                                                         color: isActive ? '#B36979' : '#333',
                                                         fontWeight: isActive ? '600' : '400',
-                                                        fontSize: mobile ? 14 : 16
+                                                        fontSize: mobile ? 12 : 14
                                                     }}>{link.title}</Text>
                                                 </View>
                                             );
@@ -238,7 +238,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                         <Text style={{
                                                             color: isActive ? '#B36979' : '#333',
                                                             fontWeight: isActive ? '600' : '400',
-                                                            fontSize: mobile ? 14 : 16
+                                                            fontSize: mobile ? 12 : 14
                                                         }}>{link.title}</Text>
                                                     </View>
                                                 );
@@ -269,7 +269,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                         <Text style={{
                                                             color: isActive ? '#B36979' : '#333',
                                                             fontWeight: isActive ? '600' : '400',
-                                                            fontSize: mobile ? 14 : 16
+                                                            fontSize: mobile ? 12 : 14
                                                         }}>{link.title}</Text>
                                                     </View>
                                                 );
@@ -292,8 +292,8 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                         onPress={() => onClose()}>
                                         {({ hovered }) => (
                                             <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <ShoppingBag size={18} color={hovered ? 'white' : 'black'} />
-                                                <Text style={[hovered && styles.buttonItemHovered]}>Orders</Text>
+                                                <ShoppingBag size={14} color={hovered ? 'white' : 'black'} />
+                                                <Text style={[hovered && styles.buttonItemHovered, { fontSize: mobile ? 12 : 14 }]}>Orders</Text>
                                             </View>
                                         )}
                                     </Pressable>
@@ -304,8 +304,8 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                         onPress={() => onClose()}>
                                         {({ hovered }) => (
                                             <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <Heart size={18} color={hovered ? 'white' : 'black'} />
-                                                <Text style={[hovered && styles.buttonItemHovered]}>Wishlist</Text>
+                                                <Heart size={14} color={hovered ? 'white' : 'black'} />
+                                                <Text style={[hovered && styles.buttonItemHovered, { fontSize: mobile ? 12 : 14 }]}>Wishlist</Text>
                                             </View>
                                         )}
                                     </Pressable>
@@ -324,7 +324,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                     {({ hovered }) => {
                                         return (
                                             <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <UserRound size={18} color={hovered ? 'white' : 'black'} />
+                                                <UserRound size={16} color={hovered ? 'white' : 'black'} />
                                                 <Text style={[hovered && styles.buttonItemHovered]}>Sign In</Text>
                                             </View>
                                         );
@@ -339,7 +339,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                     {({ hovered }) => {
                                         return (
                                             <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <UserRound size={18} color={hovered ? 'white' : 'black'} />
+                                                <UserRound size={16} color={hovered ? 'white' : 'black'} />
                                                 <Text style={[hovered && styles.buttonItemHovered]}>Register</Text>
                                             </View>
                                         );
@@ -358,7 +358,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                             <Facebook size={20} color="#999" />
                         </Pressable>
                     </View>
-                    <Text style={[styles.footerText, { fontSize: mobile ? 14 : 16 }]}>Version 1.0.0</Text>
+                    <Text style={[styles.footerText, { fontSize: mobile ? 12 : 14 }]}>Version 1.0.0</Text>
                 </View>
             </Animated.View >
         </>

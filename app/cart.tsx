@@ -2,6 +2,7 @@ import { cartAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
 import { CartItem } from "@/types/cart";
+import { calculatePrice } from "@/utils/pricing";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -72,24 +73,8 @@ export default function CartPage() {
         let total = 0;
         cartItems.forEach(item => {
             if (selectedItems.has(item.uid)) {
-                // Strict Price Hierarchy: Variant Discount -> Variant Price -> Product Discount -> Product Base
-                let price = Number(item.product.basePrice);
-
-                if (item.productVariant) {
-                    if (item.productVariant.discountedPrice) {
-                        price = Number(item.productVariant.discountedPrice);
-                    } else if (item.productVariant.price) {
-                        price = Number(item.productVariant.price);
-                    } else if (item.product.discountedPrice) {
-                        price = Number(item.product.discountedPrice);
-                    }
-                } else {
-                    if (item.product.discountedPrice) {
-                        price = Number(item.product.discountedPrice);
-                    }
-                }
-
-                total += price * item.quantity;
+                const priceCalc = calculatePrice(item.product, item.productVariant);
+                total += priceCalc.finalPrice * item.quantity;
             }
         });
         setSubtotal(total);
@@ -185,15 +170,9 @@ export default function CartPage() {
     };
 
     const renderItem = ({ item }: { item: CartItem }) => {
-        // Calculate Price for display
-        let displayPrice = Number(item.product.basePrice);
-        if (item.productVariant) {
-            if (item.productVariant.discountedPrice) displayPrice = Number(item.productVariant.discountedPrice);
-            else if (item.productVariant.price) displayPrice = Number(item.productVariant.price);
-            else if (item.product.discountedPrice) displayPrice = Number(item.product.discountedPrice);
-        } else if (item.product.discountedPrice) {
-            displayPrice = Number(item.product.discountedPrice);
-        }
+        // Calculate Price for display using helper
+        const priceCalc = calculatePrice(item.product, item.productVariant);
+        const displayPrice = priceCalc.finalPrice;
 
         // Determine Image
         const imageUrl = item.productVariant?.image || item.product.image;
@@ -320,37 +299,16 @@ export default function CartPage() {
                             <Text style={styles.summaryValue}>₱{subtotal.toFixed(2)}</Text>
                         </View>
                         {(() => {
-                            // Calculate savings
+                            // Calculate savings using helper
                             let savings = 0;
                             cartItems.forEach(item => {
                                 if (selectedItems.has(item.uid)) {
-                                    let originalPrice = Number(item.product.basePrice);
-                                    let finalPrice = originalPrice;
+                                    const priceCalc = calculatePrice(item.product, item.productVariant);
 
-                                    // Determine Original Price (Variant vs Product)
-                                    if (item.productVariant?.price) {
-                                        originalPrice = Number(item.productVariant.price);
-                                    }
-
-                                    // Determine Final Price (Variant Discount -> Variant Price -> Product Discount -> Product Base)
-                                    if (item.productVariant) {
-                                        if (item.productVariant.discountedPrice) {
-                                            finalPrice = Number(item.productVariant.discountedPrice);
-                                        } else if (item.productVariant.price) {
-                                            finalPrice = Number(item.productVariant.price);
-                                        } else if (item.product.discountedPrice) {
-                                            finalPrice = Number(item.product.discountedPrice);
-                                        } else {
-                                            finalPrice = Number(item.product.basePrice);
-                                        }
-                                    } else {
-                                        if (item.product.discountedPrice) {
-                                            finalPrice = Number(item.product.discountedPrice);
-                                        }
-                                    }
-
-                                    if (originalPrice > finalPrice) {
-                                        savings += (originalPrice - finalPrice) * item.quantity;
+                                    // Savings = difference between effective price and final discounted price
+                                    if (priceCalc.hasDiscount) {
+                                        const savingsPerItem = priceCalc.effectivePrice - priceCalc.finalPrice;
+                                        savings += savingsPerItem * item.quantity;
                                     }
                                 }
                             });

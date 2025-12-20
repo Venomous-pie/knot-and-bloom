@@ -192,19 +192,45 @@ export const checkout = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Calculate total and prepare product string
+        // Calculate total and prepare products array with full details
         let totalAmount = 0;
-        const orderedProducts = cart.items.map(item => {
-            // Use variant price if available, otherwise product price
-            const price = Number(
-                item.productVariant?.price ??
-                item.product.discountedPrice ??
-                item.product.basePrice
+        const orderedProductsData = cart.items.map(item => {
+            // Apply standardized pricing logic: effectivePrice = variant.price ?? basePrice
+            const effectivePrice = Number(
+                item.productVariant?.price ?? item.product.basePrice
             );
-            const lineTotal = price * item.quantity;
+
+            // Apply discount hierarchy: variant discount > product discount
+            const discountPercentage =
+                item.productVariant?.discountPercentage ??
+                item.product.discountPercentage ??
+                0;
+
+            // Calculate final price with discount applied
+            const finalPrice = discountPercentage > 0
+                ? effectivePrice * (1 - discountPercentage / 100)
+                : effectivePrice;
+
+            const lineTotal = finalPrice * item.quantity;
             totalAmount += lineTotal;
-            const variantName = item.productVariant?.name || 'Default';
-            return `${item.product.name} (x${item.quantity}) - ${variantName}`;
+
+            return {
+                product: {
+                    uid: item.product.uid,
+                    name: item.product.name,
+                    image: item.product.image,
+                    basePrice: item.product.basePrice,
+                    discountedPrice: item.product.discountedPrice,
+                    discountPercentage: item.product.discountPercentage
+                },
+                quantity: item.quantity,
+                variant: item.productVariant ? {
+                    uid: item.productVariant.uid,
+                    name: item.productVariant.name,
+                    price: item.productVariant.price,
+                    discountPercentage: item.productVariant.discountPercentage
+                } : null
+            };
         });
 
         // Validate stock availability for all items (variant-specific)
@@ -256,7 +282,7 @@ export const checkout = async (req: Request, res: Response): Promise<void> => {
             const newOrder = await tx.order.create({
                 data: {
                     customerId: Number(customerId),
-                    products: orderedProducts.join(', '),
+                    products: JSON.stringify(orderedProductsData),
                     total: totalAmount,
                     discount: 0, // Placeholder
                 }

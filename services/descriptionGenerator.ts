@@ -4,7 +4,7 @@ export interface ProductDescription {
     name: string;
     category: string;
     variants?: Array<{ name: string }>;
-    basePrice: string;
+    basePrice?: string;
     discountedPrice?: string;
 }
 
@@ -44,15 +44,15 @@ export const ProductDescriptionGenerator = async (product: ProductDescription) =
         Name: ${product.name}
         Category: ${product.category}
         Variants: ${variantsList}
-        Base Price: ${product.basePrice}
-        Discounted Price: ${product.discountedPrice ?? "None"}
+        ${product.basePrice ? `Base Price: ${product.basePrice}` : ""}
+        ${product.discountedPrice ? `Discounted Price: ${product.discountedPrice}` : ""}
 
         Guidelines:
         - Start with an engaging, cheerful opening sentence
         - Highlight what makes the product special or handmade
         - Mention the category naturally (do not show category codes)
         - If variants exist, mention that customers can choose their favorite
-        `;
+    `;
 
     try {
         const descriptionCompletion = await client.chatCompletion({

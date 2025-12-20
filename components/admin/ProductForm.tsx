@@ -85,8 +85,8 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
     };
 
     const handleGenerateDescription = async () => {
-        if (!formData.name || selectedCategories.length === 0 || !formData.basePrice) {
-            Alert.alert("Required", "Please fill Name, Category, and Price first");
+        if (!formData.name || selectedCategories.length === 0) {
+            Alert.alert("Required", "Please fill Name and Category first");
             return;
         }
         try {
@@ -103,7 +103,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                 name: formData.name,
                 category: selectedCategories[0],
                 variants: variants.filter(v => v.name.trim() !== ""),
-                basePrice: formData.basePrice,
+                basePrice: formData.basePrice || undefined,
                 discountedPrice: discountedPrice
             });
             if (description) {
@@ -116,9 +116,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
     };
 
     const addVariant = () => {
-        const newVariantName = `Option ${variants.length + 1}`;
-        const generatedSKU = generateVariantSKU(formData.sku, newVariantName);
-        setVariants([...variants, { name: "", stock: "", sku: generatedSKU, price: "", discountPercentage: "", image: "" }]);
+        setVariants([...variants, { name: "", stock: "", sku: "", price: "", discountPercentage: "", image: "" }]);
     };
 
     const removeVariant = (index: number) => {
@@ -261,7 +259,25 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                             />
                         </View>
                         <View style={{ flex: 2, marginRight: 8 }}>
-                            <Text style={styles.variantLabel}>SKU</Text>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <Text style={styles.variantLabel}>SKU</Text>
+                                <Pressable
+                                    onPress={() => {
+                                        if (!formData.sku) {
+                                            Alert.alert("Required", "Please generate product SKU first");
+                                            return;
+                                        }
+                                        if (!variant.name.trim()) {
+                                            Alert.alert("Required", "Please enter variant name first");
+                                            return;
+                                        }
+                                        const generatedSKU = generateVariantSKU(formData.sku, variant.name);
+                                        updateVariant(index, "sku", generatedSKU);
+                                    }}
+                                >
+                                    <Text style={{ color: '#B36979', fontSize: 10, fontWeight: '600' }}>Auto Gen</Text>
+                                </Pressable>
+                            </View>
                             <TextInput
                                 style={styles.variantInput}
                                 value={variant.sku}

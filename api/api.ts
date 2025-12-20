@@ -146,4 +146,120 @@ export const orderAPI = {
     getOrderById: (id: string) => apiClient.get(`/orders/${id}`),
 };
 
+export interface LockedPriceItem {
+    itemUid: number;
+    productId: number;
+    variantId: number | null;
+    quantity: number;
+    unitPrice: number;
+    discountPercentage: number;
+    finalPrice: number;
+    productName: string;
+    variantName: string | null;
+    image: string | null;
+}
+
+export interface InitiateCheckoutResponse {
+    success: boolean;
+    sessionId: number;
+    lockedPrices: LockedPriceItem[];
+    totalAmount: number;
+    expiresAt: string;
+    message: string;
+    isExisting?: boolean;
+}
+
+export interface CheckoutSessionResponse {
+    success: boolean;
+    session: {
+        uid: number;
+        status: string;
+        lockedPrices: LockedPriceItem[];
+        totalAmount: number;
+        expiresAt: string;
+    };
+}
+
+export interface ValidateCheckoutResponse {
+    success: boolean;
+    message: string;
+    priceChanges?: Array<{
+        productName: string;
+        variantName: string | null;
+        oldPrice: number;
+        newPrice: number;
+    }>;
+    note?: string;
+}
+
+export interface PaymentResponse {
+    success: boolean;
+    paymentId?: number;
+    gatewayRef?: string;
+    message: string;
+    error?: string;
+    isExisting?: boolean;
+}
+
+export interface CompleteCheckoutResponse {
+    success: boolean;
+    orderId?: number;
+    message: string;
+    isExisting?: boolean;
+}
+
+export const checkoutAPI = {
+    /**
+     * Initiate a checkout session - locks prices and validates stock
+     */
+    initiate: (customerId: number, selectedItemIds: number[], idempotencyKey: string) =>
+        apiClient.post<InitiateCheckoutResponse>('/checkout/initiate', {
+            customerId,
+            selectedItemIds,
+            idempotencyKey,
+        }),
+
+    /**
+     * Get checkout session details
+     */
+    getSession: (sessionId: number) =>
+        apiClient.get<CheckoutSessionResponse>(`/checkout/${sessionId}`),
+
+    /**
+     * Validate checkout - re-validates stock before payment
+     */
+    validate: (sessionId: number) =>
+        apiClient.post<ValidateCheckoutResponse>(`/checkout/${sessionId}/validate`),
+
+    /**
+     * Process payment
+     */
+    pay: (sessionId: number, paymentMethod: string, idempotencyKey: string) =>
+        apiClient.post<PaymentResponse>(`/checkout/${sessionId}/pay`, {
+            paymentMethod,
+            idempotencyKey,
+        }),
+
+    /**
+     * Complete checkout - finalize order after payment
+     */
+    complete: (sessionId: number, paymentId: number, idempotencyKey?: string) =>
+        apiClient.post<CompleteCheckoutResponse>(`/checkout/${sessionId}/complete`, {
+            paymentId,
+            idempotencyKey,
+        }),
+
+    /**
+     * Cancel checkout session
+     */
+    cancel: (sessionId: number) =>
+        apiClient.delete(`/checkout/${sessionId}`),
+
+    /**
+     * Get available payment methods
+     */
+    getPaymentMethods: () =>
+        apiClient.get<{ success: boolean; methods: string[] }>('/checkout/methods/available'),
+};
+
 export default api;

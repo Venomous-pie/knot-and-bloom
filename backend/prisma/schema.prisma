@@ -40,17 +40,18 @@ model ProductVariant {
 }
 
 model Customer {
-  uid      Int      @id @default(autoincrement())
-  name     String
-  email    String   @unique
-  password String
-  phone    String?
-  address  String?
-  uploaded DateTime @default(now())
-  updated  DateTime @updatedAt
-  orders   Order[]
-  cart     Cart? // One-to-one relation with Cart
-  role     String   @default("USER")
+  uid              Int               @id @default(autoincrement())
+  name             String
+  email            String            @unique
+  password         String
+  phone            String?
+  address          String?
+  uploaded         DateTime          @default(now())
+  updated          DateTime          @updatedAt
+  orders           Order[]
+  cart             Cart? // One-to-one relation with Cart
+  role             String            @default("USER")
+  checkoutSessions CheckoutSession[]
 }
 
 model Cart {
@@ -73,12 +74,77 @@ model CartItem {
 }
 
 model Order {
-  uid        Int      @id @default(autoincrement())
-  customer   Customer @relation(fields: [customerId], references: [uid])
-  customerId Int
-  products   String
-  discount   Decimal?
-  total      Decimal
-  uploaded   DateTime @default(now())
-  updated    DateTime @updatedAt
+  uid            Int         @id @default(autoincrement())
+  customer       Customer    @relation(fields: [customerId], references: [uid])
+  customerId     Int
+  products       String
+  discount       Decimal?
+  total          Decimal
+  status         OrderStatus @default(PENDING)
+  idempotencyKey String?     @unique
+  uploaded       DateTime    @default(now())
+  updated        DateTime    @updatedAt
+  payments       Payment[]
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model CheckoutSession {
+  uid            Int            @id @default(autoincrement())
+  customerId     Int
+  customer       Customer       @relation(fields: [customerId], references: [uid])
+  cartSnapshot   String // JSON snapshot of cart at checkout start
+  lockedPrices   String // JSON of locked prices
+  totalAmount    Decimal
+  status         CheckoutStatus @default(INITIATED)
+  expiresAt      DateTime
+  idempotencyKey String         @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  payments       Payment[]
+}
+
+enum CheckoutStatus {
+  INITIATED
+  VALIDATING
+  AWAITING_PAYMENT
+  PROCESSING_PAYMENT
+  COMPLETED
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+model Payment {
+  uid               Int             @id @default(autoincrement())
+  orderId           Int?
+  order             Order?          @relation(fields: [orderId], references: [uid])
+  checkoutSessionId Int
+  checkoutSession   CheckoutSession @relation(fields: [checkoutSessionId], references: [uid])
+  amount            Decimal
+  method            String
+  status            PaymentStatus   @default(PENDING)
+  gatewayRef        String? // External payment gateway reference
+  idempotencyKey    String          @unique
+  errorMessage      String?
+  attempts          Int             @default(1)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELLED
 }

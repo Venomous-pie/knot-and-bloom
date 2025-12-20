@@ -147,26 +147,9 @@ export default function CartPage() {
             return;
         }
 
-        try {
-            setCheckoutLoading(true);
-            if (!user?.uid) return;
-
-            const response = await cartAPI.checkout(user.uid, Array.from(selectedItems));
-
-            if (typeof window !== 'undefined') {
-                window.alert("Order Placed! Your order has been successfully placed.");
-            }
-            fetchCart();
-            await refreshCart();
-
-        } catch (error: any) {
-            console.error("Checkout failed:", error);
-            if (typeof window !== 'undefined') {
-                window.alert("Checkout Failed: " + (error.response?.data?.message || "Something went wrong."));
-            }
-        } finally {
-            setCheckoutLoading(false);
-        }
+        // Navigate to the checkout page with selected items
+        const selectedItemIds = Array.from(selectedItems).join(',');
+        router.push(`/checkout?items=${selectedItemIds}`);
     };
 
     const renderItem = ({ item }: { item: CartItem }) => {

@@ -24,15 +24,17 @@ model Product {
 }
 
 model ProductVariant {
-  uid       Int        @id @default(autoincrement())
-  product   Product    @relation(fields: [productId], references: [uid], onDelete: Cascade)
-  productId Int
-  name      String // "Small Red", "Large Blue", or "Default"
-  sku       String     @unique
-  stock     Int        @default(0)
-  price     Decimal? // Optional variant-specific price override
-  image     String? // Optional variant-specific image
-  cartItems CartItem[]
+  uid                Int        @id @default(autoincrement())
+  product            Product    @relation(fields: [productId], references: [uid], onDelete: Cascade)
+  productId          Int
+  name               String // "Small Red", "Large Blue", or "Default"
+  sku                String     @unique
+  stock              Int        @default(0)
+  price              Decimal? // Optional variant-specific price override
+  discountPercentage Int? // Variant-specific discount
+  discountedPrice    Decimal? // Variant-specific discounted price
+  image              String? // Optional variant-specific image
+  cartItems          CartItem[]
 
   @@unique([productId, name])
 }

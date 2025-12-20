@@ -37,7 +37,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         }
         try {
             const response = await cartAPI.getCart(user.uid);
-            if (response.data && response.data.cart && response.data.cart.items) {
+            if (response.data && response.data.cart && Array.isArray(response.data.cart.items)) {
                 // Count unique items (product variants) rather than total quantity
                 setCartCount(response.data.cart.items.length);
             } else {
@@ -45,6 +45,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             }
         } catch (error) {
             console.error("Failed to refresh cart count", error);
+            // On error, safest to show 0
+            setCartCount(0);
         }
     };
 

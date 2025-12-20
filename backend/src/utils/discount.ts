@@ -1,4 +1,7 @@
-import type { PriceInput } from '../types/product.js'
+interface PriceInput {
+    basePrice: number;
+    discountedPercentage?: number | null | undefined;
+}
 
 export const CalculateDiscount = (priceInput: PriceInput) => {
     const basePrice = priceInput.basePrice;

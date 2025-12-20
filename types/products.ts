@@ -5,6 +5,9 @@ interface ProductVariant {
     sku: string;
     stock: number;
     price?: number;
+    discountPercentage?: number;
+    discountedPrice?: number;
+    image?: string;
 }
 
 interface Product {

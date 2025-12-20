@@ -1,6 +1,8 @@
 import { productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
-import { useRouter } from "expo-router";
+import { useProducts } from "@/hooks/useProducts";
+import { Product } from "@/types/products";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -14,17 +16,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Reuse Product type but simplified if needed, or import from types
-import { Product } from "@/types/products";
-
-export default function ManageProductsPage() {
+export default function AdminDashboardPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
 
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedTerm, setDebouncedTerm] = useState("");
+
+    const {
+        products,
+        loading,
+        refresh: refetchProducts,
+        updateParams
+    } = useProducts({ limit: 50 });
 
     // Auth Check
     useEffect(() => {
@@ -46,31 +50,19 @@ export default function ManageProductsPage() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Fetch Products
+    // Update params when debounced term changes
     useEffect(() => {
-        if (user?.role === 'ADMIN') {
-            fetchProducts();
-        }
-    }, [debouncedTerm, user]);
+        updateParams({ searchTerm: debouncedTerm });
+    }, [debouncedTerm]);
 
-    const fetchProducts = async () => {
-        try {
-            setLoading(true);
-            let response;
-            if (debouncedTerm.trim()) {
-                response = await productAPI.searchProducts(debouncedTerm);
-                setProducts(response.data.products);
-            } else {
-                response = await productAPI.getProducts({ limit: 50 });
-                setProducts(response.data.products);
+    // Fetch Products on Focus (if admin)
+    useFocusEffect(
+        React.useCallback(() => {
+            if (user?.role === 'ADMIN') {
+                refetchProducts();
             }
-        } catch (error) {
-            console.error("Failed to fetch products:", error);
-            // Alert.alert("Error", "Failed to load products.");
-        } finally {
-            setLoading(false);
-        }
-    };
+        }, [user])
+    );
 
     const handleDelete = (id: number) => {
         Alert.alert(
@@ -84,7 +76,7 @@ export default function ManageProductsPage() {
                     onPress: async () => {
                         try {
                             await productAPI.deleteProduct(id.toString());
-                            setProducts(products.filter(p => p.uid !== id));
+                            await refetchProducts();
                         } catch (error) {
                             Alert.alert("Error", "Failed to delete product.");
                         }
@@ -104,7 +96,7 @@ export default function ManageProductsPage() {
             <View style={styles.actions}>
                 <Pressable
                     style={styles.editBtn}
-                    onPress={() => router.push(`/edit-product/${item.uid}`)}
+                    onPress={() => router.push(`/admin/edit/${item.uid}`)}
                 >
                     <Text style={styles.editBtnText}>Edit</Text>
                 </Pressable>
@@ -129,12 +121,12 @@ export default function ManageProductsPage() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Manage Products</Text>
+                <Text style={styles.title}>Admin Control Center</Text>
                 <Pressable
                     style={styles.addBtn}
-                    onPress={() => router.push('/post-product')}
+                    onPress={() => router.push('/admin/create')}
                 >
-                    <Text style={styles.addBtnText}>+ New</Text>
+                    <Text style={styles.addBtnText}>+ New Product</Text>
                 </Pressable>
             </View>
 

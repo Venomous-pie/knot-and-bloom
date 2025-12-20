@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
     Dimensions,
     FlatList,
+    Image,
     Pressable,
     StyleSheet,
     Text,
@@ -71,12 +72,23 @@ export default function CartPage() {
         let total = 0;
         cartItems.forEach(item => {
             if (selectedItems.has(item.uid)) {
-                // Use variant price if available, otherwise product discounted/base price
-                const price = Number(
-                    item.productVariant?.price ??
-                    item.product.discountedPrice ??
-                    item.product.basePrice
-                );
+                // Strict Price Hierarchy: Variant Discount -> Variant Price -> Product Discount -> Product Base
+                let price = Number(item.product.basePrice);
+
+                if (item.productVariant) {
+                    if (item.productVariant.discountedPrice) {
+                        price = Number(item.productVariant.discountedPrice);
+                    } else if (item.productVariant.price) {
+                        price = Number(item.productVariant.price);
+                    } else if (item.product.discountedPrice) {
+                        price = Number(item.product.discountedPrice);
+                    }
+                } else {
+                    if (item.product.discountedPrice) {
+                        price = Number(item.product.discountedPrice);
+                    }
+                }
+
                 total += price * item.quantity;
             }
         });
@@ -160,6 +172,7 @@ export default function CartPage() {
                 window.alert("Order Placed! Your order has been successfully placed.");
             }
             fetchCart();
+            await refreshCart();
 
         } catch (error: any) {
             console.error("Checkout failed:", error);
@@ -171,36 +184,69 @@ export default function CartPage() {
         }
     };
 
-    const renderItem = ({ item }: { item: CartItem }) => (
-        <View style={styles.cartItem}>
-            <View style={styles.itemHeader}>
-                <SimpleCheckbox
-                    checked={selectedItems.has(item.uid)}
-                    onChange={() => toggleSelection(item.uid)}
-                />
-            </View>
+    const renderItem = ({ item }: { item: CartItem }) => {
+        // Calculate Price for display
+        let displayPrice = Number(item.product.basePrice);
+        if (item.productVariant) {
+            if (item.productVariant.discountedPrice) displayPrice = Number(item.productVariant.discountedPrice);
+            else if (item.productVariant.price) displayPrice = Number(item.productVariant.price);
+            else if (item.product.discountedPrice) displayPrice = Number(item.product.discountedPrice);
+        } else if (item.product.discountedPrice) {
+            displayPrice = Number(item.product.discountedPrice);
+        }
 
-            <View style={styles.imageContainer}>
-                {item.product.image ? (
-                    // Placeholder handling since images are strings in schema currently
-                    <Text style={{ fontSize: 24 }}>🖼️</Text>
-                ) : (
-                    <Text style={{ fontSize: 24 }}>📦</Text>
-                )}
-            </View>
+        // Determine Image
+        const imageUrl = item.productVariant?.image || item.product.image;
 
-            <View style={styles.itemDetails}>
-                <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
-                {item.productVariant && <Text style={styles.variantText}>Variant: {item.productVariant.name}</Text>}
-                <Text style={styles.itemPrice}>
-                    ₱{Number(
-                        item.productVariant?.price ??
-                        item.product.discountedPrice ??
-                        item.product.basePrice
-                    ).toFixed(2)}
-                </Text>
+        // Stock Logic
+        const maxStock = item.productVariant?.stock ?? 0;
+        const isMaxStock = item.quantity >= maxStock;
 
-                <View style={styles.controlsContainer}>
+        return (
+            <View style={styles.cartItem}>
+                <View style={styles.itemHeader}>
+                    <SimpleCheckbox
+                        checked={selectedItems.has(item.uid)}
+                        onChange={() => toggleSelection(item.uid)}
+                    />
+                </View>
+
+                <Pressable
+                    style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
+                    onPress={() => router.push(`/product/${item.productId}`)}
+                >
+                    <View style={styles.imageContainer}>
+                        {imageUrl ? (
+                            <Image
+                                source={{ uri: imageUrl }}
+                                style={styles.productImage}
+                                resizeMode="cover"
+                            />
+                        ) : (
+                            <Text style={{ fontSize: 24 }}>📦</Text>
+                        )}
+                    </View>
+
+                    <View style={styles.itemDetails}>
+                        <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
+                        {item.productVariant && <Text style={styles.variantText}>Variant: {item.productVariant.name}</Text>}
+                        <Text style={styles.itemPrice}>
+                            ₱{displayPrice.toFixed(2)}
+                        </Text>
+
+                        {/* Move controls out of Pressable to prevent conflict, or handle propagation? 
+                            Actually, nested Pressables can be tricky. 
+                            Better to keep controls OUTSIDE the main navigation press area 
+                            OR put the items in a View and only make the text/image clickable.
+                            The current structure wraps Image + Details.
+                            The Controls are inside Details. 
+                            We should move Controls OUT of the Pressable.
+                        */}
+                    </View>
+                </Pressable>
+
+                {/* Controls - Moved outside the navigation pressable for better touch handling */}
+                <View style={styles.controlsLeft}>
                     <View style={styles.quantityControls}>
                         <Pressable
                             style={styles.qtyBtn}
@@ -210,20 +256,22 @@ export default function CartPage() {
                         </Pressable>
                         <Text style={styles.quantityText}>{item.quantity}</Text>
                         <Pressable
-                            style={styles.qtyBtn}
-                            onPress={() => handleQuantityChange(item, 1)}
+                            style={[styles.qtyBtn, isMaxStock && styles.disabledQtyBtn]}
+                            onPress={() => {
+                                if (!isMaxStock) handleQuantityChange(item, 1);
+                            }}
                         >
-                            <Text style={styles.qtyBtnText}>+</Text>
+                            <Text style={[styles.qtyBtnText, isMaxStock && styles.disabledQtyBtnText]}>+</Text>
                         </Pressable>
                     </View>
 
-                    <Pressable onPress={() => handleRemoveItem(item.uid)}>
+                    <Pressable onPress={() => handleRemoveItem(item.uid)} style={{ marginTop: 8 }}>
                         <Text style={styles.removeText}>Remove</Text>
                     </Pressable>
                 </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     if (!user) {
         return (
@@ -276,12 +324,33 @@ export default function CartPage() {
                             let savings = 0;
                             cartItems.forEach(item => {
                                 if (selectedItems.has(item.uid)) {
-                                    // Calculate savings only if not using a variant-specific price (assuming variants don't have separate discount logic yet)
-                                    // If using product price, compare base vs discounted
-                                    if (!item.productVariant?.price && item.product.discountedPrice) {
-                                        const original = Number(item.product.basePrice);
-                                        const discounted = Number(item.product.discountedPrice);
-                                        savings += (original - discounted) * item.quantity;
+                                    let originalPrice = Number(item.product.basePrice);
+                                    let finalPrice = originalPrice;
+
+                                    // Determine Original Price (Variant vs Product)
+                                    if (item.productVariant?.price) {
+                                        originalPrice = Number(item.productVariant.price);
+                                    }
+
+                                    // Determine Final Price (Variant Discount -> Variant Price -> Product Discount -> Product Base)
+                                    if (item.productVariant) {
+                                        if (item.productVariant.discountedPrice) {
+                                            finalPrice = Number(item.productVariant.discountedPrice);
+                                        } else if (item.productVariant.price) {
+                                            finalPrice = Number(item.productVariant.price);
+                                        } else if (item.product.discountedPrice) {
+                                            finalPrice = Number(item.product.discountedPrice);
+                                        } else {
+                                            finalPrice = Number(item.product.basePrice);
+                                        }
+                                    } else {
+                                        if (item.product.discountedPrice) {
+                                            finalPrice = Number(item.product.discountedPrice);
+                                        }
+                                    }
+
+                                    if (originalPrice > finalPrice) {
+                                        savings += (originalPrice - finalPrice) * item.quantity;
                                     }
                                 }
                             });
@@ -399,10 +468,21 @@ const styles = StyleSheet.create({
         color: '#10b981',
         marginBottom: 8,
     },
-    controlsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    controlsLeft: {
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        marginLeft: 10
+    },
+    productImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 8,
+    },
+    disabledQtyBtn: {
+        opacity: 0.3
+    },
+    disabledQtyBtnText: {
+        color: '#ccc'
     },
     quantityControls: {
         flexDirection: 'row',

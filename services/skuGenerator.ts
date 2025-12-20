@@ -42,3 +42,12 @@ export const SKUGenerator = async (productData: ProductSKU): Promise<string> => 
 
     return generatedSKU;
 };
+
+export const generateVariantSKU = (baseSKU: string, variantName: string): string => {
+    if (!baseSKU || !variantName) return baseSKU;
+    const cleanVariant = variantName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    // If baseSKU already has a variant suffix (heuristic), maybe replace it? 
+    // For now, simple append: SKU-VAR
+    return `${baseSKU}-${cleanVariant}${random}`;
+};

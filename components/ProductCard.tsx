@@ -31,34 +31,102 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
                         {product.name}
                     </Text>
 
-                    <View style={styles.priceContainer}>
-                        {Number(product.discountedPrice) ? (
-                            <>
-                                <Text style={styles.originalPrice}>
-                                    ₱{Number(product.basePrice).toFixed(2)}
-                                </Text>
-                                <Text style={styles.discountedPrice}>
-                                    ₱{Number(product.discountedPrice)?.toFixed(2)}
-                                </Text>
-                                <View style={styles.discountBadge}>
-                                    <Text style={styles.discountText}>
-                                        -{Number(product.discountPercentage)}%
-                                    </Text>
-                                </View>
-                            </>
-                        ) : (
-                            <Text style={styles.price}>
-                                ₱{Number(product.basePrice).toFixed(2)}
-                            </Text>
-                        )}
-                    </View>
+                    {(() => {
+                        // Find the variant with the lowest price
+                        let lowestPriceVariant: any = null;
+                        let minPrice = Infinity;
+                        let maxPrice = -Infinity;
 
-                    <Text style={styles.stock}>
-                        {(() => {
-                            const totalStock = product.variants?.reduce((acc, v) => acc + v.stock, 0) || 0;
-                            return totalStock > 0 ? `In stock: ${totalStock}` : 'Out of stock';
-                        })()}
-                    </Text>
+                        if (product.variants && product.variants.length > 0) {
+                            product.variants.forEach(v => {
+                                const price = v.price || Number(product.basePrice);
+                                if (price < minPrice) {
+                                    minPrice = price;
+                                    lowestPriceVariant = v;
+                                }
+                                if (price > maxPrice) {
+                                    maxPrice = price;
+                                }
+                            });
+                        }
+
+                        // Use variant price if available, otherwise fallback to product price. Ensure it's a number.
+                        let displayPrice = Number(lowestPriceVariant?.price || product.discountedPrice || product.basePrice);
+                        let originalPrice = Number(product.basePrice); // Initialize with product base price
+                        let hasDiscount = false;
+                        let discountPercentage = 0;
+
+                        // Check for variant-specific discount first
+                        if (lowestPriceVariant && lowestPriceVariant.discountPercentage) {
+                            originalPrice = Number(lowestPriceVariant.price || product.basePrice);
+                            displayPrice = originalPrice * (1 - lowestPriceVariant.discountPercentage / 100);
+                            hasDiscount = true;
+                            discountPercentage = lowestPriceVariant.discountPercentage;
+                        } else if (product.discountPercentage) {
+                            // Variant has no specific discount, but Product has generic discount.
+                            // Inherit product discount percentage applied to variant price.
+                            originalPrice = Number(lowestPriceVariant?.price || product.basePrice);
+                            displayPrice = originalPrice * (1 - product.discountPercentage / 100);
+                            hasDiscount = true;
+                            discountPercentage = product.discountPercentage;
+                        } else if (product.discountedPrice) {
+                            // Fallback for legacy data where only discountedPrice exists without percentage (unlikely but safe)
+                            originalPrice = Number(product.basePrice);
+                            displayPrice = Number(product.discountedPrice);
+                            hasDiscount = true;
+                            // Calculate inferred percentage for display
+                            discountPercentage = Math.round(((originalPrice - displayPrice) / originalPrice) * 100);
+                        }
+
+                        // Check if we have variable prices
+                        const hasVariablePrice = minPrice !== Infinity && maxPrice !== -Infinity && minPrice !== maxPrice;
+
+                        // Stock logic: Check if any stock exists. 
+                        // User preference: Just "In Stock" without count.
+                        const hasStock = lowestPriceVariant ? lowestPriceVariant.stock > 0 : (Number((product as any).stock) > 0 || (product.variants && product.variants.some(v => v.stock > 0)));
+                        // Note: product.stock check is a fallback; `some` check handles case where lowest variant might be 0 but others exist (unlikely for "from" price logic, but safe).
+                        // Actually, if we show "From X", we usually imply availability of X. Let's stick to the stock of the displayed variant/product for consistency, OR check if *any* is in stock.
+                        // Given the "lowest price" variant is the one being advertised:
+                        const displayStockCount = lowestPriceVariant ? lowestPriceVariant.stock : 0;
+                        // Simpler logic based on "lowest price variant" availability:
+                        const isAvailable = lowestPriceVariant ? lowestPriceVariant.stock > 0 : true; // Default to true if no variant info (or handle product.stock if strictly needed)
+
+
+                        // Determine if we show discount
+                        // Already calculated above in hasDiscount
+
+                        return (
+                            <>
+                                <View style={styles.priceContainer}>
+                                    {hasDiscount ? (
+                                        <View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                <Text style={styles.originalPrice}>
+                                                    From ₱{originalPrice.toFixed(2)}
+                                                </Text>
+                                                <View style={styles.discountBadge}>
+                                                    <Text style={styles.discountText}>
+                                                        -{Number(discountPercentage)}%
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <Text style={styles.discountedPrice}>
+                                                To ₱{displayPrice.toFixed(2)}
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <Text style={styles.price}>
+                                            {hasVariablePrice ? 'From ' : ''}₱{displayPrice.toFixed(2)}
+                                        </Text>
+                                    )}
+                                </View>
+
+                                <Text style={styles.stock}>
+                                    {isAvailable ? 'In Stock' : 'Out of stock'}
+                                </Text>
+                            </>
+                        );
+                    })()}
                 </View>
             </Pressable>
         </Link>

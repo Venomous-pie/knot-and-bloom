@@ -211,30 +211,56 @@ export default function ProductDetailPage() {
                             ? product.variants.find(v => v.name === selectedVariant)
                             : null;
 
-                        // Use variant price if available, otherwise fallback to product price
-                        const displayPrice = selectedVariantObj?.price
-                            ? Number(selectedVariantObj.price)
-                            : Number(product.discountedPrice || product.basePrice);
+                        let displayPrice = Number(product.basePrice);
+                        let originalPrice = Number(product.basePrice);
+                        let currentDiscountPercentage = product.discountPercentage;
+                        let isDiscounted = hasDiscount;
 
-                        // If variant has specific price, don't show discount styling unless we implement variant-specific discounts later
-                        // For now, if variant price is used, treat it as the final price
-                        const isVariantPrice = !!selectedVariantObj?.price;
+                        // Override with variant details if selected
+                        if (selectedVariantObj) {
+                            if (selectedVariantObj.price) {
+                                displayPrice = Number(selectedVariantObj.price);
+                                originalPrice = Number(selectedVariantObj.price); // Default to no discount on variant base price
 
-                        if (hasDiscount && !isVariantPrice) {
+                                if (selectedVariantObj.discountPercentage) {
+                                    currentDiscountPercentage = selectedVariantObj.discountPercentage;
+                                    originalPrice = displayPrice;
+                                    displayPrice = displayPrice * (1 - currentDiscountPercentage / 100);
+                                    isDiscounted = true;
+                                } else if (product.discountPercentage) {
+                                    // Inherit from product
+                                    currentDiscountPercentage = product.discountPercentage;
+                                    originalPrice = displayPrice;
+                                    displayPrice = displayPrice * (1 - currentDiscountPercentage / 100);
+                                    isDiscounted = true;
+                                } else {
+                                    isDiscounted = false;
+                                }
+                            } else {
+                                // Variant has no specific price, use product defaults (less likely but possible)
+                            }
+                        } else {
+                            // No variant selected, use product defaults
+                            if (isDiscounted) {
+                                displayPrice = Number(product.discountedPrice);
+                            }
+                        }
+
+                        if (isDiscounted) {
                             return (
-                                <>
-                                    <Text style={styles.discountedPrice}>
-                                        ₱{Number(product.discountedPrice).toFixed(2)}
-                                    </Text>
-                                    <Text style={styles.originalPrice}>
-                                        ₱{Number(product.basePrice).toFixed(2)}
-                                    </Text>
-                                    {product.discountPercentage && (
+                                <View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <Text style={styles.originalPrice}>
+                                            ₱{originalPrice.toFixed(2)}
+                                        </Text>
                                         <View style={styles.discountBadge}>
-                                            <Text style={styles.discountText}>-{product.discountPercentage}%</Text>
+                                            <Text style={styles.discountText}>-{Number(currentDiscountPercentage)}%</Text>
                                         </View>
-                                    )}
-                                </>
+                                    </View>
+                                    <Text style={styles.discountedPrice}>
+                                        ₱{displayPrice.toFixed(2)}
+                                    </Text>
+                                </View>
                             );
                         } else {
                             return (

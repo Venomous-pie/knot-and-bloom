@@ -62,9 +62,18 @@ export const postProduct = async (input: unknown) => {
                     data: {
                         productId: newProduct.uid,
                         name: variant.name,
-                        sku: `${newProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`,
+                        sku: variant.sku || `${newProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`,
                         stock: variant.stock || 0,
                         price: variant.price || null,
+                        discountPercentage: variant.discountPercentage || null,
+                        // If variant has discount, use it. If not, check if product has discount.
+                        discountedPrice: (variant.price)
+                            ? (variant.discountPercentage
+                                ? Number((Number(variant.price) * (1 - Number(variant.discountPercentage) / 100)).toFixed(2))
+                                : (parsedInput.discountPercentage
+                                    ? Number((Number(variant.price) * (1 - Number(parsedInput.discountPercentage) / 100)).toFixed(2))
+                                    : null))
+                            : null,
                         image: variant.image || null,
                     }
                 });
@@ -295,8 +304,16 @@ export const updateProduct = async (productId: string, input: unknown) => {
                         name: variant.name,
                         stock: variant.stock,
                         price: variant.price ? Number(variant.price) : null,
+                        discountPercentage: variant.discountPercentage ? Number(variant.discountPercentage) : null,
+                        discountedPrice: (variant.price)
+                            ? (variant.discountPercentage
+                                ? Number((Number(variant.price) * (1 - Number(variant.discountPercentage) / 100)).toFixed(2))
+                                : (parsedInput.discountPercentage
+                                    ? Number((Number(variant.price) * (1 - Number(parsedInput.discountPercentage) / 100)).toFixed(2))
+                                    : null))
+                            : null,
                         image: variant.image || null,
-                        sku: `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}` // Auto-update SKU based on name/product SKU
+                        sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}` // Auto-update SKU based on name/product SKU
                     }
                 });
             } else {
@@ -307,14 +324,52 @@ export const updateProduct = async (productId: string, input: unknown) => {
                         name: variant.name,
                         stock: variant.stock,
                         price: variant.price ? Number(variant.price) : null,
+                        discountPercentage: variant.discountPercentage ? Number(variant.discountPercentage) : null,
+                        discountedPrice: (variant.price)
+                            ? (variant.discountPercentage
+                                ? Number((Number(variant.price) * (1 - Number(variant.discountPercentage) / 100)).toFixed(2))
+                                : (parsedInput.discountPercentage
+                                    ? Number((Number(variant.price) * (1 - Number(parsedInput.discountPercentage) / 100)).toFixed(2))
+                                    : null))
+                            : null,
                         image: variant.image || null,
-                        sku: `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
+                        sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
                     }
                 });
             }
         }
 
         return updatedProduct;
+    });
+
+    return result;
+};
+
+export const deleteProduct = async (productId: string) => {
+    const parsedId = parseInt(productId);
+    if (isNaN(parsedId)) {
+        throw new ValidationError([{ message: "Invalid product ID", path: ['productId'] }]);
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+        // Check if exists
+        const product = await tx.product.findUnique({
+            where: { uid: parsedId }
+        });
+
+        if (!product) {
+            throw new NotFoundError('Product', productId);
+        }
+
+        // Delete variants first (cascade might handle this but explicit is safer/clearer)
+        await tx.productVariant.deleteMany({
+            where: { productId: parsedId }
+        });
+
+        // Delete product
+        return await tx.product.delete({
+            where: { uid: parsedId }
+        });
     });
 
     return result;

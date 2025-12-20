@@ -48,7 +48,7 @@ export default function Index() {
           {user?.role === 'ADMIN' && (
             <Pressable
               style={styles.adminBtn}
-              onPress={() => router.push('/manage-products')}
+              onPress={() => router.push('/admin')}
             >
               <Text style={styles.adminBtnText}>Admin</Text>
             </Pressable>

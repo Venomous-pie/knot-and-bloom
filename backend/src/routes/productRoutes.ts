@@ -180,4 +180,24 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await import('../controllers/ProductController.js').then(m => m.deleteProduct(id));
+
+        return res.status(200).json({
+            success: true,
+            message: "Product deleted successfully"
+        });
+    } catch (error) {
+        console.error("Delete error:", error);
+
+        if (error instanceof NotFoundError) {
+            return res.status(404).json({ success: false, message: error.message });
+        }
+
+        return res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Internal error" });
+    }
+});
+
 export default router;

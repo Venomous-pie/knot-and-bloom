@@ -9,8 +9,10 @@ export const productSchema = z.object({
     variants: z.array(z.object({
         uid: z.number().optional(), // ID is optional for new variants, required for existing (but validation handled in logic)
         name: z.string(),
+        sku: z.string().optional(),
         stock: z.coerce.number().int().min(0),
         price: z.any().optional(), // Allow string or number, parse later
+        discountPercentage: z.coerce.number().min(0).max(100).optional(),
         image: z.string().nullish()
     })).optional(),
     basePrice: z.number().positive("Base price must be positive"),

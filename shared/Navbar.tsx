@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     },
 
     searchBar: {
-        height: 35, 
+        height: 35,
         maxWidth: 400,
         borderWidth: 1,
         borderColor: 'transparent',

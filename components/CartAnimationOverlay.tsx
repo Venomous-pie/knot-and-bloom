@@ -5,12 +5,9 @@ import { Animated, Dimensions, StyleSheet, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-// Approximate position of the cart icon in the Navbar
-// This is a simplification; for pixel-perfect accuracy we'd measure the icon position.
-// Assuming Navbar is fixed at top, icon is roughly 50px from right, 25px from top.
 const CART_ICON_TARGET = {
-    x: width - 80, // Moved left to match icon position better
-    y: 40 // Adjusted vertical position
+    x: width - 80,
+    y: 40 
 };
 
 export default function CartAnimationOverlay() {
@@ -26,7 +23,6 @@ export default function CartAnimationOverlay() {
             Animated.timing(animatedValue, {
                 toValue: 1,
                 duration: 800,
-                // easing: Easing.bezier(0.16, 1, 0.3, 1), // Optional: mimic CSS ease-out-expo
                 useNativeDriver: true,
             }).start(({ finished }) => {
                 if (finished) {
@@ -94,7 +90,7 @@ const styles = StyleSheet.create({
         left: 0,
         width: 30,
         height: 30,
-        backgroundColor: '#FCE7F3', // Light pink background
+        backgroundColor: '#FCE7F3', 
         borderRadius: 15,
         justifyContent: 'center',
         alignItems: 'center',

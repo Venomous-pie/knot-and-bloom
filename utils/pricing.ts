@@ -1,11 +1,15 @@
-import { Product, ProductVariant } from "@/types/products";
-
 /**
- * Pricing Rules:
- * 1. basePrice = Default price that all variants inherit
- * 2. variant.price (if set) = Override that replaces basePrice for that variant
- * 3. Discount hierarchy: variant discount > product discount
+ * Frontend Pricing Display Utilities
+ * 
+ * NOTE: The backend is the source of truth for all pricing calculations.
+ * These utilities are provided for display formatting and fallback scenarios.
+ * 
+ * For actual price calculations, use the backend API responses which include:
+ * - priceInfo.finalPrice (for cart items)
+ * - product.discountedPrice (for product listings)
  */
+
+import { Product, ProductVariant } from "@/types/products";
 
 export interface PriceCalculation {
     effectivePrice: number;
@@ -16,7 +20,9 @@ export interface PriceCalculation {
 }
 
 /**
- * Calculate the final price for a product or specific variant
+ * Calculate the display price for a product or variant.
+ * Use this only when backend priceInfo is not available.
+ * 
  * @param product The product object
  * @param variant Optional variant to calculate price for
  * @returns Price calculation details
@@ -43,16 +49,16 @@ export function calculatePrice(
     const finalPrice = discountedPrice ?? effectivePrice;
 
     return {
-        effectivePrice,
+        effectivePrice: Math.round(effectivePrice * 100) / 100,
         discountPercentage,
-        discountedPrice,
-        finalPrice,
+        discountedPrice: discountedPrice ? Math.round(discountedPrice * 100) / 100 : null,
+        finalPrice: Math.round(finalPrice * 100) / 100,
         hasDiscount,
     };
 }
 
 /**
- * Find the lowest price among all variants
+ * Find the lowest price among all variants (for display purposes)
  * @param product The product object
  * @returns The lowest final price and the variant it belongs to
  */
@@ -80,4 +86,11 @@ export function findLowestPrice(product: Product): {
     });
 
     return { lowestPrice, lowestPriceVariant };
+}
+
+/**
+ * Format a price for display
+ */
+export function formatPrice(price: number, currency: string = '₱'): string {
+    return `${currency}${price.toFixed(2)}`;
 }

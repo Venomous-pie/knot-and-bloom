@@ -262,7 +262,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                 <Text style={styles.variantLabel}>SKU</Text>
                                 <Pressable
-                                    onPress={() => {
+                                    onPress={async () => {
                                         if (!formData.sku) {
                                             Alert.alert("Required", "Please generate product SKU first");
                                             return;
@@ -271,8 +271,13 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                                             Alert.alert("Required", "Please enter variant name first");
                                             return;
                                         }
-                                        const generatedSKU = generateVariantSKU(formData.sku, variant.name);
-                                        updateVariant(index, "sku", generatedSKU);
+                                        try {
+                                            const generatedSKU = await generateVariantSKU(formData.sku, variant.name);
+                                            updateVariant(index, "sku", generatedSKU);
+                                        } catch (e) {
+                                            console.error(e);
+                                            Alert.alert("Error", "Failed to generate variant SKU");
+                                        }
                                     }}
                                 >
                                     <Text style={{ color: '#B36979', fontSize: 10, fontWeight: '600' }}>Auto Gen</Text>

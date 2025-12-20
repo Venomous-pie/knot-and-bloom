@@ -1,4 +1,4 @@
-import { InferenceClient } from "@huggingface/inference";
+import { apiClient } from "@/api/api";
 
 export interface ProductDescription {
     name: string;
@@ -8,64 +8,30 @@ export interface ProductDescription {
     discountedPrice?: string;
 }
 
-// NOTE: In a real production app, you should not expose API tokens in the frontend code.
-// Ideally, use a proxy server or Edge Function.
-// For this task, we assume the token is available via EXPO_PUBLIC_HF_TOKEN or similar env variable.
-const HF_TOKEN = process.env.EXPO_PUBLIC_HF_TOKEN || "hf_..."; // Replace or ensure env var is set
-
-const client = new InferenceClient(HF_TOKEN);
-
-export const ProductDescriptionGenerator = async (product: ProductDescription) => {
-    const systemPrompt = `
-        You are a creative product copywriter for a cute handmade crafts shop.
-
-        Your writing style is:
-        - Cute, lively, and warm
-        - Friendly and cozy
-        - Short but expressive
-        - Suitable for an online product listing
-
-        Rules:
-        - Use emojis sparingly (1–3 max)
-        - Do NOT mention price numbers
-        - Do NOT include headings or bullet points
-        - Keep descriptions between 60–120 words
-        - Output ONLY the description text
-        `;
-
-    // Format variants for the prompt
-    const variantsList = product.variants && product.variants.length > 0
-        ? product.variants.map(v => v.name).join(', ')
-        : 'None';
-
-    const userPrompt = `
-        Write a product description using the details below.
-
-        Name: ${product.name}
-        Category: ${product.category}
-        Variants: ${variantsList}
-        ${product.basePrice ? `Base Price: ${product.basePrice}` : ""}
-        ${product.discountedPrice ? `Discounted Price: ${product.discountedPrice}` : ""}
-
-        Guidelines:
-        - Start with an engaging, cheerful opening sentence
-        - Highlight what makes the product special or handmade
-        - Mention the category naturally (do not show category codes)
-        - If variants exist, mention that customers can choose their favorite
-    `;
-
+/**
+ * Generate a product description using the backend AI service.
+ * The API token is securely stored server-side.
+ */
+export const ProductDescriptionGenerator = async (product: ProductDescription): Promise<string | null> => {
     try {
-        const descriptionCompletion = await client.chatCompletion({
-            model: "meta-llama/Llama-3.1-8B-Instruct:cerebras",
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
-            ],
-        });
+        const response = await apiClient.post<{ success: boolean; description: string | null }>(
+            '/products/generate-description',
+            {
+                name: product.name,
+                category: product.category,
+                variants: product.variants,
+                basePrice: product.basePrice,
+                discountedPrice: product.discountedPrice,
+            }
+        );
 
-        return descriptionCompletion.choices[0]?.message?.content ?? null;
+        if (response.data.success) {
+            return response.data.description;
+        }
+
+        return null;
     } catch (error) {
         console.error("Error generating description:", error);
-        return null; // Or throw error to handle in UI
+        return null;
     }
 };

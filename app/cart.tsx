@@ -1,8 +1,7 @@
 import { cartAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
-import { CartItem } from "@/types/cart";
-import { calculatePrice } from "@/utils/pricing";
+import { Cart, CartItem } from "@/types/cart";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -30,9 +29,11 @@ const SimpleCheckbox = ({ checked, onChange }: { checked: boolean, onChange: () 
 export default function CartPage() {
     const { user } = useAuth();
     const { refreshCart } = useCart();
+    const [cart, setCart] = useState<Cart | null>(null);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [subtotal, setSubtotal] = useState(0);
+    const [totalSavings, setTotalSavings] = useState(0);
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
     const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -40,13 +41,13 @@ export default function CartPage() {
         if (user) {
             fetchCart();
         } else {
-            // Redirect or show login prompt if not authenticated
             setLoading(false);
         }
     }, [user]);
 
+    // Recalculate subtotal when selection changes (using backend priceInfo)
     useEffect(() => {
-        calculateSubtotal();
+        calculateSubtotalFromSelection();
     }, [cartItems, selectedItems]);
 
     const fetchCart = async () => {
@@ -54,11 +55,19 @@ export default function CartPage() {
             setLoading(true);
             if (!user?.uid) return;
             const response = await cartAPI.getCart(user.uid);
-            console.log("🛒 Fetched Cart:", response.data.cart.items.length, "items");
-            setCartItems(response.data.cart.items);
-            // Default select all? Or none? Let's select all by default for convenience
-            const allIds = new Set(response.data.cart.items.map(item => item.uid));
+            const cartData = response.data.cart;
+            console.log("🛒 Fetched Cart:", cartData.items.length, "items");
+
+            setCart(cartData);
+            setCartItems(cartData.items);
+
+            // Default select all
+            const allIds = new Set(cartData.items.map((item: CartItem) => item.uid));
             setSelectedItems(allIds);
+
+            // Use backend-calculated totals when all items are selected
+            setSubtotal(cartData.subtotal ?? 0);
+            setTotalSavings(cartData.totalSavings ?? 0);
         } catch (error) {
             console.error("Failed to fetch cart:", error);
             if (typeof window !== 'undefined') {
@@ -69,15 +78,30 @@ export default function CartPage() {
         }
     };
 
-    const calculateSubtotal = () => {
+    // Calculate subtotal from selected items using backend priceInfo
+    const calculateSubtotalFromSelection = () => {
         let total = 0;
+        let savings = 0;
+
         cartItems.forEach(item => {
             if (selectedItems.has(item.uid)) {
-                const priceCalc = calculatePrice(item.product, item.productVariant);
-                total += priceCalc.finalPrice * item.quantity;
+                // Use backend-provided priceInfo if available
+                if (item.priceInfo) {
+                    total += item.priceInfo.lineTotal;
+                    if (item.priceInfo.hasDiscount) {
+                        const fullPrice = item.priceInfo.effectivePrice * item.quantity;
+                        savings += fullPrice - item.priceInfo.lineTotal;
+                    }
+                } else {
+                    // Fallback: use product basePrice (shouldn't happen with updated backend)
+                    const price = Number(item.product.basePrice);
+                    total += price * item.quantity;
+                }
             }
         });
-        setSubtotal(total);
+
+        setSubtotal(Math.round(total * 100) / 100);
+        setTotalSavings(Math.round(savings * 100) / 100);
     };
 
     const handleQuantityChange = async (item: CartItem, change: number) => {
@@ -153,9 +177,8 @@ export default function CartPage() {
     };
 
     const renderItem = ({ item }: { item: CartItem }) => {
-        // Calculate Price for display using helper
-        const priceCalc = calculatePrice(item.product, item.productVariant);
-        const displayPrice = priceCalc.finalPrice;
+        // Use backend-provided price or fallback
+        const displayPrice = item.priceInfo?.finalPrice ?? Number(item.product.basePrice);
 
         // Determine Image
         const imageUrl = item.productVariant?.image || item.product.image;
@@ -281,31 +304,12 @@ export default function CartPage() {
                             <Text style={styles.summaryLabel}>Selected Total:</Text>
                             <Text style={styles.summaryValue}>₱{subtotal.toFixed(2)}</Text>
                         </View>
-                        {(() => {
-                            // Calculate savings using helper
-                            let savings = 0;
-                            cartItems.forEach(item => {
-                                if (selectedItems.has(item.uid)) {
-                                    const priceCalc = calculatePrice(item.product, item.productVariant);
-
-                                    // Savings = difference between effective price and final discounted price
-                                    if (priceCalc.hasDiscount) {
-                                        const savingsPerItem = priceCalc.effectivePrice - priceCalc.finalPrice;
-                                        savings += savingsPerItem * item.quantity;
-                                    }
-                                }
-                            });
-
-                            if (savings > 0) {
-                                return (
-                                    <View style={styles.summaryRow}>
-                                        <Text style={styles.savingsLabel}>You Saved:</Text>
-                                        <Text style={styles.savingsValue}>₱{savings.toFixed(2)}</Text>
-                                    </View>
-                                );
-                            }
-                            return null;
-                        })()}
+                        {totalSavings > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.savingsLabel}>You Saved:</Text>
+                                <Text style={styles.savingsValue}>₱{totalSavings.toFixed(2)}</Text>
+                            </View>
+                        )}
                     </View>
                     <Pressable
                         style={[

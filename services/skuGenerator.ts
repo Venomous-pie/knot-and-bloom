@@ -1,53 +1,61 @@
+import { apiClient } from "@/api/api";
+
 export interface ProductSKU {
     category: string;
     variants?: Array<{ name: string }>;
 }
 
-const CategoryCodes: Record<string, string> = {
-    "popular": "POP",
-    "new-arrival": "NEW",
-    "crochet": "CRO",
-    "fuzzy-wire-art": "FWA",
-    "accessories": "ACC",
-    "tops": "TOP",
-    "hair-tie": "HRT",
-    "mini-stuffed-toy": "MST",
-    "fuzzy-wire-bouquet": "FWB",
-    "crochet-flower-bouquet": "CFB",
-    "crochet-key-chains": "CKC",
-};
-
+/**
+ * Generate a unique product SKU using the backend service.
+ * The backend validates uniqueness against the database.
+ */
 export const SKUGenerator = async (productData: ProductSKU): Promise<string> => {
-    // Get category code or default to first 3 letters
-    const categoryCode = CategoryCodes[productData.category] || productData.category.substring(0, 3).toUpperCase();
+    try {
+        const response = await apiClient.post<{ success: boolean; sku: string }>(
+            '/products/generate-sku',
+            {
+                category: productData.category,
+                variants: productData.variants,
+            }
+        );
 
-    // Generate unique identifier (timestamp + random)
-    const timestamp = Date.now().toString().slice(-6); // Last 6 digits
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const uniqueId = `${timestamp}${random}`;
+        if (response.data.success) {
+            return response.data.sku;
+        }
 
-    let variantCode = "";
-
-    const parts = [categoryCode]
-
-    // If variants exist, use the first variant's name for the code
-    if (productData.variants && productData.variants.length > 0 && productData.variants[0].name) {
-        variantCode = productData.variants[0].name.substring(0, 3).toUpperCase().replace(/\s/g, '');
-        parts.push(variantCode);
+        throw new Error('Failed to generate SKU');
+    } catch (error) {
+        console.error("Error generating SKU:", error);
+        throw error;
     }
-
-    parts.push(uniqueId);
-
-    const generatedSKU = parts.join('-');
-
-    return generatedSKU;
 };
 
-export const generateVariantSKU = (baseSKU: string, variantName: string): string => {
+/**
+ * Generate a variant SKU based on the product's base SKU.
+ * The backend validates uniqueness against existing variants.
+ */
+export const generateVariantSKU = async (baseSKU: string, variantName: string): Promise<string> => {
     if (!baseSKU || !variantName) return baseSKU;
-    const cleanVariant = variantName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    // If baseSKU already has a variant suffix (heuristic), maybe replace it? 
-    // For now, simple append: SKU-VAR
-    return `${baseSKU}-${cleanVariant}${random}`;
+
+    try {
+        const response = await apiClient.post<{ success: boolean; sku: string }>(
+            '/products/generate-variant-sku',
+            {
+                baseSKU,
+                variantName,
+            }
+        );
+
+        if (response.data.success) {
+            return response.data.sku;
+        }
+
+        throw new Error('Failed to generate variant SKU');
+    } catch (error) {
+        console.error("Error generating variant SKU:", error);
+        // Fallback to client-side generation if API fails
+        const cleanVariant = variantName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        return `${baseSKU}-${cleanVariant}${random}`;
+    }
 };

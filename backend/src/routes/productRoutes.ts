@@ -1,8 +1,121 @@
 import Router from 'express';
 import { getProductById, getProducts, postProduct, searchProducts } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError } from '../error/errorHandler.js';
+import { generateProductDescription, generateProductSKU, generateVariantSKU } from '../services/GenerateService.js';
 
 const router = Router();
+
+// ============================================
+// Generation Endpoints (Admin use)
+// ============================================
+
+/**
+ * POST /api/products/generate-description
+ * Generate an AI-powered product description
+ */
+router.post('/generate-description', async (req, res) => {
+    try {
+        const { name, category, variants, basePrice, discountedPrice } = req.body;
+
+        if (!name || !category) {
+            return res.status(400).json({
+                success: false,
+                message: 'Name and category are required',
+            });
+        }
+
+        const description = await generateProductDescription({
+            name,
+            category,
+            variants,
+            basePrice,
+            discountedPrice,
+        });
+
+        return res.status(200).json({
+            success: true,
+            description,
+        });
+    } catch (error) {
+        console.error('Description generation error:', error);
+
+        if (error instanceof Error && error.message.includes('HF_TOKEN')) {
+            return res.status(500).json({
+                success: false,
+                message: 'AI service not configured. Please contact administrator.',
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to generate description',
+        });
+    }
+});
+
+/**
+ * POST /api/products/generate-sku
+ * Generate a unique product SKU with database validation
+ */
+router.post('/generate-sku', async (req, res) => {
+    try {
+        const { category, variants } = req.body;
+
+        if (!category) {
+            return res.status(400).json({
+                success: false,
+                message: 'Category is required',
+            });
+        }
+
+        const sku = await generateProductSKU({ category, variants });
+
+        return res.status(200).json({
+            success: true,
+            sku,
+        });
+    } catch (error) {
+        console.error('SKU generation error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to generate SKU',
+        });
+    }
+});
+
+/**
+ * POST /api/products/generate-variant-sku
+ * Generate a variant SKU based on the product's base SKU
+ */
+router.post('/generate-variant-sku', async (req, res) => {
+    try {
+        const { baseSKU, variantName } = req.body;
+
+        if (!baseSKU || !variantName) {
+            return res.status(400).json({
+                success: false,
+                message: 'baseSKU and variantName are required',
+            });
+        }
+
+        const sku = await generateVariantSKU({ baseSKU, variantName });
+
+        return res.status(200).json({
+            success: true,
+            sku,
+        });
+    } catch (error) {
+        console.error('Variant SKU generation error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to generate variant SKU',
+        });
+    }
+});
+
+// ============================================
+// Product CRUD Endpoints
+// ============================================
 
 router.post('/post-product', async (req, res) => {
     try {

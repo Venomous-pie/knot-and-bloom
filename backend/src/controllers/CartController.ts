@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { calculateFinalPrice } from '../utils/discount.js';
 import prisma from '../utils/prisma.js';
 
 export const addToCart = async (req: Request, res: Response): Promise<void> => {
@@ -92,7 +93,7 @@ export const getCart = async (req: Request, res: Response): Promise<void> => {
                 items: {
                     include: {
                         product: true,
-                        productVariant: true  // Include variant details
+                        productVariant: true
                     },
                     orderBy: {
                         uid: 'asc'
@@ -102,11 +103,66 @@ export const getCart = async (req: Request, res: Response): Promise<void> => {
         });
 
         if (!cart) {
-            res.status(200).json({ cart: { items: [] } }); // Return empty cart structure
+            res.status(200).json({
+                cart: {
+                    items: [],
+                    subtotal: 0,
+                    totalSavings: 0,
+                    itemCount: 0
+                }
+            });
             return;
         }
 
-        res.status(200).json({ cart });
+        // Calculate prices for each item using the centralized pricing logic
+        let subtotal = 0;
+        let totalSavings = 0;
+
+        const itemsWithPrices = cart.items.map(item => {
+            const product = {
+                basePrice: Number(item.product.basePrice),
+                discountPercentage: item.product.discountPercentage
+            };
+
+            const variant = item.productVariant ? {
+                price: item.productVariant.price ? Number(item.productVariant.price) : null,
+                discountPercentage: item.productVariant.discountPercentage
+            } : null;
+
+            const priceCalc = calculateFinalPrice(product, variant);
+
+            // Calculate line totals
+            const lineTotal = priceCalc.finalPrice * item.quantity;
+            subtotal += lineTotal;
+
+            // Calculate savings if discount exists
+            if (priceCalc.hasDiscount) {
+                const fullPriceTotal = priceCalc.effectivePrice * item.quantity;
+                totalSavings += fullPriceTotal - lineTotal;
+            }
+
+            return {
+                ...item,
+                // Pre-calculated price fields
+                priceInfo: {
+                    effectivePrice: priceCalc.effectivePrice,
+                    discountPercentage: priceCalc.discountPercentage,
+                    finalPrice: priceCalc.finalPrice,
+                    hasDiscount: priceCalc.hasDiscount,
+                    lineTotal: Math.round(lineTotal * 100) / 100
+                }
+            };
+        });
+
+        res.status(200).json({
+            cart: {
+                ...cart,
+                items: itemsWithPrices,
+                subtotal: Math.round(subtotal * 100) / 100,
+                totalSavings: Math.round(totalSavings * 100) / 100,
+                itemCount: cart.items.length
+            }
+        });
 
     } catch (error) {
         console.error("Error fetching cart:", error);

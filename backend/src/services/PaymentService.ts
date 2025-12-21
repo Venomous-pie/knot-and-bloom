@@ -49,14 +49,28 @@ export const PaymentService = {
             const processingTime = Math.random() * (MAX_PROCESSING_TIME - MIN_PROCESSING_TIME) + MIN_PROCESSING_TIME;
             await new Promise(r => setTimeout(r, processingTime));
 
-            // Simulate random failures for testing
+            // COD always succeeds (payment collected on delivery)
+            if (request.method.toUpperCase() === 'COD') {
+                resolve({
+                    success: true,
+                    gatewayRef: `COD_${uuidv4().substring(0, 8).toUpperCase()}`,
+                });
+                return;
+            }
+
+            // Simulate random failures for card/wallet methods (for testing)
             if (Math.random() < SIMULATED_FAILURE_RATE) {
-                const failureTypes = [
-                    { errorMessage: 'Card declined', errorCode: 'CARD_DECLINED' },
-                    { errorMessage: 'Insufficient funds', errorCode: 'INSUFFICIENT_FUNDS' },
-                    { errorMessage: 'Card expired', errorCode: 'CARD_EXPIRED' },
-                    { errorMessage: 'Invalid card number', errorCode: 'INVALID_CARD' },
-                ];
+                const failureTypes = request.method.toUpperCase().includes('WALLET')
+                    ? [
+                        { errorMessage: 'Wallet balance insufficient', errorCode: 'INSUFFICIENT_BALANCE' },
+                        { errorMessage: 'Wallet account locked', errorCode: 'ACCOUNT_LOCKED' },
+                    ]
+                    : [
+                        { errorMessage: 'Card declined', errorCode: 'CARD_DECLINED' },
+                        { errorMessage: 'Insufficient funds', errorCode: 'INSUFFICIENT_FUNDS' },
+                        { errorMessage: 'Card expired', errorCode: 'CARD_EXPIRED' },
+                        { errorMessage: 'Invalid card number', errorCode: 'INVALID_CARD' },
+                    ];
                 const failure = failureTypes[Math.floor(Math.random() * failureTypes.length)];
                 resolve({
                     success: false,

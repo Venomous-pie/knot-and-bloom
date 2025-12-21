@@ -153,7 +153,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         { sellerId: null },
         {
             seller: {
-                status: 'active',
+                status: SellerStatus.ACTIVE,
                 deletedAt: null
             }
         }

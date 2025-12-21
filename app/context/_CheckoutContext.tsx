@@ -43,8 +43,8 @@ interface CheckoutContextType extends CheckoutState {
     initiateCheckout: (customerId: number, selectedItemIds: number[]) => Promise<boolean>;
     setShippingInfo: (info: ShippingInfo) => void;
     validateAndProceedToPayment: () => Promise<boolean>;
-    processPayment: (paymentMethod: string) => Promise<boolean>;
-    completeCheckout: () => Promise<boolean>;
+    processPayment: (paymentMethod: string) => Promise<number | null>;
+    completeCheckout: (paymentIdOverride?: number) => Promise<boolean>;
     cancelCheckout: () => Promise<void>;
     setStep: (step: CheckoutStep) => void;
     clearError: () => void;
@@ -222,10 +222,10 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [state.sessionId]);
 
-    const processPayment = useCallback(async (paymentMethod: string): Promise<boolean> => {
+    const processPayment = useCallback(async (paymentMethod: string): Promise<number | null> => {
         if (!state.sessionId) {
             setState(prev => ({ ...prev, error: 'No active checkout session' }));
-            return false;
+            return null;
         }
 
         try {
@@ -251,7 +251,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                     isProcessing: false,
                     statusMessage: null,
                 }));
-                return true;
+                return data.paymentId;
             } else {
                 throw new Error(data.message || 'Payment failed');
             }
@@ -263,12 +263,14 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 statusMessage: null,
                 error: errorMessage,
             }));
-            return false;
+            return null;
         }
     }, [state.sessionId, paymentIdempotencyKey]);
 
-    const completeCheckout = useCallback(async (): Promise<boolean> => {
-        if (!state.sessionId || !state.paymentId) {
+    const completeCheckout = useCallback(async (paymentIdOverride?: number): Promise<boolean> => {
+        const paymentIdToUse = paymentIdOverride ?? state.paymentId;
+
+        if (!state.sessionId || !paymentIdToUse) {
             setState(prev => ({ ...prev, error: 'Missing session or payment information' }));
             return false;
         }
@@ -281,7 +283,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 error: null,
             }));
 
-            const response = await checkoutAPI.complete(state.sessionId, state.paymentId);
+            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse);
             const data = response.data;
 
             if (data.success && data.orderId) {

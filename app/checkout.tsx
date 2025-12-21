@@ -328,10 +328,10 @@ const PaymentStep: React.FC = () => {
 
         setIsSubmitting(true);
 
-        const paymentSuccess = await processPayment(selectedMethod);
+        const paymentId = await processPayment(selectedMethod);
 
-        if (paymentSuccess) {
-            const orderSuccess = await completeCheckout();
+        if (paymentId) {
+            const orderSuccess = await completeCheckout(paymentId);
             if (orderSuccess) {
                 // Refresh cart to reflect removed items
                 await refreshCart();

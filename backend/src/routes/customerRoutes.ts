@@ -43,12 +43,13 @@ router.put('/profile', authenticate, async (req, res) => {
 
 router.post('/register', async (req, res) => {
     try {
-        const customer = await customerController.customerRegisterController(req.body);
+        const result = await customerController.customerRegisterController(req.body);
 
         res.status(201).json({
             success: true,
             message: "Customer registered successfully.",
-            data: customer
+            token: result.token,
+            data: result.customer
         });
     } catch (error) {
         console.error("Register error:", error);

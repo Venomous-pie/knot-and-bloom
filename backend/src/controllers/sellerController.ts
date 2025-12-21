@@ -228,5 +228,96 @@ export const sellerController = {
             console.error(error);
             res.status(500).json({ error: "Failed to fetch orders" });
         }
+    },
+
+    // Get Own Products (Seller Dashboard)
+    async getOwnProducts(req: Request, res: Response) {
+        try {
+            if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 20;
+            const skip = (page - 1) * limit;
+            const status = req.query.status as string;
+
+            let sellerId = req.user.sellerId;
+
+            // Fallback lookup
+            if (!sellerId) {
+                const seller = await prisma.seller.findUnique({
+                    where: { customerId: req.user.id }
+                });
+                if (seller) sellerId = seller.uid;
+            }
+
+            if (!sellerId) return res.status(403).json({ error: "Seller profile not found" });
+
+            const whereClause: any = {
+                sellerId,
+                deletedAt: null
+            };
+
+            if (status) {
+                whereClause.status = status;
+            }
+
+            const [products, total] = await Promise.all([
+                prisma.product.findMany({
+                    where: whereClause,
+                    include: {
+                        variants: true,
+                    },
+                    orderBy: { uploaded: 'desc' },
+                    skip,
+                    take: limit
+                }),
+                prisma.product.count({ where: whereClause })
+            ]);
+
+            res.json({
+                products,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    pages: Math.ceil(total / limit)
+                }
+            });
+
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Failed to fetch products" });
+        }
+    },
+
+    // Mark Welcome Modal as Seen (Protected)
+    async markWelcomeSeen(req: Request, res: Response) {
+        try {
+            if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+            let sellerId = req.user.sellerId;
+
+            // Fallback: If sellerId is not in token (stale token), find it via customerId
+            if (!sellerId) {
+                const seller = await prisma.seller.findUnique({
+                    where: { customerId: req.user.id }
+                });
+                if (seller) {
+                    sellerId = seller.uid;
+                }
+            }
+
+            if (!sellerId) return res.status(401).json({ error: "Unauthorized - Seller profile not found" });
+
+            await prisma.seller.update({
+                where: { uid: sellerId },
+                data: { hasSeenWelcomeModal: true }
+            });
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Failed to update status" });
+        }
     }
 };

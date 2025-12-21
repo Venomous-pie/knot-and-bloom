@@ -34,9 +34,29 @@ const customerRegisterController = async (input: unknown) => {
             },
         });
 
-        // Omit password from response
-        const { password, ...customerData } = customer;
-        return customerData;
+        // Generate token for auto-login
+        const payload: AuthPayload = {
+            id: customer.uid,
+            email: customer.email,
+            role: customer.role as any,
+        };
+
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+
+        return {
+            token,
+            customer: {
+                uid: customer.uid,
+                name: customer.name,
+                email: customer.email,
+                phone: customer.phone,
+                address: customer.address,
+                role: customer.role,
+                passwordResetRequired: customer.passwordResetRequired,
+                sellerId: undefined, // New users are not sellers yet
+                sellerStatus: undefined
+            }
+        };
     } catch (error) {
         if (error instanceof ZodError) {
             throw new ValidationError(error.issues);
@@ -89,7 +109,8 @@ const customerLoginController = async (input: unknown) => {
                 role: customer.role,
                 passwordResetRequired: customer.passwordResetRequired,
                 sellerId: customer.sellerProfile?.uid,
-                sellerStatus: customer.sellerProfile?.status
+                sellerStatus: customer.sellerProfile?.status,
+                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal
             }
         };
 
@@ -105,6 +126,7 @@ const customerLoginController = async (input: unknown) => {
 const getCustomerProfile = async (userId: number) => {
     const customer = await prisma.customer.findUnique({
         where: { uid: userId },
+        include: { sellerProfile: true }
     });
 
     if (!customer) {
@@ -112,7 +134,13 @@ const getCustomerProfile = async (userId: number) => {
     }
 
     const { password, ...customerData } = customer;
-    return customerData;
+
+    return {
+        ...customerData,
+        sellerId: customer.sellerProfile?.uid,
+        sellerStatus: customer.sellerProfile?.status,
+        sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal
+    };
 };
 
 const updateCustomerProfile = async (userId: number, input: unknown) => {

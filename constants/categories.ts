@@ -1,8 +1,8 @@
 import { RelativePathString } from "expo-router";
 
+// Categories that can be assigned to products by users
+// Note: "Popular Products" and "New Arrivals" are excluded as they are computed by backend logic
 export const categoryTitles: Record<string, string> = {
-    popular: "Popular Products",
-    "new-arrival": "New Arrivals",
     crochet: "Crochet",
     "fuzzy-wire-art": "Fuzzy Wire Art",
     accessories: "Accessories",
@@ -12,6 +12,13 @@ export const categoryTitles: Record<string, string> = {
     "fuzzy-wire-bouquet": "Fuzzy Wire Bouquets",
     "crochet-flower-bouquet": "Crochet Flower Bouquets",
     "crochet-key-chains": "Crochet Key Chains",
+};
+
+// Navigation-only categories (includes backend-computed ones)
+export const navCategoryTitles: Record<string, string> = {
+    popular: "Popular Products",
+    "new-arrival": "New Arrivals",
+    ...categoryTitles,
 };
 
 export const getCategorySlug = (title: string): string => {

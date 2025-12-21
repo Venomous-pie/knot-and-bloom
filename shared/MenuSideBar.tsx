@@ -251,40 +251,53 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                             <View style={{ height: 10 }} />
 
                             {/* Dashboard Links (For Sellers/Admins) */}
-                            {user && (user.role === 'SELLER' || user.role === 'ADMIN' || user.sellerId) && (
-                                <>
-                                    <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Dashboard</Text>
-                                    {user.role === 'ADMIN' && (
-                                        <Link href={'/admin' as RelativePathString} asChild>
-                                            <Pressable onPress={onClose}>
-                                                {({ hovered }) => (
-                                                    <View style={[styles.menuItem, pathname === '/admin' && styles.menuItemActive, hovered && styles.menuItemHovered, { paddingVertical: mobile ? 4 : 10 }]}>
-                                                        <Text style={{ color: pathname === '/admin' ? '#B36979' : '#333', fontSize: mobile ? 12 : 14 }}>Admin Dashboard</Text>
-                                                    </View>
-                                                )}
-                                            </Pressable>
-                                        </Link>
-                                    )}
-                                    {(user.role === 'SELLER' || user.role === 'ADMIN' || user.sellerId) && (
-                                        <Link href={'/seller-dashboard/orders' as RelativePathString} asChild>
-                                            <Pressable onPress={onClose}>
-                                                {({ hovered }) => (
-                                                    <View style={[styles.menuItem, pathname === '/seller-dashboard/orders' && styles.menuItemActive, hovered && styles.menuItemHovered, { paddingVertical: mobile ? 4 : 10 }]}>
-                                                        <Text style={{ color: pathname === '/seller-dashboard/orders' ? '#B36979' : '#333', fontSize: mobile ? 12 : 14 }}>Seller Dashboard</Text>
-                                                    </View>
-                                                )}
-                                            </Pressable>
-                                        </Link>
-                                    )}
-                                    {/* Show pending status for users with sellerId but PENDING status */}
-                                    {user.sellerId && user.sellerStatus === 'PENDING' && (
-                                        <View style={[styles.menuItem, { backgroundColor: '#FFF9E6', borderWidth: 1, borderColor: '#FFE599' }]}>
-                                            <Text style={{ color: '#B8860B', fontSize: mobile ? 11 : 12 }}>⏳ Application Pending</Text>
-                                        </View>
-                                    )}
-                                    <View style={{ height: 10 }} />
-                                </>
-                            )}
+                            {/* Dashboard Links (For Sellers/Admins) */}
+                            {(() => {
+                                if (!user) return null;
+                                const showAdminLink = user.role === 'ADMIN';
+                                const showSellerLink = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+                                const showPendingBadge = user.sellerId && user.sellerStatus === 'PENDING';
+                                const shouldShowDashboard = showAdminLink || showSellerLink || showPendingBadge;
+
+                                if (!shouldShowDashboard) return null;
+
+                                return (
+                                    <>
+                                        <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Dashboard</Text>
+
+                                        {showAdminLink && (
+                                            <Link href={'/admin' as RelativePathString} asChild>
+                                                <Pressable onPress={onClose}>
+                                                    {({ hovered }) => (
+                                                        <View style={[styles.menuItem, pathname === '/admin' && styles.menuItemActive, hovered && styles.menuItemHovered, { paddingVertical: mobile ? 4 : 10 }]}>
+                                                            <Text style={{ color: pathname === '/admin' ? '#B36979' : '#333', fontSize: mobile ? 12 : 14 }}>Admin Dashboard</Text>
+                                                        </View>
+                                                    )}
+                                                </Pressable>
+                                            </Link>
+                                        )}
+
+                                        {showSellerLink && (
+                                            <Link href={'/seller-dashboard/orders' as RelativePathString} asChild>
+                                                <Pressable onPress={onClose}>
+                                                    {({ hovered }) => (
+                                                        <View style={[styles.menuItem, pathname === '/seller-dashboard/orders' && styles.menuItemActive, hovered && styles.menuItemHovered, { paddingVertical: mobile ? 4 : 10 }]}>
+                                                            <Text style={{ color: pathname === '/seller-dashboard/orders' ? '#B36979' : '#333', fontSize: mobile ? 12 : 14 }}>Seller Dashboard</Text>
+                                                        </View>
+                                                    )}
+                                                </Pressable>
+                                            </Link>
+                                        )}
+
+                                        {showPendingBadge && (
+                                            <View style={[styles.menuItem, { backgroundColor: '#FFF9E6', borderWidth: 1, borderColor: '#FFE599' }]}>
+                                                <Text style={{ color: '#B8860B', fontSize: mobile ? 11 : 12 }}>⏳ Application Pending</Text>
+                                            </View>
+                                        )}
+                                        <View style={{ height: 10 }} />
+                                    </>
+                                );
+                            })()}
 
                             <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Categories</Text>
                             {sidebarLinks.slice(3).map((link) => {

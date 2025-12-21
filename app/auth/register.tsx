@@ -41,7 +41,7 @@ export default function RegisterPage() {
         setLoading(true);
         try {
             await register({ name, email, password });
-            router.replace('/auth/login' as RelativePathString);
+            // router.replace('/'); // Handled by register in AuthContext
         } catch (e: any) {
             console.error(e);
             setError(e.response?.data?.message || "Registration failed. Please try again.");

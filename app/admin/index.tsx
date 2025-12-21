@@ -122,12 +122,26 @@ export default function AdminDashboardPage() {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Admin Control Center</Text>
-                <Pressable
-                    style={styles.addBtn}
-                    onPress={() => router.push('/admin/create')}
-                >
-                    <Text style={styles.addBtnText}>+ New Product</Text>
-                </Pressable>
+                <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                    <Pressable
+                        style={[styles.addBtn, { backgroundColor: '#F59E0B' }]}
+                        onPress={() => router.push('/admin/products' as any)}
+                    >
+                        <Text style={styles.addBtnText}>📋 Review Products</Text>
+                    </Pressable>
+                    <Pressable
+                        style={[styles.addBtn, { backgroundColor: '#4CAF50' }]}
+                        onPress={() => router.push('/admin/sellers')}
+                    >
+                        <Text style={styles.addBtnText}>Manage Sellers</Text>
+                    </Pressable>
+                    <Pressable
+                        style={styles.addBtn}
+                        onPress={() => router.push('/admin/create')}
+                    >
+                        <Text style={styles.addBtnText}>+ New Product</Text>
+                    </Pressable>
+                </View>
             </View>
 
             <View style={styles.searchContainer}>

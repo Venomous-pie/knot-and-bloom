@@ -1,6 +1,7 @@
 import { AuthProvider } from "@/app/auth";
 import { CartProvider } from "@/app/context/CartContext";
 import CartAnimationOverlay from "@/components/CartAnimationOverlay";
+import OnboardingManager from "@/components/OnboardingManager";
 import { fonts } from "@/constants/fonts";
 import NavBar from "@/shared/Navbar";
 import CustomSplashScreen from "@/shared/SplashScreen";
@@ -79,6 +80,7 @@ export default function RootLayout() {
         <View style={styles.container} onLayout={onLayoutRootView}>
           <NavBar />
           <CartAnimationOverlay />
+          <OnboardingManager />
         </View>
       </CartProvider>
     </AuthProvider>

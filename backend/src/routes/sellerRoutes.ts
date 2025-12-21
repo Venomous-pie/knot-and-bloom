@@ -13,6 +13,8 @@ router.get('/:slug', sellerController.getSellerBySlug); // Public Profile
 // Protected Routes
 router.get('/', authenticate, authorize([Role.ADMIN]), sellerController.listSellers);
 router.put('/:id', authenticate, authorize([Role.ADMIN]), sellerController.updateSeller);
+router.get('/me/products', authenticate, sellerController.getOwnProducts);
+router.patch('/me/welcome-seen', authenticate, sellerController.markWelcomeSeen);
 
 // Seller Dashboard (Shared with Admin)
 router.get('/:id/orders', authenticate, authorize([Role.SELLER, Role.ADMIN]), sellerController.getSellerOrders);

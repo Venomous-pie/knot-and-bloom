@@ -28,6 +28,10 @@ export default function ProfilePage() {
     const [address, setAddress] = useState('');
 
     useEffect(() => {
+        refreshUser();
+    }, []);
+
+    useEffect(() => {
         if (!user && !authLoading) {
             router.replace('/auth/login' as RelativePathString);
             return;
@@ -147,6 +151,23 @@ export default function ProfilePage() {
                             <Text style={styles.value}>{user.address || 'Not provided'}</Text>
                         )}
                     </View>
+
+                    {user.sellerId && user.sellerStatus && (
+                        <View style={styles.formGroup}>
+                            <Text style={styles.label}>Seller Status</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Text style={[styles.value, {
+                                    color: user.sellerStatus === 'ACTIVE' ? 'green' :
+                                        user.sellerStatus === 'PENDING' ? '#B8860B' :
+                                            user.sellerStatus === 'SUSPENDED' ? 'red' : '#333',
+                                    fontWeight: 'bold'
+                                }]}>
+                                    {user.sellerStatus === 'PENDING' ? 'Pending Approval' : user.sellerStatus.charAt(0) + user.sellerStatus.slice(1).toLowerCase()}
+                                </Text>
+                                {user.sellerStatus === 'PENDING' && <Text>⏳</Text>}
+                            </View>
+                        </View>
+                    )}
 
                     {isEditing && (
                         <Pressable

@@ -1,9 +1,9 @@
 
 import { useAuth } from "@/app/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface OrderItem {
     uid: number;
@@ -19,24 +19,44 @@ interface OrderItem {
 }
 
 export default function SellerOrders() {
-    const { user } = useAuth();
-    const [sellerId, setSellerId] = useState("1"); // Default to 1 for demo
+    const { user, loading: authLoading } = useAuth();
+    const router = useRouter();
     const [items, setItems] = useState<OrderItem[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Set sellerId from user's seller profile if available
+    // Authorization Check
     useEffect(() => {
-        if (user?.sellerId) {
-            setSellerId(String(user.sellerId));
+        if (!authLoading) {
+            if (!user) {
+                router.replace('/auth/login');
+                return;
+            }
+
+            // Check if user is Admin OR Active Seller
+            const isAuthorized = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+
+            if (!isAuthorized) {
+                Alert.alert("Unauthorized", "You must be an approved seller to access this dashboard.");
+                router.replace('/profile');
+            }
         }
-    }, [user]);
+    }, [user, authLoading]);
 
     const fetchOrders = async () => {
-        if (!sellerId) return;
+        // If user is admin, allow them to see orders (demo: might need a way to select seller, but for now stick to user's sellerId logic or fail gracefully)
+        // For actual seller:
+        const targetSellerId = user?.sellerId;
+
+        if (!targetSellerId && user?.role !== 'ADMIN') return;
+
+        // If admin with no sellerId, maybe don't fetch or fetch specific? 
+        // For strict seller dashboard:
+        if (!targetSellerId) return;
+
         try {
             setLoading(true);
             const token = await AsyncStorage.getItem('authToken');
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers/${sellerId}/orders`, {
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers/${targetSellerId}/orders`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -54,8 +74,10 @@ export default function SellerOrders() {
     };
 
     useEffect(() => {
-        fetchOrders();
-    }, [sellerId]);
+        if (user?.sellerId) {
+            fetchOrders();
+        }
+    }, [user]);
 
     const updateStatus = async (itemId: number, status: string) => {
         try {
@@ -126,18 +148,13 @@ export default function SellerOrders() {
         <View style={styles.container}>
             <Stack.Screen options={{ title: "Seller Dashboard" }} />
 
-            <View style={styles.controls}>
-                <Text>Seller ID:</Text>
-                <TextInput
-                    style={styles.input}
-                    value={sellerId}
-                    onChangeText={setSellerId}
-                    keyboardType="numeric"
-                />
-                <TouchableOpacity onPress={fetchOrders} style={styles.refreshBtn}>
-                    <Text style={styles.refreshText}>Refresh</Text>
+            <View style={styles.navRow}>
+                <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={styles.navBtn}>
+                    <Text style={styles.navBtnText}>Manage Products</Text>
                 </TouchableOpacity>
             </View>
+
+
 
             {loading ? (
                 <ActivityIndicator size="large" />
@@ -156,10 +173,6 @@ export default function SellerOrders() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f5f5' },
-    controls: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: 'white', gap: 10 },
-    input: { borderWidth: 1, borderColor: '#ccc', padding: 8, width: 60, borderRadius: 4 },
-    refreshBtn: { padding: 8, backgroundColor: '#eee', borderRadius: 4 },
-    refreshText: { color: '#333' },
     list: { padding: 16 },
     empty: { textAlign: 'center', marginTop: 20, color: '#666' },
     card: {
@@ -188,5 +201,8 @@ const styles = StyleSheet.create({
     btn: { padding: 6, borderRadius: 4, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd' },
     activeBtn: { backgroundColor: '#5A4A42', borderColor: '#5A4A42' },
     btnText: { fontSize: 12, color: '#333' },
-    activeBtnText: { color: 'white' }
+    activeBtnText: { color: 'white' },
+    navRow: { flexDirection: 'row', marginBottom: 16 },
+    navBtn: { backgroundColor: '#333', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6 },
+    navBtnText: { color: '#FFF', fontWeight: 'bold' }
 });

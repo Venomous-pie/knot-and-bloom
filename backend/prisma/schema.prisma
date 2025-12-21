@@ -27,6 +27,11 @@ model Product {
   sellerId Int?
   seller   Seller? @relation(fields: [sellerId], references: [uid])
 
+  // Status & Audit
+  status    ProductStatus @default(PENDING)
+  deletedAt DateTime?
+  deletedBy Int?
+
   // OrderItems
   orderItems OrderItem[]
 }
@@ -175,6 +180,13 @@ enum SellerStatus {
   BANNED
 }
 
+enum ProductStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
 // New Models
 
 model Seller {
@@ -200,6 +212,11 @@ model Seller {
 
   customerId Int      @unique
   customer   Customer @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
+
+  hasSeenWelcomeModal Boolean   @default(false)
+  approvedAt          DateTime?
+
+  @@index([customerId, hasSeenWelcomeModal])
 }
 
 model OrderItem {

@@ -1,4 +1,4 @@
-
+import { sellerAPI } from "@/api/api";
 import { Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -19,10 +19,8 @@ export default function AdminSellers() {
     const fetchSellers = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers`);
-            if (!res.ok) throw new Error('Failed to fetch');
-            const data = await res.json();
-            setSellers(data);
+            const res = await sellerAPI.getSellers();
+            setSellers(res.data);
         } catch (error) {
             console.error(error);
             Alert.alert("Error", "Failed to load sellers");
@@ -37,14 +35,8 @@ export default function AdminSellers() {
 
     const updateStatus = async (id: number, status: string) => {
         try {
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status })
-            });
-            if (!res.ok) throw new Error("Update failed");
-
-            // Optimistic update or refresh
+            await sellerAPI.updateSellerStatus(id, status);
+            // Optimistic update
             setSellers(prev => prev.map(s => s.uid === id ? { ...s, status: status as any } : s));
             Alert.alert("Success", `Seller status updated to ${status}`);
         } catch (error) {

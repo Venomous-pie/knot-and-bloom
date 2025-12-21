@@ -107,6 +107,13 @@ export const productAPI = {
 
     deleteProduct: (id: string) =>
         apiClient.delete(`/products/${id}`),
+
+    // Admin-only methods
+    getAdminProducts: (params?: { status?: string; limit?: number; offset?: number }) =>
+        apiClient.get<{ success: boolean; products: Product[]; total: number }>('/products/admin', { params }),
+
+    updateProductStatus: (id: string | number, status: string) =>
+        apiClient.patch<{ success: boolean; product: Product }>(`/products/admin/${id}/status`, { status }),
 };
 
 export const authAPI = {
@@ -326,5 +333,20 @@ export const addressAPI = {
     setDefaultAddress: (addressId: number) =>
         apiClient.patch<{ address: Address }>(`/addresses/me/${addressId}/default`),
 };
+
+export const sellerAPI = {
+    getSellers: () => apiClient.get<any[]>('/sellers'),
+    updateSellerStatus: (id: number, status: string) => apiClient.put(`/sellers/${id}`, { status }),
+    markWelcomeSeen: () => apiClient.patch('/sellers/me/welcome-seen', {}),
+};
+
+export const sellerProductsAPI = {
+    getMyProducts: (params?: { page?: number; limit?: number; status?: string }) =>
+        apiClient.get<{ products: any[]; pagination: any }>('/sellers/me/products', { params }).then(res => res.data),
+    createProduct: (data: any) => apiClient.post('/products/post-product', data).then(res => res.data),
+    updateProduct: (id: string | number, data: any) => apiClient.put(`/products/${id}`, data).then(res => res.data),
+    deleteProduct: (id: string | number) => apiClient.delete(`/products/${id}`).then(res => res.data),
+};
+
 
 export default api;

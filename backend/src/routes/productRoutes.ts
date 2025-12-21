@@ -116,11 +116,67 @@ router.post('/generate-variant-sku', async (req, res) => {
 // ============================================
 // Product CRUD Endpoints
 // ============================================
+import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
+import { authenticate, authorize } from '../middleware/authMiddleware.js';
+import { Role } from '../types/auth.js';
 
-router.post('/post-product', async (req, res) => {
+// ============================================
+// Admin-only Product Management
+// ============================================
+
+/**
+ * GET /api/products/admin
+ * Get all products for admin (including PENDING)
+ */
+router.get('/admin', authenticate, authorize([Role.ADMIN]), async (req: any, res) => {
     try {
-        // console.log("Request body:", req.body); 
-        const product = await postProduct(req.body);
+        const { status, limit, offset } = req.query;
+        const result = await getAdminProducts({
+            status: status as string,
+            limit: limit ? parseInt(limit as string) : undefined,
+            offset: offset ? parseInt(offset as string) : undefined
+        });
+
+        res.json({
+            success: true,
+            ...result
+        });
+    } catch (error) {
+        console.error('Admin products error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch products' });
+    }
+});
+
+/**
+ * PATCH /api/products/admin/:id/status
+ * Update product status (approve/reject)
+ */
+router.patch('/admin/:id/status', authenticate, authorize([Role.ADMIN]), async (req: any, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ success: false, error: 'Status is required' });
+        }
+
+        const product = await updateProductStatus(id, status);
+        res.json({ success: true, product });
+    } catch (error: any) {
+        console.error('Update product status error:', error);
+        if (error.message?.includes('Invalid')) {
+            return res.status(400).json({ success: false, error: error.message });
+        }
+        if (error.message?.includes('not found')) {
+            return res.status(404).json({ success: false, error: 'Product not found' });
+        }
+        res.status(500).json({ success: false, error: 'Failed to update product status' });
+    }
+});
+
+router.post('/post-product', authenticate, async (req: any, res) => {
+    try {
+        const product = await postProduct(req.body, req.user);
 
         res.status(201).json({
             success: true,
@@ -130,7 +186,6 @@ router.post('/post-product', async (req, res) => {
     } catch (error) {
         console.error("Route error:", error);
 
-        // Handle validation errors
         if (error instanceof ValidationError) {
             return res.status(400).json({
                 success: false,
@@ -139,7 +194,6 @@ router.post('/post-product', async (req, res) => {
             });
         }
 
-        // Handle duplicate product errors
         if (error instanceof DuplicateProductError) {
             return res.status(409).json({
                 success: false,
@@ -147,7 +201,19 @@ router.post('/post-product', async (req, res) => {
             });
         }
 
-        // Handle Prisma errors
+        if (error instanceof Error && error.message.includes("Seller profile not found")) {
+            return res.status(403).json({ success: false, error: error.message });
+        }
+
+        if (error instanceof Error && error.message.includes("limit reached")) {
+            return res.status(403).json({ success: false, error: error.message });
+        }
+
+        // Handle error from seller status check
+        if (error instanceof Error && (error.message.includes("suspended") || error.message.includes("banned"))) {
+            return res.status(403).json({ success: false, error: error.message });
+        }
+
         if (error && typeof error === 'object' && 'code' in error) {
             const prismaError = error as any;
             if (prismaError.code === 'P2002') {
@@ -158,7 +224,6 @@ router.post('/post-product', async (req, res) => {
             }
         }
 
-        // Handle generic errors
         return res.status(500).json({
             success: false,
             error: error instanceof Error ? error.message : "An unexpected error occurred"
@@ -264,11 +329,11 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req: any, res) => {
     try {
         const { id } = req.params;
         // console.log("Updating product:", id, req.body);
-        const product = await import('../controllers/ProductController.js').then(m => m.updateProduct(id, req.body));
+        const product = await import('../controllers/ProductController.js').then(m => m.updateProduct(id, req.body, req.user));
 
         return res.status(200).json({
             success: true,
@@ -284,7 +349,12 @@ router.put('/:id', async (req, res) => {
         if (error instanceof ValidationError) {
             return res.status(400).json({ success: false, error: "Validation failed", issues: error.issues });
         }
-        // Duplicate handling (e.g. SKU collision)
+
+        // Handle Permission Error
+        if (error instanceof Error && error.message.includes("own products")) {
+            return res.status(403).json({ success: false, error: error.message });
+        }
+
         if (error && (error as any).code === 'P2002') {
             return res.status(409).json({ success: false, error: "Duplicate field (likely SKU) found." });
         }
@@ -293,10 +363,10 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req: any, res) => {
     try {
         const { id } = req.params;
-        await import('../controllers/ProductController.js').then(m => m.deleteProduct(id));
+        await import('../controllers/ProductController.js').then(m => m.deleteProduct(id, req.user));
 
         return res.status(200).json({
             success: true,
@@ -307,6 +377,10 @@ router.delete('/:id', async (req, res) => {
 
         if (error instanceof NotFoundError) {
             return res.status(404).json({ success: false, message: error.message });
+        }
+
+        if (error instanceof Error && error.message.includes("own products")) {
+            return res.status(403).json({ success: false, error: error.message });
         }
 
         return res.status(500).json({ success: false, error: error instanceof Error ? error.message : "Internal error" });

@@ -47,7 +47,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const login = async (data: any) => {
         try {
             const response = await authAPI.login(data);
-            const { token, data: user } = response.data;
+            const { token, customer, data: legacyUser } = response.data;
+            // Support both 'customer' key (from updated backend) and 'data' key (legacy or potential interceptor)
+            const user = customer || legacyUser;
 
             if (token && user) {
                 await AsyncStorage.setItem('authToken', token);
@@ -67,7 +69,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const register = async (data: any) => {
         try {
-            await authAPI.register(data);
+            const response = await authAPI.register(data);
+            const { token, data: user, customer } = response.data;
+            const finalUser = user || customer;
+
+            if (token && finalUser) {
+                await AsyncStorage.setItem('authToken', token);
+                await AsyncStorage.setItem('authUser', JSON.stringify(finalUser));
+                setUser(finalUser);
+                router.replace('/');
+            }
         } catch (error) {
             throw error;
         }

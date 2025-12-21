@@ -7,6 +7,7 @@ interface User {
     address?: string | null;
     sellerId?: number;
     sellerStatus?: string; // 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED'
+    sellerHasSeenWelcomeModal?: boolean;
     passwordResetRequired?: boolean;
 }
 

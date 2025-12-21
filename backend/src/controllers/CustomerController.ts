@@ -53,6 +53,7 @@ const customerLoginController = async (input: unknown) => {
 
         const customer = await prisma.customer.findUnique({
             where: { email: parsedInput.email },
+            include: { sellerProfile: true }
         });
 
         if (!customer) {
@@ -69,10 +70,13 @@ const customerLoginController = async (input: unknown) => {
         const payload: AuthPayload = {
             id: customer.uid,
             email: customer.email,
-            role: customer.role
+            role: customer.role as any,
+            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
+            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),
+            ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
         };
 
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' }); // 2h expiry for security
 
         return {
             token,
@@ -82,7 +86,10 @@ const customerLoginController = async (input: unknown) => {
                 email: customer.email,
                 phone: customer.phone,
                 address: customer.address,
-                role: customer.role
+                role: customer.role,
+                passwordResetRequired: customer.passwordResetRequired,
+                sellerId: customer.sellerProfile?.uid,
+                sellerStatus: customer.sellerProfile?.status
             }
         };
 
@@ -115,9 +122,15 @@ const updateCustomerProfile = async (userId: number, input: unknown) => {
         parsedInput = customerUpdateSchema.parse(input);
 
         // Remove undefined keys to avoid exactOptionalPropertyTypes issues
-        const updateData = Object.fromEntries(
+        const updateData: any = Object.fromEntries(
             Object.entries(parsedInput).filter(([_, v]) => v !== undefined)
         );
+
+        // If password is provided, hash it and clear passwordResetRequired flag
+        if (parsedInput.password) {
+            updateData.password = await bcrypt.hash(parsedInput.password, 10);
+            updateData.passwordResetRequired = false;
+        }
 
         const customer = await prisma.customer.update({
             where: { uid: userId },

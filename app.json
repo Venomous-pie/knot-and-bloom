@@ -19,7 +19,8 @@
     },
     "web": {
       "output": "static",
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/yarn.png"
     },
     "plugins": [
       "expo-router",

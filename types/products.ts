@@ -25,6 +25,11 @@ interface Product {
     uploaded: string;
     updated: string;
     variants: ProductVariant[];
+    sellerId?: number | null;
+    seller?: {
+        name: string;
+        slug: string;
+    } | null;
 }
 
 interface GetProductsParams {

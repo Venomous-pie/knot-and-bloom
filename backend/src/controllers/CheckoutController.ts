@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { CheckoutStatus, OrderStatus, PaymentStatus } from '../../generated/prisma/index.js';
 import { AuditService } from '../services/AuditService.js';
+import { notifications } from '../services/notificationService.js';
 import { PaymentService } from '../services/PaymentService.js';
 import prisma from '../utils/prisma.js';
 
@@ -45,6 +46,7 @@ interface LockedPriceItem {
     productName: string;
     variantName: string | null;
     image: string | null;
+    sellerId: number | null;
 }
 
 /**
@@ -176,6 +178,7 @@ export const initiateCheckout = async (req: Request, res: Response): Promise<voi
                 productName: item.product.name,
                 variantName: item.productVariant?.name ?? null,
                 image: item.productVariant?.image ?? item.product.image ?? null,
+                sellerId: item.product.sellerId ?? null,
             };
         });
 
@@ -695,14 +698,28 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
             }));
 
             // Create order
+            // Create order with OrderItems
             const newOrder = await tx.order.create({
                 data: {
                     customerId: session.customerId,
+                    // Legacy products field (optional, keeping for backward compat if needed, or stick to new ref)
                     products: JSON.stringify(orderedProducts),
                     total: session.totalAmount,
                     discount: 0,
                     status: OrderStatus.CONFIRMED,
                     idempotencyKey: idempotencyKey || session.idempotencyKey,
+                    items: {
+                        create: lockedPrices.map(item => ({
+                            productId: item.productId,
+                            sellerId: item.sellerId,
+                            quantity: item.quantity,
+                            price: item.finalPrice,
+                            status: 'paid', // Initial status after payment
+                            trackingNumber: null,
+                            shippingProvider: null
+                            // other fields default
+                        }))
+                    }
                 },
             });
 
@@ -738,6 +755,16 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
         AuditService.logCheckout('CHECKOUT_COMPLETED', session.uid, session.customerId, {
             orderId: order.uid,
         });
+
+        // Send notifications (fire and forget)
+        notifications.send({
+            type: 'email',
+            to: (await prisma.customer.findUnique({ where: { uid: session.customerId } }))?.email || '',
+            subject: 'Order Confirmation',
+            body: `Your order #${order.uid} has been placed successfully.`
+        }).catch(err => console.error('Failed to send order notification', err));
+
+        // TODO: Send notifications to sellers (iterate distinct sellers)
 
         res.status(201).json({
             success: true,

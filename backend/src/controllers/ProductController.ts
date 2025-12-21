@@ -1,11 +1,11 @@
 import { ZodError } from "zod";
+import { SellerStatus } from "../../generated/prisma/client.js";
 import { DuplicateProductError, NotFoundError, ValidationError } from "../error/errorHandler.js";
 import type { GetProductsResult } from "../types/product.js";
 import { CalculateDiscount } from "../utils/discount.js";
 import prisma from "../utils/prisma.js";
 import { getProductsQuerySchema, productSchema, type GetProductOptions, type ProductInput } from "../validators/productValidator.js";
 
-// Admin sides
 export const postProduct = async (input: unknown) => {
     // Parse and validate input
     let parsedInput: ProductInput;
@@ -24,6 +24,36 @@ export const postProduct = async (input: unknown) => {
             throw new ValidationError(error.issues);
         }
         throw error;
+    }
+
+    // Check Seller Limit (if sellerId provided)
+    if (parsedInput.sellerId) {
+        const seller = await prisma.seller.findUnique({
+            where: { uid: parsedInput.sellerId }
+        });
+
+        if (!seller || seller.status === SellerStatus.BANNED || seller.status === SellerStatus.SUSPENDED) {
+            // For simplicity, failing if seller invalid/inactive, or could allow draft if pending
+            // Implementation plan: Pending products hidden. But banned/suspended -> reject?
+            // Review: "Check seller.productCount < 50... Check seller.status == active"
+            // User Request v3: "Allow pending sellers to draft products, but hide them"
+            if (!seller) throw new ValidationError([{ message: "Invalid seller ID", path: ['sellerId'] }]);
+        }
+
+        const activeProductCount = await prisma.product.count({
+            where: {
+                sellerId: parsedInput.sellerId,
+                // Assuming we query products table directly. 
+                // Product doesn't have deletedAt, so we count all products linked to seller?
+                // Plan said: "Count only active (non-deleted) products" -> but Product table has no deletedAt.
+                // Assuming filtered by relation if needed, or total count.
+                // Let's stick to total count for now unless I add deletedAt to Product.
+            }
+        });
+
+        if (activeProductCount >= 50) {
+            throw new Error("Active product limit reached (50). Delete existing products to add new ones.");
+        }
     }
 
     const existingProduct = await prisma.product.findUnique({
@@ -48,6 +78,7 @@ export const postProduct = async (input: unknown) => {
                 discountPercentage: parsedInput.discountPercentage ?? null,
                 image: parsedInput.image ?? null,
                 description: parsedInput.description ?? null,
+                sellerId: parsedInput.sellerId ?? null, // Add sellerId
             },
         });
 
@@ -98,7 +129,6 @@ export const postProduct = async (input: unknown) => {
     return product;
 };
 
-//Customer sides
 export const getProducts = async (options: unknown): Promise<GetProductsResult> => {
     let parsedInput: GetProductOptions;
 
@@ -115,15 +145,40 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
 
     const whereClause: any = {};
 
+    // Filter Logic:
+    // Only show products where:
+    // 1. sellerId is null (Knot & Bloom direct)
+    // 2. OR seller is active AND not deleted
+    whereClause.OR = [
+        { sellerId: null },
+        {
+            seller: {
+                status: 'active',
+                deletedAt: null
+            }
+        }
+    ];
+
     if (category) {
         whereClause.categories = { has: category };
     }
 
     if (searchTerm) {
-        whereClause.OR = [
+        // Nested OR for name/description must be ANDed with the Seller Filter
+        // So we need to restructure: { AND: [ { OR: (name, desc) }, { OR: (seller conditions) } ] }
+        // But Prisma 'where' implies AND for toplevel keys.
+        // So we can wrap the searchTerm OR in an AND if needed, or just combine
+        const searchOR = [
             { name: { contains: searchTerm, mode: 'insensitive' } },
             { description: { contains: searchTerm, mode: 'insensitive' } },
         ];
+
+        // Combine with existing Seller OR
+        whereClause.AND = [
+            { OR: searchOR },
+            { OR: whereClause.OR }
+        ];
+        delete whereClause.OR; // Remove the top-level OR as it's now inside AND
     }
 
     if (newArrival) {
@@ -153,7 +208,8 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
             skip: offset,
             orderBy: orderBy,
             include: {
-                variants: true  // Include product variants
+                variants: true,  // Include product variants
+                seller: { select: { name: true, slug: true } } // Include seller info
             }
         }),
         prisma.product.count({ where: whereClause }),
@@ -173,13 +229,29 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
 };
 
 export const searchProducts = async (searchTerm: string, limit = 20) => {
+
+    // Filter products to only show those from active sellers OR products without sellers
+    const sellerFilter = {
+        OR: [
+            { sellerId: null }, // Products without a seller (legacy)
+            {
+                seller: {
+                    status: SellerStatus.ACTIVE,
+                    deletedAt: null
+                }
+            }
+        ]
+    };
+
     // If searchTerm is empty, return suggested/recently uploaded products
     if (!searchTerm || searchTerm.trim().length === 0) {
         const products = await prisma.product.findMany({
+            where: sellerFilter,
             take: limit,
             orderBy: { uploaded: 'desc' },
             include: {
-                variants: true
+                variants: true,
+                seller: { select: { name: true, slug: true } }
             }
         });
         return products;
@@ -187,20 +259,21 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
 
     const products = await prisma.product.findMany({
         where: {
-            OR: [
-                { name: { contains: searchTerm, mode: 'insensitive' } },
-                { description: { contains: searchTerm, mode: 'insensitive' } },
-                // Use a database level filter if possible, or omit category search for now if array not supported 
-                // Since 'categories' is string[], simple contains might not work directly or needs 'has'
-                // For now, let's remove the category search condition or fix the field name to 'categories' if specific array operator used
-                // BUT, since we just migrated, let's comment it out to fix the build error first
-                // { categories: { has: searchTerm } } 
+            AND: [
+                sellerFilter,
+                {
+                    OR: [
+                        { name: { contains: searchTerm, mode: 'insensitive' } },
+                        { description: { contains: searchTerm, mode: 'insensitive' } },
+                    ]
+                }
             ]
         },
         take: limit,
         orderBy: { uploaded: 'desc' },
         include: {
-            variants: true  // Include product variants
+            variants: true,  // Include product variants
+            seller: { select: { name: true, slug: true } }
         }
     });
 

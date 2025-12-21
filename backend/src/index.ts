@@ -8,6 +8,7 @@ import checkoutRoutes from './routes/checkoutRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import productRoutes from './routes/productRoutes.js';
+import sellerRoutes from './routes/sellerRoutes.js';
 import prisma from './utils/prisma.js';
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/checkout', checkoutRoutes);
+app.use('/api/sellers', sellerRoutes);
 
 
 // Error handling middleware

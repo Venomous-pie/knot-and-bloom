@@ -427,6 +427,7 @@ export default function NavBar() {
                                     <DropdownMenu
                                         items={[
                                             ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString }] : []),
+                                            ...(user.role === 'SELLER' || user.role === 'ADMIN' ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString }] : []),
                                             { title: 'Edit Profile', href: '/profile' as RelativePathString },
                                             { title: 'My Orders', href: '/profile/orders' as RelativePathString },
                                             { title: 'Log Out', onPress: handleLogout },

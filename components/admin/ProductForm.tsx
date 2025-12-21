@@ -1,8 +1,8 @@
 import { categoryTitles } from "@/constants/categories";
-import { ProductDescriptionGenerator } from "@/services/descriptionGenerator";
-import { SKUGenerator, generateVariantSKU } from "@/services/skuGenerator";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 
 export interface ProductFormData {
     name: string;
@@ -53,6 +53,9 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
         { name: "", stock: "", sku: "", price: "", discountPercentage: "", image: "" }
     ]);
 
+    const [generatingSku, setGeneratingSku] = useState(false);
+    const [generatingDescription, setGeneratingDescription] = useState(false);
+
     useEffect(() => {
         if (initialData) {
             setFormData(initialData.formData);
@@ -69,49 +72,111 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
 
     const handleGenerateSku = async () => {
         if (selectedCategories.length === 0) {
-            Alert.alert("Required", "Please select at least one category first");
+            Alert.alert("Missing Info", "Please select at least one category to generate SKU.");
             return;
         }
+
+        setGeneratingSku(true);
         try {
-            const sku = await SKUGenerator({
-                category: selectedCategories[0],
-                variants: variants.filter(v => v.name.trim() !== "")
+            const response = await fetch(`${API_URL}/api/products/generate-sku`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    category: selectedCategories[0],
+                    variants: variants.map(v => v.name).filter(Boolean)
+                })
             });
-            handleChange("sku", sku);
-        } catch (e) {
-            console.error(e);
-            Alert.alert("Error", "Failed to generate SKU");
+
+            const data = await response.json();
+            if (data.success && data.sku) {
+                setFormData(prev => ({ ...prev, sku: data.sku }));
+                // Auto-generate variant SKUs based on the new product SKU
+                const updatedVariants = variants.map(v => ({
+                    ...v,
+                    sku: v.name ? `${data.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}` : ''
+                }));
+                setVariants(updatedVariants);
+            } else {
+                Alert.alert("Error", data.message || "Failed to generate SKU");
+            }
+        } catch (error) {
+            console.error("SKU generation error:", error);
+            Alert.alert("Error", "Failed to connect to server. Please try again.");
+        } finally {
+            setGeneratingSku(false);
         }
     };
 
     const handleGenerateDescription = async () => {
-        if (!formData.name || selectedCategories.length === 0) {
-            Alert.alert("Required", "Please fill Name and Category first");
+        if (!formData.name.trim()) {
+            Alert.alert("Missing Info", "Please enter a product name to generate description.");
             return;
         }
-        try {
-            let discountedPrice = undefined;
-            if (formData.basePrice && formData.discountPercentage) {
-                const base = parseFloat(formData.basePrice);
-                const discount = parseFloat(formData.discountPercentage);
-                if (!isNaN(base) && !isNaN(discount)) {
-                    discountedPrice = (base * (1 - discount / 100)).toFixed(2);
-                }
-            }
+        if (selectedCategories.length === 0) {
+            Alert.alert("Missing Info", "Please select at least one category to generate description.");
+            return;
+        }
 
-            const description = await ProductDescriptionGenerator({
-                name: formData.name,
-                category: selectedCategories[0],
-                variants: variants.filter(v => v.name.trim() !== ""),
-                basePrice: formData.basePrice || undefined,
-                discountedPrice: discountedPrice
+        setGeneratingDescription(true);
+        try {
+            const response = await fetch(`${API_URL}/api/products/generate-description`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    category: selectedCategories[0],
+                    variants: variants.map(v => v.name).filter(Boolean),
+                    basePrice: formData.basePrice ? parseFloat(formData.basePrice) : undefined,
+                    discountedPrice: formData.discountPercentage
+                        ? parseFloat(formData.basePrice) * (1 - parseFloat(formData.discountPercentage) / 100)
+                        : undefined
+                })
             });
-            if (description) {
-                handleChange("description", description);
+
+            const data = await response.json();
+            if (data.success && data.description) {
+                setFormData(prev => ({ ...prev, description: data.description }));
+            } else {
+                Alert.alert("Error", data.message || "Failed to generate description");
             }
-        } catch (e) {
-            console.error(e);
-            Alert.alert("Error", "Failed to generate description");
+        } catch (error) {
+            console.error("Description generation error:", error);
+            Alert.alert("Error", "Failed to connect to server. Please try again.");
+        } finally {
+            setGeneratingDescription(false);
+        }
+    };
+
+    const handleGenerateVariantSku = async (index: number) => {
+        const variant = variants[index];
+        if (!formData.sku) {
+            Alert.alert("Missing Info", "Please generate or enter a product SKU first.");
+            return;
+        }
+        if (!variant.name.trim()) {
+            Alert.alert("Missing Info", "Please enter a variant name first.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/api/products/generate-variant-sku`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    baseSKU: formData.sku,
+                    variantName: variant.name
+                })
+            });
+
+            const data = await response.json();
+            if (data.success && data.sku) {
+                updateVariant(index, 'sku', data.sku);
+            } else {
+                Alert.alert("Error", data.message || "Failed to generate variant SKU");
+            }
+        } catch (error) {
+            console.error("Variant SKU generation error:", error);
+            Alert.alert("Error", "Failed to connect to server.");
         }
     };
 
@@ -156,8 +221,12 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                 <View style={[styles.formGroup, { flex: 1, marginRight: 10 }]}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <Text style={[styles.label, { marginBottom: 0 }]}>SKU</Text>
-                        <Pressable onPress={handleGenerateSku}>
-                            <Text style={{ color: '#B36979', fontSize: 12, fontWeight: '600' }}>Auto Gen</Text>
+                        <Pressable onPress={handleGenerateSku} disabled={generatingSku}>
+                            {generatingSku ? (
+                                <ActivityIndicator size="small" color="#B36979" />
+                            ) : (
+                                <Text style={{ color: '#B36979', fontSize: 12, fontWeight: '600' }}>Auto Gen</Text>
+                            )}
                         </Pressable>
                     </View>
                     <TextInput
@@ -261,25 +330,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                         <View style={{ flex: 2, marginRight: 8 }}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                 <Text style={styles.variantLabel}>SKU</Text>
-                                <Pressable
-                                    onPress={async () => {
-                                        if (!formData.sku) {
-                                            Alert.alert("Required", "Please generate product SKU first");
-                                            return;
-                                        }
-                                        if (!variant.name.trim()) {
-                                            Alert.alert("Required", "Please enter variant name first");
-                                            return;
-                                        }
-                                        try {
-                                            const generatedSKU = await generateVariantSKU(formData.sku, variant.name);
-                                            updateVariant(index, "sku", generatedSKU);
-                                        } catch (e) {
-                                            console.error(e);
-                                            Alert.alert("Error", "Failed to generate variant SKU");
-                                        }
-                                    }}
-                                >
+                                <Pressable onPress={() => handleGenerateVariantSku(index)}>
                                     <Text style={{ color: '#B36979', fontSize: 10, fontWeight: '600' }}>Auto Gen</Text>
                                 </Pressable>
                             </View>
@@ -356,8 +407,12 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
             <View style={styles.formGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <Text style={[styles.label, { marginBottom: 0 }]}>Description</Text>
-                    <Pressable onPress={handleGenerateDescription}>
-                        <Text style={{ color: '#B36979', fontSize: 12, fontWeight: '600' }}>Auto Gen</Text>
+                    <Pressable onPress={handleGenerateDescription} disabled={generatingDescription}>
+                        {generatingDescription ? (
+                            <ActivityIndicator size="small" color="#B36979" />
+                        ) : (
+                            <Text style={{ color: '#B36979', fontSize: 12, fontWeight: '600' }}>Auto Gen</Text>
+                        )}
                     </Pressable>
                 </View>
                 <TextInput

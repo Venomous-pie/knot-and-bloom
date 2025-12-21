@@ -20,6 +20,7 @@ export const productSchema = z.object({
     stock: z.number().int().min(0).optional(),
     image: z.string().nullish(),
     description: z.string().nullish(),
+    sellerId: z.number().int().optional(),
 });
 
 export const getProductsQuerySchema = z.object({

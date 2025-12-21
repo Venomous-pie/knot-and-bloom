@@ -127,7 +127,7 @@ export default function RegisterPage() {
 
                         <View style={styles.footerLinkContainer}>
                             <Text style={{ color: '#666' }}>Already have an account? </Text>
-                            <Pressable onPress={() => router.push('/login' as RelativePathString)}>
+                            <Pressable onPress={() => router.push('/auth/login' as RelativePathString)}>
                                 <Text style={styles.linkText}>Sign in</Text>
                             </Pressable>
                         </View>

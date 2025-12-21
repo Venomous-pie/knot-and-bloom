@@ -196,6 +196,17 @@ export default function ProductCard({
                         {product.name}
                     </Text>
 
+                    {/* Seller Attribution */}
+                    {product.seller && (
+                        <Link href={`/seller/${product.seller.slug}` as RelativePathString} asChild>
+                            <Pressable style={styles.sellerContainer}>
+                                <Text style={[styles.sellerText, isSmallScreen && { fontSize: 9 }]}>
+                                    Sold by <Text style={{ textDecorationLine: 'underline' }}>{product.seller.name}</Text>
+                                </Text>
+                            </Pressable>
+                        </Link>
+                    )}
+
                     {/* Rating & Sold Count */}
                     {(product.variants?.length > 0 || product.soldCount > 0) && (
                         <View style={[styles.ratingContainer, isSmallScreen && { marginBottom: 4 }]}>
@@ -398,6 +409,14 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginBottom: 8,
         gap: 4,
+    },
+    sellerContainer: {
+        marginBottom: 6,
+    },
+    sellerText: {
+        fontSize: 11,
+        color: COLORS.mutedForeground,
+        fontWeight: "400",
     },
     starsContainer: {
         flexDirection: "row",

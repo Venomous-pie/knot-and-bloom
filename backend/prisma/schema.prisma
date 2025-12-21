@@ -21,7 +21,14 @@ model Product {
   uploaded           DateTime         @default(now())
   updated            DateTime         @updatedAt
   variants           ProductVariant[]
-  cartItems          CartItem[]
+  cartItems          CartItem[] // Ensure 1-to-many relation is compatible
+
+  // Seller Relation
+  sellerId Int?
+  seller   Seller? @relation(fields: [sellerId], references: [uid])
+
+  // OrderItems
+  orderItems OrderItem[]
 }
 
 model ProductVariant {
@@ -42,18 +49,20 @@ model ProductVariant {
 }
 
 model Customer {
-  uid              Int               @id @default(autoincrement())
-  name             String
-  email            String            @unique
-  password         String
-  phone            String?
-  address          String?
-  uploaded         DateTime          @default(now())
-  updated          DateTime          @updatedAt
-  orders           Order[]
-  cart             Cart? // One-to-one relation with Cart
-  role             String            @default("USER")
-  checkoutSessions CheckoutSession[]
+  uid                   Int               @id @default(autoincrement())
+  name                  String
+  email                 String            @unique
+  password              String
+  phone                 String?
+  address               String?
+  uploaded              DateTime          @default(now())
+  updated               DateTime          @updatedAt
+  orders                Order[]
+  cart                  Cart? // One-to-one relation with Cart
+  role                  Role              @default(USER)
+  passwordResetRequired Boolean           @default(false)
+  sellerProfile         Seller?           @relation("CustomerSeller")
+  checkoutSessions      CheckoutSession[]
 }
 
 model Cart {
@@ -80,6 +89,7 @@ model Order {
   customer       Customer    @relation(fields: [customerId], references: [uid])
   customerId     Int
   products       String
+  items          OrderItem[]
   discount       Decimal?
   total          Decimal
   status         OrderStatus @default(PENDING)
@@ -149,4 +159,63 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   CANCELLED
+}
+
+enum Role {
+  USER
+  SELLER
+  ADMIN
+}
+
+enum SellerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+// New Models
+
+model Seller {
+  uid             Int          @id @default(autoincrement())
+  name            String
+  slug            String       @unique
+  email           String       @unique
+  phone           String?
+  description     String?
+  logo            String?
+  banner          String?
+  status          SellerStatus @default(PENDING) // pending, active, suspended, banned
+  termsAccepted   Boolean      @default(false)
+  termsAcceptedAt DateTime?
+  commissionRate  Decimal      @default(0.15)
+  totalSales      Decimal      @default(0)
+  totalOrders     Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  products        Product[]
+  orderItems      OrderItem[]
+
+  customerId Int      @unique
+  customer   Customer @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
+}
+
+model OrderItem {
+  uid              Int       @id @default(autoincrement())
+  orderId          Int
+  order            Order     @relation(fields: [orderId], references: [uid])
+  productId        Int
+  product          Product   @relation(fields: [productId], references: [uid])
+  sellerId         Int?
+  seller           Seller?   @relation(fields: [sellerId], references: [uid])
+  quantity         Int
+  price            Decimal
+  status           String    @default("pending_payment")
+  trackingNumber   String?
+  shippingProvider String?
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }

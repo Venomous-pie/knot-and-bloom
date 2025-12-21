@@ -31,7 +31,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const userData = await AsyncStorage.getItem('authUser');
 
             if (token && userData) {
-                setUser(JSON.parse(userData));
+                const parsedUser = JSON.parse(userData);
+                setUser(parsedUser);
+                if (parsedUser.passwordResetRequired) {
+                    router.replace('/auth/reset-password' as RelativePathString);
+                }
             }
         } catch (error) {
             console.error("Failed to load user", error);
@@ -49,7 +53,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await AsyncStorage.setItem('authToken', token);
                 await AsyncStorage.setItem('authUser', JSON.stringify(user));
                 setUser(user);
-                router.replace('/');
+
+                if (user.passwordResetRequired) {
+                    router.replace('/auth/reset-password' as RelativePathString);
+                } else {
+                    router.replace('/');
+                }
             }
         } catch (error) {
             throw error;

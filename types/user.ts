@@ -2,9 +2,12 @@ interface User {
     uid: number;
     name: string;
     email: string;
-    role: string;
+    role: string; // 'USER' | 'SELLER' | 'ADMIN'
     phone?: string | null;
     address?: string | null;
+    sellerId?: number;
+    sellerStatus?: string; // 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED'
+    passwordResetRequired?: boolean;
 }
 
 interface AuthContextType {

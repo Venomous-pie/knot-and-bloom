@@ -451,6 +451,31 @@ const PaymentStep: React.FC = () => {
 // Confirmation Step
 const ConfirmationStep: React.FC = () => {
     const { orderId, totalAmount, resetCheckout } = useCheckout();
+    const { user } = useAuth();
+    const [showSellerPrompt, setShowSellerPrompt] = useState(false);
+    const [showDismissConfirm, setShowDismissConfirm] = useState(false);
+
+    // Check if we should show the seller prompt (only for non-sellers, one time)
+    useEffect(() => {
+        const checkSellerPrompt = async () => {
+            // Only show for users who are not sellers and haven't dismissed before
+            if (!user || user.role === 'SELLER' || user.role === 'ADMIN' || user.sellerId) {
+                return;
+            }
+
+            try {
+                const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+                const dismissed = await AsyncStorage.getItem('sellerPromptDismissed');
+                if (!dismissed) {
+                    // Show prompt after a short delay for better UX
+                    setTimeout(() => setShowSellerPrompt(true), 1500);
+                }
+            } catch (error) {
+                console.error('Error checking seller prompt:', error);
+            }
+        };
+        checkSellerPrompt();
+    }, [user]);
 
     const handleDone = async () => {
         await resetCheckout();
@@ -462,8 +487,94 @@ const ConfirmationStep: React.FC = () => {
         router.replace('/profile/orders');
     };
 
+    const handleBecomeSeller = async () => {
+        setShowSellerPrompt(false);
+        await resetCheckout();
+        router.push('/seller/apply');
+    };
+
+    const handleDismissPrompt = () => {
+        setShowDismissConfirm(true);
+    };
+
+    const handleConfirmDismiss = async () => {
+        try {
+            const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+            await AsyncStorage.setItem('sellerPromptDismissed', 'true');
+        } catch (error) {
+            console.error('Error saving dismiss preference:', error);
+        }
+        setShowDismissConfirm(false);
+        setShowSellerPrompt(false);
+    };
+
+    const handleCancelDismiss = () => {
+        setShowDismissConfirm(false);
+    };
+
     return (
         <View style={styles.stepContent}>
+            {/* Seller Promotion Modal */}
+            <Modal
+                visible={showSellerPrompt}
+                transparent
+                animationType="fade"
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { maxWidth: 380 }]}>
+                        {!showDismissConfirm ? (
+                            <>
+                                <Text style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>🧶✨</Text>
+                                <Text style={[styles.modalTitle, { fontSize: 20, textAlign: 'center' }]}>
+                                    Have a Talent for Crafting?
+                                </Text>
+                                <Text style={[styles.modalText, { textAlign: 'center', lineHeight: 22 }]}>
+                                    Turn your passion into profit! Join our community of artisans and share your handmade creations with customers who appreciate quality craftsmanship.
+                                </Text>
+                                <View style={{ gap: 10, marginTop: 16 }}>
+                                    <Pressable
+                                        style={[styles.primaryButton, { backgroundColor: '#C88EA7' }]}
+                                        onPress={handleBecomeSeller}
+                                    >
+                                        <Text style={styles.primaryButtonText}>🏪 Start Selling Today</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        style={[styles.cancelButton, { borderColor: '#ddd' }]}
+                                        onPress={handleDismissPrompt}
+                                    >
+                                        <Text style={[styles.cancelButtonText, { color: '#888' }]}>Maybe Later</Text>
+                                    </Pressable>
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={{ fontSize: 32, textAlign: 'center', marginBottom: 12 }}>🤔</Text>
+                                <Text style={[styles.modalTitle, { fontSize: 18, textAlign: 'center' }]}>
+                                    Are you sure?
+                                </Text>
+                                <Text style={[styles.modalText, { textAlign: 'center' }]}>
+                                    You won't see this prompt again. You can always apply to become a seller from the menu anytime.
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                                    <Pressable
+                                        style={[styles.cancelButton, { flex: 1 }]}
+                                        onPress={handleCancelDismiss}
+                                    >
+                                        <Text style={styles.cancelButtonText}>Go Back</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        style={[styles.primaryButton, { flex: 1, backgroundColor: '#666' }]}
+                                        onPress={handleConfirmDismiss}
+                                    >
+                                        <Text style={styles.primaryButtonText}>I'm Sure</Text>
+                                    </Pressable>
+                                </View>
+                            </>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
             <View style={styles.confirmationContainer}>
                 <View style={styles.successIcon}>
                     <Text style={styles.successIconText}>✓</Text>

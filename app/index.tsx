@@ -1,9 +1,8 @@
-import { productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import ProductCard from "@/components/ProductCard";
-import { Product } from "@/types/products";
+import { useProducts } from "@/hooks/useProducts";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -11,34 +10,30 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
-  View
+  View,
+  useWindowDimensions
 } from "react-native";
 
 export default function Index() {
   const router = useRouter();
   const { user } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { width } = useWindowDimensions();
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
+  // Use centralized hook for data fetching
+  const { products, loading } = useProducts({
+    limit: 10,
+    newArrival: true
+  });
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const res = await productAPI.getProducts({ limit: 10, newArrival: true });
-      setProducts(res.data.products);
-    } catch (e) {
-      console.error("Failed to load products", e);
-    } finally {
-      setLoading(false);
-    }
+  const getNumColumns = () => {
+    if (width > 1024) return 8;
+    if (width > 768) return 3;
+    return 2;
   };
 
-  const renderProduct = ({ item }: { item: Product }) => (
-    <ProductCard product={item} />
-  );
+  const numColumns = getNumColumns();
+  const gap = 8;
+  const cardWidth = (width - 32 - (numColumns - 1) * gap) / numColumns;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,11 +60,17 @@ export default function Index() {
           <ActivityIndicator size="large" color="#B36979" />
         ) : (
           <FlatList
+            key={`grid-${numColumns}`}
             data={products}
-            renderItem={renderProduct}
+            renderItem={({ item }) => (
+              <ProductCard
+                product={item}
+                style={{ width: cardWidth }}
+              />
+            )}
             keyExtractor={(item) => item.uid.toString()}
-            numColumns={2}
-            columnWrapperStyle={styles.columnWrapper}
+            numColumns={numColumns}
+            columnWrapperStyle={[styles.columnWrapper, { gap }]}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={<Text>No products yet.</Text>}
           />
@@ -117,6 +118,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+    borderWidth: 0,
   },
   sectionTitle: {
     fontSize: 18,
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   columnWrapper: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     marginBottom: 16,
   },
 });

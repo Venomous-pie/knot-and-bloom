@@ -28,6 +28,7 @@ export const getProductsQuerySchema = z.object({
     newArrival: z.coerce.boolean().optional().default(false),
     limit: z.coerce.number().int().positive().optional(),
     offset: z.coerce.number().int().nonnegative().optional(),
+    sort: z.enum(['newest', 'price_asc', 'price_desc', 'bestselling']).optional(),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

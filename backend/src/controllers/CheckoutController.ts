@@ -646,7 +646,19 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
         // Atomic transaction: update stock and create order
         const order = await prisma.$transaction(async (tx) => {
             // Update stock for each item
+            // Update stock and sold count for each item
             for (const item of lockedPrices) {
+                // Increment Product soldCount
+                try {
+                    await tx.product.update({
+                        where: { uid: item.productId },
+                        data: { soldCount: { increment: item.quantity } },
+                    });
+                } catch (error) {
+                    console.error(`Failed to update soldCount for product ${item.productId}`, error);
+                    // Don't fail the transaction just for stats
+                }
+
                 if (item.variantId) {
                     const result = await tx.productVariant.updateMany({
                         where: {
@@ -655,6 +667,7 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
                         },
                         data: {
                             stock: { decrement: item.quantity },
+                            soldCount: { increment: item.quantity },
                         },
                     });
 

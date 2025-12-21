@@ -12,6 +12,7 @@ import {
     StyleSheet,
     Text,
     View,
+    useWindowDimensions
 } from "react-native";
 
 export default function ProductCategoryPage() {
@@ -37,6 +38,19 @@ export default function ProductCategoryPage() {
     const categoryTitle = categoryTitles[category as string]
         || category?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || "Products";
 
+    const { width } = useWindowDimensions();
+
+    const getNumColumns = () => {
+        if (width > 1024) return 8;
+        if (width > 768) return 3;
+        return 2;
+    };
+
+    const numColumns = getNumColumns();
+    const gap = 8;
+    const cardWidth = (width - 32 - (numColumns - 1) * gap) / numColumns;
+
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -53,11 +67,12 @@ export default function ProductCategoryPage() {
                 </View>
             ) : (
                 <FlatList
+                    key={`grid-${numColumns}`}
                     data={products}
-                    renderItem={({ item }) => <ProductCard product={item} />}
+                    renderItem={({ item }) => <ProductCard product={item} style={{ width: cardWidth }} />}
                     keyExtractor={(item) => item.uid.toString()}
-                    numColumns={2}
-                    columnWrapperStyle={styles.columnWrapper}
+                    numColumns={numColumns}
+                    columnWrapperStyle={[styles.columnWrapper, { gap }]}
                     contentContainerStyle={styles.listContent}
                     onEndReached={() => loadMore()}
                     onEndReachedThreshold={0.5}
@@ -99,8 +114,7 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     columnWrapper: {
-        justifyContent: 'space-between',
-        marginBottom: 16,
+        justifyContent: 'flex-start',
     },
     centered: {
         flex: 1,

@@ -111,7 +111,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         throw error;
     }
 
-    const { category, searchTerm, newArrival = false, limit = 30, offset = 0, } = parsedInput;
+    const { category, searchTerm, newArrival = false, limit = 30, offset = 0, sort } = parsedInput;
 
     const whereClause: any = {};
 
@@ -135,12 +135,23 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         };
     }
 
+    let orderBy: any = { uploaded: 'desc' };
+    if (sort === 'bestselling') {
+        orderBy = { soldCount: 'desc' };
+    } else if (sort === 'price_asc') {
+        orderBy = { basePrice: 'asc' };
+    } else if (sort === 'price_desc') {
+        orderBy = { basePrice: 'desc' };
+    } else if (sort === 'newest') {
+        orderBy = { uploaded: 'desc' };
+    }
+
     const [products, total] = await Promise.all([
         prisma.product.findMany({
             where: whereClause,
             take: limit,
             skip: offset,
-            orderBy: { uploaded: 'desc' },
+            orderBy: orderBy,
             include: {
                 variants: true  // Include product variants
             }

@@ -7,6 +7,7 @@ interface ProductVariant {
     price?: number;
     discountPercentage?: number;
     discountedPrice?: number;
+    soldCount: number;
     image?: string;
 }
 
@@ -16,9 +17,10 @@ interface Product {
     sku: string;
     categories: string[];
     basePrice: string;
-    discountedPrice?: string;
-    discountPercentage?: number;
-    image?: string;
+    discountedPrice?: number | null;
+    discountPercentage?: number | null;
+    soldCount: number;
+    image: string | null;
     description?: string;
     uploaded: string;
     updated: string;
@@ -31,6 +33,7 @@ interface GetProductsParams {
     newArrival?: boolean;
     limit?: number;
     offset?: number;
+    sort?: 'newest' | 'price_asc' | 'price_desc' | 'bestselling';
 }
 
 interface GetProductsResponse {

@@ -15,6 +15,7 @@ model Product {
   basePrice          Decimal
   discountedPrice    Decimal?
   discountPercentage Int?
+  soldCount          Int              @default(0)
   image              String?
   description        String?
   uploaded           DateTime         @default(now())
@@ -30,6 +31,7 @@ model ProductVariant {
   name               String // "Small Red", "Large Blue", or "Default"
   sku                String     @unique
   stock              Int        @default(0)
+  soldCount          Int        @default(0)
   price              Decimal? // Optional variant-specific price override
   discountPercentage Int? // Variant-specific discount
   discountedPrice    Decimal? // Variant-specific discounted price

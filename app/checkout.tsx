@@ -1,9 +1,11 @@
-import { checkoutAPI } from "@/api/api";
+import { Address, addressAPI, AddressInput, checkoutAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
 import { CheckoutProvider, CheckoutStep, ShippingInfo, useCheckout } from "@/app/context/_CheckoutContext";
+import { AddressForm } from "@/components/checkout/AddressForm";
+import { AddressSelector } from "@/components/checkout/AddressSelector";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -129,120 +131,221 @@ const CartReviewStep: React.FC = () => {
     );
 };
 
-// Shipping Step
+// Shipping Step - Enhanced with Saved Addresses
 const ShippingStep: React.FC = () => {
     const { shippingInfo, setShippingInfo, validateAndProceedToPayment, isProcessing, statusMessage, error, setStep } = useCheckout();
+    const { user } = useAuth();
 
-    const [form, setForm] = useState<ShippingInfo>({
-        fullName: shippingInfo?.fullName || '',
-        phone: shippingInfo?.phone || '',
-        address: shippingInfo?.address || '',
-        city: shippingInfo?.city || '',
-        postalCode: shippingInfo?.postalCode || '',
-        notes: shippingInfo?.notes || '',
-    });
+    // Address state
+    const [addresses, setAddresses] = useState<Address[]>([]);
+    const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+    const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
+    const [addressError, setAddressError] = useState<string | null>(null);
 
-    const [formErrors, setFormErrors] = useState<Partial<Record<keyof ShippingInfo, string>>>({});
+    // Form mode: 'select' for returning users, 'add' for first-time or adding new
+    const [mode, setMode] = useState<'select' | 'add' | 'edit'>('select');
+    const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+    const [isSavingAddress, setIsSavingAddress] = useState(false);
 
-    const validateForm = (): boolean => {
-        const errors: Partial<Record<keyof ShippingInfo, string>> = {};
+    // Delivery notes (separate from address)
+    const [deliveryNotes, setDeliveryNotes] = useState(shippingInfo?.notes || '');
 
-        if (!form.fullName.trim()) errors.fullName = 'Full name is required';
-        if (!form.phone.trim()) errors.phone = 'Phone number is required';
-        if (!form.address.trim()) errors.address = 'Address is required';
-        if (!form.city.trim()) errors.city = 'City is required';
-        if (!form.postalCode.trim()) errors.postalCode = 'Postal code is required';
+    // Fetch addresses on mount
+    useEffect(() => {
+        const fetchAddresses = async () => {
+            if (!user) return;
 
-        setFormErrors(errors);
-        return Object.keys(errors).length === 0;
-    };
+            try {
+                setIsLoadingAddresses(true);
+                const response = await addressAPI.getAddresses();
+                const fetchedAddresses = response.data.addresses;
+                setAddresses(fetchedAddresses);
 
+                // Auto-select default or first address
+                if (fetchedAddresses.length > 0) {
+                    const defaultAddr = fetchedAddresses.find(a => a.isDefault);
+                    setSelectedAddressId(defaultAddr?.uid || fetchedAddresses[0].uid);
+                    setMode('select');
+                } else {
+                    setMode('add');
+                }
+            } catch (err) {
+                console.error('Error fetching addresses:', err);
+                setAddressError('Failed to load addresses');
+                setMode('add');
+            } finally {
+                setIsLoadingAddresses(false);
+            }
+        };
+
+        fetchAddresses();
+    }, [user]);
+
+    // Convert Address to ShippingInfo for checkout context
+    const addressToShippingInfo = useCallback((address: Address): ShippingInfo => ({
+        fullName: address.fullName,
+        phone: address.phone,
+        address: `${address.streetAddress}${address.aptSuite ? `, ${address.aptSuite}` : ''}`,
+        city: address.city,
+        postalCode: address.postalCode,
+        notes: deliveryNotes,
+    }), [deliveryNotes]);
+
+    // Handle continue to payment
     const handleContinue = async () => {
-        if (!validateForm()) return;
-
-        setShippingInfo(form);
-        const success = await validateAndProceedToPayment();
-        if (!success) {
-            // Error is handled by context
+        if (mode === 'select' && selectedAddressId) {
+            const selectedAddress = addresses.find(a => a.uid === selectedAddressId);
+            if (selectedAddress) {
+                setShippingInfo(addressToShippingInfo(selectedAddress));
+                await validateAndProceedToPayment();
+            }
         }
     };
 
+    // Handle save new address
+    const handleSaveAddress = async (data: any) => {
+        setIsSavingAddress(true);
+        try {
+            const addressInput: AddressInput = {
+                label: data.label,
+                fullName: data.fullName,
+                phone: data.phone,
+                streetAddress: data.streetAddress,
+                aptSuite: data.aptSuite,
+                city: data.city,
+                stateProvince: data.stateProvince,
+                postalCode: data.postalCode,
+                country: data.country || 'Philippines',
+                isDefault: data.isDefault,
+            };
+
+            if (mode === 'edit' && editingAddress) {
+                // Update existing
+                const response = await addressAPI.updateAddress(editingAddress.uid, addressInput);
+                setAddresses(prev => prev.map(a => a.uid === editingAddress.uid ? response.data.address : a));
+            } else {
+                // Create new
+                const response = await addressAPI.createAddress(addressInput);
+                setAddresses(prev => [...prev, response.data.address]);
+                setSelectedAddressId(response.data.address.uid);
+            }
+
+            setMode('select');
+            setEditingAddress(null);
+        } catch (err: any) {
+            console.error('Error saving address:', err);
+            alert(err.response?.data?.error || 'Failed to save address');
+        } finally {
+            setIsSavingAddress(false);
+        }
+    };
+
+    // Handle delete address
+    const handleDeleteAddress = async (addressId: number) => {
+        try {
+            await addressAPI.deleteAddress(addressId);
+            setAddresses(prev => prev.filter(a => a.uid !== addressId));
+
+            // Select another address if deleted the selected one
+            if (selectedAddressId === addressId) {
+                const remaining = addresses.filter(a => a.uid !== addressId);
+                if (remaining.length > 0) {
+                    setSelectedAddressId(remaining[0].uid);
+                } else {
+                    setMode('add');
+                }
+            }
+        } catch (err: any) {
+            alert(err.response?.data?.error || 'Failed to delete address');
+        }
+    };
+
+    // Handle set default
+    const handleSetDefault = async (addressId: number) => {
+        try {
+            await addressAPI.setDefaultAddress(addressId);
+            setAddresses(prev => prev.map(a => ({
+                ...a,
+                isDefault: a.uid === addressId
+            })));
+        } catch (err) {
+            console.error('Error setting default:', err);
+        }
+    };
+
+    // Loading state
+    if (isLoadingAddresses) {
+        return (
+            <View style={styles.stepContent}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+                    <ActivityIndicator size="large" color="#7c3aed" />
+                    <Text style={{ marginTop: 12, color: '#6b7280' }}>Loading addresses...</Text>
+                </View>
+            </View>
+        );
+    }
+
     return (
-        <ScrollView style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Shipping Information</Text>
-            <Text style={styles.stepSubtitle}>Enter your delivery details</Text>
+        <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Shipping Address</Text>
+            <Text style={styles.stepSubtitle}>
+                {mode === 'select' ? 'Select a delivery address' : mode === 'edit' ? 'Edit address' : 'Add your shipping address'}
+            </Text>
 
-            <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Full Name *</Text>
-                <TextInput
-                    style={[styles.formInput, formErrors.fullName && styles.formInputError]}
-                    value={form.fullName}
-                    onChangeText={(text) => setForm(prev => ({ ...prev, fullName: text }))}
-                    placeholder="Enter your full name"
-                />
-                {formErrors.fullName && <Text style={styles.fieldError}>{formErrors.fullName}</Text>}
-            </View>
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+                {mode === 'select' ? (
+                    <>
+                        <AddressSelector
+                            addresses={addresses}
+                            selectedId={selectedAddressId}
+                            onSelect={setSelectedAddressId}
+                            onEdit={(address) => {
+                                setEditingAddress(address);
+                                setMode('edit');
+                            }}
+                            onDelete={handleDeleteAddress}
+                            onSetDefault={handleSetDefault}
+                            onAddNew={() => setMode('add')}
+                        />
 
-            <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Phone Number *</Text>
-                <TextInput
-                    style={[styles.formInput, formErrors.phone && styles.formInputError]}
-                    value={form.phone}
-                    onChangeText={(text) => setForm(prev => ({ ...prev, phone: text }))}
-                    placeholder="Enter your phone number"
-                    keyboardType="phone-pad"
-                />
-                {formErrors.phone && <Text style={styles.fieldError}>{formErrors.phone}</Text>}
-            </View>
-
-            <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Address *</Text>
-                <TextInput
-                    style={[styles.formInput, formErrors.address && styles.formInputError, { minHeight: 80 }]}
-                    value={form.address}
-                    onChangeText={(text) => setForm(prev => ({ ...prev, address: text }))}
-                    placeholder="Enter your complete address"
-                    multiline
-                    numberOfLines={3}
-                />
-                {formErrors.address && <Text style={styles.fieldError}>{formErrors.address}</Text>}
-            </View>
-
-            <View style={styles.formRow}>
-                <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-                    <Text style={styles.formLabel}>City *</Text>
-                    <TextInput
-                        style={[styles.formInput, formErrors.city && styles.formInputError]}
-                        value={form.city}
-                        onChangeText={(text) => setForm(prev => ({ ...prev, city: text }))}
-                        placeholder="City"
+                        {/* Delivery Notes */}
+                        <View style={styles.formGroup}>
+                            <Text style={styles.formLabel}>Delivery Notes (Optional)</Text>
+                            <TextInput
+                                style={[styles.formInput, { minHeight: 60 }]}
+                                value={deliveryNotes}
+                                onChangeText={setDeliveryNotes}
+                                placeholder="Any special instructions?"
+                                multiline
+                                numberOfLines={2}
+                            />
+                        </View>
+                    </>
+                ) : (
+                    <AddressForm
+                        initialData={editingAddress ? {
+                            label: editingAddress.label || undefined,
+                            fullName: editingAddress.fullName,
+                            phone: editingAddress.phone,
+                            streetAddress: editingAddress.streetAddress,
+                            aptSuite: editingAddress.aptSuite || undefined,
+                            city: editingAddress.city,
+                            stateProvince: editingAddress.stateProvince || undefined,
+                            postalCode: editingAddress.postalCode,
+                            country: editingAddress.country,
+                            isDefault: editingAddress.isDefault,
+                        } : undefined}
+                        onSave={handleSaveAddress}
+                        onCancel={addresses.length > 0 ? () => {
+                            setMode('select');
+                            setEditingAddress(null);
+                        } : undefined}
+                        showSaveCheckbox={false}
+                        isSaving={isSavingAddress}
+                        mode={mode === 'edit' ? 'edit' : 'create'}
                     />
-                    {formErrors.city && <Text style={styles.fieldError}>{formErrors.city}</Text>}
-                </View>
-                <View style={[styles.formGroup, { flex: 1 }]}>
-                    <Text style={styles.formLabel}>Postal Code *</Text>
-                    <TextInput
-                        style={[styles.formInput, formErrors.postalCode && styles.formInputError]}
-                        value={form.postalCode}
-                        onChangeText={(text) => setForm(prev => ({ ...prev, postalCode: text }))}
-                        placeholder="Postal Code"
-                        keyboardType="number-pad"
-                    />
-                    {formErrors.postalCode && <Text style={styles.fieldError}>{formErrors.postalCode}</Text>}
-                </View>
-            </View>
-
-            <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>Delivery Notes (Optional)</Text>
-                <TextInput
-                    style={[styles.formInput, { minHeight: 60 }]}
-                    value={form.notes}
-                    onChangeText={(text) => setForm(prev => ({ ...prev, notes: text }))}
-                    placeholder="Any special instructions?"
-                    multiline
-                    numberOfLines={2}
-                />
-            </View>
+                )}
+            </ScrollView>
 
             {statusMessage && (
                 <View style={styles.statusContainer}>
@@ -251,29 +354,31 @@ const ShippingStep: React.FC = () => {
                 </View>
             )}
 
-            {error && (
+            {(error || addressError) && (
                 <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.errorText}>{error || addressError}</Text>
                 </View>
             )}
 
-            <View style={styles.buttonRow}>
-                <Pressable style={styles.cancelButton} onPress={() => setStep('cart')}>
-                    <Text style={styles.cancelButtonText}>Back</Text>
-                </Pressable>
-                <Pressable
-                    style={[styles.primaryButton, isProcessing && styles.disabledButton]}
-                    onPress={handleContinue}
-                    disabled={isProcessing}
-                >
-                    {isProcessing ? (
-                        <ActivityIndicator color="white" size="small" />
-                    ) : (
-                        <Text style={styles.primaryButtonText}>Continue to Payment</Text>
-                    )}
-                </Pressable>
-            </View>
-        </ScrollView>
+            {mode === 'select' && (
+                <View style={styles.buttonRow}>
+                    <Pressable style={styles.cancelButton} onPress={() => setStep('cart')}>
+                        <Text style={styles.cancelButtonText}>Back</Text>
+                    </Pressable>
+                    <Pressable
+                        style={[styles.primaryButton, (isProcessing || !selectedAddressId) && styles.disabledButton]}
+                        onPress={handleContinue}
+                        disabled={isProcessing || !selectedAddressId}
+                    >
+                        {isProcessing ? (
+                            <ActivityIndicator color="white" size="small" />
+                        ) : (
+                            <Text style={styles.primaryButtonText}>Continue to Payment</Text>
+                        )}
+                    </Pressable>
+                </View>
+            )}
+        </View>
     );
 };
 
@@ -553,7 +658,7 @@ const ConfirmationStep: React.FC = () => {
                                     Are you sure?
                                 </Text>
                                 <Text style={[styles.modalText, { textAlign: 'center' }]}>
-                                    You won't see this prompt again. You can always apply to become a seller from the menu anytime.
+                                    You won't see this prompt again. You can contact customer support if you change your mind.
                                 </Text>
                                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
                                     <Pressable

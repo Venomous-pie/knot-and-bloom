@@ -18,7 +18,8 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as AuthPayload;
+        const secret = process.env.JWT_SECRET || 'secret';
+        const decoded = jwt.verify(token, secret) as AuthPayload;
         req.user = decoded;
         next();
     } catch (error) {

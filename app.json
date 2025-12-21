@@ -20,7 +20,8 @@
     "web": {
       "output": "static",
       "bundler": "metro",
-      "favicon": "./assets/yarn.png"
+      "favicon": "./assets/yarn.png",
+      "name": "Knot and Bloom"
     },
     "plugins": [
       "expo-router",

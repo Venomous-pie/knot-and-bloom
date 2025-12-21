@@ -54,15 +54,16 @@ model Customer {
   email                 String            @unique
   password              String
   phone                 String?
-  address               String?
+  address               String? // Legacy field, use addresses[] for new orders
   uploaded              DateTime          @default(now())
   updated               DateTime          @updatedAt
   orders                Order[]
-  cart                  Cart? // One-to-one relation with Cart
+  cart                  Cart?
   role                  Role              @default(USER)
   passwordResetRequired Boolean           @default(false)
   sellerProfile         Seller?           @relation("CustomerSeller")
   checkoutSessions      CheckoutSession[]
+  addresses             Address[] // Saved shipping addresses
 }
 
 model Cart {
@@ -218,4 +219,25 @@ model OrderItem {
   deliveredAt      DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+}
+
+model Address {
+  uid           Int      @id @default(autoincrement())
+  customerId    Int
+  customer      Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  label         String? // "Home", "Work", etc.
+  fullName      String
+  phone         String
+  streetAddress String
+  aptSuite      String?
+  city          String
+  stateProvince String?
+  postalCode    String
+  country       String   @default("Philippines")
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([customerId, isDefault])
 }

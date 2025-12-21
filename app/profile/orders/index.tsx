@@ -20,7 +20,7 @@ interface OrderSummary {
     total: string;
     products: string; // JSON string
     uploaded: string;
-    // Add status if/when added to schema
+    status: string;
 }
 
 export default function OrderHistoryPage() {
@@ -56,6 +56,32 @@ export default function OrderHistoryPage() {
             </View>
         );
     }
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'PENDING': return '#FFA500';
+            case 'CONFIRMED': return '#2196F3';
+            case 'PROCESSING': return '#2196F3';
+            case 'SHIPPED': return '#9C27B0';
+            case 'DELIVERED': return '#4CAF50';
+            case 'CANCELLED': return '#F44336';
+            case 'REFUNDED': return '#FF5722';
+            default: return '#888';
+        }
+    };
+
+    const getStatusBgColor = (status: string) => {
+        switch (status) {
+            case 'PENDING': return '#FFF3E0';
+            case 'CONFIRMED': return '#E3F2FD';
+            case 'PROCESSING': return '#E3F2FD';
+            case 'SHIPPED': return '#F3E5F5';
+            case 'DELIVERED': return '#E8F5E9';
+            case 'CANCELLED': return '#FFEBEE';
+            case 'REFUNDED': return '#FBE9E7';
+            default: return '#F5F5F5';
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -99,11 +125,13 @@ export default function OrderHistoryPage() {
                                     <View>
                                         <Text style={styles.label}>Total</Text>
                                         <Text style={styles.totalPrice}>
-                                            ₱{parseFloat(order.total).toFixed(2)}
+                                            ₱{Number(order.total || 0).toFixed(2)}
                                         </Text>
                                     </View>
-                                    <View style={styles.statusBadge}>
-                                        <Text style={styles.statusText}>Completed</Text>
+                                    <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
+                                        <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+                                            {order.status || 'PENDING'}
+                                        </Text>
                                     </View>
                                 </View>
                             </Pressable>

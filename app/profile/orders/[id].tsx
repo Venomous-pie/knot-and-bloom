@@ -1,6 +1,5 @@
 import { orderAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
-import { Product } from '@/types/products'; // Assuming Product type is available
 import { RelativePathString, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -23,12 +22,23 @@ interface OrderDetail {
     products: string; // JSON string: { product: Product, quantity: number, variant?: string }[]
     uploaded: string;
     discount?: string;
+    status: string;
 }
 
-interface CartItem {
-    product: Product;
+interface OrderItemSnapshot {
+    product: {
+        uid: number;
+        name: string;
+        image: string | null;
+        // Legacy support
+        basePrice?: string | number;
+        discountedPrice?: string | number;
+    };
     quantity: number;
-    variant?: string; // variant name or object
+    unitPrice?: number; // Snapshot price
+    finalPrice?: number; // Snapshot final price
+    discountPercentage?: number;
+    variant?: string | { uid: number; name: string } | null;
 }
 
 export default function OrderDetailsPage() {
@@ -36,7 +46,7 @@ export default function OrderDetailsPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const [order, setOrder] = useState<OrderDetail | null>(null);
-    const [orderItems, setOrderItems] = useState<CartItem[]>([]);
+    const [orderItems, setOrderItems] = useState<OrderItemSnapshot[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -56,8 +66,6 @@ export default function OrderDetailsPage() {
             // Parse products JSON
             try {
                 const parsedProducts = JSON.parse(orderData.products);
-                // Adjust parsing logic based on how cart items are stored. 
-                // Assuming stored as array of objects similar to cart items
                 setOrderItems(Array.isArray(parsedProducts) ? parsedProducts : []);
             } catch (e) {
                 console.error("Failed to parse order items", e);
@@ -83,6 +91,32 @@ export default function OrderDetailsPage() {
 
     if (!order) return null;
 
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'PENDING': return '#FFA500';
+            case 'CONFIRMED': return '#2196F3';
+            case 'PROCESSING': return '#2196F3';
+            case 'SHIPPED': return '#9C27B0';
+            case 'DELIVERED': return '#4CAF50';
+            case 'CANCELLED': return '#F44336';
+            case 'REFUNDED': return '#FF5722';
+            default: return '#888';
+        }
+    };
+
+    const getStatusBgColor = (status: string) => {
+        switch (status) {
+            case 'PENDING': return '#FFF3E0';
+            case 'CONFIRMED': return '#E3F2FD';
+            case 'PROCESSING': return '#E3F2FD';
+            case 'SHIPPED': return '#F3E5F5';
+            case 'DELIVERED': return '#E8F5E9';
+            case 'CANCELLED': return '#FFEBEE';
+            case 'REFUNDED': return '#FBE9E7';
+            default: return '#F5F5F5';
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -94,8 +128,10 @@ export default function OrderDetailsPage() {
 
                 <View style={styles.titleSection}>
                     <Text style={styles.title}>Order #{order.uid}</Text>
-                    <View style={styles.statusBadge}>
-                        <Text style={styles.statusText}>Completed</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
+                        <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+                            {order.status || 'PENDING'}
+                        </Text>
                     </View>
                 </View>
                 <Text style={styles.date}>Placed on {new Date(order.uploaded).toLocaleDateString()} at {new Date(order.uploaded).toLocaleTimeString()}</Text>
@@ -103,23 +139,28 @@ export default function OrderDetailsPage() {
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Items</Text>
                     <View style={styles.itemsList}>
-                        {orderItems.map((item, index) => (
-                            <View key={index} style={styles.itemCard}>
-                                {item.product.image && (
-                                    <Image source={{ uri: item.product.image }} style={styles.itemImage} />
-                                )}
-                                <View style={styles.itemInfo}>
-                                    <Text style={styles.itemName}>{item.product.name}</Text>
-                                    <View style={styles.itemMeta}>
-                                        {item.variant && <Text style={styles.variantText}>Variant: {typeof item.variant === 'string' ? item.variant : (item.variant as any).name || 'Default'}</Text>}
-                                        <Text style={styles.quantityText}>Qty: {item.quantity}</Text>
+                        {orderItems.map((item, index) => {
+                            // Determine price: prefer snapshot finalPrice, then unitPrice, then product current price fallback
+                            const price = item.finalPrice ?? item.unitPrice ?? item.product.discountedPrice ?? item.product.basePrice ?? 0;
+
+                            return (
+                                <View key={index} style={styles.itemCard}>
+                                    {item.product.image && (
+                                        <Image source={{ uri: item.product.image }} style={styles.itemImage} />
+                                    )}
+                                    <View style={styles.itemInfo}>
+                                        <Text style={styles.itemName}>{item.product.name}</Text>
+                                        <View style={styles.itemMeta}>
+                                            {item.variant && <Text style={styles.variantText}>Variant: {typeof item.variant === 'string' ? item.variant : (item.variant as any).name || 'Default'}</Text>}
+                                            <Text style={styles.quantityText}>Qty: {item.quantity}</Text>
+                                        </View>
+                                        <Text style={styles.itemPrice}>
+                                            ₱{parseFloat(String(price)).toFixed(2)}
+                                        </Text>
                                     </View>
-                                    <Text style={styles.itemPrice}>
-                                        ₱{parseFloat(String(item.product.discountedPrice || item.product.basePrice)).toFixed(2)}
-                                    </Text>
                                 </View>
-                            </View>
-                        ))}
+                            );
+                        })}
                     </View>
                 </View>
 

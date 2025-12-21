@@ -262,4 +262,69 @@ export const checkoutAPI = {
         apiClient.get<{ success: boolean; methods: string[] }>('/checkout/methods/available'),
 };
 
+// ============================================
+// Address API
+// ============================================
+
+export interface Address {
+    uid: number;
+    label?: string | null;
+    fullName: string;
+    phone: string;
+    streetAddress: string;
+    aptSuite?: string | null;
+    city: string;
+    stateProvince?: string | null;
+    postalCode: string;
+    country: string;
+    isDefault: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface AddressInput {
+    label?: string;
+    fullName: string;
+    phone: string;
+    streetAddress: string;
+    aptSuite?: string;
+    city: string;
+    stateProvince?: string;
+    postalCode: string;
+    country?: string;
+    isDefault?: boolean;
+}
+
+export const addressAPI = {
+    /**
+     * Get all addresses for authenticated user
+     */
+    getAddresses: () =>
+        apiClient.get<{ addresses: Address[] }>('/addresses/me'),
+
+    /**
+     * Create a new address
+     */
+    createAddress: (data: AddressInput) =>
+        apiClient.post<{ address: Address }>('/addresses/me', data),
+
+    /**
+     * Update an address
+     */
+    updateAddress: (addressId: number, data: Partial<AddressInput>) =>
+        apiClient.put<{ address: Address }>(`/addresses/me/${addressId}`, data),
+
+    /**
+     * Delete an address
+     */
+    deleteAddress: (addressId: number) =>
+        apiClient.delete<{ success: boolean }>(`/addresses/me/${addressId}`),
+
+    /**
+     * Set an address as default
+     */
+    setDefaultAddress: (addressId: number) =>
+        apiClient.patch<{ address: Address }>(`/addresses/me/${addressId}/default`),
+};
+
 export default api;

@@ -3,6 +3,7 @@ dotenv.config();
 
 import cors from 'cors';
 import express from 'express';
+import addressRoutes from './routes/addressRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import checkoutRoutes from './routes/checkoutRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
@@ -36,6 +37,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/sellers', sellerRoutes);
+app.use('/api/addresses', addressRoutes);
 
 
 // Error handling middleware

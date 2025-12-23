@@ -1,5 +1,5 @@
 import { InferenceClient } from "@huggingface/inference";
-import prisma from "../utils/prisma.js";
+import prisma from "../utils/prismaUtils.js";
 
 // ============================================
 // Description Generation

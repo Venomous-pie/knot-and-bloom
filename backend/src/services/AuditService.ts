@@ -1,12 +1,4 @@
-
-export interface AuditLogEntry {
-    action: string;
-    entityType: 'checkout' | 'payment' | 'order';
-    entityId: number;
-    customerId: number;
-    data?: Record<string, any> | undefined;
-    errorMessage?: string | undefined;
-}
+import type { AuditLogEntry } from "../types/checkoutTypes.js";
 
 /**
  * Simple audit logging service for order/payment events.

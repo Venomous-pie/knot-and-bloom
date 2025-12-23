@@ -118,7 +118,7 @@ router.post('/generate-variant-sku', async (req, res) => {
 // ============================================
 import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
-import { Role } from '../types/auth.js';
+import { Role } from '../types/authTypes.js';
 
 // ============================================
 // Admin-only Product Management

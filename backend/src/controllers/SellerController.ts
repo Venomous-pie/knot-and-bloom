@@ -1,8 +1,8 @@
 import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { Role, SellerStatus } from '../types/auth.js';
-import prisma from '../utils/prisma.js';
+import { Role, SellerStatus } from '../types/authTypes.js';
+import prisma from '../utils/prismaUtils.js';
 import { ensureAdminSellerProfile } from '../utils/sellerUtils.js';
 
 // Validator for Upgrade (Just Store Info)

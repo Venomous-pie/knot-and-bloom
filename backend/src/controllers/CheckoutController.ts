@@ -1,5 +1,5 @@
-import prisma from '../utils/prisma.js';
-import Pricing from '../utils/pricing.js';
+import prisma from '../utils/prismaUtils.js';
+import Pricing from '../utils/pricingUtils.js';
 import ErrorHandler from '../error/errorHandler.js';
 import type { Request, Response } from 'express';
 import { CheckoutStatus, OrderStatus, PaymentStatus } from '../../generated/prisma/index.js';
@@ -8,8 +8,8 @@ import { notifications } from '../services/notificationService.js';
 import { PaymentService } from '../services/PaymentService.js';
 
 import type {
-    LockedPriceItem
-} from '../types/checkout.js';
+    LockedPriceItem,
+} from '../types/checkoutTypes.js';
 
 // Session expiration time (15 minutes)
 const SESSION_EXPIRY_MS = 15 * 60 * 1000;

@@ -53,6 +53,12 @@ export class InsufficientStockError extends CustomError {
     }
 }
 
+export class BadRequestError extends CustomError {
+    constructor(message: string = 'Bad request') {
+        super(message, 400, 'BAD_REQUEST');
+    }
+}
+
 export default {
     AuthenticationError,
     CustomError,
@@ -62,5 +68,6 @@ export default {
     DuplicateCustomerError,
     ForbiddenError,
     ConflictError,
-    InsufficientStockError
+    InsufficientStockError,
+    BadRequestError
 }

@@ -3,7 +3,7 @@ import type {
     ProductLike,
     VariantLike,
     PriceCalculation
-} from '../types/pricing.js';
+} from '../types/pricingTypes.js';
 
 export const CalculateDiscount = (priceInput: PriceInput) => {
     const basePrice = priceInput.basePrice;

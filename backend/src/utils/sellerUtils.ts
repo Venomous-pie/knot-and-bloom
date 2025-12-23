@@ -1,6 +1,6 @@
 
-import { SellerStatus } from "../types/auth.js";
-import prisma from "./prisma.js";
+import { SellerStatus } from "../types/authTypes.js";
+import prisma from "./prismaUtils.js";
 
 // Helper to ensure Admin has a Seller Profile (auto-creation for shared inventory access)
 export async function ensureAdminSellerProfile(userId: number, email: string): Promise<number> {

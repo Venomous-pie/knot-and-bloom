@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { notifications } from '../services/notificationService.js';
-import prisma from '../utils/prisma.js';
+import prisma from '../utils/prismaUtils.js';
 
 const getOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {

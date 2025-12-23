@@ -1,9 +1,9 @@
-import prisma from "../utils/prisma.js";
+import prisma from "../utils/prismaUtils.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { ZodError } from "zod";
 
-import { type AuthPayload } from "../types/auth.js";
+import { type AuthPayload } from "../types/authTypes.js";
 
 import ErrorHandler from "../error/errorHandler.js";
 

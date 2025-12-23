@@ -1,3 +1,5 @@
+import type { Prisma } from "../../generated/prisma/client.js";
+
 interface CartItemWithDetails {
     uid: number;
     quantity: number;
@@ -7,16 +9,16 @@ interface CartItemWithDetails {
         uid: number;
         name: string;
         image: string | null;
-        basePrice: any;
+        basePrice: Prisma.Decimal;
         discountPercentage: number | null;
-        discountedPrice: any;
+        discountedPrice: Prisma.Decimal | null;
     };
     productVariant: {
         uid: number;
         name: string;
-        price: any;
+        price: Prisma.Decimal | null;
         discountPercentage: number | null;
-        discountedPrice: any;
+        discountedPrice: Prisma.Decimal | null;
         stock: number;
         image: string | null;
     } | null;
@@ -36,4 +38,13 @@ interface LockedPriceItem {
     sellerId: number | null;
 }
 
-export type { CartItemWithDetails, LockedPriceItem };
+interface AuditLogEntry {
+    action: string;
+    entityType: 'checkout' | 'payment' | 'order';
+    entityId: number;
+    customerId: number;
+    data?: Record<string, any> | undefined;
+    errorMessage?: string | undefined;
+}
+
+export type { CartItemWithDetails, LockedPriceItem, AuditLogEntry };

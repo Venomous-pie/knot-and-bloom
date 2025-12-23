@@ -10,7 +10,7 @@ import customerRoutes from './routes/customerRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
-import prisma from './utils/prisma.js';
+import prisma from './utils/prismaUtils.js';
 
 import { createServer } from 'http';
 import { socketService } from './services/SocketService.js';

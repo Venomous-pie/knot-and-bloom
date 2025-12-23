@@ -1,6 +1,6 @@
-import prisma from '../utils/prisma.js';
+import prisma from '../utils/prismaUtils.js';
 import type { Request, Response } from 'express';
-import Pricing from '../utils/pricing.js';
+import Pricing from '../utils/pricingUtils.js';
 import ErrorHandler from '../error/errorHandler.js';
 
 const addToCart = async (req: Request, res: Response): Promise<void> => {

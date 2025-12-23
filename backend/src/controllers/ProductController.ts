@@ -1,14 +1,14 @@
-import prisma from "../utils/prisma.js";
+import prisma from "../utils/prismaUtils.js";
 import { ProductStatus, SellerStatus } from "../../generated/prisma/client.js";
 import { ZodError } from "zod";
 import { socketService } from "../services/SocketService.js";
 import ErrorHandler from "../error/errorHandler.js";
-import { Role } from "../types/auth.js";
-import Pricing from "../utils/pricing.js";
+import { Role } from "../types/authTypes.js";
+import Pricing from "../utils/pricingUtils.js";
 import { ensureAdminSellerProfile } from "../utils/sellerUtils.js";
 
-import type { AuthPayload } from "../types/auth.js";
-import type { GetProductsResult } from "../types/product.js";
+import type { AuthPayload } from "../types/authTypes.js";
+import type { GetProductsResult } from "../types/productTypes.js";
 import {
     getProductsQuerySchema,
     productSchema,

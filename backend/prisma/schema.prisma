@@ -54,9 +54,9 @@ model ProductVariant {
 model Customer {
   uid                   Int               @id @default(autoincrement())
   name                  String
-  email                 String            @unique
+  email                 String?           @unique
   password              String
-  phone                 String?
+  phone                 String?           @unique
   address               String?
   uploaded              DateTime          @default(now())
   updated               DateTime          @updatedAt

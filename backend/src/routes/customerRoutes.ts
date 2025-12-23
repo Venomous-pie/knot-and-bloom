@@ -3,6 +3,8 @@ import customerController from '../controllers/CustomerController.js';
 import { DuplicateCustomerError, ValidationError, AuthenticationError, NotFoundError } from '../error/errorHandler.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 
+import { authRateLimiter } from '../middleware/rateLimiter.js';
+
 const router = Router();
 
 router.get('/profile', authenticate, async (req, res) => {
@@ -44,7 +46,7 @@ router.put('/profile', authenticate, async (req, res) => {
     }
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authRateLimiter, async (req, res) => {
     try {
         const result = await customerController.customerRegisterController(req.body);
 
@@ -79,7 +81,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimiter, async (req, res) => {
     try {
         const result = await customerController.customerLoginController(req.body);
 

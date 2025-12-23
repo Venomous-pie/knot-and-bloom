@@ -59,6 +59,7 @@ export default function BespokeAuthForm({
     const [isLoading, setIsLoading] = useState(false);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     // Auth Method State
     const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
@@ -90,6 +91,7 @@ export default function BespokeAuthForm({
 
     const handleAuth = async () => {
         setError("");
+        setFieldErrors({});
         setIsLoading(true);
         Keyboard.dismiss();
 
@@ -118,9 +120,24 @@ export default function BespokeAuthForm({
             }
         } catch (err: any) {
             console.error(err);
-            setError(
-                err.response?.data?.message || "Authentication failed. Please try again."
-            );
+            if (err.response?.data?.issues) {
+                const newFieldErrors: Record<string, string> = {};
+                err.response.data.issues.forEach((issue: any) => {
+                    if (issue.path && issue.path.length > 0) {
+                        newFieldErrors[issue.path[0]] = issue.message;
+                    }
+                });
+                setFieldErrors(newFieldErrors);
+
+                // Only show generic error if we couldn't map any specific field errors
+                if (Object.keys(newFieldErrors).length === 0) {
+                    setError(err.response?.data?.error || "Validation failed.");
+                }
+            } else {
+                setError(
+                    err.response?.data?.message || err.response?.data?.error || "Authentication failed. Please try again."
+                );
+            }
         } finally {
             setIsLoading(false);
         }
@@ -477,6 +494,7 @@ export default function BespokeAuthForm({
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor="#B36979"
                                             />
+                                            {fieldErrors.email && <Text style={styles.errorTextSmall}>{fieldErrors.email}</Text>}
                                         </View>
                                     ) : (
                                         <View>
@@ -495,6 +513,7 @@ export default function BespokeAuthForm({
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor="#B36979"
                                             />
+                                            {fieldErrors.phone && <Text style={styles.errorTextSmall}>{fieldErrors.phone}</Text>}
                                         </View>
                                     )}
 
@@ -545,6 +564,7 @@ export default function BespokeAuthForm({
                                                 )}
                                             </Pressable>
                                         </View>
+                                        {fieldErrors.password && <Text style={styles.errorTextSmall}>{fieldErrors.password}</Text>}
                                     </View>
                                 </View>
 
@@ -695,6 +715,12 @@ const styles = StyleSheet.create({
     featureSubtitle: {
         fontSize: 12,
         color: "#888",
+    },
+    errorTextSmall: {
+        color: "#EF4444",
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
     },
     mobileHeader: {
         alignItems: "center",

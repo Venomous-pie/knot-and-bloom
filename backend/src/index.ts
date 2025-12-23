@@ -17,6 +17,9 @@ import { socketService } from './services/SocketService.js';
 import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
 
 const app = express();
+// Enable trust proxy to correctly identify client IPs behind a proxy (e.g., Nginx, Heroku, AWS ELB)
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3030;
 
 // Middlewares

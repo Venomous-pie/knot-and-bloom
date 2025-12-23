@@ -19,26 +19,41 @@ import {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
+import { generateRandomName } from "../utils/nameGenerator.js";
+
 const customerRegisterController = async (input: unknown) => {
     let parsedInput: CustomerInput;
 
     try {
         parsedInput = customerSchema.parse(input);
 
-        const existingCustomer = await prisma.customer.findUnique({
-            where: { email: parsedInput.email },
+        // Check for existing user by email OR phone
+        const existingCustomer = await prisma.customer.findFirst({
+            where: {
+                OR: [
+                    ...(parsedInput.email ? [{ email: parsedInput.email }] : []),
+                    ...(parsedInput.phone ? [{ phone: parsedInput.phone }] : [])
+                ]
+            },
         });
 
         if (existingCustomer) {
-            throw new ErrorHandler.DuplicateCustomerError(parsedInput.email);
+            if (parsedInput.email && existingCustomer.email === parsedInput.email) {
+                throw new ErrorHandler.DuplicateCustomerError(parsedInput.email);
+            }
+            if (parsedInput.phone && existingCustomer.phone === parsedInput.phone) {
+                // Create a custom error or reuse DuplicateCustomerError with phone message
+                throw new ErrorHandler.DuplicateCustomerError(parsedInput.phone);
+            }
         }
 
         const hashedPassword = await bcrypt.hash(parsedInput.password, 10);
+        const finalName = parsedInput.name || generateRandomName();
 
         const customer = await prisma.customer.create({
             data: {
-                name: parsedInput.name,
-                email: parsedInput.email,
+                name: finalName,
+                email: parsedInput.email || null,
                 password: hashedPassword,
                 phone: parsedInput.phone || null,
                 address: parsedInput.address || null,
@@ -48,7 +63,7 @@ const customerRegisterController = async (input: unknown) => {
         // Generate token for auto-login
         const payload: AuthPayload = {
             id: customer.uid,
-            email: customer.email,
+            ...(customer.email ? { email: customer.email } : {}),
             role: customer.role as any,
         };
 
@@ -82,25 +97,30 @@ const customerLoginController = async (input: unknown) => {
     try {
         parsedInput = customerLoginSchema.parse(input);
 
-        const customer = await prisma.customer.findUnique({
-            where: { email: parsedInput.email },
+        const customer = await prisma.customer.findFirst({
+            where: {
+                OR: [
+                    ...(parsedInput.email ? [{ email: parsedInput.email }] : []),
+                    ...(parsedInput.phone ? [{ phone: parsedInput.phone }] : [])
+                ]
+            },
             include: { sellerProfile: true }
         });
 
         if (!customer) {
             // Use generic message for security
-            throw new ErrorHandler.AuthenticationError("Invalid email or password");
+            throw new ErrorHandler.AuthenticationError("Invalid credentials");
         }
 
         const isPasswordValid = await bcrypt.compare(parsedInput.password, customer.password);
 
         if (!isPasswordValid) {
-            throw new ErrorHandler.AuthenticationError("Invalid email or password");
+            throw new ErrorHandler.AuthenticationError("Invalid credentials");
         }
 
         const payload: AuthPayload = {
             id: customer.uid,
-            email: customer.email,
+            ...(customer.email ? { email: customer.email } : {}),
             role: customer.role as any,
             ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
             ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),

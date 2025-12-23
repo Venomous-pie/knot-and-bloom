@@ -1,11 +1,14 @@
 import { z } from "zod";
 
 export const customerSchema = z.object({
-    name: z.string(),
-    email: z.email(),
+    name: z.string().optional(),
+    email: z.string().email().optional(),
     password: z.string(),
     phone: z.string().optional(),
     address: z.string().optional(),
+}).refine(data => data.email || data.phone, {
+    message: "Either email or phone must be provided",
+    path: ["email", "phone"]
 });
 
 export const orderSchema = z.object({
@@ -17,8 +20,12 @@ export const orderSchema = z.object({
 
 
 export const customerLoginSchema = z.object({
-    email: z.email(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
     password: z.string(),
+}).refine(data => data.email || data.phone, {
+    message: "Either email or phone must be provided",
+    path: ["email", "phone"]
 });
 
 export const customerUpdateSchema = z.object({

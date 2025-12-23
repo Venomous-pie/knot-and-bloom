@@ -555,7 +555,7 @@ const PaymentStep: React.FC = () => {
 
 // Confirmation Step
 const ConfirmationStep: React.FC = () => {
-    const { orderId, totalAmount, resetCheckout } = useCheckout();
+    const { orderId, orderIds, totalAmount, resetCheckout } = useCheckout();
     const { user } = useAuth();
     const [showSellerPrompt, setShowSellerPrompt] = useState(false);
     const [showDismissConfirm, setShowDismissConfirm] = useState(false);
@@ -689,8 +689,12 @@ const ConfirmationStep: React.FC = () => {
 
                 <View style={styles.orderDetailsCard}>
                     <View style={styles.orderDetailRow}>
-                        <Text style={styles.orderDetailLabel}>Order ID</Text>
-                        <Text style={styles.orderDetailValue}>#{orderId}</Text>
+                        <Text style={styles.orderDetailLabel}>Order ID(s)</Text>
+                        <Text style={styles.orderDetailValue}>
+                            {orderIds && orderIds.length > 0 
+                                ? orderIds.map(id => `#${id}`).join(', ') 
+                                : orderId ? `#${orderId}` : 'N/A'}
+                        </Text>
                     </View>
                     <View style={styles.orderDetailRow}>
                         <Text style={styles.orderDetailLabel}>Total Paid</Text>

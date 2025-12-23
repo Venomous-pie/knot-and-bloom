@@ -137,7 +137,7 @@ export default function AdminDashboardPage() {
                     </Pressable>
                     <Pressable
                         style={styles.addBtn}
-                        onPress={() => router.push('/admin/create')}
+                        onPress={() => router.push('/seller-dashboard/products/form' as any)}
                     >
                         <Text style={styles.addBtnText}>+ New Product</Text>
                     </Pressable>

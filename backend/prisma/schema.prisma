@@ -11,7 +11,7 @@ model Product {
   uid                Int              @id @default(autoincrement())
   name               String
   sku                String           @unique
-  categories         String[] // Array of categories
+  categories         String[]
   basePrice          Decimal
   discountedPrice    Decimal?
   discountPercentage Int?
@@ -21,7 +21,7 @@ model Product {
   uploaded           DateTime         @default(now())
   updated            DateTime         @updatedAt
   variants           ProductVariant[]
-  cartItems          CartItem[] // Ensure 1-to-many relation is compatible
+  cartItems          CartItem[]
 
   // Seller Relation
   sellerId Int?
@@ -40,14 +40,14 @@ model ProductVariant {
   uid                Int        @id @default(autoincrement())
   product            Product    @relation(fields: [productId], references: [uid], onDelete: Cascade)
   productId          Int
-  name               String // "Small Red", "Large Blue", or "Default"
+  name               String
   sku                String     @unique
   stock              Int        @default(0)
   soldCount          Int        @default(0)
-  price              Decimal? // Optional variant-specific price override
-  discountPercentage Int? // Variant-specific discount
-  discountedPrice    Decimal? // Variant-specific discounted price
-  image              String? // Optional variant-specific image
+  price              Decimal?
+  discountPercentage Int?
+  discountedPrice    Decimal?
+  image              String?
   cartItems          CartItem[]
 
   @@unique([productId, name])
@@ -59,7 +59,7 @@ model Customer {
   email                 String            @unique
   password              String
   phone                 String?
-  address               String? // Legacy field, use addresses[] for new orders
+  address               String?
   uploaded              DateTime          @default(now())
   updated               DateTime          @updatedAt
   orders                Order[]
@@ -68,13 +68,13 @@ model Customer {
   passwordResetRequired Boolean           @default(false)
   sellerProfile         Seller?           @relation("CustomerSeller")
   checkoutSessions      CheckoutSession[]
-  addresses             Address[] // Saved shipping addresses
+  addresses             Address[]
 }
 
 model Cart {
   uid        Int        @id @default(autoincrement())
   customer   Customer   @relation(fields: [customerId], references: [uid])
-  customerId Int        @unique // Ensure 1-to-1
+  customerId Int        @unique
   items      CartItem[]
   updated    DateTime   @updatedAt
 }
@@ -103,6 +103,12 @@ model Order {
   uploaded       DateTime    @default(now())
   updated        DateTime    @updatedAt
   payments       Payment[]
+
+  sellerId       Int?
+  seller         Seller?   @relation(fields: [sellerId], references: [uid])
+  trackingNumber String?
+  courierName    String?
+  shippedAt      DateTime?
 }
 
 enum OrderStatus {
@@ -119,8 +125,8 @@ model CheckoutSession {
   uid            Int            @id @default(autoincrement())
   customerId     Int
   customer       Customer       @relation(fields: [customerId], references: [uid])
-  cartSnapshot   String // JSON snapshot of cart at checkout start
-  lockedPrices   String // JSON of locked prices
+  cartSnapshot   String
+  lockedPrices   String
   totalAmount    Decimal
   status         CheckoutStatus @default(INITIATED)
   expiresAt      DateTime
@@ -150,7 +156,7 @@ model Payment {
   amount            Decimal
   method            String
   status            PaymentStatus   @default(PENDING)
-  gatewayRef        String? // External payment gateway reference
+  gatewayRef        String?
   idempotencyKey    String          @unique
   errorMessage      String?
   attempts          Int             @default(1)
@@ -187,8 +193,6 @@ enum ProductStatus {
   SUSPENDED
 }
 
-// New Models
-
 model Seller {
   uid             Int          @id @default(autoincrement())
   name            String
@@ -198,7 +202,7 @@ model Seller {
   description     String?
   logo            String?
   banner          String?
-  status          SellerStatus @default(PENDING) // pending, active, suspended, banned
+  status          SellerStatus @default(PENDING)
   termsAccepted   Boolean      @default(false)
   termsAcceptedAt DateTime?
   commissionRate  Decimal      @default(0.15)
@@ -209,6 +213,7 @@ model Seller {
   deletedAt       DateTime?
   products        Product[]
   orderItems      OrderItem[]
+  orders          Order[]
 
   customerId Int      @unique
   customer   Customer @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
@@ -242,7 +247,7 @@ model Address {
   uid           Int      @id @default(autoincrement())
   customerId    Int
   customer      Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
-  label         String? // "Home", "Work", etc.
+  label         String?
   fullName      String
   phone         String
   streetAddress String

@@ -196,16 +196,29 @@ export default function ProductCard({
                         {product.name}
                     </Text>
 
+
                     {/* Seller Attribution */}
-                    {product.seller && (
+                    {/* Seller Attribution */}
+                    {product.seller ? (
                         <Link href={`/seller/${product.seller.slug}` as RelativePathString} asChild>
                             <Pressable style={styles.sellerContainer}>
                                 <Text style={[styles.sellerText, isSmallScreen && { fontSize: 9 }]}>
-                                    Sold by <Text style={{ textDecorationLine: 'underline' }}>{product.seller.name}</Text>
+                                    Sold by <Text style={
+                                        product.seller.name === 'Knot & Bloom'
+                                            ? { fontWeight: '600', color: COLORS.primary }
+                                            : { textDecorationLine: 'underline' }
+                                    }>{product.seller.name}</Text>
                                 </Text>
                             </Pressable>
                         </Link>
+                    ) : (
+                        <View style={styles.sellerContainer}>
+                            <Text style={[styles.sellerText, isSmallScreen && { fontSize: 9 }]}>
+                                Sold by <Text style={{ fontWeight: '600', color: COLORS.primary }}>Knot & Bloom</Text>
+                            </Text>
+                        </View>
                     )}
+
 
                     {/* Rating & Sold Count */}
                     {(product.variants?.length > 0 || product.soldCount > 0) && (

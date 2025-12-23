@@ -102,7 +102,7 @@ export default function SellerProducts() {
                 />
                 <View style={styles.info}>
                     <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.price}>${Number(item.basePrice).toFixed(2)}</Text>
+                    <Text style={styles.price}>₱{Number(item.basePrice).toFixed(2)}</Text>
                     <View style={styles.metaRow}>
                         <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
                             <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>

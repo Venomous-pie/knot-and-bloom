@@ -611,17 +611,18 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
         }
 
         if (session.status === CheckoutStatus.COMPLETED) {
-            // Find existing order
-            const existingOrder = await prisma.order.findFirst({
+            // Find existing orders (Partial match for split orders)
+            // Note: This relies on the convention of appending -index to idempotency key
+            const existingOrders = await prisma.order.findMany({
                 where: {
                     customerId: session.customerId,
-                    idempotencyKey: session.idempotencyKey,
+                    idempotencyKey: { startsWith: session.idempotencyKey },
                 },
             });
 
             res.status(200).json({
                 success: true,
-                orderId: existingOrder?.uid,
+                orderIds: existingOrders.map(o => o.uid),
                 message: 'Order already completed (idempotent response).',
                 isExisting: true,
             });
@@ -646,10 +647,22 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
 
         const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
 
-        // Atomic transaction: update stock and create order
-        const order = await prisma.$transaction(async (tx) => {
-            // Update stock for each item
-            // Update stock and sold count for each item
+        // Group items by seller
+        const itemsBySeller = new Map<number | null, LockedPriceItem[]>();
+        for (const item of lockedPrices) {
+            const sellerId = item.sellerId;
+            if (!itemsBySeller.has(sellerId)) {
+                itemsBySeller.set(sellerId, []);
+            }
+            itemsBySeller.get(sellerId)!.push(item);
+        }
+
+        // Atomic transaction: update stock and create orders
+        const createdOrderIds = await prisma.$transaction(async (tx) => {
+            const orderIds: number[] = [];
+            let orderIndex = 0;
+
+            // Update stock (Inventory management remains global per item)
             for (const item of lockedPrices) {
                 // Increment Product soldCount
                 try {
@@ -659,7 +672,6 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
                     });
                 } catch (error) {
                     console.error(`Failed to update soldCount for product ${item.productId}`, error);
-                    // Don't fail the transaction just for stats
                 }
 
                 if (item.variantId) {
@@ -680,58 +692,62 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
                 }
             }
 
-            // Prepare order products data
-            const orderedProducts = lockedPrices.map(item => ({
-                product: {
-                    uid: item.productId,
-                    name: item.productName,
-                    image: item.image,
-                },
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                finalPrice: item.finalPrice,
-                discountPercentage: item.discountPercentage,
-                variant: item.variantName ? {
-                    uid: item.variantId,
-                    name: item.variantName,
-                } : null,
-            }));
+            // Create an Order for each seller group
+            for (const [sellerId, sellerItems] of itemsBySeller) {
+                orderIndex++;
 
-            // Create order
-            // Create order with OrderItems
-            const newOrder = await tx.order.create({
-                data: {
-                    customerId: session.customerId,
-                    // Legacy products field (optional, keeping for backward compat if needed, or stick to new ref)
-                    products: JSON.stringify(orderedProducts),
-                    total: session.totalAmount,
-                    discount: 0,
-                    status: OrderStatus.CONFIRMED,
-                    idempotencyKey: idempotencyKey || session.idempotencyKey,
-                    items: {
-                        create: lockedPrices.map(item => ({
-                            productId: item.productId,
-                            sellerId: item.sellerId,
-                            quantity: item.quantity,
-                            price: item.finalPrice,
-                            status: 'paid', // Initial status after payment
-                            trackingNumber: null,
-                            shippingProvider: null
-                            // other fields default
-                        }))
-                    }
-                },
-            });
+                // Calculate total for this specific order
+                const orderTotal = sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0);
 
-            // Link payment to order
-            if (successfulPayment) {
-                await tx.payment.update({
-                    where: { uid: successfulPayment.uid },
-                    data: { orderId: newOrder.uid },
+                // Prepare order products data
+                const orderedProducts = sellerItems.map(item => ({
+                    product: {
+                        uid: item.productId,
+                        name: item.productName,
+                        image: item.image,
+                    },
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    finalPrice: item.finalPrice,
+                    discountPercentage: item.discountPercentage,
+                    variant: item.variantName ? {
+                        uid: item.variantId,
+                        name: item.variantName,
+                    } : null,
+                }));
+
+                const newOrder = await tx.order.create({
+                    data: {
+                        customerId: session.customerId,
+                        sellerId: sellerId, // Assign to seller
+                        products: JSON.stringify(orderedProducts),
+                        total: orderTotal,
+                        discount: 0,
+                        status: OrderStatus.CONFIRMED,
+                        // Append index to idempotency key to satisfy unique constraint: "key-1", "key-2"
+                        idempotencyKey: `${idempotencyKey || session.idempotencyKey}-${orderIndex}`,
+                        items: {
+                            create: sellerItems.map(item => ({
+                                productId: item.productId,
+                                sellerId: item.sellerId,
+                                quantity: item.quantity,
+                                price: item.finalPrice,
+                                status: 'paid',
+                                trackingNumber: null,
+                                shippingProvider: null
+                            }))
+                        }
+                    },
                 });
+
+                orderIds.push(newOrder.uid);
+
+                // Note: We do NOT link payment to individual orders via payment.orderId 
+                // because one payment covers multiple orders. 
+                // The link is preserved via CheckoutSession.
             }
 
-            return newOrder;
+            return orderIds;
         });
 
         // Update session status
@@ -747,29 +763,24 @@ export const completeCheckout = async (req: Request, res: Response): Promise<voi
             },
         });
 
-        AuditService.logOrder('ORDER_CREATED', order.uid, session.customerId, {
-            total: Number(session.totalAmount),
-            itemCount: lockedPrices.length,
-        });
-
+        // Log audit (Summarized)
         AuditService.logCheckout('CHECKOUT_COMPLETED', session.uid, session.customerId, {
-            orderId: order.uid,
+            orderIds: createdOrderIds,
+            orderCount: createdOrderIds.length
         });
 
-        // Send notifications (fire and forget)
+        // Send notifications
         notifications.send({
             type: 'email',
             to: (await prisma.customer.findUnique({ where: { uid: session.customerId } }))?.email || '',
             subject: 'Order Confirmation',
-            body: `Your order #${order.uid} has been placed successfully.`
+            body: `Your order(s) [${createdOrderIds.join(', ')}] have been placed successfully.`
         }).catch(err => console.error('Failed to send order notification', err));
-
-        // TODO: Send notifications to sellers (iterate distinct sellers)
 
         res.status(201).json({
             success: true,
-            orderId: order.uid,
-            message: 'Order placed successfully!',
+            orderIds: createdOrderIds,
+            message: 'Orders placed successfully!',
         });
 
     } catch (error) {

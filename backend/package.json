@@ -1,15 +1,21 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Knot & Bloom E-commerce Backend API",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --exec tsx src/index.ts",
+    "dev": "npx -y kill-port 3030 && nodemon --exec tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:watch": "npm test -- --watch",
+    "test:coverage": "npm test -- --coverage"
   },
-  "keywords": [],
+  "keywords": [
+    "ecommerce",
+    "api",
+    "backend"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",
@@ -20,6 +26,8 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.0.3",
     "@types/pg": "^8.16.0",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.6",
     "@types/uuid": "^10.0.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
@@ -43,6 +51,8 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.16.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",
     "zod": "^4.2.0"
   }

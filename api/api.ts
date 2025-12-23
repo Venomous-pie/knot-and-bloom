@@ -211,6 +211,7 @@ export interface PaymentResponse {
 export interface CompleteCheckoutResponse {
     success: boolean;
     orderId?: number;
+    orderIds?: number[];
     message: string;
     isExisting?: boolean;
 }

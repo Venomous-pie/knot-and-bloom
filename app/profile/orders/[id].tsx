@@ -23,6 +23,9 @@ interface OrderDetail {
     uploaded: string;
     discount?: string;
     status: string;
+    trackingNumber?: string | null;
+    courierName?: string | null;
+    shippedAt?: string | null;
 }
 
 interface OrderItemSnapshot {
@@ -135,6 +138,23 @@ export default function OrderDetailsPage() {
                     </View>
                 </View>
                 <Text style={styles.date}>Placed on {new Date(order.uploaded).toLocaleDateString()} at {new Date(order.uploaded).toLocaleTimeString()}</Text>
+
+                {(order.status === 'SHIPPED' || order.status === 'DELIVERED') && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Tracking Information</Text>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Courier:</Text>
+                            <Text style={styles.infoValue}>{order.courierName || 'Standard Shipping'}</Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                            <Text style={styles.infoLabel}>Tracking #:</Text>
+                            <Text style={styles.infoValue}>{order.trackingNumber}</Text>
+                        </View>
+                        {order.status === 'SHIPPED' && (
+                             <Text style={styles.helpText}>You can use this tracking number on the courier's website to track your package.</Text>
+                        )}
+                    </View>
+                )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Items</Text>
@@ -342,5 +362,25 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#555',
         marginBottom: 4,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        marginBottom: 8,
+    },
+    infoLabel: {
+        fontWeight: '600',
+        width: 100,
+        color: '#444',
+    },
+    infoValue: {
+        flex: 1,
+        color: '#333',
+        fontWeight: '500',
+    },
+    helpText: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 8,
+        fontStyle: 'italic',
     }
 });

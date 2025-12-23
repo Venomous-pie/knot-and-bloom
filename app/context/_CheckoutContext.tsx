@@ -27,7 +27,8 @@ export interface CheckoutState {
     shippingInfo: ShippingInfo | null;
     selectedPaymentMethod: string | null;
     paymentId: number | null;
-    orderId: number | null;
+    orderId: number | null; // Keep for legacy, but prefer orderIds
+    orderIds?: number[] | null;
     isProcessing: boolean;
     error: string | null;
     statusMessage: string | null;
@@ -61,6 +62,7 @@ const initialState: CheckoutState = {
     selectedPaymentMethod: null,
     paymentId: null,
     orderId: null,
+    orderIds: null,
     isProcessing: false,
     error: null,
     statusMessage: null,
@@ -286,10 +288,11 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
             const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse);
             const data = response.data;
 
-            if (data.success && data.orderId) {
+            if (data.success && (data.orderId || data.orderIds)) {
                 setState(prev => ({
                     ...prev,
-                    orderId: data.orderId!,
+                    orderId: data.orderId || (data.orderIds ? data.orderIds[0] : null),
+                    orderIds: data.orderIds || (data.orderId ? [data.orderId] : []),
                     step: 'confirmation',
                     isProcessing: false,
                     statusMessage: null,

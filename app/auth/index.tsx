@@ -25,6 +25,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loadUser();
     }, []);
 
+
+
     const loadUser = async () => {
         try {
             const token = await AsyncStorage.getItem('authToken');

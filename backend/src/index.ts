@@ -29,6 +29,13 @@ app.get('/', (req, res) => {
     });
 });
 
+// Swagger API Documentation
+import { swaggerSpec, swaggerUi } from './config/swagger.js';
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Knot & Bloom API Docs',
+}));
 
 // Api Routes
 app.use('/api/products', productRoutes);

@@ -184,6 +184,25 @@ export default function ProductDetailPage() {
                 {/* Product Name */}
                 <Text style={styles.productName}>{product.name}</Text>
 
+                {/* Seller Info */}
+                <View style={{ marginBottom: 16 }}>
+                    {product.seller ? (
+                        <Pressable onPress={() => router.push(`/seller/${product.seller!.slug}`)}>
+                            <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                                Sold by <Text style={
+                                    product.seller.name === 'Knot & Bloom'
+                                        ? { fontWeight: '600', color: '#B36979' }
+                                        : { fontWeight: '600', color: '#111827', textDecorationLine: 'underline' }
+                                }>{product.seller.name}</Text>
+                            </Text>
+                        </Pressable>
+                    ) : (
+                        <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                            Sold by <Text style={{ fontWeight: '600', color: '#B36979' }}>Knot & Bloom</Text>
+                        </Text>
+                    )}
+                </View>
+
                 {/* Categories */}
                 {product.categories && product.categories.length > 0 && (
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>

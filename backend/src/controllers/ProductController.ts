@@ -6,6 +6,7 @@ import { Role } from "../types/auth.js";
 import type { GetProductsResult } from "../types/product.js";
 import { CalculateDiscount } from "../utils/discount.js";
 import prisma from "../utils/prisma.js";
+import { ensureAdminSellerProfile } from "../utils/sellerUtils.js";
 import { getProductsQuerySchema, productSchema, type GetProductOptions, type ProductInput } from "../validators/productValidator.js";
 
 export const postProduct = async (input: unknown, user?: AuthPayload) => {
@@ -37,13 +38,32 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
     let sellerId = parsedInput.sellerId; // Default from input (Admin can set)
 
     if (user) {
-        if (user.role === Role.SELLER) {
-            if (!user.sellerId) {
-                throw new Error("Seller profile not found. Please complete seller onboarding.");
+        // Fallback: If sellerId is missing from token (stale token), try to find it in DB
+        if (!sellerId && !user.sellerId) {
+            const dbSeller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+            if (dbSeller) {
+                sellerId = dbSeller.uid;
             }
-            sellerId = user.sellerId; // Enforce own seller ID
+        }
+
+        if (user.role === Role.SELLER || (user.role !== Role.ADMIN && sellerId)) {
+            // If user is SELLER, or a CUSTOMER with a linked seller profile (stale token)
+            // We enforce the sellerId
+            if (!sellerId && user.role === Role.SELLER) {
+                // Should have been found above if it existed
+                if (!user.sellerId) throw new Error("Seller profile not found. Please complete seller onboarding.");
+                sellerId = user.sellerId;
+            }
+
+            // Re-verify if we found a valid sellerId from DB/Token
+            if (sellerId) {
+                // It's already set to `sellerId`.
+            }
         } else if (user.role === Role.ADMIN) {
-            // Admin keeps input sellerId or null (for Knot & Bloom direct)
+            // Admin keeps input sellerId or null (for Knot & Bloom direct) => FIX: Enforce Admin Seller Profile if none provided
+            if (!sellerId) {
+                sellerId = await ensureAdminSellerProfile(user.id, user.email);
+            }
         }
     }
 
@@ -155,7 +175,7 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                 if (attempts >= maxAttempts) {
                     throw new DuplicateProductError(`SKU collision retries exhausted. Please try a different SKU.`);
                 }
-                
+
                 // Append random suffix for retry
                 const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
                 currentSku = `${parsedInput.sku}-${randomSuffix}`;
@@ -165,7 +185,7 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
             throw error; // Rethrow other errors
         }
     }
-    
+
     throw new Error("Failed to create product after retries");
 };
 
@@ -409,7 +429,8 @@ export const getProductById = async (productId: string) => {
     const product = await prisma.product.findUnique({
         where: { uid: parsedId },
         include: {
-            variants: true
+            variants: true,
+            seller: { select: { uid: true, name: true, slug: true, status: true } }
         }
     });
 

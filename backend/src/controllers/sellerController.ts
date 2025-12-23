@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { Role, SellerStatus } from '../types/auth.js';
 import prisma from '../utils/prisma.js';
+import { ensureAdminSellerProfile } from '../utils/sellerUtils.js';
 
 // Validator for Upgrade (Just Store Info)
 const sellerSchema = z.object({
@@ -207,23 +208,23 @@ export const sellerController = {
 
             if (isNaN(sellerId) || sellerId === 0) return res.status(400).json({ error: "Invalid seller ID" });
 
-            // Fetch items for this seller
-            const items = await prisma.orderItem.findMany({
+            // Fetch Orders for this seller (New Schema: Order has sellerId)
+            const orders = await prisma.order.findMany({
                 where: { sellerId },
                 include: {
-                    product: { select: { name: true, image: true } },
-                    order: {
-                        select: {
-                            uid: true,
-                            uploaded: true, // Replaced createdAt with uploaded
-                            customer: { select: { name: true, email: true } }
+                    items: {
+                        include: {
+                            product: { select: { name: true, image: true } }
                         }
+                    },
+                    customer: {
+                        select: { name: true, email: true }
                     }
                 },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { uploaded: 'desc' }
             });
 
-            res.json(items);
+            res.json(orders);
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: "Failed to fetch orders" });
@@ -248,6 +249,11 @@ export const sellerController = {
                     where: { customerId: req.user.id }
                 });
                 if (seller) sellerId = seller.uid;
+            }
+
+            // [NEW] Admin Auto-Creation Logic
+            if (!sellerId && req.user.role === Role.ADMIN) {
+                sellerId = await ensureAdminSellerProfile(req.user.id, req.user.email);
             }
 
             if (!sellerId) return res.status(403).json({ error: "Seller profile not found" });
@@ -307,6 +313,11 @@ export const sellerController = {
                 }
             }
 
+            // [NEW] Admin Auto-Creation Logic
+            if (!sellerId && req.user.role === Role.ADMIN) {
+                sellerId = await ensureAdminSellerProfile(req.user.id, req.user.email);
+            }
+
             if (!sellerId) return res.status(401).json({ error: "Unauthorized - Seller profile not found" });
 
             await prisma.seller.update({
@@ -321,3 +332,5 @@ export const sellerController = {
         }
     }
 };
+
+// Helper removed - imported from utils/sellerUtils.js

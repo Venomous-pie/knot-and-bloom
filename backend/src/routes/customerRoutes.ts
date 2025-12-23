@@ -101,6 +101,8 @@ router.post('/login', loginRateLimiter.middleware, async (req, res) => {
         console.error("Login error:", error);
 
         if (error instanceof ValidationError) {
+            // Increment rate limit for validation errors to prevent spam
+            loginRateLimiter.increment(ip);
             return res.status(400).json({
                 success: false,
                 error: "Validation failed",

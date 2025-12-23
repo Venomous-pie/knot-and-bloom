@@ -23,11 +23,30 @@ interface OrderSummary {
     status: string;
 }
 
+type TabKey = 'all' | 'to_pay' | 'to_ship' | 'to_receive' | 'completed' | 'cancelled' | 'return_refund';
+
+interface Tab {
+    key: TabKey;
+    label: string;
+    statuses: string[];
+}
+
+const TABS: Tab[] = [
+    { key: 'all', label: 'All', statuses: [] },
+    { key: 'to_pay', label: 'To Pay', statuses: ['PENDING'] },
+    { key: 'to_ship', label: 'To Ship', statuses: ['CONFIRMED', 'PROCESSING'] },
+    { key: 'to_receive', label: 'To Receive', statuses: ['SHIPPED'] },
+    { key: 'completed', label: 'Completed', statuses: ['DELIVERED'] },
+    { key: 'cancelled', label: 'Cancelled', statuses: ['CANCELLED'] },
+    { key: 'return_refund', label: 'Return/Refund', statuses: ['REFUNDED'] },
+];
+
 export default function OrderHistoryPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const [orders, setOrders] = useState<OrderSummary[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<TabKey>('all');
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -47,6 +66,18 @@ export default function OrderHistoryPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const filteredOrders = orders.filter(order => {
+        const tab = TABS.find(t => t.key === activeTab);
+        if (!tab || tab.statuses.length === 0) return true;
+        return tab.statuses.includes(order.status);
+    });
+
+    const getTabCount = (tabKey: TabKey): number => {
+        const tab = TABS.find(t => t.key === tabKey);
+        if (!tab || tab.statuses.length === 0) return orders.length;
+        return orders.filter(order => tab.statuses.includes(order.status)).length;
     };
 
     if (loading || authLoading) {
@@ -83,30 +114,82 @@ export default function OrderHistoryPage() {
         }
     };
 
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'PENDING': return 'To Pay';
+            case 'CONFIRMED': return 'Confirmed';
+            case 'PROCESSING': return 'Processing';
+            case 'SHIPPED': return 'Shipped';
+            case 'DELIVERED': return 'Delivered';
+            case 'CANCELLED': return 'Cancelled';
+            case 'REFUNDED': return 'Refunded';
+            default: return status;
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>← Back</Text>
-                    </Pressable>
-                    <Text style={styles.title}>Order History</Text>
-                    <View style={{ width: 40 }} />{/* Spacer for center alignment */}
-                </View>
+            <View style={styles.header}>
+                <Pressable onPress={() => router.back()} style={styles.backButton}>
+                    <Text style={styles.backButtonText}>← Back</Text>
+                </Pressable>
+                <Text style={styles.title}>My Orders</Text>
+                <View style={{ width: 40 }} />{/* Spacer for center alignment */}
+            </View>
 
-                {orders.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}>No orders found.</Text>
+            {/* Status Filter Tabs */}
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.tabsContainer}
+                contentContainerStyle={styles.tabsContent}
+            >
+                {TABS.map((tab) => {
+                    const count = getTabCount(tab.key);
+                    const isActive = activeTab === tab.key;
+                    return (
                         <Pressable
-                            style={styles.shopButton}
-                            onPress={() => router.push('/' as RelativePathString)}
+                            key={tab.key}
+                            style={[styles.tab, isActive && styles.tabActive]}
+                            onPress={() => setActiveTab(tab.key)}
                         >
-                            <Text style={styles.shopButtonText}>Start Shopping</Text>
+                            <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                                {tab.label}
+                            </Text>
+                            {count > 0 && (
+                                <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                                        {count}
+                                    </Text>
+                                </View>
+                            )}
                         </Pressable>
+                    );
+                })}
+            </ScrollView>
+
+            <ScrollView contentContainerStyle={styles.contentContainer}>
+                {filteredOrders.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Text style={styles.emptyStateIcon}>📦</Text>
+                        <Text style={styles.emptyStateText}>No orders found.</Text>
+                        {activeTab !== 'all' && (
+                            <Pressable onPress={() => setActiveTab('all')}>
+                                <Text style={styles.viewAllLink}>View all orders</Text>
+                            </Pressable>
+                        )}
+                        {activeTab === 'all' && (
+                            <Pressable
+                                style={styles.shopButton}
+                                onPress={() => router.push('/' as RelativePathString)}
+                            >
+                                <Text style={styles.shopButtonText}>Start Shopping</Text>
+                            </Pressable>
+                        )}
                     </View>
                 ) : (
                     <View style={styles.list}>
-                        {orders.map((order) => (
+                        {filteredOrders.map((order) => (
                             <Pressable
                                 key={order.uid}
                                 style={styles.orderCard}
@@ -130,7 +213,7 @@ export default function OrderHistoryPage() {
                                     </View>
                                     <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
                                         <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-                                            {order.status || 'PENDING'}
+                                            {getStatusLabel(order.status)}
                                         </Text>
                                     </View>
                                 </View>
@@ -153,17 +236,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    contentContainer: {
-        padding: 20,
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
-    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
     },
     backButton: {
         padding: 8,
@@ -173,21 +251,84 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
         fontFamily: Platform.OS === 'web' ? 'serif' : 'System',
+    },
+    tabsContainer: {
+        maxHeight: 50,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    tabsContent: {
+        paddingHorizontal: 16,
+        gap: 8,
+    },
+    tab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    tabActive: {
+        borderBottomColor: '#C88EA7',
+    },
+    tabText: {
+        fontSize: 14,
+        color: '#666',
+    },
+    tabTextActive: {
+        color: '#C88EA7',
+        fontWeight: '600',
+    },
+    tabBadge: {
+        backgroundColor: '#eee',
+        borderRadius: 10,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginLeft: 6,
+    },
+    tabBadgeActive: {
+        backgroundColor: '#C88EA7',
+    },
+    tabBadgeText: {
+        fontSize: 10,
+        color: '#666',
+        fontWeight: '600',
+    },
+    tabBadgeTextActive: {
+        color: 'white',
+    },
+    contentContainer: {
+        padding: 20,
+        maxWidth: 800,
+        alignSelf: 'center',
+        width: '100%',
     },
     emptyState: {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 40,
-        marginTop: 40,
+        marginTop: 20,
+        backgroundColor: 'white',
+        borderRadius: 12,
+    },
+    emptyStateIcon: {
+        fontSize: 48,
+        marginBottom: 16,
     },
     emptyStateText: {
-        fontSize: 18,
+        fontSize: 16,
         color: '#888',
-        marginBottom: 20,
+        marginBottom: 16,
+    },
+    viewAllLink: {
+        color: '#C88EA7',
+        fontSize: 14,
+        fontWeight: '600',
     },
     shopButton: {
         backgroundColor: '#C88EA7',
@@ -249,8 +390,8 @@ const styles = StyleSheet.create({
     },
     statusBadge: {
         backgroundColor: '#E6F0E6',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
         borderRadius: 12,
     },
     statusText: {

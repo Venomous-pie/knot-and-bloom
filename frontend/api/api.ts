@@ -349,5 +349,156 @@ export const sellerProductsAPI = {
     deleteProduct: (id: string | number) => apiClient.delete(`/products/${id}`).then(res => res.data),
 };
 
+// ============================================
+// Payment Methods API
+// ============================================
+
+export type PaymentMethodType = 'GCASH' | 'PAYMAYA' | 'BANK';
+
+export interface PaymentMethod {
+    uid: number;
+    type: PaymentMethodType;
+    accountName: string;
+    accountNumber: string;
+    bankName?: string | null;
+    isDefault: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PaymentMethodInput {
+    type: PaymentMethodType;
+    accountName: string;
+    accountNumber: string;
+    bankName?: string;
+    isDefault?: boolean;
+}
+
+export const paymentMethodAPI = {
+    /**
+     * Get all payment methods for authenticated user
+     */
+    getPaymentMethods: () =>
+        apiClient.get<{ paymentMethods: PaymentMethod[] }>('/payment-methods/me'),
+
+    /**
+     * Create a new payment method
+     */
+    createPaymentMethod: (data: PaymentMethodInput) =>
+        apiClient.post<{ paymentMethod: PaymentMethod }>('/payment-methods/me', data),
+
+    /**
+     * Update a payment method
+     */
+    updatePaymentMethod: (id: number, data: Partial<PaymentMethodInput>) =>
+        apiClient.put<{ paymentMethod: PaymentMethod }>(`/payment-methods/me/${id}`, data),
+
+    /**
+     * Delete a payment method
+     */
+    deletePaymentMethod: (id: number) =>
+        apiClient.delete<{ success: boolean }>(`/payment-methods/me/${id}`),
+
+    /**
+     * Set a payment method as default
+     */
+    setDefaultPaymentMethod: (id: number) =>
+        apiClient.patch<{ paymentMethod: PaymentMethod }>(`/payment-methods/me/${id}/default`),
+};
+
+// ============================================
+// Notifications API
+// ============================================
+
+export interface NotificationSettings {
+    uid: number;
+    orderUpdates: boolean;
+    promotions: boolean;
+    systemMessages: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Notification {
+    uid: number;
+    title: string;
+    message: string;
+    type: string;
+    isRead: boolean;
+    data?: string;
+    createdAt: string;
+}
+
+export const notificationAPI = {
+    /**
+     * Get notification settings
+     */
+    getSettings: () =>
+        apiClient.get<{ settings: NotificationSettings }>('/notifications/settings'),
+
+    /**
+     * Update notification settings
+     */
+    updateSettings: (data: Partial<Omit<NotificationSettings, 'uid' | 'createdAt' | 'updatedAt'>>) =>
+        apiClient.put<{ settings: NotificationSettings }>('/notifications/settings', data),
+
+    /**
+     * Get notifications
+     */
+    getNotifications: (params?: { unreadOnly?: boolean; limit?: number; offset?: number }) =>
+        apiClient.get<{ notifications: Notification[]; totalCount: number; unreadCount: number }>(
+            '/notifications',
+            { params }
+        ),
+
+    /**
+     * Mark notification as read
+     */
+    markAsRead: (id: number) =>
+        apiClient.patch<{ notification: Notification }>(`/notifications/${id}/read`),
+
+    /**
+     * Mark all notifications as read
+     */
+    markAllAsRead: () =>
+        apiClient.patch<{ success: boolean }>('/notifications/read-all'),
+
+    /**
+     * Delete a notification
+     */
+    deleteNotification: (id: number) =>
+        apiClient.delete<{ success: boolean }>(`/notifications/${id}`),
+};
+
+// ============================================
+// Account API
+// ============================================
+
+export interface DeletionStatus {
+    hasPendingDeletion: boolean;
+    deletionRequestedAt?: string | null;
+    deletionScheduledFor?: string | null;
+}
+
+export const accountAPI = {
+    /**
+     * Request account deletion
+     */
+    requestDeletion: (data: { reason?: string; password: string }) =>
+        apiClient.post<{ success: boolean; message: string; deletionScheduledFor: string }>('/account/delete-request', data),
+
+    /**
+     * Cancel account deletion request
+     */
+    cancelDeletion: () =>
+        apiClient.delete<{ success: boolean; message: string }>('/account/delete-request'),
+
+    /**
+     * Get account deletion status
+     */
+    getDeletionStatus: () =>
+        apiClient.get<DeletionStatus>('/account/delete-status'),
+};
+
 
 export default api;

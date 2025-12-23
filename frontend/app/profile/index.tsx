@@ -1,65 +1,82 @@
-import { customerAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { accountAPI } from '@/api/api';
+
+interface MenuItemProps {
+    icon: string;
+    title: string;
+    subtitle?: string;
+    onPress: () => void;
+    showBadge?: boolean;
+    badgeText?: string;
+    danger?: boolean;
+}
+
+const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress, showBadge, badgeText, danger }) => (
+    <Pressable style={styles.menuItem} onPress={onPress}>
+        <View style={styles.menuItemLeft}>
+            <Text style={styles.menuIcon}>{icon}</Text>
+            <View>
+                <Text style={[styles.menuItemText, danger && styles.dangerText]}>{title}</Text>
+                {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+            </View>
+        </View>
+        <View style={styles.menuItemRight}>
+            {showBadge && badgeText && (
+                <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{badgeText}</Text>
+                </View>
+            )}
+            <Text style={styles.chevron}>›</Text>
+        </View>
+    </Pressable>
+);
+
+interface MenuSectionProps {
+    title: string;
+    children: React.ReactNode;
+}
+
+const MenuSection: React.FC<MenuSectionProps> = ({ title, children }) => (
+    <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <View style={styles.sectionContent}>{children}</View>
+    </View>
+);
 
 export default function ProfilePage() {
     const { user, logout, refreshUser, loading: authLoading } = useAuth();
     const router = useRouter();
-
-    const [isEditing, setIsEditing] = useState(false);
-    const [loading, setLoading] = useState(false);
-
-    // Form State
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [address, setAddress] = useState('');
+    const [deletionStatus, setDeletionStatus] = useState<{ hasPendingDeletion: boolean; deletionScheduledFor?: string | null }>({ hasPendingDeletion: false });
 
     useEffect(() => {
         refreshUser();
+        fetchDeletionStatus();
     }, []);
 
     useEffect(() => {
         if (!user && !authLoading) {
             router.replace('/auth/login' as RelativePathString);
-            return;
-        }
-
-        if (user) {
-            setName(user.name || '');
-            setPhone(user.phone || '');
-            setAddress(user.address || '');
         }
     }, [user, authLoading]);
 
-    const handleSave = async () => {
-        setLoading(true);
+    const fetchDeletionStatus = async () => {
         try {
-            await customerAPI.updateProfile({
-                name,
-                phone,
-                address
-            });
-            await refreshUser();
-            setIsEditing(false);
-            Alert.alert("Success", "Profile updated successfully");
+            const response = await accountAPI.getDeletionStatus();
+            setDeletionStatus(response.data);
         } catch (error) {
-            console.error(error);
-            Alert.alert("Error", "Failed to update profile");
-        } finally {
-            setLoading(false);
+            console.error('Error fetching deletion status:', error);
         }
     };
 
@@ -78,6 +95,7 @@ export default function ProfilePage() {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer}>
+                {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.title}>My Profile</Text>
                     <Pressable onPress={handleLogout} style={styles.logoutButton}>
@@ -85,109 +103,102 @@ export default function ProfilePage() {
                     </Pressable>
                 </View>
 
-                {/* Profile Card */}
-                <View style={styles.card}>
-                    <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>Personal Information</Text>
-                        {!isEditing ? (
-                            <Pressable onPress={() => setIsEditing(true)}>
-                                <Text style={styles.editLink}>Edit</Text>
-                            </Pressable>
-                        ) : (
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <Pressable onPress={() => setIsEditing(false)} disabled={loading}>
-                                    <Text style={[styles.editLink, { color: '#666' }]}>Cancel</Text>
-                                </Pressable>
-                            </View>
-                        )}
+                {/* User Info Card */}
+                <View style={styles.userCard}>
+                    <View style={styles.avatarContainer}>
+                        <Text style={styles.avatarText}>{user.name?.charAt(0)?.toUpperCase() || '?'}</Text>
                     </View>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Name</Text>
-                        {isEditing ? (
-                            <TextInput
-                                style={styles.input}
-                                value={name}
-                                onChangeText={setName}
-                                placeholder="Your Name"
-                            />
-                        ) : (
-                            <Text style={styles.value}>{user.name}</Text>
-                        )}
-                    </View>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Email</Text>
-                        <Text style={[styles.value, { color: '#888' }]}>{user.email}</Text>
-                    </View>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Phone</Text>
-                        {isEditing ? (
-                            <TextInput
-                                style={styles.input}
-                                value={phone}
-                                onChangeText={setPhone}
-                                placeholder="Phone Number"
-                                keyboardType="phone-pad"
-                            />
-                        ) : (
-                            <Text style={styles.value}>{user.phone || 'Not provided'}</Text>
-                        )}
-                    </View>
-
-                    <View style={styles.formGroup}>
-                        <Text style={styles.label}>Address</Text>
-                        {isEditing ? (
-                            <TextInput
-                                style={[styles.input, styles.textArea]}
-                                value={address}
-                                onChangeText={setAddress}
-                                placeholder="Shipping Address"
-                                multiline
-                                numberOfLines={3}
-                            />
-                        ) : (
-                            <Text style={styles.value}>{user.address || 'Not provided'}</Text>
-                        )}
-                    </View>
-
-                    {user.sellerId && user.sellerStatus && (
-                        <View style={styles.formGroup}>
-                            <Text style={styles.label}>Seller Status</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Text style={[styles.value, {
-                                    color: user.sellerStatus === 'ACTIVE' ? 'green' :
-                                        user.sellerStatus === 'PENDING' ? '#B8860B' :
-                                            user.sellerStatus === 'SUSPENDED' ? 'red' : '#333',
-                                    fontWeight: 'bold'
-                                }]}>
-                                    {user.sellerStatus === 'PENDING' ? 'Pending Approval' : user.sellerStatus.charAt(0) + user.sellerStatus.slice(1).toLowerCase()}
+                    <View style={styles.userInfo}>
+                        <Text style={styles.userName}>{user.name}</Text>
+                        <Text style={styles.userEmail}>{user.email || user.phone}</Text>
+                        {user.sellerStatus && (
+                            <View style={[styles.statusBadge, { backgroundColor: user.sellerStatus === 'ACTIVE' ? '#E8F5E9' : '#FFF3E0' }]}>
+                                <Text style={[styles.statusText, { color: user.sellerStatus === 'ACTIVE' ? '#4CAF50' : '#FF9800' }]}>
+                                    {user.sellerStatus === 'ACTIVE' ? '✓ Seller' : '⏳ Pending Seller'}
                                 </Text>
-                                {user.sellerStatus === 'PENDING' && <Text>⏳</Text>}
                             </View>
-                        </View>
-                    )}
-
-                    {isEditing && (
-                        <Pressable
-                            style={[styles.saveButton, loading && styles.disabledButton]}
-                            onPress={handleSave}
-                            disabled={loading}
-                        >
-                            {loading ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
-                        </Pressable>
-                    )}
+                        )}
+                    </View>
                 </View>
 
-                {/* Order History Link */}
-                <Pressable
-                    style={styles.menuItem}
-                    onPress={() => router.push('/profile/orders' as RelativePathString)}
-                >
-                    <Text style={styles.menuItemText}>📦  Order History</Text>
-                    <Text style={styles.chevron}>›</Text>
-                </Pressable>
+                {/* Deletion Warning */}
+                {deletionStatus.hasPendingDeletion && (
+                    <Pressable
+                        style={styles.warningBanner}
+                        onPress={() => router.push('/profile/account/delete-account' as RelativePathString)}
+                    >
+                        <Text style={styles.warningIcon}>⚠️</Text>
+                        <View style={styles.warningContent}>
+                            <Text style={styles.warningTitle}>Account Deletion Scheduled</Text>
+                            <Text style={styles.warningText}>
+                                Your account will be deleted on {deletionStatus.deletionScheduledFor ? new Date(deletionStatus.deletionScheduledFor).toLocaleDateString() : 'soon'}. Tap to cancel.
+                            </Text>
+                        </View>
+                    </Pressable>
+                )}
+
+                {/* My Account Section */}
+                <MenuSection title="My Account">
+                    <MenuItem
+                        icon="👤"
+                        title="Profile"
+                        subtitle="Personal information"
+                        onPress={() => router.push('/profile/account' as RelativePathString)}
+                    />
+                    <MenuItem
+                        icon="💳"
+                        title="Payment Methods"
+                        subtitle="GCash, PayMaya, Bank"
+                        onPress={() => router.push('/profile/account/payment-methods' as RelativePathString)}
+                    />
+                    <MenuItem
+                        icon="📍"
+                        title="Addresses"
+                        subtitle="Saved shipping addresses"
+                        onPress={() => router.push('/profile/account/addresses' as RelativePathString)}
+                    />
+                    <MenuItem
+                        icon="🔔"
+                        title="Notification Settings"
+                        onPress={() => router.push('/profile/notifications/settings' as RelativePathString)}
+                    />
+                    <MenuItem
+                        icon="🗑️"
+                        title="Request Account Deletion"
+                        onPress={() => router.push('/profile/account/delete-account' as RelativePathString)}
+                        danger
+                    />
+                </MenuSection>
+
+                {/* My Orders Section */}
+                <MenuSection title="My Orders">
+                    <MenuItem
+                        icon="📦"
+                        title="Order History"
+                        subtitle="View all orders"
+                        onPress={() => router.push('/profile/orders' as RelativePathString)}
+                    />
+                </MenuSection>
+
+                {/* Notifications Section */}
+                <MenuSection title="Notifications">
+                    <MenuItem
+                        icon="📢"
+                        title="Knot & Bloom Updates"
+                        subtitle="News and promotions"
+                        onPress={() => router.push('/profile/notifications' as RelativePathString)}
+                    />
+                </MenuSection>
+
+                {/* Rewards Section */}
+                <MenuSection title="Rewards">
+                    <MenuItem
+                        icon="⭐"
+                        title="My Points"
+                        subtitle="Coming soon"
+                        onPress={() => router.push('/profile/rewards' as RelativePathString)}
+                    />
+                </MenuSection>
 
             </ScrollView>
         </SafeAreaView>
@@ -229,96 +240,154 @@ const styles = StyleSheet.create({
         color: '#B36979',
         fontWeight: '600',
     },
-    card: {
+    userCard: {
         backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 24,
-        marginBottom: 20,
+        borderRadius: 16,
+        padding: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
         elevation: 2,
     },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        paddingBottom: 15,
-    },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-    },
-    editLink: {
-        color: '#C88EA7',
-        fontWeight: '600',
-    },
-    formGroup: {
-        marginBottom: 20,
-    },
-    label: {
-        fontSize: 14,
-        color: '#888',
-        marginBottom: 6,
-    },
-    value: {
-        fontSize: 16,
-        color: '#333',
-        fontWeight: '500',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
-        backgroundColor: '#fff',
-    },
-    textArea: {
-        minHeight: 80,
-        textAlignVertical: 'top',
-    },
-    saveButton: {
+    avatarContainer: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: '#C88EA7',
-        padding: 14,
-        borderRadius: 8,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 10,
+        marginRight: 16,
     },
-    disabledButton: {
-        opacity: 0.7,
-    },
-    saveButtonText: {
+    avatarText: {
         color: 'white',
-        fontSize: 16,
+        fontSize: 24,
         fontWeight: 'bold',
     },
-    menuItem: {
+    userInfo: {
+        flex: 1,
+    },
+    userName: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#333',
+        marginBottom: 4,
+    },
+    userEmail: {
+        fontSize: 14,
+        color: '#666',
+    },
+    statusBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginTop: 8,
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    warningBanner: {
+        backgroundColor: '#FFF3E0',
+        borderRadius: 12,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#FFE0B2',
+    },
+    warningIcon: {
+        fontSize: 24,
+        marginRight: 12,
+    },
+    warningContent: {
+        flex: 1,
+    },
+    warningTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#E65100',
+        marginBottom: 2,
+    },
+    warningText: {
+        fontSize: 12,
+        color: '#F57C00',
+    },
+    section: {
+        marginBottom: 24,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#888',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 12,
+        marginLeft: 4,
+    },
+    sectionContent: {
         backgroundColor: 'white',
         borderRadius: 12,
-        padding: 20,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        overflow: 'hidden',
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 5,
         elevation: 1,
     },
+    menuItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    menuItemLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    menuIcon: {
+        fontSize: 20,
+        marginRight: 12,
+    },
     menuItemText: {
         fontSize: 16,
         fontWeight: '500',
         color: '#333',
     },
+    menuSubtitle: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 2,
+    },
+    dangerText: {
+        color: '#E53935',
+    },
+    menuItemRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    badge: {
+        backgroundColor: '#C88EA7',
+        borderRadius: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        marginRight: 8,
+    },
+    badgeText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: '600',
+    },
     chevron: {
         fontSize: 20,
         color: '#ccc',
         fontWeight: 'bold',
-    }
+    },
 });

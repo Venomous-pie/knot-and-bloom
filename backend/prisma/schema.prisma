@@ -52,21 +52,28 @@ model ProductVariant {
 }
 
 model Customer {
-  uid                   Int               @id @default(autoincrement())
+  uid                   Int                   @id @default(autoincrement())
   name                  String
-  email                 String?           @unique
+  email                 String?               @unique
   password              String
-  phone                 String?           @unique
+  phone                 String?               @unique
   address               String?
-  uploaded              DateTime          @default(now())
-  updated               DateTime          @updatedAt
+  uploaded              DateTime              @default(now())
+  updated               DateTime              @updatedAt
   orders                Order[]
   cart                  Cart?
-  role                  Role              @default(USER)
-  passwordResetRequired Boolean           @default(false)
-  sellerProfile         Seller?           @relation("CustomerSeller")
+  role                  Role                  @default(USER)
+  passwordResetRequired Boolean               @default(false)
+  sellerProfile         Seller?               @relation("CustomerSeller")
   checkoutSessions      CheckoutSession[]
   addresses             Address[]
+  paymentMethods        PaymentMethod[]
+  notificationSettings  NotificationSettings?
+  notifications         Notification[]
+
+  // Account deletion
+  deletionRequestedAt  DateTime?
+  deletionScheduledFor DateTime?
 }
 
 model Cart {
@@ -260,4 +267,53 @@ model Address {
 
   @@index([customerId])
   @@index([customerId, isDefault])
+}
+
+// Payment Method Types
+enum PaymentMethodType {
+  GCASH
+  PAYMAYA
+  BANK
+}
+
+model PaymentMethod {
+  uid           Int               @id @default(autoincrement())
+  customerId    Int
+  customer      Customer          @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  type          PaymentMethodType
+  accountName   String
+  accountNumber String
+  bankName      String? // Only for BANK type
+  isDefault     Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([customerId])
+  @@index([customerId, isDefault])
+}
+
+model NotificationSettings {
+  uid            Int      @id @default(autoincrement())
+  customerId     Int      @unique
+  customer       Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  orderUpdates   Boolean  @default(true)
+  promotions     Boolean  @default(true)
+  systemMessages Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Notification {
+  uid        Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  title      String
+  message    String
+  type       String // 'order', 'promo', 'system'
+  isRead     Boolean  @default(false)
+  data       String? // JSON string for additional data
+  createdAt  DateTime @default(now())
+
+  @@index([customerId])
+  @@index([customerId, isRead])
 }

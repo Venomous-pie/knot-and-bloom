@@ -3,12 +3,15 @@ dotenv.config();
 
 import cors from 'cors';
 import express from 'express';
+import accountRoutes from './routes/accountRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import checkoutRoutes from './routes/checkoutRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import paymentMethodRoutes from './routes/paymentMethodRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
 import prisma from './utils/prismaUtils.js';
@@ -44,9 +47,11 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/sellers', sellerRoutes);
-app.use('/api/sellers', sellerRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/account', accountRoutes);
 
 // Error handling middleware
 app.use(errorHandlingMiddleware);

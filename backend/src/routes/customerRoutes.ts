@@ -4,6 +4,7 @@ import { DuplicateCustomerError, ValidationError, AuthenticationError, NotFoundE
 import { authenticate } from '../middleware/authMiddleware.js';
 
 import { authRateLimiter } from '../middleware/rateLimiter.js';
+import { loginRateLimiter } from '../services/LoginRateLimiter.js';
 
 const router = Router();
 
@@ -81,9 +82,13 @@ router.post('/register', authRateLimiter, async (req, res) => {
     }
 });
 
-router.post('/login', authRateLimiter, async (req, res) => {
+router.post('/login', loginRateLimiter.middleware, async (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
     try {
         const result = await customerController.customerLoginController(req.body);
+
+        // Reset rate limit on success
+        loginRateLimiter.reset(ip);
 
         res.status(200).json({
             success: true,
@@ -104,6 +109,8 @@ router.post('/login', authRateLimiter, async (req, res) => {
         }
 
         if (error instanceof AuthenticationError) {
+            // Increment rate limit on failed auth
+            loginRateLimiter.increment(ip);
             return res.status(error.statusCode).json({
                 success: false,
                 message: error.message

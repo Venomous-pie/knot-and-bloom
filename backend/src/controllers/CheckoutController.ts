@@ -6,6 +6,7 @@ import { CheckoutStatus, OrderStatus, PaymentStatus } from '../../generated/pris
 import { AuditService } from '../services/AuditService.js';
 import { notifications } from '../services/notificationService.js';
 import { PaymentService } from '../services/PaymentService.js';
+import { socketService } from '../services/SocketService.js';
 
 import type {
     LockedPriceItem,
@@ -711,6 +712,40 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
             orderIds: createdOrderIds,
             orderCount: createdOrderIds.length
         });
+
+        // ------------------------------------------------------------------
+        // Real-time Updates
+        // ------------------------------------------------------------------
+
+        // 1. Inventory Updates (Trigger refetch for anyone viewing these products)
+        const uniqueProductIds = [...new Set(lockedPrices.map(item => item.productId))];
+        uniqueProductIds.forEach(pid => {
+            socketService.emit('product:updated', { productId: pid });
+        });
+
+        // 2. Cart Sync (Clear cart for this user on other devices)
+        socketService.emitToRoom(`user_${session.customerId}`, 'cart:updated', {
+            customerId: session.customerId,
+            cart: { items: [] }
+        });
+
+        // 3. Vendor Notifications (Alert sellers of new orders)
+        // We grouped itemsBySeller earlier.
+        for (const [sellerId, sellerItems] of itemsBySeller) {
+            if (sellerId) {
+                socketService.emitToRoom(`seller_${sellerId}`, 'vendor:notification', {
+                    type: 'NEW_ORDER',
+                    message: `You have a new order with ${sellerItems.length} items.`,
+                    data: {
+                        sellerId,
+                        itemCount: sellerItems.length,
+                        totalAmount: sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0)
+                    }
+                });
+            }
+        }
+
+        // ------------------------------------------------------------------
 
         // Send notifications
         notifications.send({

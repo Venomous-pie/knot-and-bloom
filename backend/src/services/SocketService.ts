@@ -30,6 +30,16 @@ class SocketService {
         this.io.on('connection', (socket: Socket) => {
             console.log(`New client connected: ${socket.id}`);
 
+            socket.on('join', (room: string) => {
+                socket.join(room);
+                console.log(`Socket ${socket.id} joined room ${room}`);
+            });
+
+            socket.on('leave', (room: string) => {
+                socket.leave(room);
+                console.log(`Socket ${socket.id} left room ${room}`);
+            });
+
             socket.on('disconnect', () => {
                 console.log(`Client disconnected: ${socket.id}`);
             });
@@ -48,6 +58,14 @@ class SocketService {
             this.io.emit(event, data);
         } else {
             console.warn('SocketService not initialized, cannot emit event:', event);
+        }
+    }
+
+    public emitToRoom(room: string, event: string, data: any): void {
+        if (this.io) {
+            this.io.to(room).emit(event, data);
+        } else {
+            console.warn('SocketService not initialized, cannot emit to room:', room);
         }
     }
 }

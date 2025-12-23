@@ -17,8 +17,6 @@ import {
     type CustomerUpdateInput
 } from "../validators/customerValidator.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
-
 import { generateRandomName } from "../utils/nameGenerator.js";
 
 const customerRegisterController = async (input: unknown) => {
@@ -67,7 +65,7 @@ const customerRegisterController = async (input: unknown) => {
             role: customer.role as any,
         };
 
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '2h' });
 
         return {
             token,
@@ -127,7 +125,7 @@ const customerLoginController = async (input: unknown) => {
             ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
         };
 
-        const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '2h' }); // 2h expiry for security
+        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '2h' }); // 2h expiry for security
 
         return {
             token,

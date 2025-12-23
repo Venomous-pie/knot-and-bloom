@@ -2,6 +2,7 @@ import prisma from '../utils/prismaUtils.js';
 import type { Request, Response } from 'express';
 import Pricing from '../utils/pricingUtils.js';
 import ErrorHandler from '../error/errorHandler.js';
+import { socketService } from '../services/SocketService.js';
 
 const addToCart = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -73,6 +74,9 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
                 }
             });
         }
+
+        // Real-time Update
+        socketService.emitToRoom(`user_${customerId}`, 'cart:updated', { customerId: Number(customerId) });
 
         res.status(200).json({ message: "Product added to cart successfully." });
 
@@ -182,10 +186,16 @@ const updateCartItem = async (req: Request, res: Response): Promise<void> => {
             throw new ErrorHandler.ValidationError([{ message: "Quantity must be at least 1.", path: ['quantity'] }]);
         }
 
-        await prisma.cartItem.update({
+        const updatedItem = await prisma.cartItem.update({
             where: { uid: Number(itemId) },
-            data: { quantity: Number(quantity) }
+            data: { quantity: Number(quantity) },
+            include: { cart: true } // Include cart to get customerId
         });
+
+        // Real-time Update
+        if (updatedItem && updatedItem.cart) {
+            socketService.emitToRoom(`user_${updatedItem.cart.customerId}`, 'cart:updated', { customerId: updatedItem.cart.customerId });
+        }
 
         res.status(200).json({ message: "Cart item updated." });
 
@@ -202,10 +212,25 @@ const updateCartItem = async (req: Request, res: Response): Promise<void> => {
 const removeFromCart = async (req: Request, res: Response): Promise<void> => {
     try {
         const { itemId } = req.params;
-        // Use deleteMany to avoid error if item doesn't exist (idempotent)
-        await prisma.cartItem.deleteMany({
-            where: { uid: Number(itemId) }
-        });
+
+        // Find first to get customerId (since delete doesn't allow include on some versions, or to be safe if it fails)
+        // But prisma delete returns the record.
+        try {
+            const deletedItem = await prisma.cartItem.delete({
+                where: { uid: Number(itemId) },
+                include: { cart: true }
+            });
+
+            // Real-time Update
+            if (deletedItem && deletedItem.cart) {
+                socketService.emitToRoom(`user_${deletedItem.cart.customerId}`, 'cart:updated', { customerId: deletedItem.cart.customerId });
+            }
+        } catch (e: any) {
+            // Ignore if record not found (idempotent)
+            if (e.code !== 'P2025') {
+                throw e;
+            }
+        }
 
         res.status(200).json({ message: "Item removed from cart." });
 

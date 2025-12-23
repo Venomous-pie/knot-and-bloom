@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { notifications } from '../services/notificationService.js';
 import prisma from '../utils/prismaUtils.js';
+import { socketService } from '../services/SocketService.js';
 
 const getOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -109,11 +110,19 @@ const updateOrderItemStatus = async (req: Request, res: Response, next: NextFunc
         if (status === 'shipped' || status === 'delivered') {
             notifications.send({
                 type: 'email',
-                to: item.order.customer.email,
+                to: item.order.customer.email || '',
                 subject: `Your item from ${item.seller?.name ?? 'Knot & Bloom'} has been ${status}`,
                 body: `Item: ${item.product.name} is now ${status}. Tracking: ${trackingNumber || 'N/A'}`
             }).catch(console.error);
         }
+
+        // Real-time Update
+        socketService.emitToRoom(`user_${item.order.customerId}`, 'order:status:updated', {
+            orderId: item.order.uid,
+            itemId: item.uid,
+            status,
+            customerId: item.order.customerId
+        });
 
         // Update Metrics (if delivered)
         if (status === 'delivered' && item.status !== 'delivered' && item.sellerId) {
@@ -198,10 +207,17 @@ const shipOrder = async (req: Request, res: Response, next: NextFunction) => {
         // Notifications
         notifications.send({
             type: 'email',
-            to: order.customer.email,
+            to: order.customer.email || '',
             subject: `Your order #${order.uid} has been shipped!`,
             body: `Great news! Your order is on its way.\n\nCourier: ${courierName || 'Standard'}\nTracking Number: ${trackingNumber}\n\nTrack your package here: [Link]`
         }).catch(console.error);
+
+        // Real-time Update
+        socketService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
+            orderId: order.uid,
+            status: 'SHIPPED',
+            customerId: order.customerId
+        });
 
         res.json({ success: true, order: updatedOrder });
     } catch (error) {

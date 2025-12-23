@@ -13,7 +13,8 @@ import {
     Sparkles,
     SquircleDashed,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
+import React, { useEffect, useState, useRef } from "react";
 import {
     ActivityIndicator,
     Animated,
@@ -58,8 +59,49 @@ export default function BespokeAuthForm({
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
+    const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
+
+    // Refs
+    const passwordInputRef = useRef<TextInput>(null);
     const [error, setError] = useState("");
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+    // Animation state
+    const [containerWidth, setContainerWidth] = useState(0);
+    const translateX = useSharedValue(0);
+
+    // Calculate tab width (container width - padding * 2) / 2
+    const tabWidth = containerWidth ? (containerWidth - 8) / 2 : 0;
+
+    useEffect(() => {
+        if (tabWidth > 0) {
+            translateX.value = withTiming(isSignUp ? tabWidth : 0, {
+                duration: 300,
+                easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+            });
+        }
+    }, [isSignUp, tabWidth]);
+
+    // Countdown Timer Effect
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
+        if (retryCountdown !== null && retryCountdown > 0) {
+            timer = setTimeout(() => {
+                setRetryCountdown((prev) => (prev !== null && prev > 0 ? prev - 1 : null));
+            }, 1000);
+        } else if (retryCountdown === 0) {
+            setRetryCountdown(null);
+            setError(""); // Clear error when timer finishes
+        }
+        return () => clearTimeout(timer);
+    }, [retryCountdown]);
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateX: translateX.value }],
+            width: tabWidth,
+        };
+    });
 
     // Auth Method State
     const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
@@ -134,9 +176,14 @@ export default function BespokeAuthForm({
                     setError(err.response?.data?.error || "Validation failed.");
                 }
             } else {
-                setError(
-                    err.response?.data?.message || err.response?.data?.error || "Authentication failed. Please try again."
-                );
+                if (err.response?.status === 429 && err.response?.data?.retryAfter) {
+                    setRetryCountdown(err.response.data.retryAfter);
+                    setError(`Too many attempts. Please wait ${err.response.data.retryAfter}s.`);
+                } else {
+                    setError(
+                        err.response?.data?.message || err.response?.data?.error || "Authentication failed. Please try again."
+                    );
+                }
             }
         } finally {
             setIsLoading(false);
@@ -323,16 +370,20 @@ export default function BespokeAuthForm({
                                     <View
                                         style={[
                                             styles.separatorLine,
-                                            { backgroundColor: "#E6C229" },
+                                            { backgroundColor: "#567F4F" },
                                         ]}
                                     />
                                 </View>
 
-                                <Text style={styles.brandDescription}>
-                                    Where artisans and craft lovers unite. Join a vibrant
-                                    community dedicated to handmade treasures and timeless
-                                    creations.
-                                </Text>
+                                {isSignUp ? (
+                                    <Text style={styles.brandDescription}>
+                                        Unique finds from creators who pour their heart into every piece.
+                                    </Text>
+                                ) : (
+                                    <Text style={styles.brandDescription}>
+                                        Your favorite finds are waiting!
+                                    </Text>
+                                )}
 
                                 <View style={styles.featuresGrid}>
                                     <View style={styles.featureItem}>
@@ -405,12 +456,31 @@ export default function BespokeAuthForm({
 
                         <View style={styles.card}>
                             {/* Mode Toggle */}
-                            <View style={styles.toggleContainer}>
+                            <View
+                                style={styles.toggleContainer}
+                                onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+                            >
+                                {tabWidth > 0 && (
+                                    <Reanimated.View
+                                        style={[
+                                            styles.toggleButtonActive,
+                                            {
+                                                position: "absolute",
+                                                top: 4,
+                                                bottom: 4,
+                                                left: 4,
+                                                borderRadius: 12,
+                                                zIndex: 0,
+                                            },
+                                            animatedStyle,
+                                        ]}
+                                    />
+                                )}
                                 <Pressable
                                     onPress={() => toggleMode(false)}
                                     style={[
                                         styles.toggleButton,
-                                        !isSignUp && styles.toggleButtonActive,
+                                        { zIndex: 1 },
                                     ]}
                                 >
                                     <Text
@@ -426,7 +496,7 @@ export default function BespokeAuthForm({
                                     onPress={() => toggleMode(true)}
                                     style={[
                                         styles.toggleButton,
-                                        isSignUp && styles.toggleButtonActive,
+                                        { zIndex: 1 },
                                     ]}
                                 >
                                     <Text
@@ -435,10 +505,11 @@ export default function BespokeAuthForm({
                                             isSignUp && styles.toggleTextActive,
                                         ]}
                                     >
-                                        Sign Up
+                                        Create Account
                                     </Text>
                                 </Pressable>
                             </View>
+
 
                             <View style={styles.formContent}>
                                 {/* Social Auth */}
@@ -493,8 +564,28 @@ export default function BespokeAuthForm({
                                                 onFocus={() => setFocusedInput("email")}
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor="#B36979"
+                                                returnKeyType="next"
+                                                onSubmitEditing={() => passwordInputRef.current?.focus()}
+                                                blurOnSubmit={false}
                                             />
-                                            {fieldErrors.email && <Text style={styles.errorTextSmall}>{fieldErrors.email}</Text>}
+                                            {fieldErrors.email && (
+                                                <View>
+                                                    <Text style={styles.errorTextSmall}>{fieldErrors.email}</Text>
+                                                    {/* Smart Suggestion: If it looks like a phone number */}
+                                                    {/^[0-9+()\s-]+$/.test(email) && email.length > 3 && (
+                                                        <TouchableOpacity onPress={() => {
+                                                            setPhoneNumber(email);
+                                                            setEmail("");
+                                                            setAuthMethod('phone');
+                                                            setFieldErrors({});
+                                                        }}>
+                                                            <Text style={[styles.errorTextSmall, { color: '#B36979', textDecorationLine: 'underline' }]}>
+                                                                Looks like a phone number? Switch to Phone
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
+                                            )}
                                         </View>
                                     ) : (
                                         <View>
@@ -512,8 +603,28 @@ export default function BespokeAuthForm({
                                                 onFocus={() => setFocusedInput("phone")}
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor="#B36979"
+                                                returnKeyType="next"
+                                                onSubmitEditing={() => passwordInputRef.current?.focus()}
+                                                blurOnSubmit={false}
                                             />
-                                            {fieldErrors.phone && <Text style={styles.errorTextSmall}>{fieldErrors.phone}</Text>}
+                                            {fieldErrors.phone && (
+                                                <View>
+                                                    <Text style={styles.errorTextSmall}>{fieldErrors.phone}</Text>
+                                                    {/* Smart Suggestion: If it looks like an email */}
+                                                    {phoneNumber.includes('@') && (
+                                                        <TouchableOpacity onPress={() => {
+                                                            setEmail(phoneNumber);
+                                                            setPhoneNumber("");
+                                                            setAuthMethod('email');
+                                                            setFieldErrors({});
+                                                        }}>
+                                                            <Text style={[styles.errorTextSmall, { color: '#B36979', textDecorationLine: 'underline' }]}>
+                                                                Looks like an email? Switch to Email
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
+                                            )}
                                         </View>
                                     )}
 
@@ -552,6 +663,9 @@ export default function BespokeAuthForm({
                                                 onFocus={() => setFocusedInput("password")}
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor="#B36979"
+                                                ref={passwordInputRef}
+                                                returnKeyType="go"
+                                                onSubmitEditing={handleAuth}
                                             />
                                             <Pressable
                                                 onPress={() => setShowPassword(!showPassword)}
@@ -587,14 +701,18 @@ export default function BespokeAuthForm({
                                 <TouchableOpacity
                                     style={[
                                         styles.submitButton,
-                                        (isLoading || (isSignUp && !agreeToTerms)) &&
+                                        (isLoading || (isSignUp && !agreeToTerms) || retryCountdown !== null) &&
                                         styles.submitButtonDisabled,
                                     ]}
                                     onPress={handleAuth}
-                                    disabled={isLoading || (isSignUp && !agreeToTerms)}
+                                    disabled={isLoading || (isSignUp && !agreeToTerms) || retryCountdown !== null}
                                 >
                                     {isLoading ? (
                                         <ActivityIndicator color="white" />
+                                    ) : retryCountdown !== null ? (
+                                        <Text style={styles.submitButtonText}>
+                                            Try again in {retryCountdown}s
+                                        </Text>
                                     ) : (
                                         <Text style={styles.submitButtonText}>
                                             {isSignUp ? "Create Account" : "Sign In"}

@@ -2,17 +2,12 @@ import Router from 'express';
 import { getProductById, getProducts, postProduct, searchProducts } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../error/errorHandler.js';
 import { generateProductDescription, generateProductSKU, generateVariantSKU } from '../services/GenerateService.js';
+import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
+import { authenticate, authorize } from '../middleware/authMiddleware.js';
+import { Role } from '../types/authTypes.js';
 
 const router = Router();
 
-// ============================================
-// Generation Endpoints (Admin use)
-// ============================================
-
-/**
- * POST /api/products/generate-description
- * Generate an AI-powered product description
- */
 router.post('/generate-description', async (req, res) => {
     try {
         const { name, category, variants, basePrice, discountedPrice } = req.body;
@@ -53,10 +48,6 @@ router.post('/generate-description', async (req, res) => {
     }
 });
 
-/**
- * POST /api/products/generate-sku
- * Generate a unique product SKU with database validation
- */
 router.post('/generate-sku', async (req, res) => {
     try {
         const { category, variants } = req.body;
@@ -83,10 +74,6 @@ router.post('/generate-sku', async (req, res) => {
     }
 });
 
-/**
- * POST /api/products/generate-variant-sku
- * Generate a variant SKU based on the product's base SKU
- */
 router.post('/generate-variant-sku', async (req, res) => {
     try {
         const { baseSKU, variantName } = req.body;
@@ -113,21 +100,6 @@ router.post('/generate-variant-sku', async (req, res) => {
     }
 });
 
-// ============================================
-// Product CRUD Endpoints
-// ============================================
-import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
-import { authenticate, authorize } from '../middleware/authMiddleware.js';
-import { Role } from '../types/authTypes.js';
-
-// ============================================
-// Admin-only Product Management
-// ============================================
-
-/**
- * GET /api/products/admin
- * Get all products for admin (including PENDING)
- */
 router.get('/admin', authenticate, authorize([Role.ADMIN]), async (req: any, res) => {
     try {
         const { status, limit, offset } = req.query;
@@ -147,10 +119,6 @@ router.get('/admin', authenticate, authorize([Role.ADMIN]), async (req: any, res
     }
 });
 
-/**
- * PATCH /api/products/admin/:id/status
- * Update product status (approve/reject)
- */
 router.patch('/admin/:id/status', authenticate, authorize([Role.ADMIN]), async (req: any, res) => {
     try {
         const { id } = req.params;

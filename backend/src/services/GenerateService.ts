@@ -1,17 +1,7 @@
 import { InferenceClient } from "@huggingface/inference";
 import prisma from "../utils/prismaUtils.js";
-
-// ============================================
-// Description Generation
-// ============================================
-
-export interface ProductDescriptionInput {
-    name: string;
-    category: string;
-    variants?: Array<{ name: string }>;
-    basePrice?: string;
-    discountedPrice?: string;
-}
+import CategoryCodes from '../constant/categories.js';
+import type { GenerateSKUInput, GenerateVariantSKUInput, ProductDescriptionInput } from '../types/productTypes.js';
 
 // Use server-side environment variable - NOT exposed to clients
 const HF_TOKEN = process.env.HF_TOKEN;
@@ -84,24 +74,6 @@ export async function generateProductDescription(product: ProductDescriptionInpu
     }
 }
 
-// ============================================
-// SKU Generation
-// ============================================
-
-const CategoryCodes: Record<string, string> = {
-    "popular": "POP",
-    "new-arrival": "NEW",
-    "crochet": "CRO",
-    "fuzzy-wire-art": "FWA",
-    "accessories": "ACC",
-    "tops": "TOP",
-    "hair-tie": "HRT",
-    "mini-stuffed-toy": "MST",
-    "fuzzy-wire-bouquet": "FWB",
-    "crochet-flower-bouquet": "CFB",
-    "crochet-key-chains": "CKC",
-};
-
 function buildSKU(category: string, variants?: Array<{ name: string }>): string {
     // Get category code or default to first 3 letters
     const categoryCode = CategoryCodes[category] || category.substring(0, 3).toUpperCase();
@@ -125,15 +97,6 @@ function buildSKU(category: string, variants?: Array<{ name: string }>): string 
     return parts.join('-');
 }
 
-export interface GenerateSKUInput {
-    category: string;
-    variants?: Array<{ name: string }>;
-}
-
-/**
- * Generate a unique product SKU with database validation
- * Retries up to 10 times if a collision is found
- */
 export async function generateProductSKU(input: GenerateSKUInput): Promise<string> {
     let sku: string;
     let attempts = 0;
@@ -161,14 +124,6 @@ export async function generateProductSKU(input: GenerateSKUInput): Promise<strin
     return `${sku}-${extraRandom}`;
 }
 
-export interface GenerateVariantSKUInput {
-    baseSKU: string;
-    variantName: string;
-}
-
-/**
- * Generate a variant SKU based on the product's base SKU
- */
 export async function generateVariantSKU(input: GenerateVariantSKUInput): Promise<string> {
     if (!input.baseSKU || !input.variantName) {
         return input.baseSKU;

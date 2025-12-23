@@ -7,9 +7,6 @@ import { addressSchema, type AddressInput } from "../validators/addressValidator
 const addressUpdateSchema = addressSchema.partial();
 type AddressUpdateInput = z.infer<typeof addressUpdateSchema>;
 
-/**
- * Get all addresses for a user
- */
 const getAddresses = async (userId: number) => {
     const addresses = await prisma.address.findMany({
         where: { customerId: userId },
@@ -22,9 +19,6 @@ const getAddresses = async (userId: number) => {
     return { addresses };
 };
 
-/**
- * Create a new address
- */
 const createAddress = async (userId: number, input: unknown) => {
     let parsedInput: AddressInput;
 
@@ -70,9 +64,6 @@ const createAddress = async (userId: number, input: unknown) => {
     return { address };
 };
 
-/**
- * Update an existing address
- */
 const updateAddress = async (userId: number, addressId: number, input: unknown) => {
     // Verify ownership
     const existing = await prisma.address.findUnique({ where: { uid: addressId } });
@@ -120,9 +111,6 @@ const updateAddress = async (userId: number, addressId: number, input: unknown) 
     return { address };
 };
 
-/**
- * Delete an address
- */
 const deleteAddress = async (userId: number, addressId: number) => {
     // Verify ownership
     const existing = await prisma.address.findUnique({ where: { uid: addressId } });
@@ -160,9 +148,6 @@ const deleteAddress = async (userId: number, addressId: number) => {
     return { success: true };
 };
 
-/**
- * Set an address as default
- */
 const setDefaultAddress = async (userId: number, addressId: number) => {
     // Verify ownership
     const existing = await prisma.address.findUnique({ where: { uid: addressId } });

@@ -5,15 +5,6 @@ import AddressController from '../controllers/AddressController.js';
 
 const router = Router();
 
-// ============================================
-// Address CRUD Endpoints (all require auth)
-// Uses /api/addresses/me/* pattern for security
-// ============================================
-
-/**
- * GET /api/addresses/me
- * List all addresses for authenticated user
- */
 router.get('/me', authenticate, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
@@ -27,10 +18,6 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     }
 });
 
-/**
- * POST /api/addresses/me
- * Create a new address
- */
 router.post('/me', authenticate, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
@@ -47,10 +34,6 @@ router.post('/me', authenticate, async (req: Request, res: Response) => {
     }
 });
 
-/**
- * PUT /api/addresses/me/:id
- * Update an address
- */
 router.put('/me/:id', authenticate, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
@@ -70,10 +53,6 @@ router.put('/me/:id', authenticate, async (req: Request, res: Response) => {
     }
 });
 
-/**
- * DELETE /api/addresses/me/:id
- * Delete an address
- */
 router.delete('/me/:id', authenticate, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
@@ -93,10 +72,6 @@ router.delete('/me/:id', authenticate, async (req: Request, res: Response) => {
     }
 });
 
-/**
- * PATCH /api/addresses/me/:id/default
- * Set an address as default
- */
 router.patch('/me/:id/default', authenticate, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;

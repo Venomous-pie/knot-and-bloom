@@ -33,4 +33,23 @@ interface GetProductsResult {
     };
 }
 
-export type { GetProductsOptions, GetProductsResult, ProductInput };
+
+interface GenerateVariantSKUInput {
+    baseSKU: string;
+    variantName: string;
+}
+
+interface GenerateSKUInput {
+    category: string;
+    variants?: Array<{ name: string }>;
+}
+
+interface ProductDescriptionInput {
+    name: string;
+    category: string;
+    variants?: Array<{ name: string }>;
+    basePrice?: string;
+    discountedPrice?: string;
+}
+
+export type { GetProductsOptions, GetProductsResult, ProductInput, GenerateSKUInput, GenerateVariantSKUInput, ProductDescriptionInput };

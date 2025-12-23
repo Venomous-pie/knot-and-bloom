@@ -6,6 +6,8 @@ import {
     EyeOff,
     Facebook,
     Flower,
+    Mail,
+    Phone,
     Rose,
     Snowflake,
     Sparkles,
@@ -35,26 +37,36 @@ interface BespokeAuthFormProps {
     initialMode?: "login" | "signup";
 }
 
+const generateRandomName = () => {
+    const adjectives = ['Happy', 'Sunny', 'Creative', 'Clever', 'Bright', 'Swift', 'Gentle', 'Cosy', 'Lovely'];
+    const nouns = ['Weaver', 'Crafter', 'Artist', 'Maker', 'Designer', 'Artisan', 'Creator', 'Knitter', 'Bloomer'];
+    const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+    const randomNumber = Math.floor(Math.random() * 1000);
+    return `${randomAdjective} ${randomNoun} ${randomNumber}`;
+};
+
 export default function BespokeAuthForm({
     initialMode = "login",
 }: BespokeAuthFormProps) {
     const { login, register, user, loading: authLoading } = useAuth();
     const router = useRouter();
     const { width, height } = useWindowDimensions();
-    const isDesktop = width > 1024; // Use a wider breakpoint for the side-by-side layout
+    const isDesktop = width > 1024;
 
     const [isSignUp, setIsSignUp] = useState(initialMode === "signup");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
-    const [userType, setUserType] = useState<"customer" | "vendor">("customer");
     const [error, setError] = useState("");
+
+    // Auth Method State
+    const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
 
     // Form State
     const [email, setEmail] = useState("");
+    const [phoneNumber, setPhoneNumber] = useState("");
     const [password, setPassword] = useState("");
-    const [name, setName] = useState("");
-    const [shopName, setShopName] = useState("");
 
     // Focus State for Inputs
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
@@ -66,57 +78,52 @@ export default function BespokeAuthForm({
         }
     }, [user, authLoading]);
 
-    // Handle initial mode changes if prop changes (rare but good practice)
     useEffect(() => {
         setIsSignUp(initialMode === "signup");
     }, [initialMode]);
 
-    const handleSubmit = async () => {
+    const toggleMode = (signup: boolean) => {
+        setIsSignUp(signup);
+        setError("");
+        // Reset form? maybe keep email/phone populated
+    };
+
+    const handleAuth = async () => {
         setError("");
         setIsLoading(true);
         Keyboard.dismiss();
 
         try {
             if (isSignUp) {
-                if (!email || !password || !name || !agreeToTerms) {
-                    throw new Error(
-                        "Please fill in all required fields and agree to terms."
-                    );
+                if (!agreeToTerms) {
+                    setError("You must agree to the terms and conditions");
+                    setIsLoading(false);
+                    return;
                 }
-                if (userType === "vendor" && !shopName) {
-                    throw new Error("Please provide a shop name.");
-                }
-
-                await register({
-                    name,
-                    email,
+                const randomName = generateRandomName();
+                const payload = {
+                    name: randomName,
                     password,
-                    role: userType === "vendor" ? "SELLER" : "CUSTOMER", // Mapping to backend roles if needed, distinct logic might be required on backend
-                    shopName: userType === "vendor" ? shopName : undefined,
-                });
-                // Register usually logs in automatically in AuthContext
+                    ...(authMethod === 'email' ? { email } : { phone: phoneNumber })
+                };
+
+                // Note: Ensure your backend handles 'phone' or maps it correctly
+                await register(payload);
             } else {
-                if (!email || !password) {
-                    throw new Error("Please enter your email and password.");
-                }
-                await login({ email, password });
+                const payload = {
+                    password,
+                    ...(authMethod === 'email' ? { email } : { phone: phoneNumber })
+                };
+                await login(payload);
             }
-            // Navigation is handled by AuthContext or useEffect above
-        } catch (e: any) {
-            console.error("Auth error:", e);
+        } catch (err: any) {
+            console.error(err);
             setError(
-                e.response?.data?.message ||
-                e.message ||
-                "Authentication failed. Please try again."
+                err.response?.data?.message || "Authentication failed. Please try again."
             );
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const toggleMode = (mode: boolean) => {
-        setIsSignUp(mode);
-        setError("");
     };
 
     // Google Icon SVG (simplified)
@@ -147,7 +154,7 @@ export default function BespokeAuthForm({
             showsVerticalScrollIndicator={false}
         >
             <View style={styles.container}>
-                {/* Background Decorations */}
+                {/* Background Decoration */}
                 <View style={[StyleSheet.absoluteFill, { overflow: "hidden" }]}>
                     <View
                         style={[
@@ -312,14 +319,11 @@ export default function BespokeAuthForm({
 
                                 <View style={styles.featuresGrid}>
                                     <View style={styles.featureItem}>
-                                        <View
-                                            style={[
-                                                styles.featureIconBox,
-                                                { backgroundColor: "#B3697920" },
-                                            ]}
-                                        >
-                                            <Rose size={24} color="#B36979" />
-                                        </View>
+                                        <Image
+                                            source={require("../../assets/curated.png")}
+                                            style={{ width: 60, height: 60 }}
+                                            resizeMode="contain"
+                                        />
                                         <View>
                                             <Text style={styles.featureTitle}>Curated</Text>
                                             <Text style={styles.featureSubtitle}>
@@ -328,14 +332,11 @@ export default function BespokeAuthForm({
                                         </View>
                                     </View>
                                     <View style={styles.featureItem}>
-                                        <View
-                                            style={[
-                                                styles.featureIconBox,
-                                                { backgroundColor: "#567F4F20" },
-                                            ]}
-                                        >
-                                            <SquircleDashed size={24} color="#567F4F" />
-                                        </View>
+                                        <Image
+                                            source={require("../../assets/secure-payment.png")}
+                                            style={{ width: 48, height: 48 }}
+                                            resizeMode="contain"
+                                        />
                                         <View>
                                             <Text style={styles.featureTitle}>Secure</Text>
                                             <Text style={styles.featureSubtitle}>
@@ -386,7 +387,6 @@ export default function BespokeAuthForm({
                         )}
 
                         <View style={styles.card}>
-                            {/* Corner Decorations for Card */}
                             {/* Mode Toggle */}
                             <View style={styles.toggleContainer}>
                                 <Pressable
@@ -447,114 +447,56 @@ export default function BespokeAuthForm({
 
                                 <View style={styles.divider}>
                                     <View style={styles.dividerLine} />
-                                    <Text style={styles.dividerText}>or with email</Text>
+                                    <Text style={styles.dividerText}>or continue with</Text>
                                     <View style={styles.dividerLine} />
                                 </View>
 
-                                {/* User Type Selection (Signup Only) */}
-                                {isSignUp && (
-                                    <View style={{ marginBottom: 20 }}>
-                                        <Text style={styles.label}>I want to</Text>
-                                        <View style={{ flexDirection: "row", gap: 12 }}>
-                                            <Pressable
-                                                onPress={() => setUserType("customer")}
-                                                style={[
-                                                    styles.typeButton,
-                                                    userType === "customer" && styles.typeButtonActive,
-                                                ]}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.typeTitle,
-                                                        userType === "customer" && { color: "#B36979" },
-                                                    ]}
-                                                >
-                                                    Shop
-                                                </Text>
-                                                <Text style={styles.typeSubtitle}>As a customer</Text>
-                                            </Pressable>
-                                            <Pressable
-                                                onPress={() => setUserType("vendor")}
-                                                style={[
-                                                    styles.typeButton,
-                                                    userType === "vendor" && styles.typeButtonActive,
-                                                ]}
-                                            >
-                                                <Text
-                                                    style={[
-                                                        styles.typeTitle,
-                                                        userType === "vendor" && { color: "#B36979" },
-                                                    ]}
-                                                >
-                                                    Sell
-                                                </Text>
-                                                <Text style={styles.typeSubtitle}>As a vendor</Text>
-                                            </Pressable>
-                                        </View>
-                                    </View>
-                                )}
+
 
                                 {/* Error Message */}
                                 {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
                                 {/* Form Fields */}
                                 <View style={{ gap: 16 }}>
-                                    {isSignUp && (
+
+                                    {authMethod === 'email' ? (
                                         <View>
-                                            <Text style={styles.label}>Full Name</Text>
+                                            <Text style={styles.label}>Email Address</Text>
                                             <TextInput
                                                 style={[
                                                     styles.input,
-                                                    focusedInput === "name" && styles.inputFocused,
+                                                    focusedInput === "email" && styles.inputFocused,
                                                 ]}
-                                                placeholder="Jane Doe"
+                                                placeholder="artisan@gmail.com"
                                                 placeholderTextColor="#999"
-                                                value={name}
-                                                onChangeText={setName}
-                                                onFocus={() => setFocusedInput("name")}
+                                                value={email}
+                                                onChangeText={setEmail}
+                                                keyboardType="email-address"
+                                                autoCapitalize="none"
+                                                onFocus={() => setFocusedInput("email")}
+                                                onBlur={() => setFocusedInput(null)}
+                                                selectionColor="#B36979"
+                                            />
+                                        </View>
+                                    ) : (
+                                        <View>
+                                            <Text style={styles.label}>Phone Number</Text>
+                                            <TextInput
+                                                style={[
+                                                    styles.input,
+                                                    focusedInput === "phone" && styles.inputFocused,
+                                                ]}
+                                                placeholder="+63 912 345 6789"
+                                                placeholderTextColor="#999"
+                                                value={phoneNumber}
+                                                onChangeText={setPhoneNumber}
+                                                keyboardType="phone-pad"
+                                                onFocus={() => setFocusedInput("phone")}
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor="#B36979"
                                             />
                                         </View>
                                     )}
-
-                                    {isSignUp && userType === "vendor" && (
-                                        <View>
-                                            <Text style={styles.label}>Shop Name</Text>
-                                            <TextInput
-                                                style={[
-                                                    styles.input,
-                                                    focusedInput === "shop" && styles.inputFocused,
-                                                ]}
-                                                placeholder="Your Creative Studio"
-                                                placeholderTextColor="#999"
-                                                value={shopName}
-                                                onChangeText={setShopName}
-                                                onFocus={() => setFocusedInput("shop")}
-                                                onBlur={() => setFocusedInput(null)}
-                                                selectionColor="#B36979"
-                                            />
-                                        </View>
-                                    )}
-
-                                    <View>
-                                        <Text style={styles.label}>Email Address</Text>
-                                        <TextInput
-                                            style={[
-                                                styles.input,
-                                                focusedInput === "email" && styles.inputFocused,
-                                            ]}
-                                            placeholder="hello@example.com"
-                                            placeholderTextColor="#999"
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
-                                            onFocus={() => setFocusedInput("email")}
-                                            onBlur={() => setFocusedInput(null)}
-                                            selectionColor="#B36979"
-                                        />
-                                    </View>
 
                                     <View>
                                         <View
@@ -628,7 +570,7 @@ export default function BespokeAuthForm({
                                         (isLoading || (isSignUp && !agreeToTerms)) &&
                                         styles.submitButtonDisabled,
                                     ]}
-                                    onPress={handleSubmit}
+                                    onPress={handleAuth}
                                     disabled={isLoading || (isSignUp && !agreeToTerms)}
                                 >
                                     {isLoading ? (
@@ -638,6 +580,19 @@ export default function BespokeAuthForm({
                                             {isSignUp ? "Create Account" : "Sign In"}
                                         </Text>
                                     )}
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={{ marginTop: 20, alignItems: 'center' }}>
+                                <TouchableOpacity
+                                    onPress={() => setAuthMethod(authMethod === 'email' ? 'phone' : 'email')}
+                                >
+                                    <Text style={styles.switchMethodText}>
+                                        {isSignUp
+                                            ? (authMethod === 'email' ? "Sign up with phone?" : "Sign up with email?")
+                                            : (authMethod === 'email' ? "Sign in with phone?" : "Sign in with email?")
+                                        }
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -717,7 +672,7 @@ const styles = StyleSheet.create({
     featuresGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
-        gap: 20,
+        gap: 35,
     },
     featureItem: {
         flexDirection: "row",
@@ -798,7 +753,12 @@ const styles = StyleSheet.create({
     },
     toggleTextActive: {
         color: "#333",
-        fontWeight: "600",
+        fontWeight: "bold",
+    },
+    switchMethodText: {
+        color: '#B36979',
+        fontSize: 14,
+        fontWeight: '500',
     },
     formContent: {
         gap: 20,
@@ -872,6 +832,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         backgroundColor: "#FAFAFA",
         color: "#333",
+        outlineStyle: 'none' as any
     },
     inputFocused: {
         borderColor: "#B36979",

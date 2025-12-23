@@ -20,7 +20,7 @@
     "web": {
       "output": "static",
       "bundler": "metro",
-      "favicon": "./assets/favicon.ico",
+      "favicon": "./assets/yarn.png",
       "name": "Knot and Bloom"
     },
     "plugins": [

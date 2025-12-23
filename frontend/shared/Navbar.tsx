@@ -185,6 +185,8 @@ function NavLinks({ activeMenu, setActiveMenu }: { activeMenu: string | null, se
 }
 
 export default function NavBar() {
+    const pathname = usePathname();
+
     const { user, logout } = useAuth();
     const { cartCount, setCartIconPosition } = useCart();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -354,8 +356,18 @@ export default function NavBar() {
                             </View>
                         );
                     },
-                    headerTitle: () => !mobile ? <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} /> : null,
+                    headerTitle: () => !mobile && !pathname?.includes('/auth') ? <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} /> : null,
                     headerRight: () => {
+                        if (pathname?.includes('/auth')) {
+                            return (
+                                <View style={{ marginRight: width * navMargin }}>
+                                    <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
+                                        <Text style={{ color: '#B36979', fontSize: 14, textDecorationLine: 'none' }}>Need Assistance?</Text>
+                                    </Pressable>
+                                </View>
+                            );
+                        }
+
                         return (
                             <View style={[styles.rightIcons, { marginRight: width * navMargin, gap: mobile ? 5 : 10 }]}>
                                 {!mobile && (

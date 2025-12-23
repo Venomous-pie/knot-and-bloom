@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  uid                Int              @id @default(autoincrement())
+  name               String
+  sku                String           @unique
+  categories         String[]
+  basePrice          Decimal
+  discountedPrice    Decimal?
+  discountPercentage Int?
+  soldCount          Int              @default(0)
+  image              String?
+  description        String?
+  uploaded           DateTime         @default(now())
+  updated            DateTime         @updatedAt
+  variants           ProductVariant[]
+  cartItems          CartItem[]
+
+  sellerId Int?
+  seller   Seller? @relation(fields: [sellerId], references: [uid])
+
+  status    ProductStatus @default(PENDING)
+  deletedAt DateTime?
+  deletedBy Int?
+  version   Int           @default(0)
+
+  orderItems OrderItem[]
+}
+
+model ProductVariant {
+  uid                Int        @id @default(autoincrement())
+  product            Product    @relation(fields: [productId], references: [uid], onDelete: Cascade)
+  productId          Int
+  name               String
+  sku                String     @unique
+  stock              Int        @default(0)
+  soldCount          Int        @default(0)
+  price              Decimal?
+  discountPercentage Int?
+  discountedPrice    Decimal?
+  image              String?
+  cartItems          CartItem[]
+
+  @@unique([productId, name])
+}
+
+model Customer {
+  uid                   Int               @id @default(autoincrement())
+  name                  String
+  email                 String            @unique
+  password              String
+  phone                 String?
+  address               String?
+  uploaded              DateTime          @default(now())
+  updated               DateTime          @updatedAt
+  orders                Order[]
+  cart                  Cart?
+  role                  Role              @default(USER)
+  passwordResetRequired Boolean           @default(false)
+  sellerProfile         Seller?           @relation("CustomerSeller")
+  checkoutSessions      CheckoutSession[]
+  addresses             Address[]
+}
+
+model Cart {
+  uid        Int        @id @default(autoincrement())
+  customer   Customer   @relation(fields: [customerId], references: [uid])
+  customerId Int        @unique
+  items      CartItem[]
+  updated    DateTime   @updatedAt
+}
+
+model CartItem {
+  uid              Int             @id @default(autoincrement())
+  cart             Cart            @relation(fields: [cartId], references: [uid])
+  cartId           Int
+  product          Product         @relation(fields: [productId], references: [uid])
+  productId        Int
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [uid])
+  productVariantId Int?
+  quantity         Int             @default(1)
+}
+
+model Order {
+  uid            Int         @id @default(autoincrement())
+  customer       Customer    @relation(fields: [customerId], references: [uid])
+  customerId     Int
+  products       String
+  items          OrderItem[]
+  discount       Decimal?
+  total          Decimal
+  status         OrderStatus @default(PENDING)
+  idempotencyKey String?     @unique
+  uploaded       DateTime    @default(now())
+  updated        DateTime    @updatedAt
+  payments       Payment[]
+
+  sellerId       Int?
+  seller         Seller?   @relation(fields: [sellerId], references: [uid])
+  trackingNumber String?
+  courierName    String?
+  shippedAt      DateTime?
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model CheckoutSession {
+  uid            Int            @id @default(autoincrement())
+  customerId     Int
+  customer       Customer       @relation(fields: [customerId], references: [uid])
+  cartSnapshot   String
+  lockedPrices   String
+  totalAmount    Decimal
+  status         CheckoutStatus @default(INITIATED)
+  expiresAt      DateTime
+  idempotencyKey String         @unique
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  payments       Payment[]
+}
+
+enum CheckoutStatus {
+  INITIATED
+  VALIDATING
+  AWAITING_PAYMENT
+  PROCESSING_PAYMENT
+  COMPLETED
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+model Payment {
+  uid               Int             @id @default(autoincrement())
+  orderId           Int?
+  order             Order?          @relation(fields: [orderId], references: [uid])
+  checkoutSessionId Int
+  checkoutSession   CheckoutSession @relation(fields: [checkoutSessionId], references: [uid])
+  amount            Decimal
+  method            String
+  status            PaymentStatus   @default(PENDING)
+  gatewayRef        String?
+  idempotencyKey    String          @unique
+  errorMessage      String?
+  attempts          Int             @default(1)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum Role {
+  USER
+  SELLER
+  ADMIN
+}
+
+enum SellerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+model Seller {
+  uid             Int          @id @default(autoincrement())
+  name            String
+  slug            String       @unique
+  email           String       @unique
+  phone           String?
+  description     String?
+  logo            String?
+  banner          String?
+  status          SellerStatus @default(PENDING)
+  termsAccepted   Boolean      @default(false)
+  termsAcceptedAt DateTime?
+  commissionRate  Decimal      @default(0.15)
+  totalSales      Decimal      @default(0)
+  totalOrders     Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  products        Product[]
+  orderItems      OrderItem[]
+  orders          Order[]
+
+  customerId Int      @unique
+  customer   Customer @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
+
+  hasSeenWelcomeModal Boolean   @default(false)
+  approvedAt          DateTime?
+
+  @@index([customerId, hasSeenWelcomeModal])
+}
+
+model OrderItem {
+  uid              Int       @id @default(autoincrement())
+  orderId          Int
+  order            Order     @relation(fields: [orderId], references: [uid])
+  productId        Int
+  product          Product   @relation(fields: [productId], references: [uid])
+  sellerId         Int?
+  seller           Seller?   @relation(fields: [sellerId], references: [uid])
+  quantity         Int
+  price            Decimal
+  status           String    @default("pending_payment")
+  trackingNumber   String?
+  shippingProvider String?
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Address {
+  uid           Int      @id @default(autoincrement())
+  customerId    Int
+  customer      Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  label         String?
+  fullName      String
+  phone         String
+  streetAddress String
+  aptSuite      String?
+  city          String
+  stateProvince String?
+  postalCode    String
+  country       String   @default("Philippines")
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([customerId, isDefault])
+}

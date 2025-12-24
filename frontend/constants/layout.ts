@@ -1,6 +1,6 @@
 // Breakpoints for responsive design
 export const BREAKPOINTS = {
-    mobile: 768,
+    mobile: 1024,
     tablet: 1024,
 } as const;
 

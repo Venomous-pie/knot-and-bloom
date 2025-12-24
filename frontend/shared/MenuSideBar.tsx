@@ -2,8 +2,21 @@ import { useAuth } from "@/app/auth";
 import { navLinks, sidebarLinks } from "@/constants/categories";
 import { isMobile } from "@/constants/layout";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
-import { Facebook, Heart, Instagram, ShoppingBag, UserRound, X } from "lucide-react-native";
-import React, { useEffect, useRef } from "react";
+import { Clock, Facebook, Heart, Instagram, Moon, ShoppingBag, Sun, Sunrise, Sunset, UserRound, UserRoundPlus, X } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+
+// Helper function to get time-based greeting
+const getGreeting = (hour: number): { message: string; icon: React.ReactNode } => {
+    if (hour >= 0 && hour < 5) {
+        return { message: "Midnight Shopping?", icon: <Moon size={18} color="#B36979" /> };
+    } else if (hour >= 5 && hour < 12) {
+        return { message: "Good Morning", icon: <Sunrise size={18} color="#B36979" /> };
+    } else if (hour >= 12 && hour < 17) {
+        return { message: "Good Afternoon", icon: <Sun size={18} color="#B36979" /> };
+    } else {
+        return { message: "Good Evening", icon: <Sunset size={18} color="#B36979" /> };
+    }
+};
 import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 const styles = StyleSheet.create({
@@ -32,7 +45,7 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
     },
     header: {
-        marginBottom: 10,
+        marginBottom: 2,
         paddingBottom: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
@@ -81,8 +94,8 @@ const styles = StyleSheet.create({
     },
     menuItemActive: {
         backgroundColor: '#F9F9F9',
-        borderLeftWidth: 3,
-        borderLeftColor: '#B36979',
+        // borderLeftWidth: 3,
+        // borderLeftColor: '#B36979',
     },
     menuItemHovered: {
         backgroundColor: '#F5F5F5',
@@ -182,6 +195,20 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
 
     const pathname = usePathname();
 
+    // Time-based greeting state
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Update clock every second
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const greeting = getGreeting(currentTime.getHours());
+    const formattedTime = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
     useEffect(() => {
         if (isOpen) {
             setShouldRender(true);
@@ -246,11 +273,18 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                 {/* Header Section */}
                 <View style={styles.header}>
                     <View style={styles.headerTop}>
-                        <View>
-                            <Text style={styles.subtitle}>{user ? "Hello," : "Welcome,"}</Text>
+                        <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                {greeting.icon}
+                                <Text style={styles.subtitle}>{greeting.message}</Text>
+                            </View>
                             <Text style={styles.title} numberOfLines={1}>
                                 {user ? (user.name || user.email?.split('@')[0]) : "Guest"}
                             </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                                <Clock size={14} color="#999" />
+                                <Text style={{ fontSize: 13, color: '#999', fontFamily: 'Quicksand' }}>{formattedTime}</Text>
+                            </View>
                         </View>
                         <Pressable onPress={onClose} style={styles.closeButton}>
                             <X size={20} color="#555" />
@@ -461,7 +495,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                 }}>
                                 {({ hovered }) => (
                                     <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                        <UserRound size={18} color={hovered ? 'white' : '#555'} />
+                                        <UserRoundPlus size={18} color={hovered ? 'white' : '#555'} />
                                         <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Register</Text>
                                     </View>
                                 )}

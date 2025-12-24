@@ -29,25 +29,25 @@ const styles = StyleSheet.create({
         left: '50%',
         // @ts-ignore
         transform: [{ translateX: '-50%' }],
-        marginTop: 8,
+        marginTop: 4,
         backgroundColor: 'white',
-        borderRadius: 8,
+        borderRadius: 6,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
-        minWidth: 200,
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 4,
+        minWidth: 160,
         zIndex: 1000,
     },
     dropdownItem: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderBottomWidth: 0,
     },
     dropdownText: {
-        color: '#333',
+        color: '#444',
+        fontSize: 13,
     },
     dropdownTextHovered: {
         color: '#B36979',
@@ -63,14 +63,15 @@ const styles = StyleSheet.create({
 });
 
 export interface DropdownItem {
-    title: string;
+    title?: string;
     href?: RelativePathString;
     onPress?: () => void;
+    type?: 'link' | 'separator';
 }
 
 interface DropdownMenuProps {
     items: DropdownItem[];
-    children?: React.ReactNode;
+    children?: React.ReactNode | ((props: { hovered: boolean }) => React.ReactNode);
     style?: PressableProps['style'];
     isOpen?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
@@ -122,13 +123,11 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
         <View style={styles.dropdownContainer}>
             <Pressable
                 onPress={handleToggle}
-                style={style || (children ? {} : styles.navlinkContainer)}
+                style={style || (children ? styles.navlinkContainer : styles.navlinkContainer)}
             >
                 {({ hovered, pressed }) => (
                     children ? (
-                        <>
-                            {children}
-                        </>
+                        typeof children === 'function' ? children({ hovered }) : children
                     ) : (
                         <>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
@@ -147,6 +146,10 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
             {isOpen && (
                 <View style={styles.dropdown}>
                     {items.map((item, index) => {
+                        if (item.type === 'separator') {
+                            return <View key={index} style={{ height: 1, backgroundColor: '#eee', marginVertical: 4, marginHorizontal: 10 }} />;
+                        }
+
                         const isLinkActive = item.href ? pathname === item.href : false;
 
                         const content = (
@@ -159,8 +162,8 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                             >
                                 {({ hovered }) => (
                                     <Text style={[
+                                        styles.dropdownText,
                                         (hovered || isLinkActive) && styles.dropdownTextHovered,
-                                        { fontSize: mobile ? 12 : 14 }
                                     ]}>
                                         {item.title}
                                     </Text>
@@ -170,7 +173,7 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
 
                         if (item.href) {
                             return (
-                                <Link key={item.title || index} href={item.href} asChild>
+                                <Link key={item.title || index} href={item.href!} asChild>
                                     {content}
                                 </Link>
                             );

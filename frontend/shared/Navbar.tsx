@@ -13,6 +13,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { DropdownItem } from "@/shared/DropdownMenu";
 import SearchBarDropdown from "./SearchResults";
+import MobileTabBar from "./MobileTabBar";
 
 const styles = StyleSheet.create({
     iconHovered: {
@@ -377,41 +378,76 @@ export default function NavBar() {
                     headerShown: true,
                     headerLeft: () => {
                         return (
-                            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginLeft: width * navMargin }}>
+                            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginLeft: mobile ? 10 : width * navMargin }}>
                                 <Link href='/' asChild>
                                     <View style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
                                         <Image
                                             source={require('../assets/yarn.png')}
                                             style={{
-                                                width: mobile ? 30 : 40,
-                                                height: mobile ? 30 : 40,
+                                                width: mobile ? 24 : 40,
+                                                height: mobile ? 24 : 40,
                                             }}
                                             resizeMode='contain'
                                         />
-                                        <Text style={{
-                                            fontFamily: 'Lovingly',
-                                            color: '#B36979',
-                                            marginTop: mobile ? 5 : 10,
-                                            fontWeight: 'bold',
-                                            fontSize: mobile ? 12 : 14
-                                        }}>
-                                            Knot
-                                        </Text>
-                                        <Text style={{
-                                            fontFamily: 'Lovingly',
-                                            color: '#567F4F',
-                                            marginTop: mobile ? 5 : 10,
-                                            fontWeight: 'bold',
-                                            fontSize: mobile ? 12 : 14
-                                        }}>
-                                            &Bloom
-                                        </Text>
+                                        {!mobile && (
+                                            <>
+                                                <Text style={{
+                                                    fontFamily: 'Lovingly',
+                                                    color: '#B36979',
+                                                    marginTop: 10,
+                                                    fontWeight: 'bold',
+                                                    fontSize: 14
+                                                }}>
+                                                    Knot
+                                                </Text>
+                                                <Text style={{
+                                                    fontFamily: 'Lovingly',
+                                                    color: '#567F4F',
+                                                    marginTop: 10,
+                                                    fontWeight: 'bold',
+                                                    fontSize: 14
+                                                }}>
+                                                    &Bloom
+                                                </Text>
+                                            </>
+                                        )}
                                     </View>
                                 </Link>
                             </View>
                         );
                     },
-                    headerTitle: () => !mobile && !pathname?.includes('/auth') ? <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} /> : null,
+                    headerTitle: () => {
+                        if (!mobile && !pathname?.includes('/auth')) {
+                            return <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />;
+                        }
+                        if (mobile) {
+                            return (
+                                <Pressable
+                                    onPress={() => setIsSearchOpen(true)}
+                                    style={[
+                                        styles.searchBar,
+                                        {
+                                            width: '100%',
+                                            maxWidth: 2000, // Allow full width
+                                            flex: 1,
+                                            backgroundColor: '#f0f0f0',
+                                            paddingHorizontal: 10,
+                                            height: 35,
+                                            justifyContent: 'flex-start',
+                                            flexDirection: 'row',
+                                            marginHorizontal: 10,
+                                        }
+                                    ]}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                        <Search size={16} color="#999" />
+                                        <Text style={{ color: '#999', fontSize: 13 }}>Search products...</Text>
+                                    </View>
+                                </Pressable>
+                            );
+                        }
+                        return null;
+                    },
                     headerRight: () => {
                         if (pathname?.includes('/auth')) {
                             return (
@@ -424,7 +460,7 @@ export default function NavBar() {
                         }
 
                         return (
-                            <View style={[styles.rightIcons, { marginRight: width * navMargin, gap: mobile ? 5 : 10 }]}>
+                            <View style={[styles.rightIcons, { marginRight: mobile ? 10 : width * navMargin, gap: mobile ? 10 : 10 }]}>
                                 {!mobile && (
                                     <View style={[styles.navlinkContainer, { position: 'relative', zIndex: 10 }]}>
 
@@ -468,7 +504,8 @@ export default function NavBar() {
                                 )}
 
 
-                                {mobile && (
+                                {/* Search moved to center Title for mobile */}
+                                {/* {mobile && (
                                     <Pressable
                                         style={({ hovered }) => [
                                             styles.iconButton,
@@ -478,48 +515,54 @@ export default function NavBar() {
                                     >
                                         <Search size={mobile ? 16 : 18} />
                                     </Pressable>
-                                )}
+                                )} */}
 
-                                <Pressable
-                                    style={({ hovered }) => [
-                                        styles.iconButton,
-                                        hovered && styles.iconHovered,
-                                    ]}
-                                    onPress={() => router.push("/wishlist" as RelativePathString)}
-                                >
-                                    <Heart size={mobile ? 16 : 18} />
-                                </Pressable>
-
-                                {(user) ? (
-                                    <DropdownMenu
-                                        items={[
-                                            ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString }] : []),
-                                            ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString }] : []),
-                                            { title: 'Edit Profile', href: '/profile' as RelativePathString },
-                                            { title: 'My Orders', href: '/profile/orders' as RelativePathString },
-                                            { title: 'Log Out', onPress: handleLogout },
-                                        ]}
+                                {!mobile && (
+                                    <Pressable
                                         style={({ hovered }) => [
                                             styles.iconButton,
                                             hovered && styles.iconHovered,
                                         ]}
-                                        isOpen={activeMenu === 'profile'}
-                                        onOpenChange={(open) => setActiveMenu(open ? 'profile' : null)}
+                                        onPress={() => router.push("/wishlist" as RelativePathString)}
                                     >
-                                        <UserRound size={mobile ? 16 : 18} />
-                                    </DropdownMenu>
-                                ) : (
-                                    <Pressable
-                                        style={({ hovered }) => [
-                                            styles.textButton,
-                                            hovered && styles.iconHovered,
-                                        ]}
-                                        onPress={() => router.push("/auth/login" as RelativePathString)}
-                                    >
-                                        {({ hovered }) => (
-                                            <Text style={{ color: hovered ? 'white' : '#B36979' }}>Sign In</Text>
-                                        )}
+                                        <Heart size={18} />
                                     </Pressable>
+                                )}
+
+                                {(user) ? (
+                                    !mobile ? (
+                                        <DropdownMenu
+                                            items={[
+                                                ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString }] : []),
+                                                ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString }] : []),
+                                                { title: 'Edit Profile', href: '/profile' as RelativePathString },
+                                                { title: 'My Orders', href: '/profile/orders' as RelativePathString },
+                                                { title: 'Log Out', onPress: handleLogout },
+                                            ]}
+                                            style={({ hovered }) => [
+                                                styles.iconButton,
+                                                hovered && styles.iconHovered,
+                                            ]}
+                                            isOpen={activeMenu === 'profile'}
+                                            onOpenChange={(open) => setActiveMenu(open ? 'profile' : null)}
+                                        >
+                                            <UserRound size={18} />
+                                        </DropdownMenu>
+                                    ) : null // Profile moved to MobileTabBar
+                                ) : (
+                                    !mobile ? (
+                                        <Pressable
+                                            style={({ hovered }) => [
+                                                styles.textButton,
+                                                hovered && styles.iconHovered,
+                                            ]}
+                                            onPress={() => router.push("/auth/login" as RelativePathString)}
+                                        >
+                                            {({ hovered }) => (
+                                                <Text style={{ color: hovered ? 'white' : '#B36979' }}>Sign In</Text>
+                                            )}
+                                        </Pressable>
+                                    ) : null
                                 )}
 
                                 <View
@@ -671,6 +714,7 @@ export default function NavBar() {
                 )
             }
             <MenuSideBar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+            {mobile && <MobileTabBar />}
         </View >
     );
 

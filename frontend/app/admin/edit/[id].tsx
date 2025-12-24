@@ -1,7 +1,8 @@
 import { productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
-import ProductForm, { ProductFormData, VariantData } from "@/components/admin/ProductForm";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import ProductFormWizard, { ProductFormData } from "@/components/admin/ProductFormWizard";
+import { VariantData } from "@/components/admin/VariantEditor";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -151,21 +152,32 @@ export default function EditProductPage() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.headerRow}>
-                <Pressable onPress={() => router.back()} style={{ padding: 10 }}>
-                    <Text style={{ fontSize: 20, color: '#333' }}>←</Text>
-                </Pressable>
-                <Text style={styles.headerTitle}>Edit Product</Text>
-                <View style={{ width: 40 }} />
-            </View>
-
+            <Stack.Screen options={{ headerShown: false }} />
+            {/* The header row is now part of the ProductFormWizard */}
             {initialData && (
-                <ProductForm
-                    initialData={initialData}
-                    onSubmit={handleSubmit}
-                    loading={loading}
-                    submitLabel="Save Changes"
-                />
+                <>
+                    {/* Destructure initialData for ProductFormWizard props */}
+                    {/* Renamed selectedCategories to categories for prop consistency */}
+                    {/* The header row is now integrated into the ProductFormWizard component */}
+                    <ProductFormWizard
+                        initialData={{
+                            formData: initialData.formData,
+                            selectedCategories: initialData.selectedCategories, // Use initialData.selectedCategories
+                            variants: initialData.variants
+                        }}
+                        onSubmit={handleSubmit}
+                        loading={loading} // Use loading state
+                        submitLabel="Save Changes"
+                        onBack={() => {
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.replace('/admin');
+                            }
+                        }}
+                        isEditing={true}
+                    />
+                </>
             )}
         </SafeAreaView>
     );

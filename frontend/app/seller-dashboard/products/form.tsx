@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { sellerProductsAPI } from '../../../api/api';
-import ProductForm, { ProductFormData, VariantData } from '../../../components/admin/ProductForm';
+import ProductFormWizard, { ProductFormData } from '../../../components/admin/ProductFormWizard';
+import { VariantData } from '../../../components/admin/VariantEditor';
 
 export default function SellerProductForm() {
     const router = useRouter();
     const { id } = useLocalSearchParams();
     const isEditing = !!id;
 
+    const navigation = useNavigation();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(false);
     const [initialData, setInitialData] = useState<{
@@ -41,6 +43,8 @@ export default function SellerProductForm() {
                         discountPercentage: p.discountPercentage ? String(p.discountPercentage) : '',
                         image: p.image || '',
                         description: p.description || '',
+                        materials: p.materials || '',
+                        bundleQuantity: p.bundleQuantity ? String(p.bundleQuantity) : '1',
                     },
                     selectedCategories: Array.isArray(p.categories) ? p.categories : [],
                     variants: p.variants && p.variants.length > 0
@@ -64,12 +68,12 @@ export default function SellerProductForm() {
         }
     };
 
-    const handleSubmit = async (data: { formData: ProductFormData; selectedCategories: string[]; variants: VariantData[] }) => {
+    const handleSubmit = async (data: { formData: ProductFormData; selectedCategories: string[]; variants: VariantData[] }, isDraft = false) => {
         setLoading(true);
 
         try {
             const payload = {
-                name: data.formData.name,
+                name: data.formData.name || 'Untitled Draft',
                 sku: data.formData.sku,
                 description: data.formData.description,
                 basePrice: parseFloat(data.formData.basePrice) || 0,
@@ -85,16 +89,21 @@ export default function SellerProductForm() {
                     discountPercentage: v.discountPercentage ? parseFloat(v.discountPercentage) : undefined,
                     image: v.image,
                 })),
+                status: isDraft ? 'DRAFT' : undefined,
             };
 
             if (isEditing) {
                 await sellerProductsAPI.updateProduct(id as string, payload);
-                Alert.alert("Success", "Product updated successfully");
+                Alert.alert("Success", isDraft ? "Draft saved successfully" : "Product updated successfully");
             } else {
                 await sellerProductsAPI.createProduct(payload);
-                Alert.alert("Success", "Product created! It will be visible after admin approval.");
+                Alert.alert("Success", isDraft ? "Draft saved!" : "Product created! It will be visible after admin approval.");
             }
-            router.back();
+            if (router.canGoBack()) {
+                router.back();
+            } else {
+                router.replace('/seller-dashboard/products');
+            }
         } catch (error: any) {
             console.error(error);
             const msg = error.response?.data?.error || "Failed to save product";
@@ -110,13 +119,8 @@ export default function SellerProductForm() {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.title}>{isEditing ? 'Edit Product' : 'New Product'}</Text>
-            </View>
+            <Stack.Screen options={{ headerShown: false }} />
+
 
             {/* Pending Approval Notice */}
             {!isEditing && (
@@ -136,11 +140,21 @@ export default function SellerProductForm() {
             )}
 
             {/* Reuse the Admin ProductForm Component */}
-            <ProductForm
+            {/* Reuse the Admin ProductForm Component */}
+            <ProductFormWizard
                 initialData={initialData}
-                onSubmit={handleSubmit}
+                onSubmit={(data) => handleSubmit(data, false)}
+                onSaveDraft={(data) => handleSubmit(data, true)}
                 loading={loading}
                 submitLabel={isEditing ? 'Update Product' : 'Submit for Approval'}
+                onBack={() => {
+                    if (router.canGoBack()) {
+                        router.back();
+                    } else {
+                        router.replace('/seller-dashboard/products');
+                    }
+                }}
+                isEditing={isEditing}
             />
         </View>
     );

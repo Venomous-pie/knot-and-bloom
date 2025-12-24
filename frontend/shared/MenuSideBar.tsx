@@ -4,6 +4,7 @@ import { isMobile } from "@/constants/layout";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
 import { Clock, Facebook, Heart, Instagram, Moon, ShoppingBag, Sun, Sunrise, Sunset, UserRound, UserRoundPlus, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 // Helper function to get time-based greeting
 const getGreeting = (hour: number): { message: string; icon: React.ReactNode } => {
@@ -17,7 +18,6 @@ const getGreeting = (hour: number): { message: string; icon: React.ReactNode } =
         return { message: "Good Evening", icon: <Sunset size={18} color="#B36979" /> };
     }
 };
-import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 const styles = StyleSheet.create({
     backdrop: {
@@ -274,17 +274,19 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                 <View style={styles.header}>
                     <View style={styles.headerTop}>
                         <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                {greeting.icon}
-                                <Text style={styles.subtitle}>{greeting.message}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    {greeting.icon}
+                                    <Text style={styles.subtitle}>{greeting.message}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <Clock size={14} color="#999" />
+                                    <Text style={{ fontSize: 13, color: '#999', fontFamily: 'Quicksand', marginRight: 6 }}>{formattedTime}</Text>
+                                </View>
                             </View>
                             <Text style={styles.title} numberOfLines={1}>
                                 {user ? (user.name || user.email?.split('@')[0]) : "Guest"}
                             </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
-                                <Clock size={14} color="#999" />
-                                <Text style={{ fontSize: 13, color: '#999', fontFamily: 'Quicksand' }}>{formattedTime}</Text>
-                            </View>
                         </View>
                         <Pressable onPress={onClose} style={styles.closeButton}>
                             <X size={20} color="#555" />

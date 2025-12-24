@@ -46,14 +46,26 @@ api.interceptors.response.use(
         }
         return response;
     },
-    (error) => {
+    async (error) => {
         if (error.response) {
             console.error('API Error:', error.response.status, error.response.data);
 
             if (error.response.status === 401) {
-                // Handle unauthorized - clear token
-                AsyncStorage.removeItem('authToken');
-                // You might need a more robust way to navigate to login from here in React Native
+                // Get the error message from backend
+                const errorMessage = error.response.data?.error || 'Authentication error';
+
+                // Import and emit auth error for toast display
+                // Using dynamic import to avoid circular dependencies
+                import('@/components/AuthToast').then(({ authErrorEmitter }) => {
+                    authErrorEmitter.emit(errorMessage);
+                }).catch(() => {
+                    // Fallback if import fails - still clear token
+                    console.error('Failed to emit auth error');
+                });
+
+                // Handle unauthorized - clear token and user data
+                await AsyncStorage.removeItem('authToken');
+                await AsyncStorage.removeItem('authUser');
             }
         } else if (error.request) {
             console.error('Network Error:', error.message);

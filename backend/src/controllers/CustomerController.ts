@@ -65,7 +65,7 @@ const customerRegisterController = async (input: unknown) => {
             role: customer.role as any,
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '2h' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
 
         return {
             token,
@@ -125,7 +125,7 @@ const customerLoginController = async (input: unknown) => {
             ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '2h' }); // 2h expiry for security
+        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' }); // 7d expiry for better UX
 
         return {
             token,

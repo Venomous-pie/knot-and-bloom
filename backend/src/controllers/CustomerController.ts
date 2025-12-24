@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { ZodError } from "zod";
 
 import { type AuthPayload } from "../types/authTypes.js";
+import { OAuth2Client } from 'google-auth-library';
 
 import ErrorHandler from "../error/errorHandler.js";
 
@@ -14,7 +15,9 @@ import {
 
     type CustomerInput,
     type CustomerLoginInput,
-    type CustomerUpdateInput
+    type CustomerUpdateInput,
+    googleLoginSchema,
+    type GoogleLoginInput
 } from "../validators/customerValidator.js";
 
 import { generateRandomName } from "../utils/nameGenerator.js";
@@ -107,6 +110,10 @@ const customerLoginController = async (input: unknown) => {
 
         if (!customer) {
             // Use generic message for security
+            throw new ErrorHandler.AuthenticationError("Invalid credentials");
+        }
+
+        if (!customer.password) {
             throw new ErrorHandler.AuthenticationError("Invalid credentials");
         }
 
@@ -205,9 +212,100 @@ const updateCustomerProfile = async (userId: number, input: unknown) => {
     }
 }
 
+
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const googleLoginController = async (input: unknown) => {
+    let parsedInput: GoogleLoginInput;
+
+    try {
+        parsedInput = googleLoginSchema.parse(input);
+
+        const ticket = await client.verifyIdToken({
+            idToken: parsedInput.token,
+            audience: process.env.GOOGLE_CLIENT_ID!,
+        });
+
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email) {
+            throw new ErrorHandler.AuthenticationError("Invalid Google Token");
+        }
+
+        const { email, sub: googleId, name, picture } = payload;
+
+        // Find existing customer by googleId OR email
+        let customer = await prisma.customer.findFirst({
+            where: {
+                OR: [
+                    { googleId },
+                    { email }
+                ]
+            },
+            include: { sellerProfile: true }
+        });
+
+        if (customer) {
+            // Link googleId if not linked yet
+            if (!customer.googleId) {
+                customer = await prisma.customer.update({
+                    where: { uid: customer.uid },
+                    data: { googleId },
+                    include: { sellerProfile: true }
+                });
+            }
+        } else {
+            // Create new customer
+            customer = await prisma.customer.create({
+                data: {
+                    email,
+                    googleId,
+                    name: name || generateRandomName(),
+                    // password is optional/null for Google users
+                },
+                include: { sellerProfile: true }
+            });
+        }
+
+        const jwtPayload: AuthPayload = {
+            id: customer.uid,
+            email: customer.email!,
+            role: customer.role as any,
+            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
+            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),
+        };
+
+        const token = jwt.sign(jwtPayload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+
+        return {
+            token,
+            customer: {
+                uid: customer.uid,
+                name: customer.name,
+                email: customer.email,
+                phone: customer.phone,
+                address: customer.address,
+                role: customer.role,
+                passwordResetRequired: customer.passwordResetRequired,
+                sellerId: customer.sellerProfile?.uid,
+                sellerStatus: customer.sellerProfile?.status,
+                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal
+            }
+        };
+
+    } catch (error) {
+        if (error instanceof ZodError) {
+            throw new ErrorHandler.ValidationError(error.issues);
+        }
+        console.error("Google Login Error:", error);
+        throw new ErrorHandler.AuthenticationError("Google Authentication Failed");
+    }
+}
+
 export default {
     customerRegisterController,
     customerLoginController,
     getCustomerProfile,
-    updateCustomerProfile
+    updateCustomerProfile,
+    googleLoginController
 }

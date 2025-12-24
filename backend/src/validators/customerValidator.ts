@@ -40,3 +40,8 @@ export type CustomerUpdateInput = z.infer<typeof customerUpdateSchema>;
 
 export type CustomerLoginInput = z.infer<typeof customerLoginSchema>;
 export type CustomerInput = z.infer<typeof customerSchema>;
+
+export const googleLoginSchema = z.object({
+    token: z.string().min(1, "Google token is required"),
+});
+export type GoogleLoginInput = z.infer<typeof googleLoginSchema>;

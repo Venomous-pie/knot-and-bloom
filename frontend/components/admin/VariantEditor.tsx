@@ -11,6 +11,8 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ColorPickerModal from './ColorPickerModal';
 
 export interface VariantData {
     uid?: number;
@@ -67,6 +69,55 @@ export default function VariantEditor({
     const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
     const [generatingSkuIndex, setGeneratingSkuIndex] = useState<number | null>(null);
     const [focusedField, setFocusedField] = useState<string | null>(null);
+
+    // Color Picker State
+    const [colorPickerVisible, setColorPickerVisible] = useState(false);
+    const [pickingVariantIndex, setPickingVariantIndex] = useState<number | null>(null);
+    const [savedPalette, setSavedPalette] = useState<string[]>([]);
+    const PALETTE_KEY = 'seller_custom_palette';
+
+    // Load palette on mount
+    React.useEffect(() => {
+        loadPalette();
+    }, []);
+
+    const loadPalette = async () => {
+        try {
+            const stored = await AsyncStorage.getItem(PALETTE_KEY);
+            if (stored) {
+                setSavedPalette(JSON.parse(stored));
+            }
+        } catch (e) {
+            console.error('Failed to load palette', e);
+        }
+    };
+
+    const addToPalette = async (color: string) => {
+        if (savedPalette.includes(color)) return;
+        const newPalette = [...savedPalette, color];
+        setSavedPalette(newPalette);
+        await AsyncStorage.setItem(PALETTE_KEY, JSON.stringify(newPalette));
+    };
+
+    const removeFromPalette = async (color: string) => {
+        const newPalette = savedPalette.filter(c => c !== color);
+        setSavedPalette(newPalette);
+        await AsyncStorage.setItem(PALETTE_KEY, JSON.stringify(newPalette));
+    };
+
+    const openColorPicker = (index: number) => {
+        setPickingVariantIndex(index);
+        setColorPickerVisible(true);
+    };
+
+    const handleColorSelect = (color: string) => {
+        if (pickingVariantIndex !== null) {
+            updateVariant(pickingVariantIndex, 'color', color);
+            // If it was a custom color, ensure customColor is cleared or handled
+            // Actually, we use 'color' field directly now for the hex value
+            updateVariant(pickingVariantIndex, 'customColor', color); // Keep customColor in sync if used
+        }
+    };
 
     const addVariant = () => {
         onVariantsChange([
@@ -264,14 +315,39 @@ export default function VariantEditor({
                                     </View>
                                 </View>
 
-                                {/* Color Picker */}
+                                {/* Color Picker Section */}
                                 <View style={styles.field}>
-                                    <Text style={styles.fieldLabel}>Color (Optional)</Text>
+                                    <View style={styles.labelRow}>
+                                        <Text style={styles.fieldLabel}>Color (Optional)</Text>
+                                        {savedPalette.length > 0 && (
+                                            <Text style={styles.paletteLabel}>My Palette</Text>
+                                        )}
+                                    </View>
+
                                     <ScrollView
                                         horizontal
                                         showsHorizontalScrollIndicator={false}
                                         contentContainerStyle={styles.colorPicker}
                                     >
+                                        {/* Saved Palette */}
+                                        {savedPalette.map((color) => (
+                                            <Pressable
+                                                key={color}
+                                                style={[
+                                                    styles.colorSwatch,
+                                                    { backgroundColor: color },
+                                                    variant.color === color && styles.colorSwatchSelected,
+                                                ]}
+                                                onPress={() => updateVariant(index, 'color',
+                                                    variant.color === color ? '' : color
+                                                )}
+                                                onLongPress={() => removeFromPalette(color)}
+                                            />
+                                        ))}
+
+                                        {savedPalette.length > 0 && <View style={styles.dividerVertical} />}
+
+                                        {/* Preset Colors */}
                                         {PRESET_COLORS.map((color) => (
                                             <Pressable
                                                 key={color.value}
@@ -286,35 +362,31 @@ export default function VariantEditor({
                                                 )}
                                             />
                                         ))}
-                                        {/* Custom Color Option */}
+
+                                        {/* Add Custom Color Button */}
                                         <Pressable
                                             style={[
                                                 styles.colorSwatch,
                                                 styles.customColorSwatch,
-                                                variant.color === 'custom' && styles.colorSwatchSelected,
+                                                // Check if current color is not in presets or palette (custom)
+                                                !PRESET_COLORS.some(c => c.value === variant.color) &&
+                                                    !savedPalette.includes(variant.color || '') &&
+                                                    variant.color ? styles.colorSwatchSelected : null
                                             ]}
-                                            onPress={() => updateVariant(index, 'color', 'custom')}
+                                            onPress={() => openColorPicker(index)}
                                         >
-                                            <Text style={styles.customColorText}>+</Text>
+                                            <Plus size={16} color="#666" />
                                         </Pressable>
                                     </ScrollView>
-                                    {/* Custom Color Input */}
-                                    {variant.color === 'custom' && (
+
+                                    {/* Show Selected Custom Color Info if not in list */}
+                                    {variant.color && !PRESET_COLORS.some(c => c.value === variant.color) && !savedPalette.includes(variant.color) && (
                                         <View style={styles.customColorInputRow}>
-                                            <TextInput
-                                                style={[styles.input, styles.customColorInput, focusedField === getFieldKey(index, 'customColor') && styles.inputFocused]}
-                                                value={variant.customColor || ''}
-                                                onChangeText={(text) => updateVariant(index, 'customColor', text)}
-                                                placeholder="#FF5733"
-                                                placeholderTextColor="#999"
-                                                autoCapitalize="characters"
-                                                maxLength={7}
-                                                onFocus={() => setFocusedField(getFieldKey(index, 'customColor'))}
-                                                onBlur={() => setFocusedField(null)}
-                                            />
-                                            {variant.customColor && variant.customColor.match(/^#[0-9A-Fa-f]{6}$/) && (
-                                                <View style={[styles.customColorPreview, { backgroundColor: variant.customColor }]} />
-                                            )}
+                                            <View style={[styles.customColorPreview, { backgroundColor: variant.color }]} />
+                                            <Text style={styles.selectedColorText}>{variant.color}</Text>
+                                            <Pressable onPress={() => openColorPicker(index)}>
+                                                <Text style={styles.editColorText}>Edit</Text>
+                                            </Pressable>
                                         </View>
                                     )}
                                 </View>
@@ -366,6 +438,14 @@ export default function VariantEditor({
             <Text style={styles.helperText}>
                 💡 Leave price empty to inherit from base price. Stock is required for each variant.
             </Text>
+
+            <ColorPickerModal
+                visible={colorPickerVisible}
+                onClose={() => setColorPickerVisible(false)}
+                onSelect={handleColorSelect}
+                onSaveToPalette={addToPalette}
+                initialColor={pickingVariantIndex !== null ? variants[pickingVariantIndex]?.color || '#B36979' : '#B36979'}
+            />
         </View>
     );
 }
@@ -570,25 +650,55 @@ const styles = StyleSheet.create({
         borderStyle: 'dashed',
     },
     customColorText: {
-        fontSize: 16,
-        color: '#888',
-        fontWeight: '600',
+        fontSize: 18,
+        color: '#666',
+        fontWeight: '300',
     },
     customColorInputRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 12,
         marginTop: 8,
+        padding: 8,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 8,
     },
     customColorInput: {
         flex: 1,
-        maxWidth: 120,
+        fontFamily: 'monospace',
     },
     customColorPreview: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        borderWidth: 2,
-        borderColor: '#333',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#eee',
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    paletteLabel: {
+        fontSize: 11,
+        color: '#B36979',
+        fontWeight: '600',
+    },
+    dividerVertical: {
+        width: 1,
+        height: 24,
+        backgroundColor: '#eee',
+        marginHorizontal: 4,
+    },
+    selectedColorText: {
+        flex: 1,
+        fontSize: 14,
+        fontFamily: 'monospace',
+        color: '#333',
+    },
+    editColorText: {
+        fontSize: 13,
+        color: '#B36979',
+        fontWeight: '500',
     },
 });

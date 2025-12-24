@@ -14,7 +14,9 @@ import orderRoutes from './routes/orderRoutes.js';
 import paymentMethodRoutes from './routes/paymentMethodRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 import prisma from './utils/prismaUtils.js';
+import passport from './config/passport.js';
 
 import { createServer } from 'http';
 import { socketService } from './services/SocketService.js';
@@ -30,6 +32,7 @@ const PORT = process.env.PORT || 3030;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(passport.initialize());
 
 // Healthcheck
 app.get('/', (req, res) => {
@@ -52,6 +55,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/account', accountRoutes);
+app.use('/auth', authRoutes);
 
 // Error handling middleware
 app.use(errorHandlingMiddleware);

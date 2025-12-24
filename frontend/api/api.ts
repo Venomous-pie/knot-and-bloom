@@ -130,6 +130,7 @@ export const productAPI = {
 
 export const authAPI = {
     login: (data: any) => apiClient.post('/customers/login', data),
+    loginWithGoogle: (data: { token?: string, accessToken?: string }) => apiClient.post('/customers/login/google', data),
     register: (data: any) => apiClient.post('/customers/register', data),
 };
 

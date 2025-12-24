@@ -126,4 +126,46 @@ router.post('/login', loginRateLimiter.middleware, async (req, res) => {
     }
 });
 
+router.post('/login/google', loginRateLimiter.middleware, async (req, res) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    try {
+        const result = await customerController.googleLoginController(req.body);
+
+        // Reset rate limit on success
+        loginRateLimiter.reset(ip);
+
+        res.status(200).json({
+            success: true,
+            message: "Google Login successful.",
+            token: result.token,
+            data: result.customer
+        });
+
+    } catch (error) {
+        console.error("Google Login error:", error);
+
+        if (error instanceof ValidationError) {
+            loginRateLimiter.increment(ip);
+            return res.status(400).json({
+                success: false,
+                error: "Validation failed",
+                issues: error.issues
+            });
+        }
+
+        if (error instanceof AuthenticationError) {
+            loginRateLimiter.increment(ip);
+            return res.status(401).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            error: error instanceof Error ? error.message : "An unexpected error occurred"
+        });
+    }
+});
+
 export default router;

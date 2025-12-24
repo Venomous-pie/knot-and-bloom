@@ -11,6 +11,8 @@ const AuthContext = createContext<AuthContextType>({
     register: async () => { },
     logout: async () => { },
     refreshUser: async () => { },
+    loginWithGoogle: async (data: { token?: string, accessToken?: string }) => { },
+    loginWithToken: async (token: string) => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -104,8 +106,58 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const loginWithGoogle = async (data: { token?: string, accessToken?: string }) => {
+        try {
+            const response = await authAPI.loginWithGoogle(data);
+            const { token: authToken, customer, data: legacyUser } = response.data;
+            const user = customer || legacyUser;
+
+            if (authToken && user) {
+                await AsyncStorage.setItem('authToken', authToken);
+                await AsyncStorage.setItem('authUser', JSON.stringify(user));
+                setUser(user);
+
+                if (user.passwordResetRequired) {
+                    router.replace('/auth/reset-password' as RelativePathString);
+                } else {
+                    router.replace('/');
+                }
+            }
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const loginWithToken = async (token: string) => {
+        try {
+            if (token) {
+                await AsyncStorage.setItem('authToken', token);
+                // We need to fetch the user profile now
+                await refreshUser();
+
+                // If refreshUser updates 'user' state, we can redirect.
+                // Ideally refreshUser returns the user or we fetch it explicitly here.
+                // Re-implementing fetch here for clarity/safety:
+
+                const response = await api.get('/customers/profile', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const userData = response.data;
+
+                if (userData) {
+                    await AsyncStorage.setItem('authUser', JSON.stringify(userData));
+                    setUser(userData);
+                    router.replace('/');
+                }
+            }
+        } catch (error) {
+            console.error('Login with token error', error);
+            throw error;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle, loginWithToken }}>
             {children}
         </AuthContext.Provider>
     );

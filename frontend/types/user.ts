@@ -18,6 +18,8 @@ interface AuthContextType {
     register: (data: any) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
+    loginWithGoogle: (data: { token?: string, accessToken?: string }) => Promise<void>;
+    loginWithToken: (token: string) => Promise<void>;
 }
 
 export { AuthContextType, User };

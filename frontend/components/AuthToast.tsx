@@ -1,22 +1,8 @@
+import { authEvents } from '@/utils/authEvents';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AlertCircle, X } from 'lucide-react-native';
-import { Pressable } from 'react-native';
-
-// Event emitter for auth errors
-type AuthErrorListener = (message: string) => void;
-const listeners: Set<AuthErrorListener> = new Set();
-
-export const authErrorEmitter = {
-    emit: (message: string) => {
-        listeners.forEach(listener => listener(message));
-    },
-    subscribe: (listener: AuthErrorListener) => {
-        listeners.add(listener);
-        return () => { listeners.delete(listener); };
-    },
-};
 
 // Map backend errors to user-friendly messages
 const getAuthErrorMessage = (error: string): string => {
@@ -93,55 +79,44 @@ const styles = StyleSheet.create({
 });
 
 export default function AuthToast() {
-    const router = useRouter();
+    // Router logic moved to AuthContext handling of LOGOUT event
+    // const router = useRouter(); 
     const [visible, setVisible] = useState(false);
     const [message, setMessage] = useState('');
     const slideAnim = React.useRef(new Animated.Value(-100)).current;
     const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const unsubscribe = authErrorEmitter.subscribe((errorMessage: string) => {
-            const friendlyMessage = getAuthErrorMessage(errorMessage);
-            setMessage(friendlyMessage);
-            setVisible(true);
+        const unsubscribe = authEvents.subscribe((type, payload) => {
+            if (type === 'ERROR' && payload?.message) {
+                const friendlyMessage = getAuthErrorMessage(payload.message);
+                setMessage(friendlyMessage);
+                setVisible(true);
+                animateIn();
 
-            // Redirect to login if session expired or authorized
-            if (
-                friendlyMessage.includes('session has expired') ||
-                friendlyMessage.includes('log in') ||
-                friendlyMessage.includes('Session error')
-            ) {
-                // Small delay to let user see toast if they are looking, but ensures redirect happens
-                setTimeout(() => {
-                    // Ensure we are not already on auth pages to avoid loops (though replace handles it well)
-                    router.replace('/auth/login');
-                }, 1500);
+                // Auto dismiss
+                const timer = setTimeout(dismiss, 5000);
+                return () => clearTimeout(timer);
             }
-
-            // Animate in
-            Animated.parallel([
-                Animated.spring(slideAnim, {
-                    toValue: 0,
-                    useNativeDriver: true, // Native driver doesn't support width/height, but supports transform/opacity
-                    friction: 8,
-                }),
-                Animated.timing(opacityAnim, {
-                    toValue: 1,
-                    duration: 200,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-
-            // Auto dismiss after 5 seconds
-            const timer = setTimeout(() => {
-                dismiss();
-            }, 5000);
-
-            return () => clearTimeout(timer);
         });
 
         return unsubscribe;
     }, []);
+
+    const animateIn = () => {
+        Animated.parallel([
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                useNativeDriver: true,
+                friction: 8,
+            }),
+            Animated.timing(opacityAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    };
 
     const dismiss = () => {
         Animated.parallel([

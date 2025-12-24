@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import type { CreateProductData, GetProductsParams, GetProductsResponse, Product } from '../types/products';
+import { authEvents } from '@/utils/authEvents';
 
 // Base URL for the API - replace with your actual API base URL
 const BASE_URL = 'http://192.168.1.39:3030/api';
@@ -54,18 +55,11 @@ api.interceptors.response.use(
                 // Get the error message from backend
                 const errorMessage = error.response.data?.error || 'Authentication error';
 
-                // Import and emit auth error for toast display
-                // Using dynamic import to avoid circular dependencies
-                import('@/components/AuthToast').then(({ authErrorEmitter }) => {
-                    authErrorEmitter.emit(errorMessage);
-                }).catch(() => {
-                    // Fallback if import fails - still clear token
-                    console.error('Failed to emit auth error');
-                });
+                // Emit error for toast display
+                authEvents.emit('ERROR', { message: errorMessage });
 
-                // Handle unauthorized - clear token and user data
-                await AsyncStorage.removeItem('authToken');
-                await AsyncStorage.removeItem('authUser');
+                // Emit logout event to trigger AuthContext cleanup
+                authEvents.emit('LOGOUT');
             }
         } else if (error.request) {
             console.error('Network Error:', error.message);

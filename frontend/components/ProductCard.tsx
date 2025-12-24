@@ -149,7 +149,7 @@ export default function ProductCard({
                         {product.name}
                     </Text>
 
-                    {/* Marketing / Rating Row */}
+                    {/* Marketing / Rating Row */} 
                     <View style={styles.ratingRow}>
                         {product.soldCount > 5 ? (
                             <>

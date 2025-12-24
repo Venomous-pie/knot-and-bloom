@@ -1,4 +1,5 @@
 import api, { authAPI } from '@/api/api';
+import { authEvents } from '@/utils/authEvents';
 import type { AuthContextType, User } from '@/types/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RelativePathString, useRouter, useSegments } from 'expo-router';
@@ -25,6 +26,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         loadUser();
+
+        // Subscribe to global auth events
+        const unsubscribe = authEvents.subscribe((type) => {
+            if (type === 'LOGOUT') {
+                logout();
+            }
+        });
+
+        return unsubscribe;
     }, []);
 
     const loadUser = async () => {

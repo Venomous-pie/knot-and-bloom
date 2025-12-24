@@ -1,4 +1,5 @@
 import { useAuth } from "@/app/auth";
+import { authAPI } from "@/api/api";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { RelativePathString, useRouter } from "expo-router";
 import {
@@ -22,6 +23,7 @@ import {
     Image,
     Keyboard,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     ScrollView,
@@ -61,6 +63,11 @@ export default function BespokeAuthForm({
     const [isLoading, setIsLoading] = useState(false);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
+
+    // OTP State
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otpCode, setOtpCode] = useState("");
+    const [otpLoading, setOtpLoading] = useState(false);
 
     // Refs
     const passwordInputRef = useRef<TextInput>(null);
@@ -145,6 +152,20 @@ export default function BespokeAuthForm({
                     setIsLoading(false);
                     return;
                 }
+
+                if (authMethod === 'phone') {
+                    // 1. Send OTP first
+                    try {
+                        await authAPI.sendOTP(phoneNumber);
+                        setShowOtpModal(true);
+                        setResendCooldown(60); // Start timer on first open
+                    } catch (err: any) {
+                        setError(err.response?.data?.message || "Failed to send OTP.");
+                    }
+                    setIsLoading(false);
+                    return;
+                }
+
                 const randomName = generateRandomName();
                 const payload = {
                     name: randomName,
@@ -188,6 +209,65 @@ export default function BespokeAuthForm({
             }
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    // Resend Timer
+    const [resendCooldown, setResendCooldown] = useState(0);
+
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval>;
+        if (resendCooldown > 0) {
+            interval = setInterval(() => {
+                setResendCooldown((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendCooldown]);
+
+    const handleResendOtp = async () => {
+        if (resendCooldown > 0) return;
+
+        setError("");
+        try {
+            await authAPI.sendOTP(phoneNumber);
+            setResendCooldown(60); // 1 minute cooldown
+            setOtpCode(""); // Reset inputs
+        } catch (err: any) {
+            // Handle 429 specifically if we want custom message, otherwise use backend message
+            setError(err.response?.data?.message || err.response?.data?.error || "Failed to resend OTP.");
+        }
+    };
+
+    const handleVerifyOtp = async () => {
+        setOtpLoading(true);
+        setError(""); // Clear previous errors
+        try {
+            const randomName = generateRandomName();
+            const payload = {
+                name: randomName,
+                password,
+                phone: phoneNumber,
+                otp: otpCode
+            };
+            await register(payload);
+            // On success, the useAuth effect will redirect
+            setShowOtpModal(false);
+        } catch (err: any) {
+            console.error(err);
+            if (err.response?.data?.issues) {
+                // If validation error on OTP
+                const otpError = err.response.data.issues.find((i: any) => i.path.includes('otp'));
+                if (otpError) {
+                    setError(otpError.message);
+                } else {
+                    setError("Registration failed.");
+                }
+            } else {
+                setError(err.response?.data?.message || "Invalid OTP");
+            }
+        } finally {
+            setOtpLoading(false);
         }
     };
 
@@ -717,6 +797,115 @@ export default function BespokeAuthForm({
                     </View>
                 </View>
             </View>
+            {/* OTP Modal Overlay - Full Screen with Boxed Inputs */}
+            <Modal
+                visible={showOtpModal}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={() => setShowOtpModal(false)}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={{ flex: 1, backgroundColor: "#fff" }}
+                >
+                    <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
+                        {/* Close Button */}
+                        <TouchableOpacity
+                            onPress={() => setShowOtpModal(false)}
+                            style={{ position: 'absolute', top: 50, left: 24, padding: 8 }}
+                        >
+                            <Text style={{ fontSize: 16, color: '#666' }}>Cancel</Text>
+                        </TouchableOpacity>
+
+                        <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 12, color: "#333", textAlign: "center" }}>
+                            Verification Code
+                        </Text>
+                        <Text style={{ color: "#666", marginBottom: 32, textAlign: "center", fontSize: 16 }}>
+                            We have sent the verification code to{"\n"}
+                            <Text style={{ fontWeight: "bold", color: "#333" }}>{phoneNumber}</Text>
+                        </Text>
+
+                        {/* Boxed Inputs */}
+                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 32, justifyContent: 'center' }}>
+                            {[0, 1, 2, 3, 4, 5].map((index) => (
+                                <View
+                                    key={index}
+                                    style={{
+                                        width: 45,
+                                        height: 55,
+                                        borderWidth: 1,
+                                        borderColor: otpCode.length === index ? "#B36979" : "#e0e0e0",
+                                        borderRadius: 8,
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        backgroundColor: "#f9f9f9",
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 24, fontWeight: "bold", color: "#333" }}>
+                                        {otpCode[index] || ""}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        {/* Hidden Input for handling typing */}
+                        <TextInput
+                            style={{
+                                position: "absolute",
+                                width: "100%",
+                                height: 100,
+                                opacity: 0,
+                            }}
+                            value={otpCode}
+                            onChangeText={(text) => {
+                                if (text.length <= 6) setOtpCode(text);
+                                if (text.length === 6) {
+                                    // Optional: Auto submit
+                                    Keyboard.dismiss();
+                                }
+                            }}
+                            keyboardType="number-pad"
+                            caretHidden={true}
+                            autoFocus={true}
+                        />
+
+                        {/* Error Handling */}
+                        {error ? <Text style={[styles.errorText, { marginBottom: 20 }]}>{error}</Text> : null}
+
+                        {/* Verify Button */}
+                        <TouchableOpacity
+                            onPress={handleVerifyOtp}
+                            disabled={otpLoading || otpCode.length !== 6}
+                            style={[
+                                styles.submitButton,
+                                { width: "100%", maxWidth: 400 },
+                                (otpLoading || otpCode.length !== 6) && styles.submitButtonDisabled,
+                            ]}
+                        >
+                            {otpLoading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.submitButtonText}>Verify</Text>
+                            )}
+                        </TouchableOpacity>
+
+                        {/* Resend Logic */}
+                        <View style={{ marginTop: 24 }}>
+                            {resendCooldown > 0 ? (
+                                <Text style={{ color: "#999", fontSize: 14 }}>
+                                    Resend code in {resendCooldown}s
+                                </Text>
+                            ) : (
+                                <TouchableOpacity onPress={handleResendOtp}>
+                                    <Text style={{ color: "#B36979", fontWeight: "bold", fontSize: 16 }}>
+                                        Resend Code
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </ScrollView>
     );
 }
@@ -902,6 +1091,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         color: "#444",
         fontSize: 15,
+        fontFamily: 'Quicksand'
     },
     divider: {
         flexDirection: "row",

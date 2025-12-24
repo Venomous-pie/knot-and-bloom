@@ -16,6 +16,7 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MapPinOff } from 'lucide-react-native';
 
 const LABEL_OPTIONS = ['Home', 'Work', 'Other'];
 
@@ -179,7 +180,7 @@ export default function AddressesPage() {
 
                 {addresses.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyIcon}>📍</Text>
+                        <MapPinOff style={styles.emptyIcon} size={40}/>
                         <Text style={styles.emptyTitle}>No Addresses</Text>
                         <Text style={styles.emptyText}>Add an address for faster checkout</Text>
                         <Pressable style={styles.emptyButton} onPress={openAddModal}>
@@ -383,6 +384,7 @@ const styles = StyleSheet.create({
     emptyIcon: {
         fontSize: 48,
         marginBottom: 16,
+        color: '#ddd',
     },
     emptyTitle: {
         fontSize: 18,

@@ -2,6 +2,8 @@ import express from 'express';
 import passport from '../config/passport.js';
 import jwt from 'jsonwebtoken';
 import type { AuthPayload, Role } from '../types/authTypes.js';
+import { OtpService } from '../services/otpService.js';
+import ErrorHandler from '../error/errorHandler.js';
 
 const router = express.Router();
 
@@ -51,5 +53,20 @@ router.get(
         }
     }
 );
+
+// @route   POST /auth/send-otp
+// @desc    Send OTP for registration
+router.post('/send-otp', async (req, res, next) => {
+    try {
+        const { phone } = req.body;
+        if (!phone) {
+            throw new ErrorHandler.ValidationError([{ message: "Phone number is required", path: ["phone"] }]);
+        }
+        await OtpService.generateAndSendOTP(phone, 'REGISTRATION');
+        res.status(200).json({ message: "OTP sent successfully" });
+    } catch (error) {
+        next(error);
+    }
+});
 
 export default router;

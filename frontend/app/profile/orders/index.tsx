@@ -193,7 +193,7 @@ export default function OrderHistoryPage() {
                 {filteredOrders.length === 0 ? (
                     <View style={styles.emptyState}>
                         <Package size={64} color="#ddd" />
-                        <Text style={styles.emptyStateText}>No orders found.</Text>
+                        <Text style={styles.emptyTitle}>No orders found.</Text>
                         {activeTab !== 'all' && (
                             <Pressable onPress={() => setActiveTab('all')}>
                                 <Text style={styles.viewAllLink}>View all orders</Text>
@@ -350,12 +350,11 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 12,
     },
-    emptyStateText: {
-        fontSize: 16,
-        color: '#888',
-        marginTop: 16,
-        marginBottom: 24,
-        fontFamily: 'Quicksand',
+    emptyTitle: {
+        marginVertical: 16,
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333',
     },
     viewAllLink: {
         color: '#C88EA7',

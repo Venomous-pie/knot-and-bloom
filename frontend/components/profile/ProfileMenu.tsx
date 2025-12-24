@@ -4,6 +4,7 @@ import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     Platform,
     Pressable,
     ScrollView,
@@ -141,7 +142,14 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                 {/* User Info Card */}
                 <View style={styles.userCard}>
                     <View style={styles.avatarContainer}>
-                        <Text style={styles.avatarText}>{user.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+                        {user.avatar ? (
+                            <Image
+                                source={{ uri: user.avatar }}
+                                style={styles.avatarImage}
+                            />
+                        ) : (
+                            <Text style={styles.avatarText}>{user.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+                        )}
                     </View>
                     <View style={styles.userInfo}>
                         <Text style={styles.userName}>{user.name}</Text>
@@ -301,6 +309,11 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 24,
         fontWeight: 'bold',
+    },
+    avatarImage: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
     },
     userInfo: {
         flex: 1,

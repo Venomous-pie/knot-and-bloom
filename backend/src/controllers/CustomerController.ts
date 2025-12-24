@@ -7,6 +7,7 @@ import { type AuthPayload } from "../types/authTypes.js";
 import { OAuth2Client } from 'google-auth-library';
 
 import ErrorHandler from "../error/errorHandler.js";
+import { OtpService } from "../services/otpService.js";
 
 import {
     customerLoginSchema,
@@ -45,6 +46,17 @@ const customerRegisterController = async (input: unknown) => {
             if (parsedInput.phone && existingCustomer.phone === parsedInput.phone) {
                 // Create a custom error or reuse DuplicateCustomerError with phone message
                 throw new ErrorHandler.DuplicateCustomerError(parsedInput.phone);
+            }
+        }
+
+        // Verify OTP if phone is provided
+        if (parsedInput.phone) {
+            if (!parsedInput.otp) {
+                throw new ErrorHandler.ValidationError([{ message: "OTP is required for phone registration", path: ["otp"] }]);
+            }
+            const isValid = await OtpService.verifyOTP(parsedInput.phone, parsedInput.otp, 'REGISTRATION');
+            if (!isValid) {
+                throw new ErrorHandler.AuthenticationError("Invalid or expired OTP");
             }
         }
 
@@ -143,6 +155,7 @@ const customerLoginController = async (input: unknown) => {
                 phone: customer.phone,
                 address: customer.address,
                 role: customer.role,
+                avatar: customer.avatar,
                 passwordResetRequired: customer.passwordResetRequired,
                 sellerId: customer.sellerProfile?.uid,
                 sellerStatus: customer.sellerProfile?.status,
@@ -246,11 +259,14 @@ const googleLoginController = async (input: unknown) => {
         });
 
         if (customer) {
-            // Link googleId if not linked yet
-            if (!customer.googleId) {
+            // Link googleId if not linked yet, or update avatar if missing
+            if (!customer.googleId || (!customer.avatar && picture)) {
                 customer = await prisma.customer.update({
                     where: { uid: customer.uid },
-                    data: { googleId },
+                    data: {
+                        googleId,
+                        ...(!customer.avatar && picture ? { avatar: picture } : {})
+                    },
                     include: { sellerProfile: true }
                 });
             }
@@ -261,6 +277,7 @@ const googleLoginController = async (input: unknown) => {
                     email,
                     googleId,
                     name: name || generateRandomName(),
+                    avatar: picture || null,
                     // password is optional/null for Google users
                 },
                 include: { sellerProfile: true }
@@ -286,6 +303,7 @@ const googleLoginController = async (input: unknown) => {
                 phone: customer.phone,
                 address: customer.address,
                 role: customer.role,
+                avatar: customer.avatar,
                 passwordResetRequired: customer.passwordResetRequired,
                 sellerId: customer.sellerProfile?.uid,
                 sellerStatus: customer.sellerProfile?.status,

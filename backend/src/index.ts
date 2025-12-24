@@ -56,6 +56,7 @@ app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use(errorHandlingMiddleware);

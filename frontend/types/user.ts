@@ -5,6 +5,7 @@ interface User {
     role: string; // 'USER' | 'SELLER' | 'ADMIN'
     phone?: string | null;
     address?: string | null;
+    avatar?: string | null;
     sellerId?: number;
     sellerStatus?: string; // 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED'
     sellerHasSeenWelcomeModal?: boolean;

@@ -319,3 +319,14 @@ model Notification {
   @@index([customerId])
   @@index([customerId, isRead])
 }
+
+model Verification {
+  uid       Int      @id @default(autoincrement())
+  target    String
+  code      String
+  type      String // 'REGISTRATION', 'PASSWORD_RESET'
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([target, type])
+}

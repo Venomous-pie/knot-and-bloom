@@ -5,6 +5,7 @@ export const customerSchema = z.object({
     email: z.string().email().optional(),
     password: z.string(),
     phone: z.string().optional(),
+    otp: z.string().optional(), // OTP for phone registration
     address: z.string().optional(),
 }).refine(data => data.email || data.phone, {
     message: "Either email or phone must be provided",

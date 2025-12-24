@@ -1,6 +1,7 @@
 import { paymentMethodAPI, PaymentMethod, PaymentMethodType, PaymentMethodInput } from '@/api/api';
 import { useAuth } from '@/app/auth';
 import { RelativePathString, useRouter } from 'expo-router';
+import { CreditCard } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -177,7 +178,7 @@ export default function PaymentMethodsPage() {
 
                 {paymentMethods.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyIcon}>💳</Text>
+                        <CreditCard style={styles.emptyIcon} size={40}/>
                         <Text style={styles.emptyTitle}>No Payment Methods</Text>
                         <Text style={styles.emptyText}>Add a payment method for faster checkout</Text>
                         <Pressable style={styles.emptyButton} onPress={openAddModal}>
@@ -374,6 +375,7 @@ const styles = StyleSheet.create({
     emptyIcon: {
         fontSize: 48,
         marginBottom: 16,
+        color: '#ddd',
     },
     emptyTitle: {
         fontSize: 18,

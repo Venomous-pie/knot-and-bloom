@@ -3,7 +3,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 import type { CreateProductData, GetProductsParams, GetProductsResponse, Product } from '../types/products';
 
 // Base URL for the API - replace with your actual API base URL
-const BASE_URL = 'http://localhost:3030/api';
+const BASE_URL = 'http://192.168.1.39:3030/api';
 
 const api: AxiosInstance = axios.create({
     baseURL: BASE_URL,
@@ -132,6 +132,7 @@ export const authAPI = {
     login: (data: any) => apiClient.post('/customers/login', data),
     loginWithGoogle: (data: { token?: string, accessToken?: string }) => apiClient.post('/customers/login/google', data),
     register: (data: any) => apiClient.post('/customers/register', data),
+    sendOTP: (phone: string) => apiClient.post('/auth/send-otp', { phone }),
 };
 
 export const cartAPI = {

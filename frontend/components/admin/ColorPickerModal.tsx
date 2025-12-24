@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, View, Pressable, TextInput } from 'react-native';
 import ColorPicker, { Panel1, Swatches, Preview, OpacitySlider, HueSlider } from 'reanimated-color-picker';
-import { X, Check, Plus } from 'lucide-react-native';
+import { X, Check, Plus, Pipette } from 'lucide-react-native';
 
 interface ColorPickerModalProps {
     visible: boolean;
@@ -19,9 +19,31 @@ export default function ColorPickerModal({
     onSaveToPalette
 }: ColorPickerModalProps) {
     const [selectedColor, setSelectedColor] = useState(initialColor);
+    const [eyedropperAvailable, setEyedropperAvailable] = useState(false);
+
+    React.useEffect(() => {
+        // Check for EyeDropper API support on web
+        if (typeof window !== 'undefined' && 'EyeDropper' in window) {
+            setEyedropperAvailable(true);
+        }
+    }, []);
 
     const onColorChange = (color: { hex: string }) => {
         setSelectedColor(color.hex);
+    };
+
+    const handleEyedropper = async () => {
+        // @ts-ignore - EyeDropper is not yet in standard lib types
+        if (!window.EyeDropper) return;
+
+        try {
+            // @ts-ignore
+            const eyeDropper = new window.EyeDropper();
+            const result = await eyeDropper.open();
+            setSelectedColor(result.sRGBHex);
+        } catch (e) {
+            console.log('Eyedropper cancelled or failed', e);
+        }
     };
 
     return (
@@ -30,9 +52,19 @@ export default function ColorPickerModal({
                 <View style={styles.modalContent}>
                     <View style={styles.header}>
                         <Text style={styles.title}>Select Color</Text>
-                        <Pressable onPress={onClose} style={styles.closeButton}>
-                            <X size={20} color="#666" />
-                        </Pressable>
+                        <View style={styles.headerButtons}>
+                            {eyedropperAvailable && (
+                                <Pressable
+                                    onPress={handleEyedropper}
+                                    style={styles.iconButton}
+                                >
+                                    <Pipette size={20} color="#666" />
+                                </Pressable>
+                            )}
+                            <Pressable onPress={onClose} style={styles.closeButton}>
+                                <X size={20} color="#666" />
+                            </Pressable>
+                        </View>
                     </View>
 
                     <ColorPicker
@@ -105,6 +137,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
+    headerButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
     title: {
         fontSize: 18,
         fontWeight: 'bold',
@@ -112,6 +149,13 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         padding: 4,
+    },
+    iconButton: {
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: '#f5f5f5',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     picker: {
         width: '100%',

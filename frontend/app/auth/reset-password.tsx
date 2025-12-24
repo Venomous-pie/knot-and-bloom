@@ -1,4 +1,4 @@
-import { authAPI } from '@/api/api';
+import { authAPI, customerAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -48,7 +48,7 @@ export default function ResetPasswordPage() {
             // For MVP, we can use update profile if we add password support there, or dedicated endpoint.
             // Let's assume PUT /customers/profile supports password update
 
-            await authAPI.updateProfile({ password: newPassword });
+            await customerAPI.updateProfile({ password: newPassword });
 
             // Refresh user to clear passwordResetRequired flag (backend should handle this)
             await refreshUser();

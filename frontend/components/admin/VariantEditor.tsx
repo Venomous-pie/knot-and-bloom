@@ -1,8 +1,9 @@
 import { isMobile } from '@/constants/layout';
-import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2 } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2, ImagePlus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -12,7 +13,10 @@ import {
     View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 import ColorPickerModal from './ColorPickerModal';
+import { uploadToImageKit } from '@/lib/imagekit';
+import { toTitleCase } from '@/utils/textUtils';
 
 export interface VariantData {
     uid?: number;
@@ -53,6 +57,129 @@ const PRESET_COLORS = [
 ];
 
 const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'];
+
+// Mini image picker for variants
+function VariantImagePicker({
+    imageUri,
+    onImageChange
+}: {
+    imageUri: string;
+    onImageChange: (uri: string) => void;
+}) {
+    const [uploading, setUploading] = useState(false);
+
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0]) {
+            setUploading(true);
+            try {
+                const uploaded = await uploadToImageKit({
+                    uri: result.assets[0].uri,
+                    name: `variant_${Date.now()}.jpg`,
+                });
+                onImageChange(uploaded.url);
+            } catch (error) {
+                console.error('Variant image upload failed:', error);
+                // Fallback to local URI
+                onImageChange(result.assets[0].uri);
+            } finally {
+                setUploading(false);
+            }
+        }
+    };
+
+    const removeImage = () => {
+        onImageChange('');
+    };
+
+    if (uploading) {
+        return (
+            <View style={variantImageStyles.container}>
+                <ActivityIndicator size="small" color="#B36979" />
+                <Text style={variantImageStyles.uploadingText}>Uploading...</Text>
+            </View>
+        );
+    }
+
+    if (imageUri) {
+        return (
+            <View style={variantImageStyles.previewContainer}>
+                <Image source={{ uri: imageUri }} style={variantImageStyles.preview} />
+                <Pressable style={variantImageStyles.removeButton} onPress={removeImage}>
+                    <Trash2 size={14} color="#fff" />
+                </Pressable>
+            </View>
+        );
+    }
+
+    return (
+        <Pressable style={variantImageStyles.addButton} onPress={pickImage}>
+            <ImagePlus size={20} color="#B36979" />
+            <Text style={variantImageStyles.addText}>Add Image</Text>
+        </Pressable>
+    );
+}
+
+const variantImageStyles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 8,
+    },
+    uploadingText: {
+        fontSize: 13,
+        color: '#888',
+    },
+    previewContainer: {
+        position: 'relative',
+        width: 80,
+        height: 80,
+    },
+    preview: {
+        width: 80,
+        height: 80,
+        borderRadius: 8,
+        backgroundColor: '#f0f0f0',
+    },
+    removeButton: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#E53935',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    addButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#FCF0F2',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E8D5D9',
+        borderStyle: 'dashed',
+    },
+    addText: {
+        fontSize: 13,
+        color: '#B36979',
+        fontWeight: '500',
+    },
+});
+
 
 export default function VariantEditor({
     variants,
@@ -240,7 +367,12 @@ export default function VariantEditor({
                                             placeholder="e.g. Small Red, Blue XL"
                                             placeholderTextColor="#999"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'name'))}
-                                            onBlur={() => setFocusedField(null)}
+                                            onBlur={() => {
+                                                setFocusedField(null);
+                                                if (variant.name) {
+                                                    updateVariant(index, 'name', toTitleCase(variant.name));
+                                                }
+                                            }}
                                         />
                                     </View>
                                     <View style={[styles.field, !mobile && { flex: 2 }]}>
@@ -415,18 +547,12 @@ export default function VariantEditor({
                                     </View>
                                 </View>
 
-                                {/* Image URL */}
+                                {/* Variant Image Upload */}
                                 <View style={styles.field}>
-                                    <Text style={styles.fieldLabel}>Variant Image URL</Text>
-                                    <TextInput
-                                        style={[styles.input, focusedField === getFieldKey(index, 'image') && styles.inputFocused]}
-                                        value={variant.image}
-                                        onChangeText={(text) => updateVariant(index, 'image', text)}
-                                        placeholder="https://example.com/variant-image.jpg"
-                                        placeholderTextColor="#999"
-                                        autoCapitalize="none"
-                                        onFocus={() => setFocusedField(getFieldKey(index, 'image'))}
-                                        onBlur={() => setFocusedField(null)}
+                                    <Text style={styles.fieldLabel}>Variant Image</Text>
+                                    <VariantImagePicker
+                                        imageUri={variant.image}
+                                        onImageChange={(uri) => updateVariant(index, 'image', uri)}
                                     />
                                 </View>
                             </View>

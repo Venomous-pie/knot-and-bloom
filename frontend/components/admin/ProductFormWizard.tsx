@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';
 import VariantEditor, { VariantData } from './VariantEditor';
+import { toTitleCase, toSentenceCase, capitalizeMaterials } from '@/utils/textUtils';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 
@@ -360,7 +361,12 @@ export default function ProductFormWizard({
                                 placeholder="e.g. Handmade Crochet Bear"
                                 placeholderTextColor="#999"
                                 onFocus={() => setFocusedField('name')}
-                                onBlur={() => setFocusedField(null)}
+                                onBlur={() => {
+                                    setFocusedField(null);
+                                    if (formData.name) {
+                                        handleChange('name', toTitleCase(formData.name));
+                                    }
+                                }}
                             />
                         </View>
 
@@ -403,17 +409,34 @@ export default function ProductFormWizard({
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
                                 <Text style={styles.fieldLabel}>SKU</Text>
-                                <Pressable onPress={handleGenerateSku} disabled={generatingSku}>
+                                <Pressable
+                                    onPress={handleGenerateSku}
+                                    disabled={generatingSku || selectedCategories.length === 0}
+                                    style={{ opacity: selectedCategories.length === 0 ? 0.5 : 1 }}
+                                >
                                     {generatingSku ? (
                                         <ActivityIndicator size="small" color="#B36979" />
                                     ) : (
                                         <View style={styles.autoGenButton}>
-                                            <Sparkles size={14} color="#B36979" />
-                                            <Text style={styles.autoGenText}>Auto Generate</Text>
+                                            <Sparkles size={14} color={selectedCategories.length === 0 ? '#ccc' : '#B36979'} />
+                                            <Text style={[styles.autoGenText, selectedCategories.length === 0 && { color: '#ccc' }]}>Auto Generate</Text>
                                         </View>
                                     )}
                                 </Pressable>
                             </View>
+                            {/* SKU Requirements Hint */}
+                            {!formData.sku && (
+                                <View style={styles.skuRequirements}>
+                                    <View style={styles.skuReqItem}>
+                                        <Text style={[styles.skuReqIcon, selectedCategories.length > 0 && styles.skuReqIconDone]}>
+                                            {selectedCategories.length > 0 ? '✓' : '○'}
+                                        </Text>
+                                        <Text style={[styles.skuReqText, selectedCategories.length > 0 && styles.skuReqTextDone]}>
+                                            Select a category
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
                             <TextInput
                                 style={[styles.input, focusedField === 'sku' && styles.inputFocused]}
                                 value={formData.sku}
@@ -589,7 +612,12 @@ export default function ProductFormWizard({
                                 multiline
                                 numberOfLines={5}
                                 onFocus={() => setFocusedField('description')}
-                                onBlur={() => setFocusedField(null)}
+                                onBlur={() => {
+                                    setFocusedField(null);
+                                    if (formData.description) {
+                                        handleChange('description', toSentenceCase(formData.description));
+                                    }
+                                }}
                             />
                         </View>
 
@@ -1129,5 +1157,27 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#B36979',
         fontWeight: '500',
+    },
+    skuRequirements: {
+        marginBottom: 8,
+    },
+    skuReqItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    skuReqIcon: {
+        fontSize: 12,
+        color: '#aaa',
+    },
+    skuReqIconDone: {
+        color: '#4CAF50',
+    },
+    skuReqText: {
+        fontSize: 12,
+        color: '#888',
+    },
+    skuReqTextDone: {
+        color: '#4CAF50',
     },
 });

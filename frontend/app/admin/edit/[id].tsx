@@ -51,6 +51,8 @@ export default function EditProductPage() {
                 discountPercentage: product.discountPercentage?.toString() || "",
                 image: product.image || "",
                 description: product.description || "",
+                materials: (product as any).materials || "",
+                bundleQuantity: (product as any).bundleQuantity?.toString() || "1",
             };
 
             // Handle categories (ensure array)

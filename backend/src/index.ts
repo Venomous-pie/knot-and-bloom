@@ -15,6 +15,7 @@ import paymentMethodRoutes from './routes/paymentMethodRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import sellerRoutes from './routes/sellerRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import imagekitRoutes from './routes/imagekitRoutes.js';
 import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
@@ -55,6 +56,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/payment-methods', paymentMethodRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/account', accountRoutes);
+app.use('/api/imagekit', imagekitRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 

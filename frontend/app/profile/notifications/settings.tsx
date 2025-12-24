@@ -14,9 +14,15 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+    Bell,
+    Info,
+    Package,
+    Tag
+} from 'lucide-react-native';
 
 interface SettingItemProps {
-    icon: string;
+    icon: React.ReactNode;
     title: string;
     description: string;
     value: boolean;
@@ -33,7 +39,9 @@ const SettingItem: React.FC<SettingItemProps> = ({
     disabled,
 }) => (
     <View style={styles.settingItem}>
-        <Text style={styles.settingIcon}>{icon}</Text>
+        <View style={styles.iconContainer}>
+            {icon}
+        </View>
         <View style={styles.settingContent}>
             <Text style={styles.settingTitle}>{title}</Text>
             <Text style={styles.settingDescription}>{description}</Text>
@@ -123,7 +131,7 @@ export default function NotificationSettingsPage() {
 
                     <View style={styles.settingsList}>
                         <SettingItem
-                            icon="📦"
+                            icon={<Package size={22} color="#555" />}
                             title="Order Updates"
                             description="Get notified about your order status, shipping, and delivery"
                             value={settings?.orderUpdates ?? true}
@@ -134,7 +142,7 @@ export default function NotificationSettingsPage() {
                         <View style={styles.divider} />
 
                         <SettingItem
-                            icon="🎉"
+                            icon={<Tag size={22} color="#555" />}
                             title="Promotions & Deals"
                             description="Receive exclusive offers, discounts, and sale announcements"
                             value={settings?.promotions ?? true}
@@ -145,7 +153,7 @@ export default function NotificationSettingsPage() {
                         <View style={styles.divider} />
 
                         <SettingItem
-                            icon="🔔"
+                            icon={<Bell size={22} color="#555" />}
                             title="System Messages"
                             description="Important updates about your account and app features"
                             value={settings?.systemMessages ?? true}
@@ -156,7 +164,7 @@ export default function NotificationSettingsPage() {
                 </View>
 
                 <View style={styles.infoBox}>
-                    <Text style={styles.infoIcon}>ℹ️</Text>
+                    <Info size={20} color="#1976D2" style={{ marginRight: 10 }} />
                     <Text style={styles.infoText}>
                         Turning off all notifications may cause you to miss important order updates.
                         We recommend keeping at least "Order Updates" enabled.
@@ -207,7 +215,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
-        fontFamily: Platform.OS === 'web' ? 'serif' : 'System',
+        fontFamily: 'Quicksand',
     },
     card: {
         backgroundColor: 'white',
@@ -220,15 +228,17 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     cardTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '600',
         color: '#333',
         marginBottom: 8,
+        fontFamily: 'Quicksand',
     },
     cardDescription: {
-        fontSize: 14,
+        fontSize: 13,
         color: '#666',
         marginBottom: 20,
+        fontFamily: 'Quicksand',
     },
     settingsList: {
         gap: 0,
@@ -238,23 +248,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 16,
     },
-    settingIcon: {
-        fontSize: 24,
-        marginRight: 12,
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f5f5f5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
     },
     settingContent: {
         flex: 1,
         marginRight: 12,
     },
     settingTitle: {
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
         color: '#333',
         marginBottom: 4,
+        fontFamily: 'Quicksand',
     },
     settingDescription: {
-        fontSize: 13,
-        color: '#666',
+        fontSize: 12,
+        color: '#888',
+        fontFamily: 'Quicksand',
     },
     divider: {
         height: 1,

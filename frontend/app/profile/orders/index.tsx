@@ -12,7 +12,28 @@ import {
     Text,
     View
 } from 'react-native';
+import {
+    ChevronRight,
+    Package,
+    ShoppingBag
+} from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+/* Simple parsing helper for product JSON */
+const getProductSummary = (jsonString: string) => {
+    try {
+        const items = JSON.parse(jsonString);
+        if (Array.isArray(items) && items.length > 0) {
+            const firstItem = items[0];
+            const remainingCount = items.length - 1;
+            const name = firstItem.name || 'Product';
+            return remainingCount > 0 ? `${name} + ${remainingCount} more` : name;
+        }
+    } catch (e) {
+        return 'Order Items';
+    }
+    return 'Order Items';
+};
 
 interface OrderSummary {
     uid: number;
@@ -142,7 +163,7 @@ export default function OrderHistoryPage() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.tabsContainer}
-                contentContainerStyle={styles.tabsContent}
+                contentContainerStyle={[styles.tabsContent, { flexGrow: 1, justifyContent: 'center' }]}
             >
                 {TABS.map((tab) => {
                     const count = getTabCount(tab.key);
@@ -171,7 +192,7 @@ export default function OrderHistoryPage() {
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 {filteredOrders.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateIcon}>📦</Text>
+                        <Package size={64} color="#ddd" />
                         <Text style={styles.emptyStateText}>No orders found.</Text>
                         {activeTab !== 'all' && (
                             <Pressable onPress={() => setActiveTab('all')}>
@@ -195,20 +216,11 @@ export default function OrderHistoryPage() {
                                 style={styles.orderCard}
                                 onPress={() => router.push(`/profile/orders/${order.uid}` as RelativePathString)}
                             >
-                                <View style={styles.orderHeader}>
-                                    <Text style={styles.orderId}>Order #{order.uid}</Text>
-                                    <Text style={styles.orderDate}>
-                                        {new Date(order.uploaded).toLocaleDateString()}
-                                    </Text>
-                                </View>
-
-                                <View style={styles.divider} />
-
-                                <View style={styles.orderDetails}>
-                                    <View>
-                                        <Text style={styles.label}>Total</Text>
-                                        <Text style={styles.totalPrice}>
-                                            ₱{Number(order.total || 0).toFixed(2)}
+                                <View style={styles.cardHeader}>
+                                    <View style={styles.orderIdRow}>
+                                        <Text style={styles.orderId}>Order #{order.uid}</Text>
+                                        <Text style={styles.orderDate}>
+                                            {new Date(order.uploaded).toLocaleDateString()}
                                         </Text>
                                     </View>
                                     <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
@@ -216,6 +228,27 @@ export default function OrderHistoryPage() {
                                             {getStatusLabel(order.status)}
                                         </Text>
                                     </View>
+                                </View>
+
+                                <View style={styles.divider} />
+
+                                <View style={styles.productRow}>
+                                    <View style={styles.iconBox}>
+                                        <ShoppingBag size={20} color="#B36979" />
+                                    </View>
+                                    <Text style={styles.productText} numberOfLines={1}>
+                                        {getProductSummary(order.products)}
+                                    </Text>
+                                    <ChevronRight size={20} color="#ccc" />
+                                </View>
+
+                                <View style={styles.divider} />
+
+                                <View style={styles.footer}>
+                                    <Text style={styles.totalLabel}>Total Order:</Text>
+                                    <Text style={styles.totalPrice}>
+                                        ₱{Number(order.total || 0).toFixed(2)}
+                                    </Text>
                                 </View>
                             </Pressable>
                         ))}
@@ -254,7 +287,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
-        fontFamily: Platform.OS === 'web' ? 'serif' : 'System',
+        fontFamily: 'Quicksand',
     },
     tabsContainer: {
         maxHeight: 50,
@@ -282,7 +315,8 @@ const styles = StyleSheet.create({
     },
     tabTextActive: {
         color: '#C88EA7',
-        fontWeight: '600',
+        fontWeight: '700',
+        fontFamily: 'Quicksand',
     },
     tabBadge: {
         backgroundColor: '#eee',
@@ -316,14 +350,12 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 12,
     },
-    emptyStateIcon: {
-        fontSize: 48,
-        marginBottom: 16,
-    },
     emptyStateText: {
         fontSize: 16,
         color: '#888',
-        marginBottom: 16,
+        marginTop: 16,
+        marginBottom: 24,
+        fontFamily: 'Quicksand',
     },
     viewAllLink: {
         color: '#C88EA7',
@@ -345,24 +377,30 @@ const styles = StyleSheet.create({
     },
     orderCard: {
         backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 20,
+        borderRadius: 16,
+        padding: 16,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 1,
+        shadowRadius: 8,
+        elevation: 2,
+        marginBottom: 4,
     },
-    orderHeader: {
+    cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         marginBottom: 12,
+    },
+    orderIdRow: {
+        flex: 1,
     },
     orderId: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#333',
+        marginBottom: 4,
+        fontFamily: 'Quicksand',
     },
     orderDate: {
         fontSize: 14,
@@ -389,14 +427,47 @@ const styles = StyleSheet.create({
         color: '#B36979',
     },
     statusBadge: {
-        backgroundColor: '#E6F0E6',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+        marginLeft: 8,
     },
     statusText: {
-        color: '#4A7A4A',
         fontSize: 12,
         fontWeight: '600',
-    }
+        fontFamily: 'Quicksand',
+    },
+    productRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    iconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: '#FFF0F5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    productText: {
+        fontSize: 15,
+        color: '#444',
+        flex: 1,
+        fontFamily: 'Quicksand',
+        marginRight: 8,
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        marginTop: 4,
+    },
+    totalLabel: {
+        fontSize: 14,
+        color: '#666',
+        marginRight: 8,
+        fontFamily: 'Quicksand',
+    },
 });

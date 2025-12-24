@@ -31,8 +31,8 @@ export default function ProfileLayout() {
 
     const menuStyle = useAnimatedStyle(() => {
         const flex = isMobile
-            ? withTiming(isRoot ? 1 : 0, { duration: 300 }) // On mobile, menu hides completely
-            : withTiming(isRoot ? 1 : 0.3, { duration: 300 }); // On desktop, menu shrinks to 30%
+            ? withTiming(isRoot ? 1 : 0, { duration: 300, easing: Easing.out(Easing.exp) })
+            : withTiming(isRoot ? 1 : 0.3, { duration: 300, easing: Easing.out(Easing.exp) });
 
         const opacity = isMobile && !isRoot
             ? withTiming(0, { duration: 200 })
@@ -41,20 +41,19 @@ export default function ProfileLayout() {
         return {
             flex: flex,
             opacity: opacity,
-            maxWidth: isRoot ? '100%' : 400, // Limit width when sending to side
-            display: (isMobile && !isRoot && progress.value > 0.9) ? 'none' : 'flex' // Hide completely on mobile when done
+            maxWidth: isRoot ? '100%' : 400,
+            display: (isMobile && !isRoot && progress.value > 0.9) ? 'none' : 'flex'
         };
     });
 
     const contentStyle = useAnimatedStyle(() => {
-        const flex = withTiming(isRoot ? 0 : 1, { duration: 300 });
-        const opacity = withTiming(isRoot ? 0 : 1, { duration: 300, easing: Easing.inOut(Easing.ease) });
-        const translateX = withTiming(isRoot ? 50 : 0, { duration: 300 });
+        const flex = withTiming(isRoot ? 0 : 1, { duration: 300, easing: Easing.out(Easing.exp) });
+        const opacity = withTiming(isRoot ? 0 : 1, { duration: 300 });
+        // Removed translateX to stabilize content origin
 
         return {
             flex: flex,
             opacity: opacity,
-            transform: [{ translateX }],
             display: (isRoot && progress.value < 0.1) ? 'none' : 'flex'
         };
     });

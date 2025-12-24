@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
-        fontFamily: Platform.OS === 'web' ? 'serif' : 'System',
+        fontFamily: 'Quicksand',
     },
     addButton: {
         backgroundColor: '#C88EA7',

@@ -13,7 +13,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
         zIndex: 999,
     },
     sidebar: {
@@ -24,70 +24,143 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         zIndex: 1000,
         shadowColor: '#000',
-        shadowOffset: { width: -2, height: 0 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        elevation: 5,
+        shadowOffset: { width: -4, height: 0 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 10,
         display: 'flex',
         flexDirection: 'column',
     },
+    header: {
+        marginBottom: 10,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
     closeButton: {
-        alignSelf: 'flex-end',
         padding: 8,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 20,
     },
     title: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 20,
+        fontWeight: '700',
         color: '#333',
+        fontFamily: 'Quicksand',
     },
     subtitle: {
         fontSize: 14,
-        color: '#666',
-        marginBottom: 4,
-    },
-    menuItems: {
-        gap: 10,
-    },
-    menuItem: {
-        fontSize: 12,
-        color: '#333',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 8,
+        color: '#888',
+        marginBottom: 2,
         fontFamily: 'Quicksand',
     },
+    sectionTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#999',
+        textTransform: 'uppercase',
+        marginBottom: 8,
+        marginTop: 16,
+        marginLeft: 12,
+        fontFamily: 'Quicksand',
+        letterSpacing: 0.5,
+    },
+    menuItems: {
+        gap: 4,
+    },
+    menuItem: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 2,
+    },
     menuItemActive: {
-        backgroundColor: '#fce4ec',
-        color: '#B36979',
-        fontWeight: '600',
+        backgroundColor: '#F9F9F9',
+        borderLeftWidth: 3,
+        borderLeftColor: '#B36979',
     },
     menuItemHovered: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F5F5F5',
     },
-    buttonItemHovered: {
-        backgroundColor: '#b36979ff',
-        color: 'white',
+    menuItemText: {
+        fontSize: 15,
+        color: '#444',
+        fontWeight: '500',
+        fontFamily: 'Quicksand',
     },
-    buttonItem: {
-        borderColor: '#B36979',
-        borderWidth: 1,
-        padding: 8,
-        borderRadius: 12,
-        alignItems: 'center',
-        flexDirection: 'row',
-        gap: 12,
+    menuItemTextActive: {
+        color: '#B36979',
+        fontWeight: '700',
     },
     footer: {
         marginTop: 'auto',
         borderTopWidth: 1,
-        borderColor: '#eee',
-        paddingTop: 20,
-        alignItems: 'center',
-        gap: 10,
+        borderColor: '#f0f0f0',
+        paddingTop: 24,
+        gap: 16,
     },
-    footerText: {
-        fontSize: 12,
-        color: '#999',
+    authButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    buttonItem: {
+        flex: 1,
+        backgroundColor: 'white',
+        borderColor: '#eee',
+        borderWidth: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 10, // Pill shape
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    buttonItemHovered: {
+        backgroundColor: '#B36979',
+        borderColor: '#B36979',
+    },
+    buttonText: {
+        fontSize: 14,
+        color: '#333',
+        fontFamily: 'Quicksand',
+    },
+    buttonTextHovered: {
+        color: 'white',
+    },
+    footerBrand: {
+        alignItems: 'center',
+        gap: 12,
+    },
+    thanksText: {
+        fontFamily: 'Lovingly',
+        fontSize: 18,
+        color: '#B36979',
+    },
+    socialIcons: {
+        flexDirection: 'row',
+        gap: 20,
+    },
+    versionText: {
+        fontSize: 11,
+        color: '#ccc',
+        marginTop: 8,
+    },
+    pendingBadge: {
+        backgroundColor: '#FFF9E6',
+        borderWidth: 1,
+        borderColor: '#FFE599',
+    },
+    pendingBadgeText: {
+        color: '#B8860B',
+        fontSize: 13,
+        fontWeight: '600',
+        fontFamily: 'Quicksand',
     }
 });
 
@@ -102,7 +175,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
 
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
-    const sidebarWidth = mobile ? 250 : 300;
+    const sidebarWidth = mobile ? 300 : 350;
 
     const { user } = useAuth();
     const [shouldRender, setShouldRender] = React.useState(false);
@@ -171,14 +244,16 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                 ]}
             >
                 {/* Header Section */}
-                <View style={{ marginBottom: 20 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={styles.header}>
+                    <View style={styles.headerTop}>
                         <View>
-                            <Text style={[styles.subtitle, { fontSize: mobile ? 12 : 14 }]}>{user ? "Hello," : "Welcome,"}</Text>
-                            <Text style={[styles.title, { fontSize: mobile ? 16 : 18 }]}>{user ? (user.name || user.email) : "Guest"}</Text>
+                            <Text style={styles.subtitle}>{user ? "Hello," : "Welcome,"}</Text>
+                            <Text style={styles.title} numberOfLines={1}>
+                                {user ? (user.name || user.email?.split('@')[0]) : "Guest"}
+                            </Text>
                         </View>
                         <Pressable onPress={onClose} style={styles.closeButton}>
-                            <X size={24} color="#333" />
+                            <X size={20} color="#555" />
                         </Pressable>
                     </View>
                 </View>
@@ -189,8 +264,8 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                     contentContainerStyle={{ paddingBottom: 20 }}
                 >
                     {/* Main Navigation Links */}
-                    <View style={[styles.menuItems, { gap: mobile ? 8 : 10 }]}>
-                        <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Navigation</Text>
+                    <View style={styles.menuItems}>
+                        <Text style={styles.sectionTitle}>Navigation</Text>
                         {navLinks.map((link) => {
                             const isActive = pathname === link.href;
                             return (
@@ -201,14 +276,12 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                 <View style={[
                                                     styles.menuItem,
                                                     isActive && styles.menuItemActive,
-                                                    (hovered && !isActive) && styles.menuItemHovered,
-                                                    { paddingVertical: mobile ? 4 : 10 }
+                                                    (hovered && !isActive) && styles.menuItemHovered
                                                 ]}>
-                                                    <Text style={{
-                                                        color: isActive ? '#B36979' : '#333',
-                                                        fontWeight: isActive ? '600' : '400',
-                                                        fontSize: mobile ? 12 : 14
-                                                    }}>{link.title}</Text>
+                                                    <Text style={[
+                                                        styles.menuItemText,
+                                                        isActive && styles.menuItemTextActive
+                                                    ]}>{link.title}</Text>
                                                 </View>
                                             );
                                         }}
@@ -221,7 +294,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
 
                         {/* Links */}
                         <View style={styles.menuItems}>
-                            <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Pages</Text>
+                            <Text style={styles.sectionTitle}>Pages</Text>
                             {sidebarLinks.slice(0, 3).map((link) => {
                                 const isActive = pathname === link.href;
                                 return (
@@ -232,14 +305,12 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                     <View style={[
                                                         styles.menuItem,
                                                         isActive && styles.menuItemActive,
-                                                        (hovered && !isActive) && styles.menuItemHovered,
-                                                        { paddingVertical: mobile ? 4 : 10 }
+                                                        (hovered && !isActive) && styles.menuItemHovered
                                                     ]}>
-                                                        <Text style={{
-                                                            color: isActive ? '#B36979' : '#333',
-                                                            fontWeight: isActive ? '600' : '400',
-                                                            fontSize: mobile ? 12 : 14
-                                                        }}>{link.title}</Text>
+                                                        <Text style={[
+                                                            styles.menuItemText,
+                                                            isActive && styles.menuItemTextActive
+                                                        ]}>{link.title}</Text>
                                                     </View>
                                                 );
                                             }}
@@ -263,14 +334,21 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
 
                                 return (
                                     <>
-                                        <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Dashboard</Text>
+                                        <Text style={styles.sectionTitle}>Dashboard</Text>
 
                                         {showAdminLink && (
                                             <Link href={'/admin' as RelativePathString} asChild>
                                                 <Pressable onPress={onClose}>
                                                     {({ hovered }) => (
-                                                        <View style={[styles.menuItem, pathname === '/admin' && styles.menuItemActive, hovered && styles.menuItemHovered, { paddingVertical: mobile ? 4 : 10 }]}>
-                                                            <Text style={{ color: pathname === '/admin' ? '#B36979' : '#333', fontSize: mobile ? 12 : 14 }}>Admin Dashboard</Text>
+                                                        <View style={[
+                                                            styles.menuItem,
+                                                            pathname === '/admin' && styles.menuItemActive,
+                                                            hovered && styles.menuItemHovered
+                                                        ]}>
+                                                            <Text style={[
+                                                                styles.menuItemText,
+                                                                pathname === '/admin' && styles.menuItemTextActive
+                                                            ]}>Admin Dashboard</Text>
                                                         </View>
                                                     )}
                                                 </Pressable>
@@ -281,8 +359,15 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                             <Link href={'/seller-dashboard/orders' as RelativePathString} asChild>
                                                 <Pressable onPress={onClose}>
                                                     {({ hovered }) => (
-                                                        <View style={[styles.menuItem, pathname === '/seller-dashboard/orders' && styles.menuItemActive, hovered && styles.menuItemHovered, { paddingVertical: mobile ? 4 : 10 }]}>
-                                                            <Text style={{ color: pathname === '/seller-dashboard/orders' ? '#B36979' : '#333', fontSize: mobile ? 12 : 14 }}>Seller Dashboard</Text>
+                                                        <View style={[
+                                                            styles.menuItem,
+                                                            pathname === '/seller-dashboard/orders' && styles.menuItemActive,
+                                                            hovered && styles.menuItemHovered
+                                                        ]}>
+                                                            <Text style={[
+                                                                styles.menuItemText,
+                                                                pathname === '/seller-dashboard/orders' && styles.menuItemTextActive
+                                                            ]}>Seller Dashboard</Text>
                                                         </View>
                                                     )}
                                                 </Pressable>
@@ -290,8 +375,8 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                         )}
 
                                         {showPendingBadge && (
-                                            <View style={[styles.menuItem, { backgroundColor: '#FFF9E6', borderWidth: 1, borderColor: '#FFE599' }]}>
-                                                <Text style={{ color: '#B8860B', fontSize: mobile ? 11 : 12 }}>⏳ Application Pending</Text>
+                                            <View style={[styles.menuItem, styles.pendingBadge]}>
+                                                <Text style={styles.pendingBadgeText}>⏳ Application Pending</Text>
                                             </View>
                                         )}
                                         <View style={{ height: 10 }} />
@@ -299,7 +384,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                 );
                             })()}
 
-                            <Text style={{ fontSize: mobile ? 12 : 14, fontWeight: 'bold', color: '#999', textTransform: 'uppercase', marginBottom: 5 }}>Categories</Text>
+                            <Text style={styles.sectionTitle}>Categories</Text>
                             {sidebarLinks.slice(3).map((link) => {
                                 const isActive = pathname === link.href;
                                 return (
@@ -310,14 +395,12 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                                     <View style={[
                                                         styles.menuItem,
                                                         isActive && styles.menuItemActive,
-                                                        (hovered && !isActive) && styles.menuItemHovered,
-                                                        { paddingVertical: mobile ? 4 : 10 }
+                                                        (hovered && !isActive) && styles.menuItemHovered
                                                     ]}>
-                                                        <Text style={{
-                                                            color: isActive ? '#B36979' : '#333',
-                                                            fontWeight: isActive ? '600' : '400',
-                                                            fontSize: mobile ? 12 : 14
-                                                        }}>{link.title}</Text>
+                                                        <Text style={[
+                                                            styles.menuItemText,
+                                                            isActive && styles.menuItemTextActive
+                                                        ]}>{link.title}</Text>
                                                     </View>
                                                 );
                                             }}
@@ -332,80 +415,72 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
 
                 <View style={styles.footer}>
                     {user ? (
-                        <View style={{ gap: 10, width: '100%' }}>
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <Link href={"/profile/orders" as any} asChild style={{ flex: 1 }}>
-                                    <Pressable
-                                        onPress={() => onClose()}>
-                                        {({ hovered }) => (
-                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <ShoppingBag size={14} color={hovered ? 'white' : 'black'} />
-                                                <Text style={[hovered && styles.buttonItemHovered, { fontSize: mobile ? 12 : 14 }]}>Orders</Text>
-                                            </View>
-                                        )}
-                                    </Pressable>
-                                </Link>
+                        <View style={styles.authButtons}>
+                            <Link href={"/profile/orders" as any} asChild>
+                                <Pressable onPress={onClose} style={{ flex: 1 }}>
+                                    {({ hovered }) => (
+                                        <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                            <ShoppingBag size={18} color={hovered ? 'white' : '#555'} />
+                                            <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Orders</Text>
+                                        </View>
+                                    )}
+                                </Pressable>
+                            </Link>
 
-                                <Link href={"/wishlist" as any} asChild style={{ flex: 1 }}>
-                                    <Pressable
-                                        onPress={() => onClose()}>
-                                        {({ hovered }) => (
-                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <Heart size={14} color={hovered ? 'white' : 'black'} />
-                                                <Text style={[hovered && styles.buttonItemHovered, { fontSize: mobile ? 12 : 14 }]}>Wishlist</Text>
-                                            </View>
-                                        )}
-                                    </Pressable>
-                                </Link>
-                            </View>
+                            <Link href={"/wishlist" as any} asChild>
+                                <Pressable onPress={onClose} style={{ flex: 1 }}>
+                                    {({ hovered }) => (
+                                        <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                            <Heart size={18} color={hovered ? 'white' : '#555'} />
+                                            <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Wishlist</Text>
+                                        </View>
+                                    )}
+                                </Pressable>
+                            </Link>
                         </View>
                     ) : (
-                        <View style={{ gap: 10, width: '100%' }}>
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <Pressable
-                                    style={{ flex: 1 }}
-                                    onPress={() => {
-                                        onClose();
-                                        router.push("/auth/login" as RelativePathString);
-                                    }}>
-                                    {({ hovered }) => {
-                                        return (
-                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <UserRound size={16} color={hovered ? 'white' : 'black'} />
-                                                <Text style={[hovered && styles.buttonItemHovered]}>Sign In</Text>
-                                            </View>
-                                        );
-                                    }}
-                                </Pressable>
-                                <Pressable
-                                    style={{ flex: 1 }}
-                                    onPress={() => {
-                                        onClose();
-                                        router.push("/auth/register" as RelativePathString);
-                                    }}>
-                                    {({ hovered }) => {
-                                        return (
-                                            <View style={[styles.buttonItem, hovered && styles.buttonItemHovered, { justifyContent: 'center' }]}>
-                                                <UserRound size={16} color={hovered ? 'white' : 'black'} />
-                                                <Text style={[hovered && styles.buttonItemHovered]}>Register</Text>
-                                            </View>
-                                        );
-                                    }}
-                                </Pressable>
-                            </View>
+                        <View style={styles.authButtons}>
+                            <Pressable
+                                style={{ flex: 1 }}
+                                onPress={() => {
+                                    onClose();
+                                    router.push("/auth/login" as RelativePathString);
+                                }}>
+                                {({ hovered }) => (
+                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                        <UserRound size={18} color={hovered ? 'white' : '#555'} />
+                                        <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Sign In</Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                            <Pressable
+                                style={{ flex: 1 }}
+                                onPress={() => {
+                                    onClose();
+                                    router.push("/auth/register" as RelativePathString);
+                                }}>
+                                {({ hovered }) => (
+                                    <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
+                                        <UserRound size={18} color={hovered ? 'white' : '#555'} />
+                                        <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Register</Text>
+                                    </View>
+                                )}
+                            </Pressable>
                         </View>
                     )}
 
-                    <Text style={[styles.footerText, { fontFamily: 'Lovingly', fontSize: 16, color: '#B36979', marginTop: 20 }]}>Thanks for Shopping</Text>
-                    <View style={{ flexDirection: 'row', gap: 15 }}>
-                        <Pressable onPress={() => { }}>
-                            <Instagram size={20} color="#999" />
-                        </Pressable>
-                        <Pressable onPress={() => { }}>
-                            <Facebook size={20} color="#999" />
-                        </Pressable>
+                    <View style={styles.footerBrand}>
+                        <Text style={styles.thanksText}>Thanks for Shopping</Text>
+                        <View style={styles.socialIcons}>
+                            <Pressable onPress={() => { }}>
+                                <Instagram size={20} color="#999" />
+                            </Pressable>
+                            <Pressable onPress={() => { }}>
+                                <Facebook size={20} color="#999" />
+                            </Pressable>
+                        </View>
+                        <Text style={styles.versionText}>Version 1.0.0</Text>
                     </View>
-                    <Text style={[styles.footerText, { fontSize: mobile ? 12 : 14 }]}>Version 1.0.0</Text>
                 </View>
             </Animated.View >
         </>

@@ -12,25 +12,53 @@ import {
     View,
     ViewStyle
 } from 'react-native';
-import { CircleUserRound } from 'lucide-react-native';
+import {
+    AlertTriangle,
+    Bell,
+    ChevronRight,
+    CreditCard,
+    LogOut,
+    MapPin,
+    Megaphone,
+    Package,
+    Trash2,
+    User
+} from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePathname } from 'expo-router';
 
 interface MenuItemProps {
-    icon: string;
+    icon: React.ReactNode;
     title: string;
     subtitle?: string;
     onPress: () => void;
     showBadge?: boolean;
     badgeText?: string;
     danger?: boolean;
+    isActive?: boolean;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress, showBadge, badgeText, danger }) => (
-    <Pressable style={styles.menuItem} onPress={onPress}>
+const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress, showBadge, badgeText, danger, isActive }) => (
+    <Pressable
+        style={[styles.menuItem, isActive && styles.menuItemActive]}
+        onPress={onPress}
+    >
         <View style={styles.menuItemLeft}>
-            <Text style={styles.menuIcon}>{icon}</Text>
+            <View style={styles.iconContainer}>
+                {/* Clone element to override color if active, strictly optional but nice touch */}
+                {React.isValidElement(icon)
+                    ? React.cloneElement(icon as React.ReactElement<any>, {
+                        color: isActive ? '#B36979' : (danger ? '#E53935' : '#555')
+                    })
+                    : icon
+                }
+            </View>
             <View>
-                <Text style={[styles.menuItemText, danger && styles.dangerText]}>{title}</Text>
+                <Text style={[
+                    styles.menuItemText,
+                    danger && styles.dangerText,
+                    isActive && styles.menuItemTextActive
+                ]}>{title}</Text>
                 {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
             </View>
         </View>
@@ -40,7 +68,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress, sho
                     <Text style={styles.badgeText}>{badgeText}</Text>
                 </View>
             )}
-            <Text style={styles.chevron}>›</Text>
+            <ChevronRight size={20} color={isActive ? "#B36979" : "#ccc"} />
         </View>
     </Pressable>
 );
@@ -64,6 +92,7 @@ interface ProfileMenuProps {
 export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
     const { user, logout, refreshUser, loading: authLoading } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
     const [deletionStatus, setDeletionStatus] = useState<{ hasPendingDeletion: boolean; deletionScheduledFor?: string | null }>({ hasPendingDeletion: false });
 
     useEffect(() => {
@@ -131,9 +160,10 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                 {deletionStatus.hasPendingDeletion && (
                     <Pressable
                         style={styles.warningBanner}
-                        onPress={() => router.push('/profile/account/delete-account' as RelativePathString)}
                     >
-                        <Text style={styles.warningIcon}>⚠️</Text>
+                        <View style={styles.warningIcon}>
+                            <AlertTriangle size={24} color="#E65100" />
+                        </View>
                         <View style={styles.warningContent}>
                             <Text style={styles.warningTitle}>Account Deletion Scheduled</Text>
                             <Text style={styles.warningText}>
@@ -146,31 +176,36 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                 {/* My Account Section */}
                 <MenuSection title="My Account">
                     <MenuItem
-                        icon="👤"
+                        icon={<User size={20} />}
                         title="Profile"
                         subtitle="Personal information"
+                        isActive={pathname === '/profile/account'}
                         onPress={() => router.push('/profile/account' as RelativePathString)}
                     />
                     <MenuItem
-                        icon="💳"
+                        icon={<CreditCard size={20} />}
                         title="Payment Methods"
                         subtitle="GCash, PayMaya, Bank"
+                        isActive={pathname === '/profile/account/payment-methods'}
                         onPress={() => router.push('/profile/account/payment-methods' as RelativePathString)}
                     />
                     <MenuItem
-                        icon="📍"
+                        icon={<MapPin size={20} />}
                         title="Addresses"
                         subtitle="Saved shipping addresses"
+                        isActive={pathname === '/profile/account/addresses'}
                         onPress={() => router.push('/profile/account/addresses' as RelativePathString)}
                     />
                     <MenuItem
-                        icon="🔔"
+                        icon={<Bell size={20} />}
                         title="Notification Settings"
+                        isActive={pathname === '/profile/notifications/settings'}
                         onPress={() => router.push('/profile/notifications/settings' as RelativePathString)}
                     />
                     <MenuItem
-                        icon="🗑️"
+                        icon={<Trash2 size={20} color="#E53935" />}
                         title="Request Account Deletion"
+                        isActive={pathname === '/profile/account/delete-account'}
                         onPress={() => router.push('/profile/account/delete-account' as RelativePathString)}
                         danger
                     />
@@ -179,9 +214,10 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                 {/* My Orders Section */}
                 <MenuSection title="My Orders">
                     <MenuItem
-                        icon="📦"
+                        icon={<Package size={20} />}
                         title="Order History"
                         subtitle="View all orders"
+                        isActive={pathname === '/profile/orders'}
                         onPress={() => router.push('/profile/orders' as RelativePathString)}
                     />
                 </MenuSection>
@@ -189,9 +225,10 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                 {/* Notifications Section */}
                 <MenuSection title="Notifications">
                     <MenuItem
-                        icon="📢"
+                        icon={<Megaphone size={20} />}
                         title="Knot & Bloom Updates"
                         subtitle="News and promotions"
+                        isActive={pathname === '/profile/notifications'}
                         onPress={() => router.push('/profile/notifications' as RelativePathString)}
                     />
                 </MenuSection>
@@ -226,10 +263,10 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     title: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#333',
-        fontFamily: Platform.OS === 'web' ? 'serif' : 'System',
+        fontFamily: Platform.OS === 'web' ? 'Quicksand' : 'System',
     },
     logoutButton: {
         padding: 8,
@@ -269,7 +306,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     userName: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '600',
         color: '#333',
         marginBottom: 4,
@@ -300,7 +337,6 @@ const styles = StyleSheet.create({
         borderColor: '#FFE0B2',
     },
     warningIcon: {
-        fontSize: 24,
         marginRight: 12,
     },
     warningContent: {
@@ -320,7 +356,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     sectionTitle: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
         color: '#888',
         textTransform: 'uppercase',
@@ -346,21 +382,31 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
     },
+    menuItemActive: {
+        backgroundColor: '#F9F9F9', // Subtle gray instead of pink
+        borderLeftWidth: 3,
+        borderLeftColor: '#B36979',
+    },
+    menuItemTextActive: {
+        color: '#B36979',
+        fontWeight: '700',
+    },
     menuItemLeft: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    menuIcon: {
-        fontSize: 20,
+    iconContainer: {
         marginRight: 12,
+        width: 24,
+        alignItems: 'center',
     },
     menuItemText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '500',
         color: '#333',
     },
     menuSubtitle: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#888',
         marginTop: 2,
     },
@@ -383,9 +429,5 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
     },
-    chevron: {
-        fontSize: 20,
-        color: '#ccc',
-        fontWeight: 'bold',
-    },
+
 });

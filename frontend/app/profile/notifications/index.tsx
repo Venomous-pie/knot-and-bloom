@@ -15,16 +15,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const TYPE_ICONS: Record<string, string> = {
-    order: '📦',
-    promo: '🎉',
-    system: '🔔',
+import {
+    Bell,
+    ChevronRight,
+    Package,
+    Settings,
+    Tag,
+    Trash2
+} from 'lucide-react-native';
+
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+    order: <Package size={20} color="#1976D2" />,
+    promo: <Tag size={20} color="#F57C00" />,
+    system: <Bell size={20} color="#7B1FA2" />,
 };
 
-const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-    order: { bg: '#E3F2FD', text: '#1976D2' },
-    promo: { bg: '#FFF3E0', text: '#F57C00' },
-    system: { bg: '#F3E5F5', text: '#7B1FA2' },
+const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+    order: { bg: '#E3F2FD', text: '#1976D2', border: '#BBDEFB' },
+    promo: { bg: '#FFF3E0', text: '#F57C00', border: '#FFE0B2' },
+    system: { bg: '#F3E5F5', text: '#7B1FA2', border: '#E1BEE7' },
 };
 
 export default function NotificationsPage() {
@@ -148,7 +157,7 @@ export default function NotificationsPage() {
             >
                 {notifications.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyIcon}>🔔</Text>
+                        <Bell size={48} color="#ddd" />
                         <Text style={styles.emptyTitle}>No Notifications</Text>
                         <Text style={styles.emptyText}>
                             You'll receive updates about orders, promotions, and more here.
@@ -172,29 +181,26 @@ export default function NotificationsPage() {
                                     }}
                                 >
                                     <View style={[styles.iconContainer, { backgroundColor: typeStyle.bg }]}>
-                                        <Text style={styles.icon}>
-                                            {TYPE_ICONS[notification.type] || '🔔'}
-                                        </Text>
+                                        {TYPE_ICONS[notification.type] || <Bell size={20} color="#555" />}
                                     </View>
                                     <View style={styles.content}>
                                         <View style={styles.titleRow}>
                                             <Text style={[styles.notificationTitle, !notification.isRead && styles.unreadTitle]}>
                                                 {notification.title}
                                             </Text>
-                                            <Text style={styles.time}>{formatTime(notification.createdAt)}</Text>
+                                            <Pressable
+                                                style={styles.deleteButton}
+                                                onPress={() => handleDelete(notification.uid)}
+                                                hitSlop={10}
+                                            >
+                                                <Trash2 size={16} color="#ccc" />
+                                            </Pressable>
                                         </View>
                                         <Text style={styles.message} numberOfLines={2}>
                                             {notification.message}
                                         </Text>
-                                        <View style={styles.actions}>
-                                            <View style={[styles.typeBadge, { backgroundColor: typeStyle.bg }]}>
-                                                <Text style={[styles.typeText, { color: typeStyle.text }]}>
-                                                    {notification.type}
-                                                </Text>
-                                            </View>
-                                            <Pressable onPress={() => handleDelete(notification.uid)}>
-                                                <Text style={styles.deleteText}>Delete</Text>
-                                            </Pressable>
+                                        <View style={styles.footerRow}>
+                                            <Text style={styles.time}>{formatTime(notification.createdAt)}</Text>
                                         </View>
                                     </View>
                                     {!notification.isRead && <View style={styles.unreadDot} />}
@@ -209,9 +215,9 @@ export default function NotificationsPage() {
                     style={styles.settingsLink}
                     onPress={() => router.push('/profile/notifications/settings' as RelativePathString)}
                 >
-                    <Text style={styles.settingsIcon}>⚙️</Text>
+                    <Settings size={20} color="#555" style={{ marginRight: 12 }} />
                     <Text style={styles.settingsText}>Notification Settings</Text>
-                    <Text style={styles.chevron}>›</Text>
+                    <ChevronRight size={20} color="#ccc" />
                 </Pressable>
             </ScrollView>
         </SafeAreaView>
@@ -246,7 +252,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
-        fontFamily: Platform.OS === 'web' ? 'serif' : 'System',
+        fontFamily: 'Quicksand',
     },
     markAllButton: {
         padding: 8,
@@ -264,19 +270,23 @@ const styles = StyleSheet.create({
     },
     emptyState: {
         alignItems: 'center',
-        padding: 40,
+        padding: 60,
+        marginTop: 20,
         backgroundColor: 'white',
-        borderRadius: 12,
-    },
-    emptyIcon: {
-        fontSize: 48,
-        marginBottom: 16,
+        borderRadius: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
     },
     emptyTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: 'bold',
         color: '#333',
         marginBottom: 8,
+        marginTop: 16,
+        fontFamily: 'Quicksand',
     },
     emptyText: {
         fontSize: 14,
@@ -288,7 +298,7 @@ const styles = StyleSheet.create({
     },
     notificationCard: {
         backgroundColor: 'white',
-        borderRadius: 12,
+        borderRadius: 16,
         padding: 16,
         flexDirection: 'row',
         shadowColor: "#000",
@@ -296,22 +306,22 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 5,
         elevation: 1,
+        borderWidth: 1,
+        borderColor: 'transparent',
     },
     unreadCard: {
-        backgroundColor: '#FDFBFC',
+        backgroundColor: 'white',
         borderLeftWidth: 3,
-        borderLeftColor: '#C88EA7',
+        borderLeftColor: '#C88EA7', // Pink indicator only
+        borderColor: 'transparent',
     },
     iconContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
-    },
-    icon: {
-        fontSize: 20,
+        marginRight: 16,
     },
     content: {
         flex: 1,
@@ -323,43 +333,35 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     notificationTitle: {
-        fontSize: 15,
-        fontWeight: '500',
+        fontSize: 14,
+        fontWeight: '600',
         color: '#333',
         flex: 1,
         marginRight: 8,
+        fontFamily: 'Quicksand',
     },
     unreadTitle: {
-        fontWeight: '600',
+        color: '#B36979',
+        fontWeight: '700',
     },
     time: {
-        fontSize: 12,
-        color: '#888',
+        fontSize: 11,
+        color: '#999',
     },
     message: {
         fontSize: 13,
         color: '#666',
         lineHeight: 18,
         marginBottom: 8,
+        fontFamily: 'Quicksand',
     },
-    actions: {
+    footerRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        justifyContent: 'flex-start',
+        marginTop: 4,
     },
-    typeBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 8,
-    },
-    typeText: {
-        fontSize: 11,
-        fontWeight: '600',
-        textTransform: 'capitalize',
-    },
-    deleteText: {
-        color: '#E53935',
-        fontSize: 12,
+    deleteButton: {
+        padding: 4,
     },
     unreadDot: {
         width: 8,
@@ -374,27 +376,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 16,
-        marginTop: 20,
+        borderRadius: 16,
+        padding: 20,
+        marginTop: 24,
+        marginBottom: 40,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 5,
         elevation: 1,
     },
-    settingsIcon: {
-        fontSize: 20,
-        marginRight: 12,
-    },
     settingsText: {
         flex: 1,
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: '600',
         color: '#333',
-    },
-    chevron: {
-        fontSize: 20,
-        color: '#ccc',
+        fontFamily: 'Quicksand',
     },
 });

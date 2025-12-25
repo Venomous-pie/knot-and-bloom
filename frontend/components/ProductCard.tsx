@@ -1,7 +1,7 @@
 import { Product } from "@/types/products";
 import { findLowestPrice } from "@/utils/pricing";
 import { Ionicons } from "@expo/vector-icons";
-import { Link, RelativePathString } from "expo-router";
+import { Link, RelativePathString, router } from "expo-router";
 import { Star } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -149,7 +149,7 @@ export default function ProductCard({
                         {product.name}
                     </Text>
 
-                    {/* Marketing / Rating Row */} 
+                    {/* Marketing / Rating Row */}
                     <View style={styles.ratingRow}>
                         {product.soldCount > 5 ? (
                             <>
@@ -181,17 +181,22 @@ export default function ProductCard({
 
                     {/* Seller Attribution */}
                     {product.seller ? (
-                        <Link href={`/seller/${product.seller.slug}` as RelativePathString} asChild>
-                            <Pressable style={styles.sellerContainer}>
-                                <Text style={styles.sellerText}>
-                                    Sold by <Text style={
-                                        product.seller.name === 'Knot & Bloom'
-                                            ? { fontWeight: '600', color: COLORS.primary }
-                                            : { textDecorationLine: 'underline' }
-                                    }>{product.seller.name}</Text>
-                                </Text>
-                            </Pressable>
-                        </Link>
+                        <Pressable
+                            style={styles.sellerContainer}
+                            onPress={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                router.push(`/seller/${product.seller?.slug}` as RelativePathString);
+                            }}
+                        >
+                            <Text style={styles.sellerText}>
+                                Sold by <Text style={
+                                    product?.seller?.name === 'Knot & Bloom'
+                                        ? { fontWeight: '600', color: COLORS.primary }
+                                        : { textDecorationLine: 'underline' }
+                                }>{product.seller.name}</Text>
+                            </Text>
+                        </Pressable>
                     ) : (
                         <View style={styles.sellerContainer}>
                             <Text style={styles.sellerText}>

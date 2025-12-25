@@ -15,6 +15,7 @@ import { DropdownItem } from "@/shared/DropdownMenu";
 import SearchBarDropdown from "./SearchResults";
 import MobileTabBar from "./MobileTabBar";
 
+
 const styles = StyleSheet.create({
     iconHovered: {
         backgroundColor: '#B36979',
@@ -136,7 +137,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 0,
         backgroundColor: 'transparent',
-        outlineStyle: 'none' as any
+        outlineStyle: 'none' as any,
+        flex: 1, // Ensure input takes available space
     },
 
     rightIcons: {
@@ -241,6 +243,98 @@ function NavLinks({ activeMenu, setActiveMenu }: { activeMenu: string | null, se
     );
 }
 
+function MobileNavbar({
+    cartCount,
+    setCartIconPosition,
+    setIsMenuOpen
+}: {
+    cartCount: number,
+    setCartIconPosition?: (layout: { x: number, y: number }) => void,
+    setIsMenuOpen: (open: boolean) => void
+}) {
+    const cartIconRef = React.useRef<View>(null);
+
+    return (
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', paddingHorizontal: 10, gap: 10 }}>
+            {/* Search Bar - Takes all available space */}
+            <Pressable
+                onPress={() => router.push('/search' as RelativePathString)}
+                style={[
+                    styles.searchBar,
+                    {
+                        flex: 1,
+                        maxWidth: '100%',
+                        backgroundColor: '#f0f0f0',
+                        paddingHorizontal: 10,
+                        height: 35,
+                        justifyContent: 'flex-start',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        borderRadius: 8,
+                    }
+                ]}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <Search size={16} color="#999" />
+                    <Text style={{ color: '#999', fontSize: 13 }} numberOfLines={1}>Search...</Text>
+                </View>
+            </Pressable>
+
+            {/* Right Icons */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View
+                    ref={cartIconRef}
+                    onLayout={() => {
+                        cartIconRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                            if (setCartIconPosition) {
+                                setCartIconPosition({ x: pageX + width / 2, y: pageY + height / 2 });
+                            }
+                        });
+                    }}
+                >
+                    <Pressable
+                        style={styles.iconButton}
+                        onPress={() => router.push("/cart" as RelativePathString)}
+                    >
+                        <Handbag size={18} />
+                        {cartCount > 0 && (
+                            <View style={{
+                                position: 'absolute',
+                                top: 5,
+                                right: 5,
+                                backgroundColor: '#B36979',
+                                borderRadius: 10,
+                                minWidth: 16,
+                                height: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                paddingHorizontal: 4,
+                                borderWidth: 1,
+                                borderColor: 'white'
+                            }}>
+                                <Text style={{
+                                    color: 'white',
+                                    fontSize: 10,
+                                    fontWeight: 'bold'
+                                }}>
+                                    {cartCount}
+                                </Text>
+                            </View>
+                        )}
+                    </Pressable>
+                </View>
+
+                <Pressable
+                    onPress={() => setIsMenuOpen(true)}
+                    style={styles.iconButton}
+                >
+                    <Menu size={18} />
+                </Pressable>
+            </View>
+        </View>
+    );
+}
+
 export default function NavBar() {
     const pathname = usePathname();
 
@@ -248,9 +342,9 @@ export default function NavBar() {
     const { cartCount, setCartIconPosition } = useCart();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [isFocused, setIsFocused] = useState(false);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
+
     const [products, setProducts] = useState<Product[]>([]);
-    const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
+
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const cartIconRef = React.useRef<View>(null);
     const { width } = useWindowDimensions();
@@ -263,6 +357,8 @@ export default function NavBar() {
     const isCollapsing = useRef(false);
 
     const expandedAnim = useRef(new Animated.Value(0)).current;
+
+
 
     const navSearchWidth = expandedAnim.interpolate({
         inputRange: [0, 1],
@@ -279,59 +375,23 @@ export default function NavBar() {
         outputRange: [0, 0, 1]
     });
 
-    // Animation for search modal
-    const searchModalSlide = useRef(new Animated.Value(1000)).current;
-    const searchModalOpacity = useRef(new Animated.Value(0)).current;
+
 
     // Fetch suggestions on component mount for better UX
-    useEffect(() => {
-        if (mobile && suggestedProducts.length === 0) {
-            productAPI.searchProducts('', 4)
-                .then(res => {
-                    setSuggestedProducts(res.data.products);
-                })
-                .catch(err => console.error('Error fetching suggestions:', err));
-        }
-    }, [mobile]);
 
-    useEffect(() => {
-        if (isSearchOpen && mobile) {
-            Animated.parallel([
-                Animated.spring(searchModalSlide, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                    friction: 8,
-                }),
-                Animated.timing(searchModalOpacity, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-        } else {
-            Animated.parallel([
-                Animated.timing(searchModalSlide, {
-                    toValue: 1000,
-                    duration: 250,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(searchModalOpacity, {
-                    toValue: 0,
-                    duration: 250,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-        }
-    }, [isSearchOpen, mobile]);
+
+
 
     const handleSearch = async (search: string) => {
         try {
+            // Only search if user typed something
             const result = await productAPI.searchProducts(search);
             setProducts(result.data.products);
         } catch (error) {
             console.error("Error searching products", error);
         }
     };
+
 
     const toggleDesktopSearch = () => {
         if (isCollapsing.current) return;
@@ -375,76 +435,55 @@ export default function NavBar() {
             <Stack
                 screenOptions={{
                     headerTitleAlign: 'center',
-                    headerShown: true,
+                    header: mobile ? () => (
+                        <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                            <MobileNavbar
+                                cartCount={cartCount}
+                                setCartIconPosition={setCartIconPosition}
+                                setIsMenuOpen={setIsMenuOpen}
+                            />
+                        </View>
+                    ) : undefined,
                     headerLeft: () => {
                         return (
-                            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginLeft: mobile ? 10 : width * navMargin }}>
+                            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginLeft: width * navMargin }}>
                                 <Link href='/' asChild>
                                     <View style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
                                         <Image
                                             source={require('../assets/yarn.png')}
                                             style={{
-                                                width: mobile ? 24 : 40,
-                                                height: mobile ? 24 : 40,
+                                                width: 40,
+                                                height: 40,
                                             }}
                                             resizeMode='contain'
                                         />
-                                        {!mobile && (
-                                            <>
-                                                <Text style={{
-                                                    fontFamily: 'Lovingly',
-                                                    color: '#B36979',
-                                                    marginTop: 10,
-                                                    fontWeight: 'bold',
-                                                    fontSize: 14
-                                                }}>
-                                                    Knot
-                                                </Text>
-                                                <Text style={{
-                                                    fontFamily: 'Lovingly',
-                                                    color: '#567F4F',
-                                                    marginTop: 10,
-                                                    fontWeight: 'bold',
-                                                    fontSize: 14
-                                                }}>
-                                                    &Bloom
-                                                </Text>
-                                            </>
-                                        )}
+                                        <Text style={{
+                                            fontFamily: 'Lovingly',
+                                            color: '#B36979',
+                                            marginTop: 10,
+                                            fontWeight: 'bold',
+                                            fontSize: 14
+                                        }}>
+                                            Knot
+                                        </Text>
+                                        <Text style={{
+                                            fontFamily: 'Lovingly',
+                                            color: '#567F4F',
+                                            marginTop: 10,
+                                            fontWeight: 'bold',
+                                            fontSize: 14
+                                        }}>
+                                            &Bloom
+                                        </Text>
                                     </View>
                                 </Link>
                             </View>
                         );
                     },
+
                     headerTitle: () => {
-                        if (!mobile && !pathname?.includes('/auth')) {
+                        if (!pathname?.includes('/auth')) {
                             return <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />;
-                        }
-                        if (mobile) {
-                            return (
-                                <Pressable
-                                    onPress={() => setIsSearchOpen(true)}
-                                    style={[
-                                        styles.searchBar,
-                                        {
-                                            width: '100%',
-                                            maxWidth: 2000, // Allow full width
-                                            flex: 1,
-                                            backgroundColor: '#f0f0f0',
-                                            paddingHorizontal: 10,
-                                            height: 35,
-                                            justifyContent: 'flex-start',
-                                            flexDirection: 'row',
-                                            marginHorizontal: 10,
-                                        }
-                                    ]}
-                                >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                        <Search size={16} color="#999" />
-                                        <Text style={{ color: '#999', fontSize: 13 }}>Search products...</Text>
-                                    </View>
-                                </Pressable>
-                            );
                         }
                         return null;
                     },
@@ -460,109 +499,88 @@ export default function NavBar() {
                         }
 
                         return (
-                            <View style={[styles.rightIcons, { marginRight: mobile ? 10 : width * navMargin, gap: mobile ? 10 : 10 }]}>
-                                {!mobile && (
-                                    <View style={[styles.navlinkContainer, { position: 'relative', zIndex: 10 }]}>
+                            <View style={[styles.rightIcons, { marginRight: width * navMargin }]}>
+                                <View style={[styles.navlinkContainer, { position: 'relative', zIndex: 10 }]}>
 
-                                        <Animated.View style={[
-                                            styles.searchBar,
-                                            isFocused && styles.isFocused,
-                                            { width: navSearchWidth, backgroundColor: searchBarBg }
-                                        ]}
-                                        >
-                                            <Pressable onPress={toggleDesktopSearch} style={{ padding: 10 }}>
-                                                <Search size={18} color={isFocused ? '#b4b4b4ff' : '#000000'} />
-                                            </Pressable>
+                                    <Animated.View style={[
+                                        styles.searchBar,
+                                        isFocused && styles.isFocused,
+                                        { width: navSearchWidth, backgroundColor: searchBarBg }
+                                    ]}
+                                    >
+                                        <Pressable onPress={toggleDesktopSearch} style={{ padding: 10 }}>
+                                            <Search size={18} color={isFocused ? '#b4b4b4ff' : '#000000'} />
+                                        </Pressable>
 
-                                            <Animated.View style={{ flex: 1, opacity: inputOpacity }}>
-                                                <TextInput
-                                                    ref={desktopInputRef}
-                                                    style={[styles.searchInput, { width: '100%', height: '100%', paddingLeft: 10 }]}
-                                                    placeholder="Search for products..."
-                                                    placeholderTextColor='#adadadff'
-                                                    onFocus={() => setIsFocused(true)}
-                                                    onBlur={() => {
-                                                        setIsFocused(false);
-                                                        isCollapsing.current = true;
-                                                        setTimeout(() => { isCollapsing.current = false; }, 200);
-                                                        collapseDesktopSearch();
-                                                    }}
-                                                    onChangeText={(text) => {
-                                                        setSearchQuery(text);
-                                                        handleSearch(text);
-                                                    }}
-                                                    value={searchQuery}
-                                                />
-                                            </Animated.View>
+                                        <Animated.View style={{ flex: 1, opacity: inputOpacity }}>
+                                            <TextInput
+                                                ref={desktopInputRef}
+                                                style={[styles.searchInput, { width: '100%', height: '100%', paddingLeft: 10 }]}
+                                                placeholder="Search for products..."
+                                                placeholderTextColor='#adadadff'
+                                                onFocus={() => setIsFocused(true)}
+                                                onBlur={() => {
+                                                    setIsFocused(false);
+                                                    isCollapsing.current = true;
+                                                    setTimeout(() => { isCollapsing.current = false; }, 200);
+                                                    collapseDesktopSearch();
+                                                }}
+                                                onChangeText={(text) => {
+                                                    setSearchQuery(text);
+                                                    handleSearch(text);
+                                                }}
+                                                value={searchQuery}
+                                            />
                                         </Animated.View>
-                                        {products.length > 0 && (
-                                            <View style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 5 }}>
-                                                <SearchBarDropdown products={products} onClose={() => setProducts([])} />
-                                            </View>
-                                        )}
-                                    </View>
-                                )}
+                                    </Animated.View>
+                                    {products.length > 0 && (
+                                        <View style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 5 }}>
+                                            <SearchBarDropdown products={products} onClose={() => setProducts([])} />
+                                        </View>
+                                    )}
+                                </View>
 
 
-                                {/* Search moved to center Title for mobile */}
-                                {/* {mobile && (
-                                    <Pressable
-                                        style={({ hovered }) => [
-                                            styles.iconButton,
-                                            hovered && styles.iconHovered,
-                                        ]}
-                                        onPress={() => setIsSearchOpen(!isSearchOpen)}
-                                    >
-                                        <Search size={mobile ? 16 : 18} />
-                                    </Pressable>
-                                )} */}
-
-                                {!mobile && (
-                                    <Pressable
-                                        style={({ hovered }) => [
-                                            styles.iconButton,
-                                            hovered && styles.iconHovered,
-                                        ]}
-                                        onPress={() => router.push("/wishlist" as RelativePathString)}
-                                    >
-                                        <Heart size={18} />
-                                    </Pressable>
-                                )}
+                                <Pressable
+                                    style={({ hovered }) => [
+                                        styles.iconButton,
+                                        hovered && styles.iconHovered,
+                                    ]}
+                                    onPress={() => router.push("/wishlist" as RelativePathString)}
+                                >
+                                    <Heart size={18} />
+                                </Pressable>
 
                                 {(user) ? (
-                                    !mobile ? (
-                                        <DropdownMenu
-                                            items={[
-                                                ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString }] : []),
-                                                ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString }] : []),
-                                                { title: 'Edit Profile', href: '/profile' as RelativePathString },
-                                                { title: 'My Orders', href: '/profile/orders' as RelativePathString },
-                                                { title: 'Log Out', onPress: handleLogout },
-                                            ]}
-                                            style={({ hovered }) => [
-                                                styles.iconButton,
-                                                hovered && styles.iconHovered,
-                                            ]}
-                                            isOpen={activeMenu === 'profile'}
-                                            onOpenChange={(open) => setActiveMenu(open ? 'profile' : null)}
-                                        >
-                                            <UserRound size={18} />
-                                        </DropdownMenu>
-                                    ) : null // Profile moved to MobileTabBar
+                                    <DropdownMenu
+                                        items={[
+                                            ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString }] : []),
+                                            ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString }] : []),
+                                            { title: 'Edit Profile', href: '/profile' as RelativePathString },
+                                            { title: 'My Orders', href: '/profile/orders' as RelativePathString },
+                                            { title: 'Log Out', onPress: handleLogout },
+                                        ]}
+                                        style={({ hovered }) => [
+                                            styles.iconButton,
+                                            hovered && styles.iconHovered,
+                                        ]}
+                                        isOpen={activeMenu === 'profile'}
+                                        onOpenChange={(open) => setActiveMenu(open ? 'profile' : null)}
+                                    >
+                                        <UserRound size={18} />
+                                    </DropdownMenu>
                                 ) : (
-                                    !mobile ? (
-                                        <Pressable
-                                            style={({ hovered }) => [
-                                                styles.textButton,
-                                                hovered && styles.iconHovered,
-                                            ]}
-                                            onPress={() => router.push("/auth/login" as RelativePathString)}
-                                        >
-                                            {({ hovered }) => (
-                                                <Text style={{ color: hovered ? 'white' : '#B36979' }}>Sign In</Text>
-                                            )}
-                                        </Pressable>
-                                    ) : null
+                                    <Pressable
+                                        style={({ hovered }) => [
+                                            styles.textButton,
+                                            hovered && styles.iconHovered,
+                                        ]}
+                                        onPress={() => router.push("/auth/login" as RelativePathString)}
+                                    >
+                                        {({ hovered }) => (
+                                            <Text style={{ color: hovered ? 'white' : '#B36979' }}>Sign In</Text>
+                                        )}
+                                    </Pressable>
                                 )}
 
                                 <View
@@ -583,7 +601,7 @@ export default function NavBar() {
                                         ]}
                                         onPress={() => router.push("/cart" as RelativePathString)}
                                     >
-                                        <Handbag size={mobile ? 16 : 18} />
+                                        <Handbag size={18} />
                                         {cartCount > 0 && (
                                             <View style={{
                                                 position: 'absolute',
@@ -618,101 +636,13 @@ export default function NavBar() {
                                         hovered && styles.iconHovered,
                                     ]}
                                 >
-                                    <Menu size={mobile ? 16 : 18} />
+                                    <Menu size={18} />
                                 </Pressable>
                             </View >
                         );
                     },
                 }}
             />
-            {
-                mobile && isSearchOpen && (
-                    <>
-                        <Animated.View
-                            style={[
-                                styles.searchModalBackdrop,
-                                { opacity: searchModalOpacity }
-                            ]}
-                        >
-                            <Pressable
-                                style={{ flex: 1 }}
-                                onPress={() => setIsSearchOpen(false)}
-                            />
-                        </Animated.View>
-                        <Animated.View
-                            style={[
-                                styles.searchModal,
-                                {
-                                    transform: [{ translateY: searchModalSlide }],
-                                },
-                            ]}
-                        >
-                            <View style={styles.searchModalHeader}>
-                                <Text style={styles.searchModalTitle}>Search</Text>
-                                <Pressable
-                                    onPress={() => setIsSearchOpen(false)}
-                                    style={styles.searchModalCloseButton}
-                                >
-                                    <X size={24} color="#666" />
-                                </Pressable>
-                            </View>
-
-                            <View style={[
-                                styles.searchBar,
-                                { maxWidth: '100%', height: 50 },
-                                isFocused && styles.isFocused
-                            ]}>
-                                <Search size={20} color={'#00000070'} />
-                                <TextInput
-                                    style={[styles.searchInput, { fontSize: 16 }]}
-                                    placeholder="Search for products..."
-                                    placeholderTextColor='#adadadff'
-                                    onFocus={() => setIsFocused(true)}
-                                    onBlur={() => setIsFocused(false)}
-                                    onChangeText={(text) => {
-                                        setSearchQuery(text);
-                                        handleSearch(text);
-                                    }}
-                                    value={searchQuery}
-                                    autoFocus
-                                />
-                            </View>
-
-                            {searchQuery && products.length > 0 && (
-                                <View style={{ marginTop: 20, flex: 1 }}>
-                                    <SearchBarDropdown
-                                        products={products}
-                                        onClose={() => {
-                                            setProducts([]);
-                                            setIsSearchOpen(false);
-                                        }}
-                                        mode="grid"
-                                        title="Search Results"
-                                    />
-                                </View>
-                            )}
-
-                            {!searchQuery && suggestedProducts.length > 0 && (
-                                <View style={{ marginTop: 20, flex: 1 }}>
-                                    <SearchBarDropdown
-                                        products={suggestedProducts}
-                                        onClose={() => setIsSearchOpen(false)}
-                                        mode="grid"
-                                        title="Suggested for you"
-                                    />
-                                </View>
-                            )}
-
-                            {!searchQuery && suggestedProducts.length === 0 && (
-                                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
-                                    <Search size={48} color="#ccc" />
-                                    <Text style={{ marginTop: 16, fontSize: 16, color: '#999' }}>Start typing to search products</Text>
-                                </View>
-                            )}
-                        </Animated.View>
-                    </>
-                )
-            }
             <MenuSideBar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
             {mobile && <MobileTabBar />}
         </View >

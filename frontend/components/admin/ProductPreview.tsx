@@ -1,5 +1,6 @@
 import { isMobile } from '@/constants/layout';
-import { Eye, Smartphone, Monitor, Star } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Eye, Smartphone, Monitor } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
     Image,
@@ -27,6 +28,7 @@ interface ProductPreviewProps {
         color?: string;
     }[];
     activeVariantIndex?: number | null;
+    sellerName?: string;
 }
 
 export default function ProductPreview({
@@ -39,6 +41,7 @@ export default function ProductPreview({
     categories,
     variants,
     activeVariantIndex,
+    sellerName,
 }: ProductPreviewProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
@@ -144,39 +147,45 @@ export default function ProductPreview({
                     )}
 
                     {/* Product Info */}
-                    <View style={styles.productInfo}>
+                    <View style={[styles.productInfo, viewMode === 'mobile' && styles.productInfoMobile]}>
                         {/* Categories */}
                         {categories.length > 0 && (
-                            <Text style={styles.categoryText}>
-                                {categories.join(' • ')}
+                            <Text style={[styles.categoryText, viewMode === 'mobile' && styles.categoryTextMobile]} numberOfLines={1}>
+                                {categories.slice(0, 2).join(' • ')}
                             </Text>
                         )}
 
                         {/* Name */}
-                        <Text style={styles.productName} numberOfLines={2}>
+                        <Text style={[styles.productName, viewMode === 'mobile' && styles.productNameMobile]} numberOfLines={2}>
                             {name || 'Product Name'}
                         </Text>
 
-                        {/* Rating (Mock) */}
-                        <View style={styles.ratingRow}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                    key={star}
-                                    size={14}
-                                    color="#FFB800"
-                                    fill={star <= 4 ? "#FFB800" : "transparent"}
-                                />
-                            ))}
-                            <Text style={styles.ratingText}>4.0 (0 reviews)</Text>
+                        {/* Marketing / Status Row (matching ProductCard) */}
+                        <View style={[styles.ratingRow, viewMode === 'mobile' && styles.ratingRowMobile]}>
+                            <Ionicons name="sparkles" size={viewMode === 'mobile' ? 12 : 14} color="#B36979" />
+                            <Text style={[styles.ratingText, viewMode === 'mobile' && styles.ratingTextMobile, { color: '#B36979', fontWeight: '600' }]}>
+                                New Arrival
+                            </Text>
+                        </View>
+
+                        {/* Seller Attribution */}
+                        <View style={styles.sellerContainer}>
+                            <Text style={[styles.sellerText, viewMode === 'mobile' && styles.sellerTextMobile]}>
+                                Sold by <Text style={
+                                    sellerName === 'Knot & Bloom'
+                                        ? { fontWeight: '600', color: '#B36979' }
+                                        : { textDecorationLine: 'underline' }
+                                }>{sellerName || 'Your Store'}</Text>
+                            </Text>
                         </View>
 
                         {/* Price */}
-                        <View style={styles.priceRow}>
-                            <Text style={styles.finalPrice}>
+                        <View style={[styles.priceRow, viewMode === 'mobile' && styles.priceRowMobile]}>
+                            <Text style={[styles.finalPrice, viewMode === 'mobile' && styles.finalPriceMobile]}>
                                 ₱{finalPrice.toFixed(2)}
                             </Text>
                             {discount > 0 && (
-                                <Text style={styles.originalPrice}>
+                                <Text style={[styles.originalPrice, viewMode === 'mobile' && styles.originalPriceMobile]}>
                                     ₱{price.toFixed(2)}
                                 </Text>
                             )}
@@ -222,14 +231,15 @@ export default function ProductPreview({
                         )}
 
                         {/* Stock Status */}
-                        <View style={styles.stockRow}>
+                        <View style={[styles.stockRow, viewMode === 'mobile' && styles.stockRowMobile]}>
                             <View style={[
                                 styles.stockIndicator,
+                                viewMode === 'mobile' && styles.stockIndicatorMobile,
                                 parseInt(variant?.stock || '0') > 0
                                     ? styles.stockInStock
                                     : styles.stockOutOfStock
                             ]} />
-                            <Text style={styles.stockText}>
+                            <Text style={[styles.stockText, viewMode === 'mobile' && styles.stockTextMobile]}>
                                 {parseInt(variant?.stock || '0') > 0
                                     ? `${variant?.stock} in stock`
                                     : 'Out of stock'}
@@ -321,7 +331,7 @@ const styles = StyleSheet.create({
     discountBadge: {
         position: 'absolute',
         top: 12,
-        right: 12,
+        left: 12,
         backgroundColor: '#E53935',
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -354,7 +364,11 @@ const styles = StyleSheet.create({
     },
     productInfo: {
         padding: 16,
-        gap: 10,
+        gap: 8,
+    },
+    productInfoMobile: {
+        padding: 10,
+        gap: 4,
     },
     categoryText: {
         fontSize: 11,
@@ -362,36 +376,70 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
+    categoryTextMobile: {
+        fontSize: 9,
+    },
     productName: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '600',
         color: '#333',
         fontFamily: 'Quicksand',
+        lineHeight: 22,
+    },
+    productNameMobile: {
+        fontSize: 13,
+        lineHeight: 18,
     },
     ratingRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
     },
+    ratingRowMobile: {
+        gap: 2,
+    },
     ratingText: {
         fontSize: 12,
         color: '#888',
         marginLeft: 4,
+    },
+    ratingTextMobile: {
+        fontSize: 10,
+        marginLeft: 2,
+    },
+    sellerContainer: {
+        // Container for seller attribution
+    },
+    sellerText: {
+        fontSize: 11,
+        color: '#888',
+    },
+    sellerTextMobile: {
+        fontSize: 9,
     },
     priceRow: {
         flexDirection: 'row',
         alignItems: 'baseline',
         gap: 8,
     },
+    priceRowMobile: {
+        gap: 6,
+    },
     finalPrice: {
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: '700',
         color: '#B36979',
     },
-    originalPrice: {
+    finalPriceMobile: {
         fontSize: 16,
+    },
+    originalPrice: {
+        fontSize: 14,
         color: '#999',
         textDecorationLine: 'line-through',
+    },
+    originalPriceMobile: {
+        fontSize: 11,
     },
     variantSection: {
         gap: 8,
@@ -452,11 +500,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        marginTop: 4,
+    },
+    stockRowMobile: {
+        gap: 4,
+        marginTop: 2,
     },
     stockIndicator: {
         width: 8,
         height: 8,
         borderRadius: 4,
+    },
+    stockIndicatorMobile: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
     },
     stockInStock: {
         backgroundColor: '#4CAF50',
@@ -467,6 +525,9 @@ const styles = StyleSheet.create({
     stockText: {
         fontSize: 12,
         color: '#666',
+    },
+    stockTextMobile: {
+        fontSize: 10,
     },
     descriptionSection: {
         gap: 4,

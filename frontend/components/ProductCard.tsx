@@ -136,44 +136,44 @@ export default function ProductCard({
                 </View>
 
                 {/* Product Info */}
-                <View style={styles.productInfo}>
+                <View style={[styles.productInfo, isSmallScreen && styles.productInfoMobile]}>
                     {/* Categories */}
                     {product.categories?.length > 0 && (
-                        <Text style={styles.categoryText} numberOfLines={1}>
+                        <Text style={[styles.categoryText, isSmallScreen && styles.categoryTextMobile]} numberOfLines={1}>
                             {product.categories.slice(0, 2).join(' • ')}
                         </Text>
                     )}
 
                     {/* Name */}
-                    <Text style={styles.productName} numberOfLines={2}>
+                    <Text style={[styles.productName, isSmallScreen && styles.productNameMobile]} numberOfLines={2}>
                         {product.name}
                     </Text>
 
                     {/* Marketing / Rating Row */}
-                    <View style={styles.ratingRow}>
+                    <View style={[styles.ratingRow, isSmallScreen && styles.ratingRowMobile]}>
                         {product.soldCount > 5 ? (
                             <>
-                                <Ionicons name="flame" size={14} color="#FF6B6B" />
-                                <Text style={[styles.ratingText, { color: "#FF6B6B", fontWeight: "600" }]}>
+                                <Ionicons name="flame" size={isSmallScreen ? 12 : 14} color="#FF6B6B" />
+                                <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { color: "#FF6B6B", fontWeight: "600" }]}>
                                     {product.soldCount > 20 ? "Trending" : `${product.soldCount} bought recently`}
                                 </Text>
                             </>
                         ) : isAvailable && selectedVariant?.stock && selectedVariant.stock < 5 ? (
                             <>
-                                <Ionicons name="flash" size={14} color="#FFB800" />
-                                <Text style={[styles.ratingText, { color: "#E0A800", fontWeight: "600" }]}>
+                                <Ionicons name="flash" size={isSmallScreen ? 12 : 14} color="#FFB800" />
+                                <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { color: "#E0A800", fontWeight: "600" }]}>
                                     Only {selectedVariant.stock} left
                                 </Text>
                             </>
                         ) : (Date.now() - new Date(product.uploaded).getTime()) < 1000 * 60 * 60 * 24 * 7 ? (
                             <>
-                                <Ionicons name="sparkles" size={14} color={COLORS.primary} />
-                                <Text style={[styles.ratingText, { color: COLORS.primary, fontWeight: "600" }]}>
+                                <Ionicons name="sparkles" size={isSmallScreen ? 12 : 14} color={COLORS.primary} />
+                                <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { color: COLORS.primary, fontWeight: "600" }]}>
                                     New Arrival
                                 </Text>
                             </>
                         ) : (
-                            <Text style={[styles.ratingText, { marginLeft: 0, fontStyle: 'italic' }]}>
+                            <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { marginLeft: 0, fontStyle: 'italic' }]}>
                                 {product.categories?.[0] || "Fresh Find"}
                             </Text>
                         )}
@@ -189,7 +189,7 @@ export default function ProductCard({
                                 router.push(`/seller/${product.seller?.slug}` as RelativePathString);
                             }}
                         >
-                            <Text style={styles.sellerText}>
+                            <Text style={[styles.sellerText, isSmallScreen && styles.sellerTextMobile]}>
                                 Sold by <Text style={
                                     product?.seller?.name === 'Knot & Bloom'
                                         ? { fontWeight: '600', color: COLORS.primary }
@@ -199,31 +199,32 @@ export default function ProductCard({
                         </Pressable>
                     ) : (
                         <View style={styles.sellerContainer}>
-                            <Text style={styles.sellerText}>
+                            <Text style={[styles.sellerText, isSmallScreen && styles.sellerTextMobile]}>
                                 Sold by <Text style={{ fontWeight: '600', color: COLORS.primary }}>Knot & Bloom</Text>
                             </Text>
                         </View>
                     )}
 
                     {/* Price */}
-                    <View style={styles.priceRow}>
-                        <Text style={styles.finalPrice}>
+                    <View style={[styles.priceRow, isSmallScreen && styles.priceRowMobile]}>
+                        <Text style={[styles.finalPrice, isSmallScreen && styles.finalPriceMobile]}>
                             ₱{finalPrice.toFixed(2)}
                         </Text>
                         {hasDiscount && (
-                            <Text style={styles.originalPrice}>
+                            <Text style={[styles.originalPrice, isSmallScreen && styles.originalPriceMobile]}>
                                 ₱{variantPrice.toFixed(2)}
                             </Text>
                         )}
                     </View>
 
                     {/* Stock Status */}
-                    <View style={styles.stockRow}>
+                    <View style={[styles.stockRow, isSmallScreen && styles.stockRowMobile]}>
                         <View style={[
                             styles.stockIndicator,
+                            isSmallScreen && styles.stockIndicatorMobile,
                             isAvailable ? styles.stockInStock : styles.stockOutOfStock
                         ]} />
-                        <Text style={styles.stockText}>
+                        <Text style={[styles.stockText, isSmallScreen && styles.stockTextMobile]}>
                             {isAvailable ? 'In stock' : 'Out of stock'}
                         </Text>
                     </View>
@@ -373,5 +374,48 @@ const styles = StyleSheet.create({
     sellerText: {
         fontSize: 11,
         color: COLORS.muted,
+    },
+    // Mobile-specific styles
+    productInfoMobile: {
+        padding: 10,
+        gap: 4,
+    },
+    categoryTextMobile: {
+        fontSize: 9,
+    },
+    productNameMobile: {
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    ratingRowMobile: {
+        gap: 2,
+    },
+    ratingTextMobile: {
+        fontSize: 10,
+        marginLeft: 2,
+    },
+    sellerTextMobile: {
+        fontSize: 9,
+    },
+    priceRowMobile: {
+        gap: 6,
+    },
+    finalPriceMobile: {
+        fontSize: 16,
+    },
+    originalPriceMobile: {
+        fontSize: 11,
+    },
+    stockRowMobile: {
+        gap: 4,
+        marginTop: 2,
+    },
+    stockIndicatorMobile: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    stockTextMobile: {
+        fontSize: 10,
     },
 });

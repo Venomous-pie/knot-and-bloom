@@ -1,5 +1,6 @@
 import { categoryTitles } from '@/constants/categories';
 import { isMobile } from '@/constants/layout';
+import { useAuth } from '@/app/auth';
 import { ArrowLeft, ArrowRight, Check, ChevronLeft, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -81,6 +82,7 @@ export default function ProductFormWizard({
 }: ProductFormWizardProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
+    const { user } = useAuth();
 
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<ProductFormData>({
@@ -733,6 +735,7 @@ export default function ProductFormWizard({
                             categories={selectedCategories}
                             variants={variants}
                             activeVariantIndex={currentStep === 3 ? activeVariantIndex : null}
+                            sellerName={user?.sellerStoreName}
                         />
                     </View>
                 )}
@@ -802,6 +805,7 @@ export default function ProductFormWizard({
                         images={images}
                         categories={selectedCategories}
                         variants={variants}
+                        sellerName={user?.sellerStoreName}
                     />
                     <Pressable
                         style={styles.closePreview}

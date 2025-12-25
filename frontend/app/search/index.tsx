@@ -52,7 +52,9 @@ export default function SearchPage() {
         }
     };
 
-    const removeFromHistory = async (query: string) => {
+    const removeFromHistory = async (e: any, query: string) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
         try {
             const newHistory = searchHistory.filter(h => h !== query);
             setSearchHistory(newHistory);
@@ -128,7 +130,7 @@ export default function SearchPage() {
                                     <History size={16} color="#999" />
                                     <Text style={{ fontSize: 14, color: '#333' }}>{term}</Text>
                                 </Pressable>
-                                <Pressable onPress={() => removeFromHistory(term)} style={{ padding: 5 }}>
+                                <Pressable onPress={(e) => removeFromHistory(e, term)} style={{ padding: 5 }}>
                                     <X size={16} color="#ccc" />
                                 </Pressable>
                             </View>

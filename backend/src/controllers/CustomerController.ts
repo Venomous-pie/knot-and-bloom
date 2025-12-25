@@ -159,7 +159,8 @@ const customerLoginController = async (input: unknown) => {
                 passwordResetRequired: customer.passwordResetRequired,
                 sellerId: customer.sellerProfile?.uid,
                 sellerStatus: customer.sellerProfile?.status,
-                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal
+                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
+                sellerStoreName: customer.sellerProfile?.name
             }
         };
 
@@ -188,7 +189,8 @@ const getCustomerProfile = async (userId: number) => {
         ...customerData,
         sellerId: customer.sellerProfile?.uid,
         sellerStatus: customer.sellerProfile?.status,
-        sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal
+        sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
+        sellerStoreName: customer.sellerProfile?.name
     };
 };
 
@@ -307,7 +309,8 @@ const googleLoginController = async (input: unknown) => {
                 passwordResetRequired: customer.passwordResetRequired,
                 sellerId: customer.sellerProfile?.uid,
                 sellerStatus: customer.sellerProfile?.status,
-                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal
+                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
+                sellerStoreName: customer.sellerProfile?.name
             }
         };
 

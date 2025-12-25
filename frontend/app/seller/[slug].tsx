@@ -1,4 +1,4 @@
-import ProductPage from "@/components/ProductPage";
+import ProductCard from "@/components/ProductCard";
 import { Product } from "@/types/products";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -6,16 +6,20 @@ import {
     ActivityIndicator,
     Image,
     Pressable,
-    ScrollView,
+    FlatList,
     StyleSheet,
     Text,
     useWindowDimensions,
-    View
+    View,
+    ListRenderItem,
+    ScrollView
 } from "react-native";
-import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp } from "lucide-react-native";
+import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "@/app/auth";
 
 interface SellerProfileData {
+    uid: number;
     name: string;
     slug: string;
     description?: string;
@@ -28,6 +32,8 @@ interface SellerProfileData {
     rating?: number;
 }
 
+type TabType = 'products' | 'about' | 'reviews';
+
 export default function SellerProfile() {
     const { slug } = useLocalSearchParams();
     const router = useRouter();
@@ -37,13 +43,19 @@ export default function SellerProfile() {
     const [seller, setSeller] = useState<SellerProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<TabType>('products');
+    const { user } = useAuth();
+
+    // Derived state
+    const activeProducts = seller?.products.filter(p => !p.status || p.status === 'ACTIVE') || [];
+    const pendingProducts = seller?.products.filter(p => p.status === 'PENDING') || [];
+    const isOwner = user?.sellerId === seller?.uid;
 
     useEffect(() => {
         if (!slug) return;
 
         const fetchSeller = async () => {
             try {
-                // Adjust URL based on environment/config. Assuming relative /api works with proxy or absolute
                 const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers/${slug}`);
                 if (!response.ok) {
                     if (response.status === 404) throw new Error("Seller not found");
@@ -82,12 +94,25 @@ export default function SellerProfile() {
 
     const memberSince = seller.createdAt
         ? new Date(seller.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-        : '2025'; // Fallback
+        : '2025';
 
-    return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <Stack.Screen options={{ headerShown: false }} /> {/* We'll build our own header */}
+    // Tabs Config
+    const loadTabContent = () => {
+        if (!seller) return [];
+        switch (activeTab) {
+            case 'products':
+                return activeProducts;
+            case 'about':
+                return ['about-section']; // Dummy item to render single functional component
+            case 'reviews':
+                return ['reviews-section']; // Dummy item
+            default:
+                return [];
+        }
+    };
 
+    const renderHeader = () => (
+        <>
             {/* Banner Section */}
             <View style={styles.bannerContainer}>
                 {seller.banner ? (
@@ -95,13 +120,11 @@ export default function SellerProfile() {
                 ) : (
                     <View style={[styles.banner, styles.bannerPlaceholder]}>
                         <View style={styles.patternDot} />
-                        {/* Abstract Decorative Elements if no banner */}
                         <View style={[styles.abstractCircle, { top: -50, right: -50, width: 200, height: 200, backgroundColor: '#B3697920' }]} />
                         <View style={[styles.abstractCircle, { bottom: -30, left: 20, width: 100, height: 100, backgroundColor: '#567F4F20' }]} />
                     </View>
                 )}
 
-                {/* Custom Back Button overlay */}
                 <SafeAreaView style={styles.headerOverlay}>
                     <Pressable onPress={() => router.back()} style={styles.backButtonCircle}>
                         <ArrowLeft size={24} color="#333" />
@@ -109,7 +132,6 @@ export default function SellerProfile() {
                 </SafeAreaView>
             </View>
 
-            {/* Main Content Card - Overlapping Banner */}
             <View style={[styles.contentContainer, isDesktop ? styles.contentContainerDesktop : {}]}>
 
                 {/* Profile Header Block */}
@@ -122,6 +144,10 @@ export default function SellerProfile() {
                                 <Text style={styles.logoInitials}>{seller.name.charAt(0)}</Text>
                             </View>
                         )}
+                        {/* Verification Badge - Always show for now or logic here */}
+                        <View style={styles.verificationBadge}>
+                            <CheckCircle size={16} color="white" fill="#4CAF50" />
+                        </View>
                     </View>
 
                     <View style={styles.profileInfo}>
@@ -139,13 +165,24 @@ export default function SellerProfile() {
                                 <Text style={styles.metaText}>Joined {memberSince}</Text>
                             </View>
                         </View>
+
+                        <View style={styles.actionButtonsRow}>
+                            <Pressable style={styles.actionButtonPrimary}>
+                                <Heart size={16} color="white" />
+                                <Text style={styles.actionButtonTextPrimary}>Follow</Text>
+                            </Pressable>
+                            <Pressable style={styles.actionButtonSecondary}>
+                                <MessageCircle size={16} color="#B36979" />
+                                <Text style={styles.actionButtonTextSecondary}>Contact</Text>
+                            </Pressable>
+                        </View>
                     </View>
                 </View>
 
-                {/* Description */}
-                {seller.description && (
+                {/* Description (Short) */}
+                {seller.description && activeTab === 'products' && (
                     <View style={styles.section}>
-                        <Text style={styles.description}>{seller.description}</Text>
+                        <Text style={styles.description} numberOfLines={3}>{seller.description}</Text>
                     </View>
                 )}
 
@@ -161,7 +198,6 @@ export default function SellerProfile() {
                         </View>
                     </View>
 
-                    {/* Example Stats - these might not be in generic API yet but showing layout */}
                     <View style={styles.statCard}>
                         <View style={[styles.statIcon, { backgroundColor: '#FFF3E0' }]}>
                             <Star size={20} color="#FF9800" />
@@ -183,23 +219,172 @@ export default function SellerProfile() {
                     </View>
                 </View>
 
-                {/* Products Section */}
-                <View style={[styles.section, { marginTop: 24 }]}>
-                    <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Shop Collection</Text>
-                        <View style={styles.sectionLine} />
-                    </View>
+                {/* Tabs */}
+                <View style={styles.tabContainer}>
+                    <Pressable
+                        style={[styles.tabButton, activeTab === 'products' && styles.tabButtonActive]}
+                        onPress={() => setActiveTab('products')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'products' && styles.tabTextActive]}>Products</Text>
+                        {activeTab === 'products' && <View style={styles.activeIndicator} />}
+                    </Pressable>
+                    <Pressable
+                        style={[styles.tabButton, activeTab === 'about' && styles.tabButtonActive]}
+                        onPress={() => setActiveTab('about')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'about' && styles.tabTextActive]}>About</Text>
+                        {activeTab === 'about' && <View style={styles.activeIndicator} />}
+                    </Pressable>
+                    <Pressable
+                        style={[styles.tabButton, activeTab === 'reviews' && styles.tabButtonActive]}
+                        onPress={() => setActiveTab('reviews')}
+                    >
+                        <Text style={[styles.tabText, activeTab === 'reviews' && styles.tabTextActive]}>Reviews</Text>
+                        {activeTab === 'reviews' && <View style={styles.activeIndicator} />}
+                    </Pressable>
+                </View>
 
-                    <ProductPage
-                        category=""
-                        title="" // Hidden as we use custom header
-                        products={seller.products}
-                        loading={false}
-                        error={null}
-                    />
+                {activeTab === 'products' && (
+                    <View>
+                        {/* Pending Products Section (Owner Only) */}
+                        {isOwner && pendingProducts.length > 0 && (
+                            <View style={styles.pendingSection}>
+                                <View style={styles.sectionHeader}>
+                                    <View style={styles.pendingBadge}>
+                                        <Text style={styles.pendingBadgeText}>Pending Approval</Text>
+                                    </View>
+                                    <View style={styles.sectionLine} />
+                                </View>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pendingList}>
+                                    {pendingProducts.map((product) => (
+                                        <View key={product.uid} style={styles.pendingCardWrapper}>
+                                            <ProductCard product={product} style={styles.productCardFixed} />
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Shop Collection</Text>
+                            <View style={styles.sectionLine} />
+                        </View>
+
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterContent}>
+                            <Pressable style={[styles.filterChip, styles.filterChipActive]}>
+                                <Text style={[styles.filterText, styles.filterTextActive]}>All</Text>
+                            </Pressable>
+                            <Pressable style={styles.filterChip}>
+                                <Text style={styles.filterText}>Newest</Text>
+                            </Pressable>
+                            <Pressable style={styles.filterChip}>
+                                <Text style={styles.filterText}>Price: Low to High</Text>
+                            </Pressable>
+                            <Pressable style={styles.filterChip}>
+                                <Text style={styles.filterText}>Handcrafted</Text>
+                            </Pressable>
+                        </ScrollView>
+                    </View>
+                )}
+            </View>
+        </>
+    );
+
+    const renderAboutSection = () => (
+        <View style={[styles.aboutContainer, isDesktop && styles.aboutContainerDesktop]}>
+            <View style={styles.aboutCard}>
+                <Text style={styles.aboutTitle}>About the Artisan</Text>
+                <Text style={styles.aboutText}>{seller.description || "No description available."}</Text>
+
+                <View style={styles.divider} />
+
+                <Text style={styles.aboutTitle}>Store Policies</Text>
+
+                <View style={styles.policyItem}>
+                    <Truck size={20} color="#555" />
+                    <View style={styles.policyTextContainer}>
+                        <Text style={styles.policyTitle}>Shipping</Text>
+                        <Text style={styles.policyDesc}>Ships within 1-3 business days. Free shipping on orders over $50.</Text>
+                    </View>
+                </View>
+
+                <View style={styles.policyItem}>
+                    <RefreshCw size={20} color="#555" />
+                    <View style={styles.policyTextContainer}>
+                        <Text style={styles.policyTitle}>Returns</Text>
+                        <Text style={styles.policyDesc}>Accepted within 14 days of delivery. Buyer pays return shipping.</Text>
+                    </View>
+                </View>
+
+                <View style={styles.policyItem}>
+                    <ShieldCheck size={20} color="#555" />
+                    <View style={styles.policyTextContainer}>
+                        <Text style={styles.policyTitle}>Handcrafted Guarantee</Text>
+                        <Text style={styles.policyDesc}>All items are handmade with care and attention to detail.</Text>
+                    </View>
                 </View>
             </View>
-        </ScrollView>
+        </View>
+    );
+
+    const renderReviewsSection = () => (
+        <View style={[styles.reviewsContainer, isDesktop && styles.reviewsContainerDesktop]}>
+            <View style={styles.emptyState}>
+                <MessageCircle size={40} color="#DDD" />
+                <Text style={styles.emptyStateText}>No reviews yet</Text>
+                <Text style={styles.emptyStateSubtext}>Be the first to leave a review for this seller!</Text>
+            </View>
+        </View>
+    );
+
+    const renderItem: ListRenderItem<any> = ({ item }) => {
+        if (activeTab === 'products') {
+            return (
+                <View style={[
+                    styles.productWrapper,
+                    isDesktop ? styles.productWrapperDesktop : styles.productWrapperMobile
+                ]}>
+                    <ProductCard product={item} />
+                </View>
+            );
+        } else if (activeTab === 'about') {
+            return renderAboutSection();
+        } else if (activeTab === 'reviews') {
+            return renderReviewsSection();
+        }
+        return null;
+    };
+
+    return (
+        <View style={styles.container}>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            <FlatList
+                data={loadTabContent()}
+                keyExtractor={(item, index) => item.uid ? String(item.uid) : `item-${index}`}
+                renderItem={renderItem}
+                ListHeaderComponent={renderHeader}
+                numColumns={activeTab === 'products' ? (isDesktop ? 3 : 2) : 1}
+                key={activeTab === 'products' ? (isDesktop ? 'desktop-grid' : 'mobile-grid') : 'single-col'}
+                columnWrapperStyle={activeTab === 'products' ? [
+                    styles.productList,
+                    isDesktop && styles.productListDesktop
+                ] : undefined}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                    activeTab === 'products' ? (
+                        <View style={styles.emptyContainer}>
+                            <Text style={styles.emptyText}>
+                                {activeProducts.length === 0 && pendingProducts.length > 0 && isOwner
+                                    ? "No active products visible to customers"
+                                    : "No products found"}
+                            </Text>
+                        </View>
+                    ) : null
+                }
+            />
+        </View>
     );
 }
 
@@ -253,7 +438,7 @@ const styles = StyleSheet.create({
     },
     patternDot: {
         ...StyleSheet.absoluteFillObject,
-        opacity: 0.1, // Could add a pattern image here
+        opacity: 0.1,
     },
     headerOverlay: {
         position: 'absolute',
@@ -278,15 +463,12 @@ const styles = StyleSheet.create({
 
     // Main Content
     contentContainer: {
-        flex: 1,
         backgroundColor: '#FAFAFA',
         marginTop: -40, // Overlap banner
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         paddingHorizontal: 20,
         paddingTop: 0,
-        paddingBottom: 40,
-        minHeight: 500,
     },
     contentContainerDesktop: {
         maxWidth: 1024,
@@ -297,7 +479,7 @@ const styles = StyleSheet.create({
 
     // Profile Header
     profileHeader: {
-        alignItems: 'center', // Center on mobile
+        alignItems: 'center',
         marginBottom: 20,
     },
     logoWrapper: {
@@ -308,6 +490,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.15,
         shadowRadius: 8,
         elevation: 5,
+        position: 'relative',
+    },
+    verificationBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: -4,
+        backgroundColor: 'white',
+        borderRadius: 10,
+        padding: 2,
     },
     logo: {
         width: 100,
@@ -315,7 +506,6 @@ const styles = StyleSheet.create({
         borderRadius: 30, // Squircle-ish
         borderWidth: 4,
         borderColor: 'white',
-        backgroundColor: 'white',
     },
     logoPlaceholder: {
         justifyContent: 'center',
@@ -328,8 +518,10 @@ const styles = StyleSheet.create({
         color: 'white',
         fontFamily: 'Quicksand',
     },
+
     profileInfo: {
         alignItems: 'center',
+        width: '100%',
     },
     storeName: {
         fontSize: 26,
@@ -343,6 +535,7 @@ const styles = StyleSheet.create({
         gap: 16,
         flexWrap: 'wrap',
         justifyContent: 'center',
+        marginBottom: 16,
     },
     metaItem: {
         flexDirection: 'row',
@@ -355,9 +548,52 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
 
+    actionButtonsRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 8,
+    },
+    actionButtonPrimary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#B36979',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 24,
+        shadowColor: "#B36979",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    actionButtonTextPrimary: {
+        color: 'white',
+        fontWeight: '600',
+        fontFamily: 'Quicksand',
+        fontSize: 14,
+    },
+    actionButtonSecondary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: 'white',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#B36979',
+    },
+    actionButtonTextSecondary: {
+        color: '#B36979',
+        fontWeight: '600',
+        fontFamily: 'Quicksand',
+        fontSize: 14,
+    },
+
     // Sections
     section: {
-        marginBottom: 24,
+        marginBottom: 16,
     },
     description: {
         fontSize: 15,
@@ -407,6 +643,42 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
 
+    // Tabs
+    tabContainer: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+        marginBottom: 24,
+    },
+    tabButton: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 12,
+        position: 'relative',
+    },
+    tabButtonActive: {
+        // 
+    },
+    tabText: {
+        fontSize: 15,
+        color: '#888',
+        fontWeight: '600',
+        fontFamily: 'Quicksand',
+    },
+    tabTextActive: {
+        color: '#B36979',
+        fontWeight: 'bold',
+    },
+    activeIndicator: {
+        position: 'absolute',
+        bottom: 0,
+        width: '60%',
+        height: 3,
+        backgroundColor: '#B36979',
+        borderTopLeftRadius: 3,
+        borderTopRightRadius: 3,
+    },
+
     // Section Headers
     sectionHeader: {
         flexDirection: 'row',
@@ -424,5 +696,183 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 2,
         backgroundColor: '#F0F0F0',
+    },
+
+    // Product List & Grid
+    productWrapper: {
+        padding: 4, // Space between grid items
+        height: 380, // Fixed height for uniformity
+    },
+    productCardFixed: {
+        flex: 1,
+        marginBottom: 0,
+    },
+    productWrapperMobile: {
+        width: '50%',
+    },
+    productWrapperDesktop: {
+        width: '33.33%',
+    },
+    productList: {
+        justifyContent: 'flex-start', // Prevent spreading to edges for incomplete rows
+        paddingHorizontal: 16, // Match content container padding minus item padding
+        flexWrap: 'wrap',
+    },
+    productListDesktop: {
+        maxWidth: 1024,
+        alignSelf: 'center',
+        width: '100%',
+    },
+
+    emptyContainer: {
+        alignItems: 'center',
+        padding: 40,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: '#888',
+        fontFamily: 'Quicksand',
+    },
+
+    // About Section
+    aboutContainer: {
+        paddingHorizontal: 16,
+    },
+    aboutContainerDesktop: {
+        maxWidth: 1024,
+        alignSelf: 'center',
+        width: '100%',
+    },
+    aboutCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 24,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    aboutTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 12,
+        fontFamily: 'Quicksand',
+    },
+    aboutText: {
+        fontSize: 15,
+        color: '#555',
+        lineHeight: 24,
+        fontFamily: 'Quicksand',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: '#EEE',
+        marginVertical: 24,
+    },
+    policyItem: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 20,
+    },
+    policyTextContainer: {
+        flex: 1,
+    },
+    policyTitle: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#444',
+        marginBottom: 4,
+        fontFamily: 'Quicksand',
+    },
+    policyDesc: {
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 20,
+        fontFamily: 'Quicksand',
+    },
+
+    // Reviews
+    reviewsContainer: {
+        paddingTop: 40,
+        alignItems: 'center',
+    },
+    reviewsContainerDesktop: {
+        maxWidth: 1024,
+        alignSelf: 'center',
+        width: '100%',
+    },
+    emptyState: {
+        alignItems: 'center',
+        gap: 12,
+    },
+    emptyStateText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#DDD',
+        fontFamily: 'Quicksand',
+    },
+    emptyStateSubtext: {
+        fontSize: 14,
+        color: '#AAA',
+        fontFamily: 'Quicksand',
+    },
+    // Filter Row
+    filterRow: {
+        marginBottom: 16,
+    },
+    filterContent: {
+        gap: 8,
+        paddingRight: 20,
+    },
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: '#EEE',
+    },
+    filterChipActive: {
+        backgroundColor: '#B36979',
+        borderColor: '#B36979',
+    },
+    filterText: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '600',
+        fontFamily: 'Quicksand',
+    },
+    filterTextActive: {
+        color: 'white',
+    },
+
+    // Pending Section
+    pendingSection: {
+        marginBottom: 32,
+    },
+    pendingBadge: {
+        backgroundColor: '#FFF4E5',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FFB74D',
+    },
+    pendingBadgeText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: '#F57C00',
+        fontFamily: 'Quicksand',
+    },
+    pendingList: {
+        paddingRight: 20,
+        gap: 16,
+        paddingTop: 10,
+    },
+    pendingCardWrapper: {
+        width: 200,
+        height: 380, // Fixed height to match grid
     },
 });

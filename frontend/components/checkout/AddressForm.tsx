@@ -11,6 +11,8 @@ import {
     Platform
 } from 'react-native';
 import { theme } from '@/constants/theme';
+import { LocationPickerField } from './LocationPickerField';
+import { LocationPickerModal, LocationSelection } from './LocationPickerModal';
 
 interface AddressFormData {
     label?: string;
@@ -18,8 +20,10 @@ interface AddressFormData {
     phone: string;
     streetAddress: string;
     aptSuite?: string;
+    region?: string;
+    province?: string;
     city: string;
-    stateProvince?: string;
+    barangay?: string;
     postalCode: string;
     country: string;
     isDefault?: boolean;
@@ -32,6 +36,7 @@ interface AddressFormProps {
     showSaveCheckbox?: boolean;
     isSaving?: boolean;
     mode?: 'create' | 'edit';
+    onOpenMap?: () => void;
 }
 
 const LABEL_OPTIONS = ['Home', 'Work', 'Gift', 'Other'];
@@ -41,8 +46,8 @@ const VALIDATION_RULES = {
     phone: { pattern: /^(\+63|0)[0-9]{9,10}$/, required: true },
     streetAddress: { min: 5, max: 200, required: true },
     aptSuite: { max: 50 },
+    region: { required: true },
     city: { min: 2, max: 50, required: true },
-    stateProvince: { max: 50 },
     postalCode: { pattern: /^\d{3,4}$/, required: true },
 };
 
@@ -53,6 +58,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     showSaveCheckbox = false,
     isSaving = false,
     mode = 'create',
+    onOpenMap,
 }) => {
     const [form, setForm] = useState<AddressFormData>({
         label: initialData.label || '',
@@ -60,12 +66,16 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         phone: initialData.phone || '',
         streetAddress: initialData.streetAddress || '',
         aptSuite: initialData.aptSuite || '',
+        region: initialData.region || '',
+        province: initialData.province || '',
         city: initialData.city || '',
-        stateProvince: initialData.stateProvince || '',
+        barangay: initialData.barangay || '',
         postalCode: initialData.postalCode || '',
         country: initialData.country || 'Philippines',
         isDefault: initialData.isDefault ?? true,
     });
+
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
 
     const [saveForFuture, setSaveForFuture] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -136,6 +146,34 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         }
     };
 
+    const handleLocationSelect = (location: LocationSelection) => {
+        setForm(prev => ({
+            ...prev,
+            region: location.region,
+            province: location.province,
+            city: location.city,
+            barangay: location.barangay,
+        }));
+        // Clear location-related errors
+        setErrors(prev => {
+            const next = { ...prev };
+            delete next.region;
+            delete next.city;
+            return next;
+        });
+        setShowLocationPicker(false);
+    };
+
+    // Update form when initialData changes (e.g. from Map selection)
+    React.useEffect(() => {
+        if (initialData) {
+            setForm(prev => ({
+                ...prev,
+                ...initialData
+            }));
+        }
+    }, [initialData]);
+
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             {/* Address Label */}
@@ -161,6 +199,15 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     ))}
                 </View>
             </View>
+
+            {/* Map Picker Button */}
+            {
+                onOpenMap && (
+                    <Pressable style={styles.mapButton} onPress={onOpenMap}>
+                        <Text style={styles.mapButtonText}>Pick Address on Map</Text>
+                    </Pressable>
+                )
+            }
 
             {/* Full Name */}
             <View style={styles.formGroup}>
@@ -203,6 +250,16 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
             </View>
 
+            {/* Location Picker */}
+            <LocationPickerField
+                region={form.region}
+                province={form.province}
+                city={form.city}
+                barangay={form.barangay}
+                onPress={() => setShowLocationPicker(true)}
+                error={errors.region || errors.city}
+            />
+
             {/* Street Address */}
             <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Street Address *</Text>
@@ -241,41 +298,17 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 />
             </View>
 
-            {/* City and State/Province */}
-            <View style={styles.row}>
-                <View style={[styles.formGroup, styles.flex1]}>
-                    <Text style={styles.formLabel}>City *</Text>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            focusedField === 'city' && styles.inputFocused,
-                            errors.city && styles.inputError
-                        ]}
-                        value={form.city}
-                        onChangeText={(text) => handleChange('city', text)}
-                        placeholder="e.g. Manila"
-                        placeholderTextColor={theme.colors.textLight}
-                        onFocus={() => setFocusedField('city')}
-                        onBlur={() => setFocusedField(null)}
-                    />
-                    {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
-                </View>
-                <View style={[styles.formGroup, styles.flex1]}>
-                    <Text style={styles.formLabel}>Province</Text>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            focusedField === 'stateProvince' && styles.inputFocused
-                        ]}
-                        value={form.stateProvince}
-                        onChangeText={(text) => handleChange('stateProvince', text)}
-                        placeholder="e.g. NCR"
-                        placeholderTextColor={theme.colors.textLight}
-                        onFocus={() => setFocusedField('stateProvince')}
-                        onBlur={() => setFocusedField(null)}
-                    />
-                </View>
-            </View>
+            <LocationPickerModal
+                visible={showLocationPicker}
+                onClose={() => setShowLocationPicker(false)}
+                onConfirm={handleLocationSelect}
+                initialValue={{
+                    region: form.region,
+                    province: form.province,
+                    city: form.city,
+                    barangay: form.barangay,
+                }}
+            />
 
             {/* Postal Code and Country */}
             <View style={styles.row}>
@@ -319,17 +352,19 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             </View>
 
             {/* Save for Future Orders (checkout flow only) */}
-            {showSaveCheckbox && (
-                <View style={styles.switchRow}>
-                    <Text style={styles.switchLabel}>Save this address for future orders</Text>
-                    <Switch
-                        value={saveForFuture}
-                        onValueChange={setSaveForFuture}
-                        trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
-                        thumbColor={saveForFuture ? theme.colors.primary : theme.colors.surface}
-                    />
-                </View>
-            )}
+            {
+                showSaveCheckbox && (
+                    <View style={styles.switchRow}>
+                        <Text style={styles.switchLabel}>Save this address for future orders</Text>
+                        <Switch
+                            value={saveForFuture}
+                            onValueChange={setSaveForFuture}
+                            trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+                            thumbColor={saveForFuture ? theme.colors.primary : theme.colors.surface}
+                        />
+                    </View>
+                )
+            }
 
             {/* Actions */}
             <View style={styles.actions}>
@@ -352,7 +387,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     )}
                 </Pressable>
             </View>
-        </ScrollView>
+        </ScrollView >
     );
 };
 
@@ -407,19 +442,20 @@ const styles = StyleSheet.create({
         fontFamily: theme.typography.fontFamily,
     },
     input: {
-        backgroundColor: theme.colors.surface,
+        backgroundColor: '#FAFAFA',
         borderWidth: 2,
-        borderColor: theme.colors.border,
-        borderRadius: 16,
+        borderColor: '#EEE',
+        borderRadius: 12,
         paddingHorizontal: theme.spacing.md,
-        paddingVertical: 14, // increased vertical padding
-        fontSize: theme.typography.sizes.base,
-        color: theme.colors.text,
+        paddingVertical: 14,
+        fontSize: 15,
+        color: '#333',
         fontFamily: theme.typography.fontFamily,
+        outlineStyle: 'none' as any,
     },
     inputFocused: {
-        borderColor: theme.colors.primary,
-        backgroundColor: theme.colors.surface,
+        borderColor: '#B36979',
+        backgroundColor: 'white',
     },
     inputError: {
         borderColor: theme.colors.error,
@@ -489,6 +525,24 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.6,
+    },
+    mapButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.subtle,
+        paddingVertical: 12,
+        borderRadius: 12,
+        marginBottom: theme.spacing.md,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        gap: 8,
+    },
+    mapButtonText: {
+        fontSize: theme.typography.sizes.sm,
+        fontWeight: '600',
+        color: theme.colors.primary,
+        fontFamily: theme.typography.fontFamily,
     },
 });
 

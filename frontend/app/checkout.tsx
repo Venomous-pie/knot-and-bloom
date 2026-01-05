@@ -28,6 +28,7 @@ import { theme } from '@/constants/theme';
 // New Components
 import { CheckoutAddressSection } from '@/components/checkout/CheckoutAddressSection';
 import { CheckoutProductList } from '@/components/checkout/CheckoutProductList';
+import { AddressMapPicker } from '@/components/checkout/AddressMapPicker';
 
 export default function CheckoutPage() {
     return (
@@ -66,7 +67,8 @@ function CheckoutContent() {
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
     // UI Mode: 'checkout' | 'address_selection' | 'address_form'
-    const [viewMode, setViewMode] = useState<'checkout' | 'address_selection' | 'address_form'>('checkout');
+    const [viewMode, setViewMode] = useState<'checkout' | 'address_selection' | 'address_form' | 'map_picker'>('checkout');
+    // Address Form Mode
     // Address Form Mode
     const [addrFormMode, setAddrFormMode] = useState<'create' | 'edit'>('create');
     const [editingAddr, setEditingAddr] = useState<Address | null>(null);
@@ -161,13 +163,38 @@ function CheckoutContent() {
         }
     };
 
+    const handleMapLocationSelect = (data: any) => {
+        // Map data usually comes as { fullAddress, street, city, state, zipCode, country, lat, lng }
+        // Update editingAddr or create a temporary one for the form to digest
+        setEditingAddr(prev => ({
+            ...(prev || {}),
+            uid: prev?.uid || Date.now(), // Temp ID if new
+            fullName: prev?.fullName || '', // Preserve or empty
+            phone: prev?.phone || '',
+            streetAddress: data.street || data.fullAddress,
+            city: data.city,
+            stateProvince: data.state,
+            postalCode: data.zipCode,
+            country: data.country || 'Philippines',
+            isDefault: prev?.isDefault ?? false,
+            createdAt: prev?.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        }));
+
+        // Go back to form
+        setViewMode('address_form');
+    };
+
     // Address Selection Modal
     const renderAddressModal = () => (
         <Modal
-            visible={viewMode === 'address_selection' || viewMode === 'address_form'}
+            visible={viewMode !== 'checkout'}
             animationType="slide"
             transparent={true}
-            onRequestClose={() => setViewMode('checkout')}
+            onRequestClose={() => {
+                if (viewMode === 'map_picker') setViewMode('address_form');
+                else setViewMode('checkout');
+            }}
         >
             <View style={styles.modalOverlay}>
                 <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}>
@@ -179,7 +206,7 @@ function CheckoutContent() {
                                     <Ionicons name="close" size={24} color={theme.colors.text} />
                                 </Pressable>
                             </View>
-                            <ScrollView style={{ maxHeight: '80%' }}>
+                            <ScrollView style={{ maxHeight: '80%' }} showsVerticalScrollIndicator={false}>
                                 <AddressSelector
                                     addresses={addresses}
                                     selectedId={selectedAddress?.uid ?? null}
@@ -209,7 +236,7 @@ function CheckoutContent() {
                                 />
                             </ScrollView>
                         </>
-                    ) : (
+                    ) : viewMode === 'address_form' ? (
                         <>
                             <View style={styles.modalHeader}>
                                 <Pressable onPress={() => setViewMode('address_selection')} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -217,7 +244,7 @@ function CheckoutContent() {
                                     <Text style={[styles.modalTitle, { marginLeft: 8 }]}>{addrFormMode === 'create' ? 'Add Address' : 'Edit Address'}</Text>
                                 </Pressable>
                             </View>
-                            <ScrollView>
+                            <ScrollView showsVerticalScrollIndicator={false}>
                                 <AddressForm
                                     mode={addrFormMode}
                                     initialData={editingAddr ? {
@@ -235,10 +262,19 @@ function CheckoutContent() {
                                         } catch (e) { Alert.alert('Error', 'Failed to save'); }
                                     }}
                                     onCancel={() => setViewMode('address_selection')}
+                                    onOpenMap={() => setViewMode('map_picker')}
                                     showSaveCheckbox
                                 />
                             </ScrollView>
                         </>
+                    ) : (
+                        /* Map Picker View */
+                        <View style={{ flex: 1 }}>
+                            <AddressMapPicker
+                                onClose={() => setViewMode('address_form')}
+                                onLocationSelect={handleMapLocationSelect}
+                            />
+                        </View>
                     )}
                 </View>
             </View>
@@ -252,17 +288,19 @@ function CheckoutContent() {
 
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-                    <Text style={styles.headerTitle}>Checkout</Text>
-                </Pressable>
+                <View style={styles.headerContent}>
+                    <Pressable onPress={() => router.back()} style={styles.backButton}>
+                        <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+                        <Text style={styles.headerTitle}>Checkout</Text>
+                    </Pressable>
+                </View>
             </View>
 
             {renderAddressModal()}
 
             <View style={styles.contentContainer}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <View style={styles.mainLayout}>
+                    <View style={isDesktop ? styles.mainLayoutDesktop : styles.mainLayout}>
 
                         {/* Main Column */}
                         <View style={styles.leftColumn}>
@@ -367,12 +405,18 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background,
     },
     header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: theme.spacing.md,
+        width: '100%',
         backgroundColor: theme.colors.surface,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
+        alignItems: 'center', // Check centering
+    },
+    headerContent: {
+        width: '100%',
+        maxWidth: 1100,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: theme.spacing.md,
     },
     backButton: {
         flexDirection: 'row',
@@ -390,24 +434,22 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: 40,
+        alignItems: 'center',
     },
     mainLayout: {
         flexDirection: 'column',
     },
     mainLayoutDesktop: {
         flexDirection: 'column',
-        maxWidth: 800,
         alignSelf: 'center',
         width: '100%',
+        maxWidth: 1100, // Matches standard desktop container width
         padding: theme.spacing.lg,
         gap: theme.spacing.lg,
     },
     leftColumn: {
-        flex: 1,
-        gap: theme.spacing.md,
-    },
-    rightColumn: {
-        minWidth: 320,
+        width: '100%',
+        gap: theme.spacing.lg,
     },
     sectionContainer: {
         backgroundColor: theme.colors.surface,

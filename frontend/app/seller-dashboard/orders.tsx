@@ -3,7 +3,10 @@ import { useAuth } from "@/app/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadToImageKit } from '@/lib/imagekit';
 
 interface OrderItem {
     uid: number;
@@ -34,6 +37,12 @@ export default function SellerOrders() {
     const [trackingNumber, setTrackingNumber] = useState('');
     const [courierName, setCourierName] = useState('');
 
+    // New Shipping State
+    const [shippingMethod, setShippingMethod] = useState<'TRACKED' | 'UNTRACKED'>('TRACKED');
+    const [itemPhoto, setItemPhoto] = useState<string | null>(null);
+    const [packagePhoto, setPackagePhoto] = useState<string | null>(null);
+    const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null); // For untracked
+
     // Status Modals
     const [shipModalVisible, setShipModalVisible] = useState(false);
     const [acceptModalVisible, setAcceptModalVisible] = useState(false);
@@ -44,6 +53,19 @@ export default function SellerOrders() {
     const [rejectionReason, setRejectionReason] = useState('');
     const [message, setMessage] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [scanning, setScanning] = useState(false);
+
+    // Validation Errors
+    const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+    const COURIER_PATTERNS = [
+        { name: 'J&T Express', regex: /^\d{12}$/ },
+        { name: 'Flash Express', regex: /^P[0-9A-Z]{12}$/ },
+        { name: 'Ninja Van', regex: /^(NVP|NVPH)\d{9,10}$/ },
+        { name: 'GoGo Xpress', regex: /^([0-9A-Z]{4}-){2}[0-9A-Z]{4}(-[0-9A-Z]{2})?$|^[0-9A-Z]{12}$/ },
+        { name: 'Shopee Xpress (SPX)', regex: /^SPEPH([0-9]{12}|[0-9]{11}[0-9A-Z])$/ },
+        { name: 'Lazada Express (LEX)', regex: /^\d{9}-\d{4}$|^[A-Z]{4}\d{14}$|^[A-Z]{4}-\d{9}-\d{4}$/ },
+    ];
 
     // Authorization Check
     useEffect(() => {
@@ -91,13 +113,14 @@ export default function SellerOrders() {
         }
     }, [user]);
 
-    const handleUpdateStatus = async (status: string, extraData: any = {}) => {
-        if (!selectedOrder) return;
+    const handleUpdateStatus = async (status: string, extraData: any = {}, orderOverride?: Order) => {
+        const targetOrder = orderOverride || selectedOrder;
+        if (!targetOrder) return false;
 
         try {
             setSubmitting(true);
             const token = await AsyncStorage.getItem('authToken');
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/orders/${selectedOrder.uid}/status`, {
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/orders/${targetOrder.uid}/status`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -106,25 +129,31 @@ export default function SellerOrders() {
                 body: JSON.stringify({ status, message, ...extraData })
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Update failed");
-            }
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Update failed");
 
-            // Refetch or local update
-            const updated = await res.json();
-            if (updated.success) {
-                setOrders(prev => prev.map(o => o.uid === selectedOrder.uid ? { ...o, ...updated.order } : o));
-                Alert.alert("Success", `Order updated to ${status}`);
+                if (data.success) {
+                    setOrders(prev => prev.map(o => o.uid === targetOrder.uid ? { ...o, ...data.order } : o));
+                    Alert.alert("Success", `Order updated to ${status}`);
 
-                // Close all modals
-                setShipModalVisible(false);
-                setAcceptModalVisible(false);
-                setRejectModalVisible(false);
-                setSelectedOrder(null);
+                    // Close all modals
+                    setShipModalVisible(false);
+                    setAcceptModalVisible(false);
+                    setRejectModalVisible(false);
+                    setSelectedOrder(null);
+                    return true;
+                }
+            } else {
+                const text = await res.text();
+                // console.error("Non-JSON API response:", text); // Debugging
+                throw new Error("Server error: The server returned an invalid response.");
             }
         } catch (error: any) {
-            Alert.alert("Error", error.message);
+            console.error(error);
+            Alert.alert("Error", error.message || "Something went wrong.");
+            return false;
         } finally {
             setSubmitting(false);
         }
@@ -133,9 +162,14 @@ export default function SellerOrders() {
     const openModal = (order: Order, type: 'ship' | 'accept' | 'reject') => {
         setSelectedOrder(order);
         setMessage('');
+        setErrors({}); // Reset errors on open
         if (type === 'ship') {
             setTrackingNumber('');
             setCourierName('');
+            setShippingMethod('TRACKED');
+            setItemPhoto(null);
+            setPackagePhoto(null);
+            setReceiptPhoto(null);
             setShipModalVisible(true);
         } else if (type === 'accept') {
             // Default 7 days from now
@@ -146,6 +180,152 @@ export default function SellerOrders() {
         } else if (type === 'reject') {
             setRejectionReason('');
             setRejectModalVisible(true);
+        }
+    };
+
+    const pickImage = async (setter: (uri: string) => void) => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.7,
+        });
+
+        if (!result.canceled) {
+            setter(result.assets[0].uri);
+        }
+    };
+
+    const detectCourier = (text: string) => {
+        setTrackingNumber(text);
+        if (errors.trackingNumber) setErrors(prev => ({ ...prev, trackingNumber: false }));
+
+        const match = COURIER_PATTERNS.find(c => c.regex.test(text));
+        if (match) {
+            setCourierName(match.name);
+        }
+    };
+
+    const handleScanWaybill = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.8,
+                base64: true
+            });
+
+            if (result.canceled) return;
+
+            setScanning(true);
+            const uri = result.assets[0].uri;
+
+            // 1. Upload to ImageKit
+            const uploadRes = await uploadToImageKit({ uri, name: `scan_${Date.now()}` });
+
+            // 2. Call Backend OCR
+            const token = await AsyncStorage.getItem('authToken');
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/services/ocr`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ imageUrl: uploadRes.url })
+            });
+
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || "OCR Failed");
+
+            // 3. Extract Tracking Number from Text
+            // Remove spaces/newlines for simpler regex matching on the whole block
+            const cleanText = data.text.replace(/[\s-]/g, '');
+
+            // We'll search the raw (but cleaned) text for our known patterns
+            // This is a heuristic. We iterate patterns.
+            let found = null;
+            let detectedCourier = '';
+
+            for (const courier of COURIER_PATTERNS) {
+                // Create a global version of the regex to find matches in the big string
+                // Note: The original regexes have ^ and $ anchors which we need to remove for searching inside text
+                const source = courier.regex.source.replace('^', '').replace('$', '');
+                const re = new RegExp(source, 'i'); // Case insensitive search
+                const match = cleanText.match(re);
+                if (match) {
+                    found = match[0];
+                    detectedCourier = courier.name;
+                    break;
+                }
+            }
+
+            if (found) {
+                setTrackingNumber(found);
+                setCourierName(detectedCourier);
+                Alert.alert("Scanned!", `Detected ${detectedCourier}: ${found}`);
+            } else {
+                Alert.alert("No Match", "Could not find a valid tracking number in the image.");
+                // console.log("OCR Text:", data.text); // Debug
+            }
+
+        } catch (error: any) {
+            let errorMsg = "Failed to process image.";
+            if (error.message && error.message.includes("OCR Failed")) {
+                errorMsg = "Ensure the image is clear and contains readable text.";
+            } else if (error.message && error.message.includes("Network")) {
+                errorMsg = "Network error. Please check your internet connection.";
+            }
+            Alert.alert("Scan Failed", `We couldn't read the tracking number.\n\n${errorMsg}`);
+            console.error("Scan Error:", error);
+        } finally {
+            setScanning(false);
+        }
+    };
+
+    const handleShipSubmit = async () => {
+        // Validation
+        const newErrors: Record<string, boolean> = {};
+        if (!itemPhoto) newErrors.itemPhoto = true;
+        if (!packagePhoto) newErrors.packagePhoto = true;
+
+        if (shippingMethod === 'TRACKED' && !trackingNumber) newErrors.trackingNumber = true;
+        if (shippingMethod === 'UNTRACKED' && !receiptPhoto) newErrors.receiptPhoto = true;
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            Alert.alert("Missing Fields", "Please correct the highlighted fields.");
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+            setErrors({}); // Clear errors
+
+            // Upload Photos
+            const itemRes = await uploadToImageKit({ uri: itemPhoto!, name: `item_${selectedOrder?.uid}` });
+            const pkgRes = await uploadToImageKit({ uri: packagePhoto!, name: `pkg_${selectedOrder?.uid}` });
+
+            const proofPhotos = [itemRes.url, pkgRes.url];
+
+            if (receiptPhoto) {
+                const receiptRes = await uploadToImageKit({ uri: receiptPhoto, name: `receipt_${selectedOrder?.uid}` });
+                proofPhotos.push(receiptRes.url);
+            }
+
+            // Call API
+            const success = await handleUpdateStatus('SHIPPED', {
+                shippingMethod,
+                proofPhotos: JSON.stringify(proofPhotos),
+                trackingNumber: shippingMethod === 'TRACKED' ? trackingNumber : null,
+                courierName
+            });
+
+            // handleUpdateStatus handles success UI (closing modal etc)
+            // If failed, it alerts. We just need to stop submitting.
+            if (!success) setSubmitting(false);
+
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Error", "Failed to upload photos or update order.");
+            setSubmitting(false); // Only reset if error, success resets explicitly
         }
     };
 
@@ -179,13 +359,13 @@ export default function SellerOrders() {
                 );
             case 'CONFIRMED':
                 return (
-                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => { setSelectedOrder(item); handleUpdateStatus('IN_PRODUCTION'); }}>
+                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => handleUpdateStatus('IN_PRODUCTION', {}, item)}>
                         <Text style={styles.primaryBtnText}>Start Production</Text>
                     </TouchableOpacity>
                 );
             case 'IN_PRODUCTION':
                 return (
-                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => { setSelectedOrder(item); handleUpdateStatus('READY_TO_SHIP'); }}>
+                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => handleUpdateStatus('READY_TO_SHIP', {}, item)}>
                         <Text style={styles.primaryBtnText}>Mark Ready to Ship</Text>
                     </TouchableOpacity>
                 );
@@ -273,44 +453,144 @@ export default function SellerOrders() {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Ship Order #{selectedOrder?.uid}</Text>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            <Text style={styles.modalTitle}>Ship Order #{selectedOrder?.uid}</Text>
 
-                        <Text style={styles.label}>Tracking Number *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter Tracking ID"
-                            value={trackingNumber}
-                            onChangeText={setTrackingNumber}
-                        />
+                            {/* Step 1: Proof Photos */}
+                            <Text style={styles.sectionTitle}>1. Proof Photos *</Text>
+                            <View style={styles.photoRow}>
+                                <TouchableOpacity style={[styles.photoBox, errors.itemPhoto && styles.photoBoxError]} onPress={() => pickImage(setItemPhoto)}>
+                                    {itemPhoto ? (
+                                        <Image source={{ uri: itemPhoto }} style={styles.photoPreview} />
+                                    ) : (
+                                        <View style={styles.photoPlaceholder}>
+                                            <Text style={styles.photoLabel}>Item Photo</Text>
+                                            <Text style={styles.photoSub}>Can reuse listing info</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
 
-                        <Text style={styles.label}>Courier Name (Optional)</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g. Flash Express, J&T"
-                            value={courierName}
-                            onChangeText={setCourierName}
-                        />
+                                <TouchableOpacity style={[styles.photoBox, errors.packagePhoto && styles.photoBoxError]} onPress={() => pickImage(setPackagePhoto)}>
+                                    {packagePhoto ? (
+                                        <Image source={{ uri: packagePhoto }} style={styles.photoPreview} />
+                                    ) : (
+                                        <View style={styles.photoPlaceholder}>
+                                            <Text style={styles.photoLabel}>Package Photo</Text>
+                                            <Text style={styles.photoSub}>With Order # visible</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
 
-                        <Text style={styles.label}>Message to Buyer (Optional)</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Any notes for the customer?"
-                            value={message}
-                            onChangeText={setMessage}
-                        />
+                                <View style={styles.photoAddPlaceholder}>
+                                    <Text style={{ fontSize: 24, color: '#B36979' }}>+</Text>
+                                    <Text style={styles.photoAddText}>Add Image</Text>
+                                    <Text style={styles.photoAddHint}>or drag & drop</Text>
+                                </View>
+                            </View>
 
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShipModalVisible(false)}>
-                                <Text style={styles.btnText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.confirmBtn, submitting && { opacity: 0.7 }]}
-                                onPress={() => handleUpdateStatus('SHIPPED', { trackingNumber, courierName })}
-                                disabled={submitting}
-                            >
-                                <Text style={styles.confirmBtnText}>{submitting ? "Processing..." : "Confirm Shipping"}</Text>
-                            </TouchableOpacity>
-                        </View>
+                            {/* Step 2: Method */}
+                            <Text style={styles.sectionTitle}>2. Shipping Method</Text>
+                            <View style={styles.methodRow}>
+                                <TouchableOpacity
+                                    style={[styles.methodBtn, shippingMethod === 'TRACKED' && styles.methodBtnActive]}
+                                    onPress={() => setShippingMethod('TRACKED')}
+                                >
+                                    <View>
+                                        <Text style={[styles.methodText, shippingMethod === 'TRACKED' && styles.methodTextActive]}>Standard Courier</Text>
+                                        <Text style={styles.methodSub}>J&T, Flash, Ninja Van, GoGo</Text>
+                                        <Text style={styles.methodBadge}>14 Days Guarantee</Text>
+                                    </View>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.methodBtn, shippingMethod === 'UNTRACKED' && styles.methodBtnActive]}
+                                    onPress={() => setShippingMethod('UNTRACKED')}
+                                >
+                                    <View>
+                                        <Text style={[styles.methodText, shippingMethod === 'UNTRACKED' && styles.methodTextActive]}>Manual / Other</Text>
+                                        <Text style={styles.methodSub}>PhilPost, Meet-up, Personal</Text>
+                                        <Text style={styles.methodBadge}>7 Days Guarantee</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Step 3: Details */}
+                            <Text style={styles.sectionTitle}>3. Shipping Details</Text>
+
+                            {shippingMethod === 'TRACKED' ? (
+                                <>
+                                    <Text style={styles.label}>Tracking / Waybill Number *</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, width: '100%' }}>
+                                        <TextInput
+                                            style={[styles.input, { flex: 1, marginBottom: 0 }, errors.trackingNumber && styles.inputError]}
+                                            placeholder="Enter Tracking ID (e.g. PH0912...)"
+                                            placeholderTextColor="#AAA"
+                                            value={trackingNumber}
+                                            onChangeText={detectCourier}
+                                        />
+                                        <TouchableOpacity
+                                            style={[styles.scanBtn, { marginLeft: 8 }, scanning && { opacity: 0.7 }]}
+                                            onPress={handleScanWaybill}
+                                            disabled={scanning}
+                                        >
+                                            {scanning ? (
+                                                <ActivityIndicator color="white" size="small" />
+                                            ) : (
+                                                <Ionicons name="camera" size={24} color="white" />
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                    <Text style={styles.label}>Courier Name (Optional)</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        placeholder="e.g. Flash Express, J&T"
+                                        placeholderTextColor="#AAA"
+                                        value={courierName}
+                                        onChangeText={setCourierName}
+                                    />
+                                    <View style={styles.infoBox}>
+                                        <Text style={styles.infoText}>💡 Order will auto-complete in <Text style={{ fontWeight: 'bold' }}>14 days</Text> to give time for delivery.</Text>
+                                    </View>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={styles.label}>Proof of Handover / Receipt *</Text>
+                                    <TouchableOpacity style={[styles.photoBoxFull, errors.receiptPhoto && styles.photoBoxError]} onPress={() => pickImage(setReceiptPhoto)}>
+                                        {receiptPhoto ? (
+                                            <Image source={{ uri: receiptPhoto }} style={styles.photoPreview} />
+                                        ) : (
+                                            <View style={styles.photoPlaceholder}>
+                                                <Text style={styles.photoLabel}>Upload Photo of Receipt or Item with Buyer</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                    <View style={[styles.infoBox, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}>
+                                        <Text style={[styles.infoText, { color: '#92400E' }]}>⚠️ Order will auto-complete in <Text style={{ fontWeight: 'bold' }}>7 days</Text> since there is no online tracking.</Text>
+                                    </View>
+                                </>
+                            )}
+
+                            <Text style={styles.label}>Message (Optional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Any notes for the customer?"
+                                placeholderTextColor="#AAA"
+                                value={message}
+                                onChangeText={setMessage}
+                            />
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShipModalVisible(false)}>
+                                    <Text style={styles.btnText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.confirmBtn, submitting && { opacity: 0.7 }]}
+                                    onPress={handleShipSubmit}
+                                    disabled={submitting}
+                                >
+                                    <Text style={styles.confirmBtnText}>{submitting ? "Processing..." : "Confirm Shipping"}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </ScrollView>
                     </View>
                 </View>
             </Modal>
@@ -330,6 +610,7 @@ export default function SellerOrders() {
                         <TextInput
                             style={styles.input}
                             placeholder="YYYY-MM-DD"
+                            placeholderTextColor="#AAA"
                             value={estimatedDate}
                             onChangeText={setEstimatedDate}
                         />
@@ -338,6 +619,7 @@ export default function SellerOrders() {
                         <TextInput
                             style={styles.input}
                             placeholder="e.g. Thanks! Will start soon."
+                            placeholderTextColor="#AAA"
                             value={message}
                             onChangeText={setMessage}
                         />
@@ -448,19 +730,54 @@ const styles = StyleSheet.create({
 
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { backgroundColor: 'white', width: '90%', maxWidth: 400, padding: 24, borderRadius: 16, elevation: 5 },
-    modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
-    subTitle: { fontSize: 14, color: '#666', marginBottom: 20 },
-    label: { fontWeight: '600', marginBottom: 6, color: '#374151', fontSize: 14 },
-    input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 15, backgroundColor: '#fff' },
-    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+    modalContent: { backgroundColor: 'white', width: '90%', maxWidth: 1000, maxHeight: '90%', padding: 24, borderRadius: 16, elevation: 5 },
+    modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 8, color: '#333', fontFamily: 'Quicksand' },
+    subTitle: { fontSize: 14, color: '#666', marginBottom: 20, fontFamily: 'Quicksand' },
+
+    // Matched styles from ProductFormWizard
+    label: { fontSize: 14, fontWeight: '600', color: '#555', fontFamily: 'Quicksand', marginBottom: 8 },
+    input: { borderWidth: 2, borderColor: '#EEE', borderRadius: 12, padding: 14, fontSize: 15, backgroundColor: '#FAFAFA', color: '#333', fontFamily: 'Quicksand', marginBottom: 24, outlineStyle: 'none' as any },
+    inputError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+    scanBtn: { backgroundColor: '#B36979', padding: 14, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', width: 50 },
+
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 32 },
     cancelBtn: { padding: 12, borderRadius: 8 },
-    confirmBtn: { backgroundColor: '#5A4A42', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
+    confirmBtn: { backgroundColor: '#B36979', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
     btnText: { color: '#4b5563', fontWeight: '600' },
-    confirmBtnText: { color: 'white', fontWeight: '600' },
+    confirmBtnText: { color: 'white', fontWeight: '600', fontSize: 15 },
 
     // Legacy mapping (keep just to be safe if reused)
     trackingInfo: { backgroundColor: '#f9f9f9', padding: 8, borderRadius: 4, marginBottom: 12 },
     trackingLabel: { fontSize: 12, color: '#666', marginBottom: 2 },
-    trackingText: { fontWeight: '600', color: '#333' }
+    trackingText: { fontWeight: '600', color: '#333' },
+
+    // New Styles for Revamped Modal
+    // New Styles for Revamped Modal
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginTop: 20, marginBottom: 12, fontFamily: 'Quicksand' },
+    photoRow: { flexDirection: 'row', gap: 16, marginBottom: 20 },
+    photoBox: { width: 250, height: 250, backgroundColor: '#f3f4f6', borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: '#eee', alignItems: 'center', justifyContent: 'center' },
+    photoBoxError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+
+    photoBoxFull: { width: '40%', height: 250, backgroundColor: '#f3f4f6', borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: '#eee', alignItems: 'center', justifyContent: 'center', marginBottom: 12, marginHorizontal: 'auto', },
+
+    // Placeholder style from ImageUploader
+    photoAddPlaceholder: { width: 250, height: 250, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', gap: 6 },
+    photoAddText: { fontSize: 13, color: 'rgba(179, 105, 121, 0.6)', fontWeight: '600', fontFamily: 'Quicksand' },
+    photoAddHint: { fontSize: 11, color: '#CCC', fontFamily: 'Quicksand' },
+
+    photoPreview: { width: '100%', height: '100%' },
+    photoPlaceholder: { alignItems: 'center', padding: 8 },
+    photoLabel: { fontSize: 13, fontWeight: '600', color: '#5A4A42', textAlign: 'center', opacity: 0.6 },
+    photoSub: { fontSize: 11, color: '#9ca3af', textAlign: 'center', opacity: 0.5 },
+
+    methodRow: { flexDirection: 'row', gap: 16, marginBottom: 20 },
+    methodBtn: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 2, borderColor: '#e5e7eb', alignItems: 'flex-start' },
+    methodBtnActive: { backgroundColor: '#fff8faff', borderColor: '#B36979' },
+    methodText: { fontSize: 14, color: '#374151', fontWeight: '600', marginBottom: 2 },
+    methodTextActive: { color: '#B36979' },
+    methodSub: { fontSize: 11, color: '#6b7280', marginBottom: 6 },
+    methodBadge: { fontSize: 10, color: '#374151', backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, overflow: 'hidden' },
+
+    infoBox: { padding: 12, borderRadius: 12, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', marginTop: 4, marginBottom: 8, },
+    infoText: { fontSize: 13, color: '#1E40AF' },
 });

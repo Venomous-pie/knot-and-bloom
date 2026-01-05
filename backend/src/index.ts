@@ -17,14 +17,19 @@ import sellerRoutes from './routes/sellerRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import imagekitRoutes from './routes/imagekitRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
+import servicesRoutes from './routes/servicesRoutes.js';
 import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
 import { createServer } from 'http';
 import { socketService } from './services/SocketService.js';
 import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
+import { cronService } from './services/cronService.js';
 
 const app = express();
+// Check if cronService.start exists before calling (defensive, though file is created)
+cronService.start();
+
 // Enable trust proxy to correctly identify client IPs behind a proxy (e.g., Nginx, Heroku, AWS ELB)
 app.set('trust proxy', 1);
 
@@ -68,6 +73,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/imagekit', imagekitRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/services', servicesRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 

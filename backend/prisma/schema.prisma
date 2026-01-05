@@ -125,6 +125,16 @@ model Order {
   cancellationReason      String?
 
   timeline OrderTimeline[]
+
+  // Auto-Completion & Guarantee Fields
+  autoConfirmAt    DateTime?
+  extensionCount   Int       @default(0)
+  reminderStage    Int       @default(0) // 0: None, 1: First Reminder, 2: Final Reminder
+  disputeStartedAt DateTime? // To track when dispute started (for pausing timer)
+
+  // Handmade Shipping Fields
+  shippingMethod String? // "TRACKED" or "UNTRACKED"
+  proofPhotos    String? // JSON string of photo URLs: ["url1", "url2"]
 }
 
 enum OrderStatus {

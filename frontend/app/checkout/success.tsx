@@ -51,7 +51,7 @@ export default function CheckoutSuccessPage() {
                 </Text>
 
                 <View style={styles.buttonRow}>
-                    <Pressable style={styles.secondaryButton} onPress={() => router.push('/orders' as any)}>
+                    <Pressable style={styles.secondaryButton} onPress={() => router.push('/profile/orders' as any)}>
                         <Text style={styles.secondaryButtonText}>View My Orders</Text>
                     </Pressable>
                     <Pressable style={styles.primaryButton} onPress={() => router.push('/')}>

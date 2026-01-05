@@ -12,7 +12,8 @@ router.get('/:id', orderController.getOrderById);
 
 router.put('/items/:itemId/status', authorize([Role.SELLER, Role.ADMIN]), orderController.updateOrderItemStatus);
 
-router.put('/:id/status', authorize([Role.SELLER, Role.ADMIN]), orderController.updateOrderStatus);
+router.put('/:id/status', orderController.updateOrderStatus);
+router.post('/:id/extend-guarantee', orderController.extendOrderGuarantee);
 
 
 export default router;

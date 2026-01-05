@@ -11,7 +11,9 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    View
+    View,
+    Modal,
+    TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,6 +33,13 @@ interface OrderDetail {
     rejectionReason?: string | null;
     paymentMethod?: string | null;
     paymentStatus?: string | null;
+    // New fields for Guarantee
+    autoConfirmAt?: string | null;
+    extensionCount?: number;
+    reminderStage?: number;
+    disputeStartedAt?: string | null;
+    shippingMethod?: string | null;
+    proofPhotos?: string | null; // JSON string
     timeline: {
         uid: number;
         status: string;
@@ -56,13 +65,22 @@ interface OrderItemSnapshot {
     variant?: string | { uid: number; name: string } | null;
 }
 
+import { useSocketContext } from '@/contexts/SocketContext';
+
 export default function OrderDetailsPage() {
     const { id } = useLocalSearchParams();
     const { user, loading: authLoading } = useAuth();
+    const { socket } = useSocketContext(); // Access socket from context
     const router = useRouter();
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [orderItems, setOrderItems] = useState<OrderItemSnapshot[]>([]);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
+
+    // Modals
+    const [reportModalVisible, setReportModalVisible] = useState(false);
+    const [receiptModalVisible, setReceiptModalVisible] = useState(false);
+    const [disputeReason, setDisputeReason] = useState('');
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -71,6 +89,26 @@ export default function OrderDetailsPage() {
             fetchOrder();
         }
     }, [user, id, authLoading]);
+
+    // Real-time Status Updates
+    useEffect(() => {
+        if (!socket || !order) return;
+
+        const handleStatusUpdate = (data: any) => {
+            if (data.orderId === order.uid) {
+                console.log("Received real-time update for order:", data.orderId);
+                // Refresh full order details to get latest timeline, status, etc.
+                fetchOrder();
+                // Optionally show a toast here
+            }
+        };
+
+        socket.on('order:status:updated', handleStatusUpdate);
+
+        return () => {
+            socket.off('order:status:updated', handleStatusUpdate);
+        };
+    }, [socket, order?.uid]);
 
     const fetchOrder = async () => {
         try {
@@ -93,6 +131,99 @@ export default function OrderDetailsPage() {
             router.back();
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleConfirmReceipt = () => {
+        const title = "Confirm Receipt";
+        const message = "Are you sure you have received this order and are satisfied? This will release payment to the seller.";
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                performConfirmReceipt();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: "Cancel", style: "cancel" },
+                { text: "Confirm Received", onPress: performConfirmReceipt }
+            ]);
+        }
+    };
+
+    const performConfirmReceipt = async () => {
+        try {
+            setActionLoading(true);
+            await orderAPI.updateStatus(order!.uid, 'COMPLETED');
+            if (Platform.OS === 'web') {
+                window.alert("Success: Order completed!");
+            } else {
+                Alert.alert("Success", "Order completed!");
+            }
+            fetchOrder();
+        } catch (error: any) {
+            const errMsg = error.response?.data?.error || "Failed to confirm receipt";
+            if (Platform.OS === 'web') window.alert(`Error: ${errMsg}`);
+            else Alert.alert("Error", errMsg);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleExtendGuarantee = () => {
+        const title = "Extend Guarantee";
+        const message = "Need more time? You can extend the guarantee period by 7 days.";
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                performExtendGuarantee();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: "Cancel", style: "cancel" },
+                { text: "Extend (+7 Days)", onPress: performExtendGuarantee }
+            ]);
+        }
+    };
+
+    const performExtendGuarantee = async () => {
+        try {
+            setActionLoading(true);
+            await orderAPI.extendOrderGuarantee(order!.uid);
+            if (Platform.OS === 'web') {
+                window.alert("Success: Guarantee extended!");
+            } else {
+                Alert.alert("Success", "Guarantee extended!");
+            }
+            fetchOrder();
+        } catch (error: any) {
+            const errMsg = error.response?.data?.error || "Failed to extend guarantee";
+            if (Platform.OS === 'web') window.alert(`Error: ${errMsg}`);
+            else Alert.alert("Error", errMsg);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleReportIssue = async () => {
+        if (!disputeReason.trim()) {
+            Alert.alert("Required", "Please provide a reason for the dispute.");
+            return;
+        }
+        try {
+            setActionLoading(true);
+            await orderAPI.updateStatus(order!.uid, 'DISPUTED', { message: disputeReason });
+            setReportModalVisible(false);
+            if (Platform.OS === 'web') {
+                window.alert("Dispute Filed: Timer Paused.");
+            } else {
+                Alert.alert("Dispute Filed", "The order timer has been paused while we resolve this.");
+            }
+            fetchOrder();
+        } catch (error: any) {
+            const errMsg = error.response?.data?.error || "Failed to file dispute";
+            Alert.alert("Error", errMsg);
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -136,6 +267,8 @@ export default function OrderDetailsPage() {
         }
     };
 
+    const canExtend = (order.status === 'SHIPPED' || order.status === 'DELIVERED') && order.autoConfirmAt;
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -158,6 +291,69 @@ export default function OrderDetailsPage() {
                 {/* Latest Status/Timeline Card */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Order Status</Text>
+
+                    {/* Guarantee / Auto Validation Section */}
+                    {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'DISPUTED') && order.autoConfirmAt && (
+                        <View style={[styles.infoBanner, { backgroundColor: order.status === 'DISPUTED' ? '#FEE2E2' : '#F0F9FF', borderColor: order.status === 'DISPUTED' ? '#FECACA' : '#BAE6FD', marginBottom: 20 }]}>
+                            {order.status === 'DISPUTED' ? (
+                                <>
+                                    <Text style={[styles.infoBannerTitle, { color: '#B91C1C' }]}>🛑 Timer Paused</Text>
+                                    <Text style={{ color: '#7F1D1D', marginBottom: 4 }}>This order is currently under dispute. The auto-confirmation timer is paused.</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={[styles.infoBannerText, { color: '#0369A1', marginBottom: 6 }]}>
+                                        🛡️ Knot & Bloom Guarantee
+                                    </Text>
+                                    <Text style={{ color: '#0C4A6E', marginBottom: 12 }}>
+                                        Order will automatically complete on: <Text style={{ fontWeight: 'bold' }}>{new Date(order.autoConfirmAt).toLocaleDateString()} {new Date(order.autoConfirmAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                                    </Text>
+
+                                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                                        <Pressable
+                                            onPress={handleConfirmReceipt}
+                                            disabled={actionLoading}
+                                            style={[styles.actionButton, { backgroundColor: '#059669', flex: 2 }]}
+                                        >
+                                            {actionLoading ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.actionButtonText}>Order Received</Text>}
+                                        </Pressable>
+
+                                        {canExtend && (
+                                            <Pressable
+                                                onPress={handleExtendGuarantee}
+                                                disabled={actionLoading}
+                                                style={[styles.actionButton, { backgroundColor: 'white', borderWidth: 1, borderColor: '#ccc', flex: 1 }]}
+                                            >
+                                                <Text style={[styles.actionButtonText, { color: '#444' }]}>Extend</Text>
+                                            </Pressable>
+                                        )}
+                                    </View>
+
+                                    {/* Dispute & Receipt Actions */}
+                                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                                        <Pressable
+                                            onPress={() => setReportModalVisible(true)}
+                                            style={[styles.textBtn]}
+                                        >
+                                            <Text style={styles.textBtnText}>Report Issue</Text>
+                                        </Pressable>
+                                        <Pressable
+                                            onPress={() => setReceiptModalVisible(true)}
+                                            style={[styles.textBtn]}
+                                        >
+                                            <Text style={[styles.textBtnText, { color: '#3B82F6' }]}>View Receipt</Text>
+                                        </Pressable>
+                                    </View>
+
+                                    <View style={{ marginTop: 8 }}>
+                                        <Text style={{ fontSize: 12, color: '#666' }}>
+                                            Extensions used: {order.extensionCount || 0} (Max: {order.status === 'SHIPPED' ? 2 : 1})
+                                        </Text>
+                                    </View>
+                                </>
+                            )}
+                        </View>
+                    )}
 
                     {/* Key Info Banner */}
                     {order.status === 'CONFIRMED' && order.estimatedCompletionDate && (
@@ -205,7 +401,7 @@ export default function OrderDetailsPage() {
                         </View>
                         <View style={styles.infoRow}>
                             <Text style={styles.infoLabel}>Tracking #:</Text>
-                            <Text style={styles.infoValue}>{order.trackingNumber}</Text>
+                            <Text style={styles.infoValue}>{order.trackingNumber || 'Un-tracked'}</Text>
                         </View>
                         {order.status === 'SHIPPED' && (
                             <Text style={styles.helpText}>You can use this tracking number on the courier's website to track your package.</Text>
@@ -295,6 +491,105 @@ export default function OrderDetailsPage() {
                 </View>
 
             </ScrollView>
+
+            {/* Report Issue Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={reportModalVisible}
+                onRequestClose={() => setReportModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={[styles.modalTitle, { color: '#B91C1C' }]}>Report an Issue</Text>
+                        <Text style={styles.subTitle}>Please describe the problem. This will pause the auto-completion timer.</Text>
+
+                        <TextInput
+                            style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                            placeholder="e.g. Broken item, package not received..."
+                            multiline
+                            value={disputeReason}
+                            onChangeText={setDisputeReason}
+                        />
+
+                        <View style={styles.modalButtons}>
+                            <Pressable style={styles.cancelBtn} onPress={() => setReportModalVisible(false)}>
+                                <Text style={styles.btnText}>Cancel</Text>
+                            </Pressable>
+                            <Pressable
+                                style={[styles.confirmBtn, { backgroundColor: '#B91C1C' }, actionLoading && { opacity: 0.7 }]}
+                                onPress={handleReportIssue}
+                                disabled={actionLoading}
+                            >
+                                <Text style={styles.confirmBtnText}>{actionLoading ? "Submitting..." : "Submit Dispute"}</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Receipt Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={receiptModalVisible}
+                onRequestClose={() => setReceiptModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            <Text style={styles.modalTitle}>Order Receipt</Text>
+
+                            <View style={styles.qrContainer}>
+                                <Image
+                                    source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=ORDER-${order.uid}` }}
+                                    style={styles.qrCode}
+                                />
+                                <Text style={styles.qrText}>Scan to find order</Text>
+                            </View>
+
+                            <View style={styles.receiptLine}>
+                                <Text style={styles.receiptLabel}>Order #:</Text>
+                                <Text style={styles.receiptValue}>{order.uid}</Text>
+                            </View>
+                            <View style={styles.receiptLine}>
+                                <Text style={styles.receiptLabel}>Date:</Text>
+                                <Text style={styles.receiptValue}>{new Date(order.uploaded).toLocaleDateString()}</Text>
+                            </View>
+                            <View style={styles.receiptLine}>
+                                <Text style={styles.receiptLabel}>Total:</Text>
+                                <Text style={styles.receiptValue}>₱{parseFloat(order.total).toFixed(2)}</Text>
+                            </View>
+
+                            {/* Proof Photos */}
+                            {(() => {
+                                let photos: string[] = [];
+                                try {
+                                    photos = order.proofPhotos ? JSON.parse(order.proofPhotos) : [];
+                                } catch (e) { }
+
+                                if (photos.length > 0) {
+                                    return (
+                                        <View style={{ marginTop: 20 }}>
+                                            <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 10 }]}>Proof of Fulfillment</Text>
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                                                {photos.map((url, i) => (
+                                                    <Image key={i} source={{ uri: url }} style={styles.proofPhoto} />
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                    );
+                                }
+                                return null;
+                            })()}
+
+                            <Pressable style={[styles.confirmBtn, { marginTop: 20 }]} onPress={() => setReceiptModalVisible(false)}>
+                                <Text style={styles.confirmBtnText}>Close</Text>
+                            </Pressable>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -482,5 +777,42 @@ const styles = StyleSheet.create({
 
     infoBanner: { padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 16 },
     infoBannerText: { fontWeight: '600', fontSize: 14 },
-    infoBannerTitle: { fontWeight: 'bold', marginBottom: 4 }
+    infoBannerTitle: { fontWeight: 'bold', marginBottom: 4 },
+
+    // New Action Button Styles
+    actionButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    actionButtonText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+
+    // New Styles for Modals
+    textBtn: { padding: 8 },
+    textBtnText: { color: '#DC2626', fontSize: 14, fontWeight: '600' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+    modalContent: { backgroundColor: 'white', width: '90%', maxWidth: 400, padding: 24, borderRadius: 16, elevation: 5 },
+    modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
+    subTitle: { fontSize: 14, color: '#666', marginBottom: 20 },
+    input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 15, backgroundColor: '#fff' },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+    cancelBtn: { padding: 12, borderRadius: 8 },
+    confirmBtn: { backgroundColor: '#5A4A42', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+    btnText: { color: '#4b5563', fontWeight: '600' },
+    confirmBtnText: { color: 'white', fontWeight: '600' },
+
+    // Receipt Styles
+    qrContainer: { alignItems: 'center', marginBottom: 24 },
+    qrCode: { width: 150, height: 150, backgroundColor: '#f0f0f0' },
+    qrText: { marginTop: 8, fontSize: 12, color: '#666' },
+    receiptLine: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingBottom: 8 },
+    receiptLabel: { color: '#666' },
+    receiptValue: { fontWeight: '600', color: '#111' },
+    proofPhoto: { width: 100, height: 100, marginRight: 8, borderRadius: 8, backgroundColor: '#f0f0f0' }
 });

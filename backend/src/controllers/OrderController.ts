@@ -152,7 +152,7 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
     try {
         const user = req.user as AuthPayload | undefined;
         const { id } = req.params;
-        const { status, message, estimatedCompletionDate, rejectionReason, trackingNumber, courierName, photos } = req.body;
+        const { status, message, estimatedCompletionDate, rejectionReason, trackingNumber, courierName, photos, shippingMethod, proofPhotos } = req.body;
 
         if (!user) return res.status(401).json({ error: "Unauthorized" });
 
@@ -163,16 +163,25 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
 
         if (!order) return res.status(404).json({ error: "Order not found" });
 
-        // Authorization
+        // Authorization Checks
         let isAuthorized = false;
+
+        // Seller / Admin Authorization
         if (user.role === 'ADMIN') isAuthorized = true;
         else if (user.role === 'SELLER') {
             if (user.sellerId && user.sellerId === order.sellerId) isAuthorized = true;
         }
 
+        // CUSTOMER Authorization (Only for Completing Order)
+        if (user.id === order.customerId && status === 'COMPLETED') {
+            if (order.status === 'SHIPPED' || order.status === 'DELIVERED') {
+                isAuthorized = true;
+            }
+        }
+
         if (!isAuthorized) return res.status(403).json({ error: "Forbidden" });
 
-        // Status-specific validation
+        // Status-specific validation & Logic
         const updateData: any = { status };
         let timelineTitle = `Order ${status}`;
 
@@ -187,14 +196,60 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
             timelineTitle = 'Order Cancelled';
         }
         else if (status === 'SHIPPED') {
-            if (!trackingNumber) return res.status(400).json({ error: "Tracking number required" });
-            updateData.trackingNumber = trackingNumber;
+            // New Handmade Logic
+            if (!shippingMethod) return res.status(400).json({ error: "Shipping method required (TRACKED or UNTRACKED)" });
+            if (!proofPhotos) return res.status(400).json({ error: "Proof photos required (Item + Package)" });
+
+            // Validate photos
+            let photosArray: string[] = [];
+            try {
+                photosArray = typeof proofPhotos === 'string' ? JSON.parse(proofPhotos) : proofPhotos;
+                if (!Array.isArray(photosArray) || photosArray.length < 2) {
+                    throw new Error("Minimum 2 photos required");
+                }
+            } catch (e) {
+                return res.status(400).json({ error: "Invalid proof photos. Minimum 2 photos required." });
+            }
+
+            updateData.shippingMethod = shippingMethod;
+            updateData.proofPhotos = JSON.stringify(photosArray);
             updateData.courierName = courierName;
             updateData.shippedAt = new Date();
+
+            const now = new Date();
+            if (shippingMethod === 'TRACKED') {
+                if (!trackingNumber) return res.status(400).json({ error: "Tracking number required for tracked shipping" });
+                updateData.trackingNumber = trackingNumber;
+
+                // 14 Days for Tracked
+                now.setDate(now.getDate() + 14);
+            } else {
+                // Untracked (Regular Mail) - 7 Days
+                now.setDate(now.getDate() + 7);
+                // No tracking number required
+            }
+
+            updateData.autoConfirmAt = now;
+            updateData.reminderStage = 0; // Reset reminder
+
             timelineTitle = 'Order Shipped';
+        }
+        else if (status === 'DELIVERED') {
+            // Start 7-day timer
+            const now = new Date();
+            now.setDate(now.getDate() + 7);
+            updateData.estimatedDeliveryDate = new Date(); // Using this as deliveredAt equivalent if needed, or add deliveredAt to Order model
+            updateData.autoConfirmAt = now;
+            updateData.reminderStage = 0; // Reset reminder
+
+            timelineTitle = 'Order Delivered';
         }
         else if (status === 'IN_PRODUCTION') timelineTitle = 'In Production';
         else if (status === 'READY_TO_SHIP') timelineTitle = 'Ready to Ship';
+        else if (status === 'DISPUTED') {
+            updateData.disputeStartedAt = new Date();
+            timelineTitle = 'Order Disputed';
+        }
         else if (status === 'COMPLETED') {
             timelineTitle = 'Order Completed';
 
@@ -212,6 +267,20 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
                         totalOrders: { increment: 1 }
                     }
                 });
+            }
+        }
+
+        // Logic for Resolving Dispute (Return to SHIPPED/DELIVERED)
+        // If we are moving FROM disputed TO shipped/delivered, we need to resume the timer.
+        if (order.status === 'DISPUTED' && (status === 'SHIPPED' || status === 'DELIVERED')) {
+            if (order.disputeStartedAt && order.autoConfirmAt) {
+                const now = new Date();
+                const pauseDuration = now.getTime() - new Date(order.disputeStartedAt).getTime();
+
+                // Add the paused duration to the deadline
+                const newDeadline = new Date(new Date(order.autoConfirmAt).getTime() + pauseDuration);
+                updateData.autoConfirmAt = newDeadline;
+                updateData.disputeStartedAt = null; // Clear pause start
             }
         }
 
@@ -258,9 +327,62 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
     }
 };
 
+const extendOrderGuarantee = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const user = req.user as AuthPayload | undefined;
+        const { id } = req.params;
+
+        if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+        const order = await prisma.order.findUnique({
+            where: { uid: parseInt(id || '0') },
+        });
+
+        if (!order) return res.status(404).json({ error: "Order not found" });
+        if (order.customerId !== user.id) return res.status(403).json({ error: "Forbidden" });
+        if (!order.autoConfirmAt) return res.status(400).json({ error: "Order suggests no guarantee period active" });
+
+        // Extension Limits Logic
+        const maxExtensions = order.status === 'SHIPPED' ? 2 : 1;
+
+        if (order.extensionCount >= maxExtensions) {
+            return res.status(400).json({ error: `Maximum extensions (${maxExtensions}) reached for this status.` });
+        }
+
+        // Add 7 days
+        const newDate = new Date(order.autoConfirmAt);
+        newDate.setDate(newDate.getDate() + 7);
+
+        const updated = await prisma.order.update({
+            where: { uid: order.uid },
+            data: {
+                autoConfirmAt: newDate,
+                extensionCount: { increment: 1 },
+                reminderStage: 0 // Reset reminder stage so they get notified again
+            }
+        });
+
+        await prisma.orderTimeline.create({
+            data: {
+                orderId: order.uid,
+                status: order.status,
+                title: 'Guarantee Extended',
+                message: 'Buyer extended the guarantee period by 7 days.',
+                createdBy: 'USER'
+            }
+        });
+
+        res.json({ success: true, newDate });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 export default {
     getOrders,
     getOrderById,
     updateOrderItemStatus,
-    updateOrderStatus
+    updateOrderStatus,
+    extendOrderGuarantee
 };

@@ -11,7 +11,8 @@ router.get('/', orderController.getOrders);
 router.get('/:id', orderController.getOrderById);
 
 router.put('/items/:itemId/status', authorize([Role.SELLER, Role.ADMIN]), orderController.updateOrderItemStatus);
-router.post('/:id/ship', authorize([Role.SELLER, Role.ADMIN]), orderController.shipOrder);
+
+router.put('/:id/status', authorize([Role.SELLER, Role.ADMIN]), orderController.updateOrderStatus);
 
 
 export default router;

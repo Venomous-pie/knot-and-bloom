@@ -111,21 +111,33 @@ model Order {
   updated        DateTime    @updatedAt
   payments       Payment[]
 
-  sellerId       Int?
-  seller         Seller?   @relation(fields: [sellerId], references: [uid])
-  trackingNumber String?
-  courierName    String?
-  shippedAt      DateTime?
+  paymentMethod String? // e.g. "COD", "GCASH", "CARD"
+  paymentStatus PaymentStatus @default(PENDING)
+
+  sellerId                Int?
+  seller                  Seller?   @relation(fields: [sellerId], references: [uid])
+  trackingNumber          String?
+  courierName             String?
+  shippedAt               DateTime?
+  estimatedCompletionDate DateTime?
+  estimatedDeliveryDate   DateTime?
+  rejectionReason         String?
+  cancellationReason      String?
+
+  timeline OrderTimeline[]
 }
 
 enum OrderStatus {
   PENDING
   CONFIRMED
-  PROCESSING
+  IN_PRODUCTION
+  READY_TO_SHIP
   SHIPPED
   DELIVERED
+  COMPLETED
   CANCELLED
   REFUNDED
+  DISPUTED
 }
 
 model CheckoutSession {
@@ -178,6 +190,7 @@ enum PaymentStatus {
   FAILED
   REFUNDED
   CANCELLED
+  PARTIALLY_PAID
 }
 
 enum Role {
@@ -332,4 +345,18 @@ model Verification {
   createdAt DateTime @default(now())
 
   @@index([target, type])
+}
+
+model OrderTimeline {
+  uid       Int         @id @default(autoincrement())
+  orderId   Int
+  order     Order       @relation(fields: [orderId], references: [uid], onDelete: Cascade)
+  status    OrderStatus
+  title     String
+  message   String?
+  photos    String[]
+  createdBy Role? // Who triggered this event (SELLER, USER, ADMIN, SYSTEM?) - Optional, or use String
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
 }

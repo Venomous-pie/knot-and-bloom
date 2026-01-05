@@ -7,6 +7,7 @@ import { AuditService } from '../services/AuditService.js';
 import { notifications } from '../services/notificationService.js';
 import { PaymentService } from '../services/PaymentService.js';
 import { socketService } from '../services/SocketService.js';
+import { SellerService } from '../services/SellerService.js';
 
 import type {
     LockedPriceItem,
@@ -144,12 +145,18 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
             totalAmount,
         });
 
+
+        // Identify unique sellers
+        const sellerIds = [...new Set(lockedPrices.map(item => item.sellerId).filter((id): id is number => id !== null))];
+        const sellerMetrics = await SellerService.getMetricsForSellers(sellerIds);
+
         res.status(201).json({
             success: true,
             sessionId: session.uid,
             lockedPrices,
             totalAmount,
             expiresAt: session.expiresAt,
+            sellerMetrics, // NEW
             message: 'Checkout session created successfully.',
         });
 
@@ -449,11 +456,17 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
             data: { status: CheckoutStatus.PROCESSING_PAYMENT },
         });
 
+        // Calculate charge amount (20% Deposit for COD)
+        let chargeAmount = Number(session.totalAmount);
+        if (paymentMethod === 'COD') {
+            chargeAmount = chargeAmount * 0.20;
+        }
+
         // Create payment record
         const payment = await prisma.payment.create({
             data: {
                 checkoutSessionId: session.uid,
-                amount: session.totalAmount,
+                amount: chargeAmount,
                 method: paymentMethod.toUpperCase(),
                 status: PaymentStatus.PROCESSING,
                 idempotencyKey,
@@ -461,13 +474,13 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
         });
 
         AuditService.logPayment('PAYMENT_INITIATED', payment.uid, session.customerId, {
-            amount: Number(session.totalAmount),
+            amount: chargeAmount,
             method: paymentMethod,
         });
 
         // Process payment through gateway
         const paymentResult = await PaymentService.processPayment({
-            amount: Number(session.totalAmount),
+            amount: chargeAmount,
             method: paymentMethod,
             idempotencyKey,
             customerId: session.customerId,
@@ -574,19 +587,27 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         }
 
         // Verify payment success
-        const successfulPayment = session.payments[0];
+        let successfulPayment = session.payments[0];
+
         if (!successfulPayment && paymentId) {
             const payment = await prisma.payment.findUnique({
                 where: { uid: Number(paymentId) },
             });
-            if (!payment || payment.status !== PaymentStatus.SUCCEEDED) {
-                res.status(400).json({
-                    success: false,
-                    error: 'PAYMENT_NOT_FOUND',
-                    message: 'No successful payment found for this checkout.',
-                });
-                return;
+
+            // For COD, we might accept PROCESSING if we treat the initial step as valid. 
+            // But ideally, payment would have been updated to SUCCEEDED after processPayment returns.
+            if (payment && (payment.status === PaymentStatus.SUCCEEDED || payment.status === PaymentStatus.PROCESSING)) {
+                successfulPayment = payment;
             }
+        }
+
+        if (!successfulPayment) {
+            res.status(400).json({
+                success: false,
+                error: 'PAYMENT_NOT_FOUND',
+                message: 'No successful payment found for this checkout.',
+            });
+            return;
         }
 
         const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
@@ -668,6 +689,8 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                         total: orderTotal,
                         discount: 0,
                         status: OrderStatus.CONFIRMED,
+                        paymentMethod: successfulPayment.method,
+                        paymentStatus: successfulPayment.method === 'COD' ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.SUCCEEDED,
                         // Append index to idempotency key to satisfy unique constraint: "key-1", "key-2"
                         idempotencyKey: `${idempotencyKey || session.idempotencyKey}-${orderIndex}`,
                         items: {

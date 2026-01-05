@@ -61,8 +61,29 @@ function CheckoutContent() {
 
         statusMessage,
         initiateCheckout,
-        completeCheckout
+        completeCheckout,
+        sellerMetrics
     } = useCheckout();
+
+    // Dynamic Delivery Estimate
+    const { shipTimeStr, deliveryDateStr } = React.useMemo(() => {
+        const maxShipHours = lockedPrices.reduce((max, item) => {
+            // sellerId might be missing or null, handle safely
+            const sId = item.sellerId;
+            const metrics = (sId && sellerMetrics) ? sellerMetrics[sId] : null;
+            return Math.max(max, metrics ? metrics.avgShipTimeHours : 24);
+        }, 0) || 24;
+
+        const shipDays = Math.ceil(maxShipHours / 24);
+        const today = new Date();
+        const start = new Date(today); start.setDate(today.getDate() + 3 + shipDays);
+        const end = new Date(today); end.setDate(today.getDate() + 5 + shipDays);
+
+        const dateStr = `${start.getDate()} ${start.toLocaleString('default', { month: 'short' })} - ${end.getDate()} ${end.toLocaleString('default', { month: 'short' })}`;
+        const timeStr = maxShipHours < 24 ? `~${Math.ceil(maxShipHours)}h` : `~${Math.ceil(maxShipHours / 24)} days`;
+
+        return { shipTimeStr: timeStr, deliveryDateStr: dateStr };
+    }, [sellerMetrics, lockedPrices]);
 
     // --------------------------------------------------------------------------
     // Local State
@@ -367,7 +388,7 @@ function CheckoutContent() {
                                 <View style={styles.shippingOptionRow}>
                                     <View>
                                         <Text style={styles.shippingName}>Standard Local Delivery</Text>
-                                        <Text style={styles.shippingTime}>Get by 12 Jan - 15 Jan (Seller ships in ~24h)</Text>
+                                        <Text style={styles.shippingTime}>Get by {deliveryDateStr} (Seller ships in {shipTimeStr})</Text>
                                     </View>
                                     <Text style={styles.shippingPrice}>₱60.00</Text>
                                 </View>

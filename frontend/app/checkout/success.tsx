@@ -1,24 +1,41 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Image, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { Check, ShoppingBag } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isMobile } from '@/constants/layout';
-
-// Mock Recommended Products
-const RECOMMENDED_PRODUCTS = [
-    { id: 101, name: 'Velvet Yarn Bundle', price: '₱450.00', image: 'https://images.unsplash.com/photo-1605256486111-37f7c8976b25?auto=format&fit=crop&q=80&w=400' },
-    { id: 102, name: 'Bamboo Knitting Needles', price: '₱180.00', image: 'https://images.unsplash.com/photo-1616603072230-ae3315a0c867?auto=format&fit=crop&q=80&w=400' },
-    { id: 103, name: 'Pastel Cotton Thread', price: '₱120.00', image: 'https://images.unsplash.com/photo-1520465242858-54b9d5c80410?auto=format&fit=crop&q=80&w=400' },
-    { id: 104, name: 'Ergonomic Crochet Hook Set', price: '₱850.00', image: 'https://images.unsplash.com/photo-1616603072382-3580436551e1?auto=format&fit=crop&q=80&w=400' },
-];
+import { useEffect, useState } from 'react';
+import { productAPI } from '@/api/api';
+import { Product } from '@/types/products';
 
 export default function CheckoutSuccessPage() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const mobile = isMobile(width);
+
+    // State for recommendations
+    const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchRecommendations = async () => {
+            try {
+                // Fetch random/latest products as recommendations
+                // Fetch 12 products for "all newest" fill
+                const response = await productAPI.getProducts({ limit: 12, sort: 'newest' });
+                if (response && response.data && response.data.products) {
+                    setRecommendedProducts(response.data.products);
+                }
+            } catch (error) {
+                console.error('Failed to fetch recommendations:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRecommendations();
+    }, []);
 
     return (
         <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={styles.content}>
@@ -34,7 +51,7 @@ export default function CheckoutSuccessPage() {
                 </Text>
 
                 <View style={styles.buttonRow}>
-                    <Pressable style={styles.secondaryButton} onPress={() => router.push('/orders')}>
+                    <Pressable style={styles.secondaryButton} onPress={() => router.push('/orders' as any)}>
                         <Text style={styles.secondaryButtonText}>View My Orders</Text>
                     </Pressable>
                     <Pressable style={styles.primaryButton} onPress={() => router.push('/')}>
@@ -50,17 +67,28 @@ export default function CheckoutSuccessPage() {
                     <Text style={styles.sectionTitle}>You Might Also Like</Text>
                 </View>
 
-                <View style={[styles.grid, mobile ? styles.gridMobile : styles.gridDesktop]}>
-                    {RECOMMENDED_PRODUCTS.map(product => (
-                        <Pressable key={product.id} style={styles.productCard}>
-                            <Image source={{ uri: product.image }} style={styles.productImage} />
-                            <View style={styles.productInfo}>
-                                <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-                                <Text style={styles.productPrice}>{product.price}</Text>
-                            </View>
-                        </Pressable>
-                    ))}
-                </View>
+                {loading ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : (
+                    <View style={[styles.grid, mobile ? styles.gridMobile : styles.gridDesktop]}>
+                        {recommendedProducts.map(product => (
+                            <Pressable
+                                key={product.uid}
+                                style={styles.productCard}
+                                onPress={() => router.push(`/(tabs)/index?productId=${product.uid}` as any)}
+                            >
+                                <Image
+                                    source={{ uri: product.image || 'https://via.placeholder.com/150' }}
+                                    style={styles.productImage}
+                                />
+                                <View style={styles.productInfo}>
+                                    <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
+                                    <Text style={styles.productPrice}>₱{Number(product.basePrice).toFixed(2)}</Text>
+                                </View>
+                            </Pressable>
+                        ))}
+                    </View>
+                )}
             </View>
 
         </ScrollView>

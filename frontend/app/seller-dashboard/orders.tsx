@@ -28,12 +28,21 @@ export default function SellerOrders() {
     const router = useRouter();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
-    
+
     // Modal State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [modalVisible, setModalVisible] = useState(false);
     const [trackingNumber, setTrackingNumber] = useState('');
     const [courierName, setCourierName] = useState('');
+
+    // Status Modals
+    const [shipModalVisible, setShipModalVisible] = useState(false);
+    const [acceptModalVisible, setAcceptModalVisible] = useState(false);
+    const [rejectModalVisible, setRejectModalVisible] = useState(false);
+
+    // Inputs
+    const [estimatedDate, setEstimatedDate] = useState('');
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [message, setMessage] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
     // Authorization Check
@@ -82,40 +91,38 @@ export default function SellerOrders() {
         }
     }, [user]);
 
-    const handleShipOrder = async () => {
-        if (!selectedOrder || !trackingNumber) {
-            Alert.alert("Error", "Tracking number is required");
-            return;
-        }
+    const handleUpdateStatus = async (status: string, extraData: any = {}) => {
+        if (!selectedOrder) return;
 
         try {
             setSubmitting(true);
             const token = await AsyncStorage.getItem('authToken');
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/orders/${selectedOrder.uid}/ship`, {
-                method: 'POST',
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/orders/${selectedOrder.uid}/status`, {
+                method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ trackingNumber, courierName })
+                body: JSON.stringify({ status, message, ...extraData })
             });
-            
+
             if (!res.ok) {
                 const err = await res.json();
                 throw new Error(err.error || "Update failed");
             }
 
-            setOrders(prev => prev.map(o => o.uid === selectedOrder.uid ? { 
-                ...o, 
-                status: 'SHIPPED',
-                trackingNumber,
-                courierName
-            } : o));
-            
-            Alert.alert("Success", "Order marked as shipped!");
-            setModalVisible(false);
-            setTrackingNumber('');
-            setCourierName('');
+            // Refetch or local update
+            const updated = await res.json();
+            if (updated.success) {
+                setOrders(prev => prev.map(o => o.uid === selectedOrder.uid ? { ...o, ...updated.order } : o));
+                Alert.alert("Success", `Order updated to ${status}`);
+
+                // Close all modals
+                setShipModalVisible(false);
+                setAcceptModalVisible(false);
+                setRejectModalVisible(false);
+                setSelectedOrder(null);
+            }
         } catch (error: any) {
             Alert.alert("Error", error.message);
         } finally {
@@ -123,20 +130,73 @@ export default function SellerOrders() {
         }
     };
 
-    const openShipModal = (order: Order) => {
+    const openModal = (order: Order, type: 'ship' | 'accept' | 'reject') => {
         setSelectedOrder(order);
-        setTrackingNumber('');
-        setCourierName('');
-        setModalVisible(true);
+        setMessage('');
+        if (type === 'ship') {
+            setTrackingNumber('');
+            setCourierName('');
+            setShipModalVisible(true);
+        } else if (type === 'accept') {
+            // Default 7 days from now
+            const d = new Date();
+            d.setDate(d.getDate() + 7);
+            setEstimatedDate(d.toISOString().split('T')[0]);
+            setAcceptModalVisible(true);
+        } else if (type === 'reject') {
+            setRejectionReason('');
+            setRejectModalVisible(true);
+        }
     };
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'CONFIRMED': return 'orange';
-            case 'SHIPPED': return 'purple';
-            case 'DELIVERED': return 'green';
-            case 'CANCELLED': return 'red';
+            case 'PENDING': return '#F59E0B'; // Amber
+            case 'CONFIRMED': return '#3B82F6'; // Blue
+            case 'IN_PRODUCTION': return '#8B5CF6'; // Purple
+            case 'READY_TO_SHIP': return '#EC4899'; // Pink
+            case 'SHIPPED': return '#10B981'; // Green
+            case 'DELIVERED': return '#059669'; // Emerald
+            case 'COMPLETED': return '#059669'; // Emerald
+            case 'CANCELLED': return '#EF4444'; // Red
+            case 'DISPUTED': return '#DC2626'; // Red
             default: return 'gray';
+        }
+    };
+
+    const renderOrderActions = (item: Order) => {
+        switch (item.status) {
+            case 'PENDING':
+                return (
+                    <View style={styles.actionRow}>
+                        <TouchableOpacity style={[styles.btn, styles.rejectBtn]} onPress={() => openModal(item, 'reject')}>
+                            <Text style={styles.rejectBtnText}>Reject</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => openModal(item, 'accept')}>
+                            <Text style={styles.primaryBtnText}>Accept Order</Text>
+                        </TouchableOpacity>
+                    </View>
+                );
+            case 'CONFIRMED':
+                return (
+                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => { setSelectedOrder(item); handleUpdateStatus('IN_PRODUCTION'); }}>
+                        <Text style={styles.primaryBtnText}>Start Production</Text>
+                    </TouchableOpacity>
+                );
+            case 'IN_PRODUCTION':
+                return (
+                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => { setSelectedOrder(item); handleUpdateStatus('READY_TO_SHIP'); }}>
+                        <Text style={styles.primaryBtnText}>Mark Ready to Ship</Text>
+                    </TouchableOpacity>
+                );
+            case 'READY_TO_SHIP':
+                return (
+                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => openModal(item, 'ship')}>
+                        <Text style={styles.primaryBtnText}>Ship Order</Text>
+                    </TouchableOpacity>
+                );
+            default:
+                return null;
         }
     };
 
@@ -147,15 +207,22 @@ export default function SellerOrders() {
                     <Text style={styles.orderId}>Order #{item.uid}</Text>
                     <Text style={styles.date}>{new Date(item.uploaded).toLocaleDateString()}</Text>
                 </View>
-                <View style={styles.statusContainer}>
-                    <Text style={[styles.statusBadge, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status.replace(/_/g, ' ')}</Text>
                 </View>
             </View>
-            
+
             <View style={styles.customerInfo}>
-                 <Text style={styles.customerConfig}>Customer: {item.customer.name}</Text>
-                 <Text style={styles.totalAmount}>Total: ₱{Number(item.total).toFixed(2)}</Text>
+                <Text style={styles.customerConfig}>Customer: {item.customer.name}</Text>
+                <Text style={styles.totalAmount}>Total: ₱{Number(item.total).toFixed(2)}</Text>
             </View>
+
+            {/* Escrow Note for Pending/Confirmed */}
+            {['PENDING', 'CONFIRMED', 'IN_PRODUCTION'].includes(item.status) && (
+                <View style={styles.escrowNote}>
+                    <Text style={styles.escrowText}>🔒 Payment held in Escrow</Text>
+                </View>
+            )}
 
             <View style={styles.itemsList}>
                 {item.items.map(orderItem => (
@@ -169,20 +236,8 @@ export default function SellerOrders() {
                 ))}
             </View>
 
-            {item.status === 'SHIPPED' && (
-                <View style={styles.trackingInfo}>
-                    <Text style={styles.trackingLabel}>Tracking Info:</Text>
-                    <Text style={styles.trackingText}>{item.courierName ? `${item.courierName}: ` : ''}{item.trackingNumber}</Text>
-                </View>
-            )}
-
             <View style={styles.actions}>
-                {item.status === 'CONFIRMED' && (
-                    <TouchableOpacity style={styles.shipBtn} onPress={() => openShipModal(item)}>
-                        <Text style={styles.shipBtnText}>Ship Order</Text>
-                    </TouchableOpacity>
-                )}
-                {/* Add standard update Item status or View Details if needed */}
+                {renderOrderActions(item)}
             </View>
         </View>
     );
@@ -191,7 +246,7 @@ export default function SellerOrders() {
         <View style={styles.container}>
             <Stack.Screen options={{ title: "Seller Orders" }} />
 
-             <View style={styles.navRow}>
+            <View style={styles.navRow}>
                 <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={styles.navBtn}>
                     <Text style={styles.navBtnText}>Manage Products</Text>
                 </TouchableOpacity>
@@ -209,42 +264,130 @@ export default function SellerOrders() {
                 />
             )}
 
+            {/* Ship Modal */}
             <Modal
                 animationType="slide"
                 transparent={true}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
+                visible={shipModalVisible}
+                onRequestClose={() => setShipModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Ship Order #{selectedOrder?.uid}</Text>
-                        
+
                         <Text style={styles.label}>Tracking Number *</Text>
-                        <TextInput 
-                            style={styles.input} 
-                            placeholder="Enter Tracking ID" 
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Enter Tracking ID"
                             value={trackingNumber}
                             onChangeText={setTrackingNumber}
                         />
 
                         <Text style={styles.label}>Courier Name (Optional)</Text>
-                        <TextInput 
-                            style={styles.input} 
-                            placeholder="e.g. Flash Express, J&T" 
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. Flash Express, J&T"
                             value={courierName}
                             onChangeText={setCourierName}
                         />
 
+                        <Text style={styles.label}>Message to Buyer (Optional)</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Any notes for the customer?"
+                            value={message}
+                            onChangeText={setMessage}
+                        />
+
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShipModalVisible(false)}>
                                 <Text style={styles.btnText}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={[styles.confirmBtn, submitting && { opacity: 0.7 }]} 
-                                onPress={handleShipOrder}
+                            <TouchableOpacity
+                                style={[styles.confirmBtn, submitting && { opacity: 0.7 }]}
+                                onPress={() => handleUpdateStatus('SHIPPED', { trackingNumber, courierName })}
                                 disabled={submitting}
                             >
                                 <Text style={styles.confirmBtnText}>{submitting ? "Processing..." : "Confirm Shipping"}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Accept Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={acceptModalVisible}
+                onRequestClose={() => setAcceptModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Accept Order #{selectedOrder?.uid}</Text>
+                        <Text style={styles.subTitle}>When will this be ready?</Text>
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder="YYYY-MM-DD"
+                            value={estimatedDate}
+                            onChangeText={setEstimatedDate}
+                        />
+
+                        <Text style={styles.label}>Message (Optional)</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. Thanks! Will start soon."
+                            value={message}
+                            onChangeText={setMessage}
+                        />
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setAcceptModalVisible(false)}>
+                                <Text style={styles.btnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.confirmBtn, submitting && { opacity: 0.7 }]}
+                                onPress={() => handleUpdateStatus('CONFIRMED', { estimatedCompletionDate: estimatedDate })}
+                                disabled={submitting}
+                            >
+                                <Text style={styles.confirmBtnText}>Confirm & Accept</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Reject Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={rejectModalVisible}
+                onRequestClose={() => setRejectModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={[styles.modalTitle, { color: '#EF4444' }]}>Reject Order #{selectedOrder?.uid}</Text>
+
+                        <Text style={styles.label}>Reason for rejection *</Text>
+                        <TextInput
+                            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                            placeholder="e.g. Out of stock, Cannot fulfill timeline..."
+                            multiline
+                            value={rejectionReason}
+                            onChangeText={setRejectionReason}
+                        />
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setRejectModalVisible(false)}>
+                                <Text style={styles.btnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.confirmBtn, { backgroundColor: '#EF4444' }, submitting && { opacity: 0.7 }]}
+                                onPress={() => handleUpdateStatus('CANCELLED', { rejectionReason })}
+                                disabled={submitting}
+                            >
+                                <Text style={styles.confirmBtnText}>Reject Order</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -255,53 +398,68 @@ export default function SellerOrders() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: '#f9fafb' },
     list: { padding: 16 },
     empty: { textAlign: 'center', marginTop: 20, color: '#666' },
     card: {
         backgroundColor: 'white',
         padding: 16,
-        borderRadius: 8,
-        marginBottom: 12,
+        borderRadius: 12,
+        marginBottom: 16,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
         elevation: 2,
+        borderWidth: 1,
+        borderColor: '#f0f0f0'
     },
-    header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-    orderId: { fontWeight: 'bold', fontSize: 16 },
-    date: { color: '#666', fontSize: 12 },
-    statusContainer: { alignItems: 'flex-end' },
-    statusBadge: { fontWeight: 'bold', fontSize: 14 },
-    customerInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 8 },
-    customerConfig: { color: '#444' },
-    totalAmount: { fontWeight: 'bold' },
-    itemsList: { marginBottom: 12 },
-    itemRow: { flexDirection: 'row', marginBottom: 8 },
-    image: { width: 50, height: 50, borderRadius: 4, marginRight: 12, backgroundColor: '#eee' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'flex-start' },
+    orderId: { fontWeight: '700', fontSize: 16, color: '#111' },
+    date: { color: '#666', fontSize: 13, marginTop: 2 },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    statusText: { fontWeight: '700', fontSize: 12 },
+
+    customerInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingBottom: 12 },
+    customerConfig: { color: '#4b5563', fontSize: 14 },
+    totalAmount: { fontWeight: '700', fontSize: 15, color: '#111' },
+
+    escrowNote: { backgroundColor: '#FFFBEB', padding: 8, borderRadius: 6, marginBottom: 12, borderWidth: 1, borderColor: '#FEF3C7' },
+    escrowText: { fontSize: 12, color: '#92400E', fontWeight: '600' },
+
+    itemsList: { marginBottom: 16 },
+    itemRow: { flexDirection: 'row', marginBottom: 12 },
+    image: { width: 48, height: 48, borderRadius: 6, marginRight: 12, backgroundColor: '#f3f4f6' },
     itemDetails: { flex: 1, justifyContent: 'center' },
-    productName: { fontWeight: '600', fontSize: 14 },
-    qtyText: { fontSize: 12, color: '#666' },
-    actions: { borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 12, alignItems: 'flex-end' },
-    shipBtn: { backgroundColor: '#5A4A42', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 4 },
-    shipBtnText: { color: 'white', fontWeight: 'bold' },
-    navRow: { flexDirection: 'row', padding: 16, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
+    productName: { fontWeight: '600', fontSize: 14, color: '#374151', marginBottom: 2 },
+    qtyText: { fontSize: 13, color: '#6b7280' },
+
+    actions: { borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 16, alignItems: 'flex-end' },
+    actionRow: { flexDirection: 'row', gap: 12 },
+    btn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, minWidth: 100, alignItems: 'center' },
+    primaryBtn: { backgroundColor: '#5A4A42' },
+    primaryBtnText: { color: 'white', fontWeight: '600', fontSize: 14 },
+    rejectBtn: { backgroundColor: 'white', borderWidth: 1, borderColor: '#EF4444' },
+    rejectBtnText: { color: '#EF4444', fontWeight: '600', fontSize: 14 },
+
+    navRow: { flexDirection: 'row', padding: 16, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
     navBtn: { marginRight: 16 },
-    navBtnText: { color: '#5A4A42', fontWeight: 'bold' },
-    
+    navBtnText: { color: '#5A4A42', fontWeight: '600' },
+
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { backgroundColor: 'white', width: '90%', padding: 20, borderRadius: 8, elevation: 5 },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
-    label: { fontWeight: '600', marginBottom: 4, color: '#444' },
-    input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 4, padding: 10, marginBottom: 16 },
+    modalContent: { backgroundColor: 'white', width: '90%', maxWidth: 400, padding: 24, borderRadius: 16, elevation: 5 },
+    modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
+    subTitle: { fontSize: 14, color: '#666', marginBottom: 20 },
+    label: { fontWeight: '600', marginBottom: 6, color: '#374151', fontSize: 14 },
+    input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 15, backgroundColor: '#fff' },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
-    cancelBtn: { padding: 10 },
-    confirmBtn: { backgroundColor: '#5A4A42', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 4 },
-    btnText: { color: '#333' },
-    confirmBtnText: { color: 'white', fontWeight: 'bold' },
-    
+    cancelBtn: { padding: 12, borderRadius: 8 },
+    confirmBtn: { backgroundColor: '#5A4A42', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
+    btnText: { color: '#4b5563', fontWeight: '600' },
+    confirmBtnText: { color: 'white', fontWeight: '600' },
+
+    // Legacy mapping (keep just to be safe if reused)
     trackingInfo: { backgroundColor: '#f9f9f9', padding: 8, borderRadius: 4, marginBottom: 12 },
     trackingLabel: { fontSize: 12, color: '#666', marginBottom: 2 },
     trackingText: { fontWeight: '600', color: '#333' }

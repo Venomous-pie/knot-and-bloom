@@ -26,6 +26,18 @@ interface OrderDetail {
     trackingNumber?: string | null;
     courierName?: string | null;
     shippedAt?: string | null;
+    estimatedCompletionDate?: string | null;
+    estimatedDeliveryDate?: string | null;
+    rejectionReason?: string | null;
+    paymentMethod?: string | null;
+    paymentStatus?: string | null;
+    timeline: {
+        uid: number;
+        status: string;
+        title: string;
+        message: string | null;
+        createdAt: string;
+    }[];
 }
 
 interface OrderItemSnapshot {
@@ -96,27 +108,31 @@ export default function OrderDetailsPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'PENDING': return '#FFA500';
-            case 'CONFIRMED': return '#2196F3';
-            case 'PROCESSING': return '#2196F3';
-            case 'SHIPPED': return '#9C27B0';
-            case 'DELIVERED': return '#4CAF50';
-            case 'CANCELLED': return '#F44336';
-            case 'REFUNDED': return '#FF5722';
-            default: return '#888';
+            case 'PENDING': return '#F59E0B'; // Amber - Pending Seller Action
+            case 'CONFIRMED': return '#0EA5E9'; // Sky Blue - Accepted
+            case 'IN_PRODUCTION': return '#8B5CF6'; // Purple - Making it
+            case 'READY_TO_SHIP': return '#EC4899'; // Pink - Packed
+            case 'SHIPPED': return '#10B981'; // Emerald - On the way
+            case 'DELIVERED': return '#059669'; // Green - Arrived
+            case 'COMPLETED': return '#059669'; // Green - Verified
+            case 'CANCELLED': return '#EF4444'; // Red
+            case 'DISPUTED': return '#DC2626'; // Red
+            default: return '#6B7280';
         }
     };
 
     const getStatusBgColor = (status: string) => {
         switch (status) {
-            case 'PENDING': return '#FFF3E0';
-            case 'CONFIRMED': return '#E3F2FD';
-            case 'PROCESSING': return '#E3F2FD';
-            case 'SHIPPED': return '#F3E5F5';
-            case 'DELIVERED': return '#E8F5E9';
-            case 'CANCELLED': return '#FFEBEE';
-            case 'REFUNDED': return '#FBE9E7';
-            default: return '#F5F5F5';
+            case 'PENDING': return '#FEF3C7';
+            case 'CONFIRMED': return '#E0F2FE';
+            case 'IN_PRODUCTION': return '#F3E8FF';
+            case 'READY_TO_SHIP': return '#FCE7F3';
+            case 'SHIPPED': return '#D1FAE5';
+            case 'DELIVERED': return '#D1FAE5';
+            case 'COMPLETED': return '#D1FAE5';
+            case 'CANCELLED': return '#FEE2E2';
+            case 'DISPUTED': return '#FEE2E2';
+            default: return '#F3F4F6';
         }
     };
 
@@ -133,11 +149,52 @@ export default function OrderDetailsPage() {
                     <Text style={styles.title}>Order #{order.uid}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
                         <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-                            {order.status || 'PENDING'}
+                            {order.status.replace(/_/g, ' ')}
                         </Text>
                     </View>
                 </View>
                 <Text style={styles.date}>Placed on {new Date(order.uploaded).toLocaleDateString()} at {new Date(order.uploaded).toLocaleTimeString()}</Text>
+
+                {/* Latest Status/Timeline Card */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Order Status</Text>
+
+                    {/* Key Info Banner */}
+                    {order.status === 'CONFIRMED' && order.estimatedCompletionDate && (
+                        <View style={[styles.infoBanner, { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD' }]}>
+                            <Text style={[styles.infoBannerText, { color: '#0369A1' }]}>
+                                🗓️ Estimated Completion: {new Date(order.estimatedCompletionDate).toLocaleDateString()}
+                            </Text>
+                        </View>
+                    )}
+                    {order.status === 'CANCELLED' && order.rejectionReason && (
+                        <View style={[styles.infoBanner, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}>
+                            <Text style={[styles.infoBannerTitle, { color: '#B91C1C' }]}>Cancellation Reason:</Text>
+                            <Text style={{ color: '#7F1D1D' }}>{order.rejectionReason}</Text>
+                        </View>
+                    )}
+
+                    {/* Timeline */}
+                    <View style={styles.timelineContainer}>
+                        {order.timeline && order.timeline.length > 0 ? (
+                            order.timeline.map((event, index) => (
+                                <View key={event.uid} style={styles.timelineItem}>
+                                    <View style={styles.timelineLeft}>
+                                        <View style={[styles.dot, index === 0 ? { backgroundColor: getStatusColor(event.status), width: 12, height: 12 } : {}]} />
+                                        {index !== order.timeline.length - 1 && <View style={styles.line} />}
+                                    </View>
+                                    <View style={styles.timelineContent}>
+                                        <Text style={[styles.timelineTitle, index === 0 && { color: '#111', fontWeight: 'bold' }]}>{event.title}</Text>
+                                        {event.message && <Text style={styles.timelineMessage}>{event.message}</Text>}
+                                        <Text style={styles.timelineDate}>{new Date(event.createdAt).toLocaleDateString()} • {new Date(event.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                                    </View>
+                                </View>
+                            ))
+                        ) : (
+                            <Text style={{ color: '#666', fontStyle: 'italic' }}>No timeline updates yet.</Text>
+                        )}
+                    </View>
+                </View>
 
                 {(order.status === 'SHIPPED' || order.status === 'DELIVERED') && (
                     <View style={styles.section}>
@@ -151,7 +208,7 @@ export default function OrderDetailsPage() {
                             <Text style={styles.infoValue}>{order.trackingNumber}</Text>
                         </View>
                         {order.status === 'SHIPPED' && (
-                             <Text style={styles.helpText}>You can use this tracking number on the courier's website to track your package.</Text>
+                            <Text style={styles.helpText}>You can use this tracking number on the courier's website to track your package.</Text>
                         )}
                     </View>
                 )}
@@ -194,10 +251,39 @@ export default function OrderDetailsPage() {
                         <Text style={styles.summaryLabel}>Shipping</Text>
                         <Text style={styles.summaryValue}>Free</Text>
                     </View>
-                    <View style={[styles.summaryRow, styles.totalRow]}>
+                    <View style={[styles.summaryRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }]}>
                         <Text style={styles.totalLabel}>Total</Text>
                         <Text style={styles.totalValue}>₱{parseFloat(order.total).toFixed(2)}</Text>
                     </View>
+
+                    {/* Payment Status Info */}
+                    <View style={{ marginTop: 12, backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8 }}>
+                        <View style={[styles.summaryRow, { marginBottom: 4 }]}>
+                            <Text style={styles.summaryLabel}>Payment Method:</Text>
+                            <Text style={[styles.summaryValue, { fontWeight: '600' }]}>{order.paymentMethod || 'N/A'}</Text>
+                        </View>
+                        <View style={[styles.summaryRow, { marginBottom: 0 }]}>
+                            <Text style={styles.summaryLabel}>Status:</Text>
+                            <Text style={[styles.summaryValue, { color: order.paymentStatus === 'PARTIALLY_PAID' ? '#F59E0B' : '#059669' }]}>
+                                {order.paymentStatus?.replace(/_/g, ' ') || 'PENDING'}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Split Breakdown for COD */}
+                    {order.paymentStatus === 'PARTIALLY_PAID' && (
+                        <View style={{ marginTop: 8, padding: 12, backgroundColor: '#F0F9FF', borderRadius: 8, borderWidth: 1, borderColor: '#BAE6FD' }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#0369A1', marginBottom: 8 }}>Payment Plan (COD 20% Deposit)</Text>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Deposited (20%):</Text>
+                                <Text style={[styles.summaryValue, { color: '#059669' }]}>₱{(parseFloat(order.total) * 0.20).toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.summaryRow}>
+                                <Text style={styles.summaryLabel}>Due on Delivery (80%):</Text>
+                                <Text style={[styles.summaryValue, { color: '#B91C1C', fontWeight: 'bold' }]}>₱{(parseFloat(order.total) * 0.80).toFixed(2)}</Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.section}>
@@ -382,5 +468,19 @@ const styles = StyleSheet.create({
         color: '#888',
         marginTop: 8,
         fontStyle: 'italic',
-    }
+    },
+    // Timeline Styles
+    timelineContainer: { marginTop: 8 },
+    timelineItem: { flexDirection: 'row', marginBottom: 20 },
+    timelineLeft: { alignItems: 'center', marginRight: 16, width: 20 },
+    dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ccc', marginTop: 6 },
+    line: { width: 2, flex: 1, backgroundColor: '#eee', marginTop: 4 },
+    timelineContent: { flex: 1 },
+    timelineTitle: { fontSize: 16, fontWeight: '600', color: '#444', marginBottom: 2 },
+    timelineMessage: { fontSize: 14, color: '#666', marginBottom: 4 },
+    timelineDate: { fontSize: 12, color: '#999' },
+
+    infoBanner: { padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 16 },
+    infoBannerText: { fontWeight: '600', fontSize: 14 },
+    infoBannerTitle: { fontWeight: 'bold', marginBottom: 4 }
 });

@@ -31,7 +31,16 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3030;
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:8081', // Expo Web
+        'http://localhost:19000', // Expo
+        'http://localhost:19006', // Expo
+        'http://localhost:3000', // React default
+        'http://localhost:3030', // Self (if needed)
+    ],
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());

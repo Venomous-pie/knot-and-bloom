@@ -2,10 +2,12 @@ import type { NextFunction, Request, Response } from 'express';
 import { notifications } from '../services/notificationService.js';
 import prisma from '../utils/prismaUtils.js';
 import { socketService } from '../services/SocketService.js';
+import type { AuthPayload } from '../types/authTypes.js';
 
 const getOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = req.user?.id;
+        const user = req.user as AuthPayload | undefined;
+        const userId = user?.id;
 
         if (!userId) {
             return res.status(401).json({ error: "Unauthorized" });
@@ -28,7 +30,8 @@ const getOrders = async (req: Request, res: Response, next: NextFunction) => {
 
 const getOrderById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = req.user?.id;
+        const user = req.user as AuthPayload | undefined;
+        const userId = user?.id;
         const orderId = parseInt(req.params.id || '');
 
         if (!userId) {
@@ -42,6 +45,18 @@ const getOrderById = async (req: Request, res: Response, next: NextFunction) => 
         const order = await prisma.order.findUnique({
             where: {
                 uid: orderId
+            },
+            include: {
+                timeline: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                },
+                items: {
+                    include: {
+                        product: true
+                    }
+                }
             }
         });
 
@@ -61,7 +76,7 @@ const getOrderById = async (req: Request, res: Response, next: NextFunction) => 
 
 const updateOrderItemStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const user = req.user;
+        const user = req.user as AuthPayload | undefined;
         const { itemId } = req.params;
         const { status, trackingNumber, shippingProvider } = req.body;
 
@@ -124,16 +139,8 @@ const updateOrderItemStatus = async (req: Request, res: Response, next: NextFunc
             customerId: item.order.customerId
         });
 
-        // Update Metrics (if delivered)
-        if (status === 'delivered' && item.status !== 'delivered' && item.sellerId) {
-            await prisma.seller.update({
-                where: { uid: item.sellerId },
-                data: {
-                    totalSales: { increment: item.price },
-                    totalOrders: { increment: 1 }
-                }
-            });
-        }
+        // Sales update moved to Order Completion (Escrow Release)
+
 
         res.json({ success: true });
     } catch (error) {
@@ -141,11 +148,11 @@ const updateOrderItemStatus = async (req: Request, res: Response, next: NextFunc
     }
 };
 
-const shipOrder = async (req: Request, res: Response, next: NextFunction) => {
+const updateOrderStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const user = req.user;
+        const user = req.user as AuthPayload | undefined;
         const { id } = req.params;
-        const { trackingNumber, courierName } = req.body;
+        const { status, message, estimatedCompletionDate, rejectionReason, trackingNumber, courierName, photos } = req.body;
 
         if (!user) return res.status(401).json({ error: "Unauthorized" });
 
@@ -156,70 +163,96 @@ const shipOrder = async (req: Request, res: Response, next: NextFunction) => {
 
         if (!order) return res.status(404).json({ error: "Order not found" });
 
-        // Authorization Check
+        // Authorization
         let isAuthorized = false;
-        if (user.role === 'ADMIN') {
-            isAuthorized = true;
-        } else if (user.role === 'SELLER') {
-            // Check if seller owns the order
-            if (user.sellerId && user.sellerId === order.sellerId) {
-                isAuthorized = true;
+        if (user.role === 'ADMIN') isAuthorized = true;
+        else if (user.role === 'SELLER') {
+            if (user.sellerId && user.sellerId === order.sellerId) isAuthorized = true;
+        }
+
+        if (!isAuthorized) return res.status(403).json({ error: "Forbidden" });
+
+        // Status-specific validation
+        const updateData: any = { status };
+        let timelineTitle = `Order ${status}`;
+
+        if (status === 'CONFIRMED') {
+            if (!estimatedCompletionDate) return res.status(400).json({ error: "Estimated completion date required" });
+            updateData.estimatedCompletionDate = new Date(estimatedCompletionDate);
+            timelineTitle = 'Order Confirmed';
+        }
+        else if (status === 'CANCELLED') {
+            if (!rejectionReason) return res.status(400).json({ error: "Reason required for cancellation" });
+            updateData.rejectionReason = rejectionReason;
+            timelineTitle = 'Order Cancelled';
+        }
+        else if (status === 'SHIPPED') {
+            if (!trackingNumber) return res.status(400).json({ error: "Tracking number required" });
+            updateData.trackingNumber = trackingNumber;
+            updateData.courierName = courierName;
+            updateData.shippedAt = new Date();
+            timelineTitle = 'Order Shipped';
+        }
+        else if (status === 'IN_PRODUCTION') timelineTitle = 'In Production';
+        else if (status === 'READY_TO_SHIP') timelineTitle = 'Ready to Ship';
+        else if (status === 'COMPLETED') {
+            timelineTitle = 'Order Completed';
+
+            // Payment Reconciliation (COD Handshake)
+            if (order.paymentStatus === 'PARTIALLY_PAID') {
+                updateData.paymentStatus = 'SUCCEEDED';
             }
-        }
 
-        if (!isAuthorized) {
-            return res.status(403).json({ error: "Forbidden: You are not authorized to update this order" });
-        }
-
-        // Validate Status Transition (Optional strictness)
-        // For MVP, allow any status update to SHIPPED if not cancelled/refunded
-        if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
-            return res.status(400).json({ error: "Cannot ship a cancelled or refunded order" });
-        }
-
-        // Validation
-        if (!trackingNumber) {
-            return res.status(400).json({ error: "Tracking number is required" });
-        }
-
-        const updatedOrder = await prisma.order.update({
-            where: { uid: order.uid },
-            data: {
-                status: 'SHIPPED', // Use string if Enums not imported, or OrderStatus.SHIPPED
-                trackingNumber,
-                courierName,
-                shippedAt: new Date(),
-                // Sync items status
-                items: {
-                    updateMany: {
-                        where: { orderId: order.uid },
-                        data: {
-                            status: 'shipped',
-                            trackingNumber,
-                            shippingProvider: courierName,
-                            shippedAt: new Date()
-                        }
+            // Escrow Release: Credit Seller
+            if (order.sellerId) {
+                await prisma.seller.update({
+                    where: { uid: order.sellerId },
+                    data: {
+                        totalSales: { increment: order.total },
+                        totalOrders: { increment: 1 }
                     }
-                }
+                });
             }
+        }
+
+        // Transaction: Update Order & Add Timeline
+        const result = await prisma.$transaction(async (tx) => {
+            const updated = await tx.order.update({
+                where: { uid: order.uid },
+                data: updateData
+            });
+
+            await tx.orderTimeline.create({
+                data: {
+                    orderId: order.uid,
+                    status: status, // Ensure this matches enum or cast as needed
+                    title: timelineTitle,
+                    message: message || '',
+                    photos: photos || [],
+                    createdBy: user.role
+                }
+            });
+
+            return updated;
         });
 
-        // Notifications
+        // Notifications & Realtime
+        const notifyMessage = message ? `\nNote: ${message}` : '';
         notifications.send({
             type: 'email',
             to: order.customer.email || '',
-            subject: `Your order #${order.uid} has been shipped!`,
-            body: `Great news! Your order is on its way.\n\nCourier: ${courierName || 'Standard'}\nTracking Number: ${trackingNumber}\n\nTrack your package here: [Link]`
+            subject: `Order Update: ${timelineTitle}`,
+            body: `Your order #${order.uid} is now ${status}.${notifyMessage}`
         }).catch(console.error);
 
-        // Real-time Update
         socketService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
             orderId: order.uid,
-            status: 'SHIPPED',
-            customerId: order.customerId
+            status,
+            timeline: { title: timelineTitle, message, photos }
         });
 
-        res.json({ success: true, order: updatedOrder });
+        res.json({ success: true, order: result });
+
     } catch (error) {
         next(error);
     }
@@ -229,5 +262,5 @@ export default {
     getOrders,
     getOrderById,
     updateOrderItemStatus,
-    shipOrder
+    updateOrderStatus
 };

@@ -172,6 +172,7 @@ export interface LockedPriceItem {
     productName: string;
     variantName: string | null;
     image: string | null;
+    sellerId: number | null;
 }
 
 export interface InitiateCheckoutResponse {
@@ -182,6 +183,7 @@ export interface InitiateCheckoutResponse {
     expiresAt: string;
     message: string;
     isExisting?: boolean;
+    sellerMetrics?: Record<number, { avgShipTimeHours: number; successRate: number }>;
 }
 
 export interface CheckoutSessionResponse {

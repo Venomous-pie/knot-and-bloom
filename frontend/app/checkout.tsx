@@ -12,7 +12,7 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Check, ChevronRight, CreditCard, Truck } from 'lucide-react-native';
@@ -29,6 +29,7 @@ import { theme } from '@/constants/theme';
 import { CheckoutAddressSection } from '@/components/checkout/CheckoutAddressSection';
 import { CheckoutProductList } from '@/components/checkout/CheckoutProductList';
 import { AddressMapPicker } from '@/components/checkout/AddressMapPicker';
+import { TrustBadge } from '@/components/checkout/TrustBadge';
 
 export default function CheckoutPage() {
     return (
@@ -42,6 +43,8 @@ function CheckoutContent() {
     const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { items } = useLocalSearchParams();
+    const { user } = useAuth();
     const isDesktop = width >= 1024;
 
     const {
@@ -55,7 +58,10 @@ function CheckoutContent() {
         shippingInfo,
         setShippingInfo,
         error: checkoutError,
-        statusMessage
+
+        statusMessage,
+        initiateCheckout,
+        completeCheckout
     } = useCheckout();
 
     // --------------------------------------------------------------------------
@@ -74,7 +80,9 @@ function CheckoutContent() {
     const [editingAddr, setEditingAddr] = useState<Address | null>(null);
 
     // Payment Logic
-    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash'>('cod');
+    // Payment Logic
+    // Payment Logic
+    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'card'>('cod');
     const [deliveryNotes, setDeliveryNotes] = useState('');
 
     // --------------------------------------------------------------------------
@@ -83,6 +91,27 @@ function CheckoutContent() {
     useEffect(() => {
         fetchAddresses();
     }, []);
+
+    // --------------------------------------------------------------------------
+    // Checkout Initialization
+    // --------------------------------------------------------------------------
+    useEffect(() => {
+        const init = async () => {
+            if (user?.uid && items && typeof items === 'string') {
+                const itemIds = items.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+                if (itemIds.length > 0) {
+                    const success = await initiateCheckout(user.uid, itemIds);
+                    if (success) {
+                        // Clear the param to prevent re-initiation on refresh if desired,
+                        // OR keep it so refresh works (but idempotency key handles dupes).
+                        // Let's clear it to be clean.
+                        router.setParams({ items: undefined });
+                    }
+                }
+            }
+        };
+        init();
+    }, [user, items]);
 
     // --------------------------------------------------------------------------
     // Address Handlers
@@ -156,9 +185,19 @@ function CheckoutContent() {
 
         const valid = await validateAndProceedToPayment(); // Moves to 'payment' step
         if (valid) {
-            const result = await processPayment(paymentMethod);
+            // Map frontend payment method to backend expected values
+            let backendPaymentMethod = 'MOCK_WALLET'; // Default fallback
+            if (paymentMethod === 'cod') backendPaymentMethod = 'COD';
+            else if (paymentMethod === 'card') backendPaymentMethod = 'MOCK_CARD';
+            else if (paymentMethod === 'gcash' || paymentMethod === 'paymaya') backendPaymentMethod = 'MOCK_WALLET';
+
+            const result = await processPayment(backendPaymentMethod);
             if (result) {
-                router.replace('/checkout/success' as any);
+                // If payment successful (returns paymentId), complete the order
+                const success = await completeCheckout(result);
+                if (success) {
+                    router.replace('/checkout/success' as any);
+                }
             }
         }
     };
@@ -248,10 +287,16 @@ function CheckoutContent() {
                                 <AddressForm
                                     mode={addrFormMode}
                                     initialData={editingAddr ? {
-                                        ...editingAddr,
                                         label: editingAddr.label ?? undefined,
+                                        fullName: editingAddr.fullName,
+                                        phone: editingAddr.phone,
+                                        streetAddress: editingAddr.streetAddress,
                                         aptSuite: editingAddr.aptSuite ?? undefined,
-                                        stateProvince: editingAddr.stateProvince ?? undefined,
+                                        city: editingAddr.city,
+                                        province: editingAddr.stateProvince ?? undefined,
+                                        postalCode: editingAddr.postalCode,
+                                        country: editingAddr.country,
+                                        isDefault: editingAddr.isDefault,
                                     } : undefined}
                                     onSave={async (data) => {
                                         try {
@@ -322,7 +367,7 @@ function CheckoutContent() {
                                 <View style={styles.shippingOptionRow}>
                                     <View>
                                         <Text style={styles.shippingName}>Standard Local Delivery</Text>
-                                        <Text style={styles.shippingTime}>Get by 22 Jan - 25 Jan</Text>
+                                        <Text style={styles.shippingTime}>Get by 12 Jan - 15 Jan (Seller ships in ~24h)</Text>
                                     </View>
                                     <Text style={styles.shippingPrice}>₱60.00</Text>
                                 </View>
@@ -346,14 +391,31 @@ function CheckoutContent() {
                                         onPress={() => setPaymentMethod('cod')}
                                     >
                                         <Text style={[styles.paymentChipText, paymentMethod === 'cod' && styles.paymentChipTextSelected]}>Cash on Delivery</Text>
-                                        {paymentMethod === 'cod' && <Check size={16} color="white" />}
+                                        {paymentMethod === 'cod' && <Check size={16} color={theme.colors.primary} />}
                                     </Pressable>
+
                                     <Pressable
                                         style={[styles.paymentChip, paymentMethod === 'gcash' && styles.paymentChipSelected]}
                                         onPress={() => setPaymentMethod('gcash')}
                                     >
-                                        <Text style={[styles.paymentChipText, paymentMethod === 'gcash' && styles.paymentChipTextSelected]}>GCash / E-Wallet</Text>
-                                        {paymentMethod === 'gcash' && <Check size={16} color="white" />}
+                                        <Text style={[styles.paymentChipText, paymentMethod === 'gcash' && styles.paymentChipTextSelected]}>GCash</Text>
+                                        {paymentMethod === 'gcash' && <Check size={16} color={theme.colors.primary} />}
+                                    </Pressable>
+
+                                    <Pressable
+                                        style={[styles.paymentChip, paymentMethod === 'paymaya' && styles.paymentChipSelected]}
+                                        onPress={() => setPaymentMethod('paymaya')}
+                                    >
+                                        <Text style={[styles.paymentChipText, paymentMethod === 'paymaya' && styles.paymentChipTextSelected]}>Maya</Text>
+                                        {paymentMethod === 'paymaya' && <Check size={16} color={theme.colors.primary} />}
+                                    </Pressable>
+
+                                    <Pressable
+                                        style={[styles.paymentChip, paymentMethod === 'card' && styles.paymentChipSelected]}
+                                        onPress={() => setPaymentMethod('card')}
+                                    >
+                                        <Text style={[styles.paymentChipText, paymentMethod === 'card' && styles.paymentChipTextSelected]}>Credit/Debit Card</Text>
+                                        {paymentMethod === 'card' && <Check size={16} color={theme.colors.primary} />}
                                     </Pressable>
                                 </View>
                             </View>
@@ -368,10 +430,33 @@ function CheckoutContent() {
                                     <Text style={styles.summaryLabel}>Shipping Total:</Text>
                                     <Text style={styles.summaryValue}>₱60.00</Text>
                                 </View>
-                                <View style={styles.totalRow}>
+                                <View style={[styles.totalRow, { marginTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }]}>
                                     <Text style={styles.totalLabel}>Total Payment:</Text>
                                     <Text style={styles.totalAmount}>₱{(totalAmount + 60).toFixed(2)}</Text>
                                 </View>
+
+                                {/* Split Breakdown if COD */}
+                                {/* Split Breakdown if COD */}
+                                {paymentMethod === 'cod' ? (
+                                    <View style={styles.splitPaymentContainer}>
+                                        <View style={styles.splitRow}>
+                                            <Text style={styles.splitLabel}>Due Now (20% Deposit):</Text>
+                                            <Text style={styles.splitValue}>₱{((totalAmount + 60) * 0.20).toFixed(2)}</Text>
+                                        </View>
+                                        <View style={styles.splitRow}>
+                                            <Text style={styles.splitLabel}>Due on Delivery (80%):</Text>
+                                            <Text style={styles.splitValue}>₱{((totalAmount + 60) * 0.80).toFixed(2)}</Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={styles.splitPaymentContainer}>
+                                        <Text style={[styles.splitLabel, { marginBottom: 4 }]}>Strict Escrow Protection</Text>
+                                        <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 18, fontFamily: theme.typography.fontFamily }}>
+                                            You are paying the full amount of <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{(totalAmount + 60).toFixed(2)}</Text>.
+                                            This amount is held securely. <Text style={{ fontWeight: '700' }}>If the item is damaged or incorrect, you can request a return or refund.</Text> Funds are only released to the seller after you verify the item.
+                                        </Text>
+                                    </View>
+                                )}
 
                                 <View style={styles.actionRow}>
                                     <Pressable
@@ -379,9 +464,14 @@ function CheckoutContent() {
                                         onPress={handlePlaceOrder}
                                         disabled={isProcessing}
                                     >
-                                        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.placeOrderText}>Place Order</Text>}
+                                        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.placeOrderText}>
+                                            {paymentMethod === 'cod'
+                                                ? `Pay Deposit ₱${((totalAmount + 60) * 0.20).toFixed(2)}`
+                                                : 'Place Order'}
+                                        </Text>}
                                     </Pressable>
                                 </View>
+                                <TrustBadge />
                             </View>
 
                         </View>
@@ -568,12 +658,21 @@ const styles = StyleSheet.create({
     },
     placeOrderButton: {
         backgroundColor: theme.colors.primary,
-        paddingVertical: 14,
-        paddingHorizontal: 40,
-        borderRadius: 16,
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 12,
         alignItems: 'center',
+        justifyContent: 'center',
         ...theme.shadows.md,
+        minWidth: 200, // Ensure it's not too small
     },
+    placeOrderText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 16,
+        fontFamily: theme.typography.fontFamily
+    },
+    disabledButton: { opacity: 0.7 },
 
     // Modal
     modalOverlay: {
@@ -606,8 +705,7 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
         fontFamily: theme.typography.fontFamily,
     },
-    placeOrderText: { color: 'white', fontWeight: '700', fontSize: 16, textTransform: 'uppercase', letterSpacing: 1, fontFamily: theme.typography.fontFamily },
-    disabledButton: { opacity: 0.7 },
+
 
     // Confirmation
     centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
@@ -626,4 +724,29 @@ const styles = StyleSheet.create({
     errorText: { color: 'white', textAlign: 'center' },
     loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
     loadingText: { marginTop: 16, color: theme.colors.primary, fontWeight: '600' },
+
+    // Split Payment Styles
+    splitPaymentContainer: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: theme.colors.primaryLight + '20',
+        borderRadius: 8,
+    },
+    splitRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    splitLabel: {
+        fontSize: 14,
+        color: theme.colors.text,
+        fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
+    },
+    splitValue: {
+        fontSize: 14,
+        color: theme.colors.primary,
+        fontWeight: '700',
+        fontFamily: theme.typography.fontFamily,
+    },
 });

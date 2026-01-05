@@ -6,9 +6,12 @@ import {
     StyleSheet,
     Text,
     useWindowDimensions,
-    View
+    View,
+    Platform
 } from 'react-native';
 import AddressCard, { type Address } from './AddressCard';
+import { theme } from '@/constants/theme';
+import { MapPin, Plus } from 'lucide-react-native';
 
 interface AddressSelectorProps {
     addresses: Address[];
@@ -39,8 +42,10 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
     const isTablet = width >= 640 && width < 1024;
 
     const handleDelete = async (addressId: number) => {
-        const confirmed = window.confirm('Are you sure you want to delete this address?');
-        if (!confirmed) return;
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm('Are you sure you want to delete this address?');
+            if (!confirmed) return;
+        }
 
         setDeletingId(addressId);
         try {
@@ -62,7 +67,7 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#7c3aed" />
+                <ActivityIndicator size="large" color={theme.colors.primary} />
                 <Text style={styles.loadingText}>Loading addresses...</Text>
             </View>
         );
@@ -71,13 +76,16 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
     if (addresses.length === 0) {
         return (
             <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>📍</Text>
+                <View style={styles.iconCircle}>
+                    <MapPin size={32} color={theme.colors.primary} />
+                </View>
                 <Text style={styles.emptyTitle}>No saved addresses yet</Text>
                 <Text style={styles.emptyText}>
                     Add your first shipping address to speed up future checkouts
                 </Text>
                 <Pressable style={styles.addNewButton} onPress={onAddNew}>
-                    <Text style={styles.addNewButtonText}>+ Add Shipping Address</Text>
+                    <Plus size={18} color={theme.colors.primaryText} />
+                    <Text style={styles.addNewButtonText}>Add Shipping Address</Text>
                 </Pressable>
             </View>
         );
@@ -121,7 +129,7 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
                             {/* Loading overlay for actions */}
                             {(deletingId === address.uid || settingDefaultId === address.uid) && (
                                 <View style={styles.loadingOverlay}>
-                                    <ActivityIndicator size="small" color="#7c3aed" />
+                                    <ActivityIndicator size="small" color={theme.colors.primary} />
                                 </View>
                             )}
                         </View>
@@ -130,7 +138,9 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
 
                 {/* Add New Address Button */}
                 <Pressable style={styles.addNewCard} onPress={onAddNew}>
-                    <Text style={styles.addNewIcon}>+</Text>
+                    <View style={styles.addNewIconContainer}>
+                        <Plus size={24} color={theme.colors.primary} />
+                    </View>
                     <Text style={styles.addNewText}>Add New Address</Text>
                 </Pressable>
             </ScrollView>
@@ -145,13 +155,13 @@ const styles = StyleSheet.create({
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 16,
+        gap: theme.spacing.md,
     },
     gridMobile: {
         flexDirection: 'column',
     },
     gridTablet: {
-        // 2 columns
+        // 2 columns handled by cardWrapper width
     },
     cardWrapper: {
         width: '48%',
@@ -172,7 +182,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.7)',
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 12,
+        borderRadius: theme.borderRadius.md,
     },
     loadingContainer: {
         flex: 1,
@@ -181,68 +191,87 @@ const styles = StyleSheet.create({
         padding: 40,
     },
     loadingText: {
-        marginTop: 12,
-        fontSize: 14,
-        color: '#6b7280',
+        marginTop: theme.spacing.sm,
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
     },
     emptyContainer: {
         alignItems: 'center',
-        padding: 40,
-        backgroundColor: '#f9fafb',
-        borderRadius: 12,
-        borderWidth: 2,
+        padding: theme.spacing.xl,
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
         borderStyle: 'dashed',
-        borderColor: '#e5e7eb',
+        borderColor: theme.colors.border,
     },
-    emptyIcon: {
-        fontSize: 48,
-        marginBottom: 16,
+    iconCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: theme.colors.primaryLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: theme.spacing.md,
     },
     emptyTitle: {
-        fontSize: 18,
+        fontSize: theme.typography.sizes.lg,
         fontWeight: '600',
-        color: '#111827',
-        marginBottom: 8,
+        color: theme.colors.text,
+        marginBottom: theme.spacing.xs,
+        fontFamily: theme.typography.fontFamily,
     },
     emptyText: {
-        fontSize: 14,
-        color: '#6b7280',
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: theme.spacing.lg,
+        fontFamily: theme.typography.fontFamily,
     },
     addNewButton: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: '#7c3aed',
-        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.lg,
+        paddingVertical: theme.spacing.sm,
+        backgroundColor: theme.colors.primary,
+        borderRadius: theme.borderRadius.full,
+        ...theme.shadows.md,
     },
     addNewButtonText: {
-        fontSize: 14,
+        fontSize: theme.typography.sizes.sm,
         fontWeight: '600',
-        color: '#fff',
+        color: theme.colors.primaryText,
+        fontFamily: theme.typography.fontFamily,
     },
     addNewCard: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
-        borderRadius: 12,
+        padding: theme.spacing.lg,
+        borderRadius: theme.borderRadius.md,
         borderWidth: 2,
         borderStyle: 'dashed',
-        borderColor: '#d1d5db',
-        backgroundColor: '#fafafa',
-        marginTop: 8,
-        marginBottom: 24,
+        borderColor: theme.colors.primaryLight,
+        backgroundColor: theme.colors.background,
+        marginTop: theme.spacing.sm,
+        marginBottom: theme.spacing.lg,
+        cursor: 'pointer',
     },
-    addNewIcon: {
-        fontSize: 24,
-        color: '#7c3aed',
-        marginRight: 8,
+    addNewIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: theme.colors.primaryLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: theme.spacing.sm,
     },
     addNewText: {
-        fontSize: 15,
-        color: '#7c3aed',
+        fontSize: theme.typography.sizes.base,
+        color: theme.colors.primary,
         fontWeight: '600',
+        fontFamily: theme.typography.fontFamily,
     },
 });
 

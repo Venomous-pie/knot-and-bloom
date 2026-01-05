@@ -7,8 +7,10 @@ import {
     Switch,
     Text,
     TextInput,
-    View
+    View,
+    Platform
 } from 'react-native';
+import { theme } from '@/constants/theme';
 
 interface AddressFormData {
     label?: string;
@@ -67,6 +69,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
     const [saveForFuture, setSaveForFuture] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [focusedField, setFocusedField] = useState<string | null>(null);
 
     const validateField = (field: keyof typeof VALIDATION_RULES, value: string): string | null => {
         const rules = VALIDATION_RULES[field];
@@ -163,12 +166,18 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Full Name *</Text>
                 <TextInput
-                    style={[styles.input, errors.fullName && styles.inputError]}
+                    style={[
+                        styles.input,
+                        focusedField === 'fullName' && styles.inputFocused,
+                        errors.fullName && styles.inputError
+                    ]}
                     value={form.fullName}
                     onChangeText={(text) => handleChange('fullName', text)}
                     placeholder="e.g. Juan Dela Cruz"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={theme.colors.textLight}
                     autoComplete="name"
+                    onFocus={() => setFocusedField('fullName')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
             </View>
@@ -177,13 +186,19 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Phone Number *</Text>
                 <TextInput
-                    style={[styles.input, errors.phone && styles.inputError]}
+                    style={[
+                        styles.input,
+                        focusedField === 'phone' && styles.inputFocused,
+                        errors.phone && styles.inputError
+                    ]}
                     value={form.phone}
                     onChangeText={(text) => handleChange('phone', text)}
                     placeholder="e.g. 09171234567"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={theme.colors.textLight}
                     keyboardType="phone-pad"
                     autoComplete="tel"
+                    onFocus={() => setFocusedField('phone')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
             </View>
@@ -192,13 +207,19 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Street Address *</Text>
                 <TextInput
-                    style={[styles.input, errors.streetAddress && styles.inputError]}
+                    style={[
+                        styles.input,
+                        focusedField === 'streetAddress' && styles.inputFocused,
+                        errors.streetAddress && styles.inputError
+                    ]}
                     value={form.streetAddress}
                     onChangeText={(text) => handleChange('streetAddress', text)}
                     placeholder="e.g. 123 Main Street, Barangay Sample"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={theme.colors.textLight}
                     multiline
                     numberOfLines={2}
+                    onFocus={() => setFocusedField('streetAddress')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 {errors.streetAddress && <Text style={styles.errorText}>{errors.streetAddress}</Text>}
             </View>
@@ -207,11 +228,16 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Apt, Suite, Unit (optional)</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[
+                        styles.input,
+                        focusedField === 'aptSuite' && styles.inputFocused
+                    ]}
                     value={form.aptSuite}
                     onChangeText={(text) => handleChange('aptSuite', text)}
                     placeholder="e.g. Unit 4B"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={theme.colors.textLight}
+                    onFocus={() => setFocusedField('aptSuite')}
+                    onBlur={() => setFocusedField(null)}
                 />
             </View>
 
@@ -220,22 +246,33 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 <View style={[styles.formGroup, styles.flex1]}>
                     <Text style={styles.formLabel}>City *</Text>
                     <TextInput
-                        style={[styles.input, errors.city && styles.inputError]}
+                        style={[
+                            styles.input,
+                            focusedField === 'city' && styles.inputFocused,
+                            errors.city && styles.inputError
+                        ]}
                         value={form.city}
                         onChangeText={(text) => handleChange('city', text)}
                         placeholder="e.g. Manila"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={theme.colors.textLight}
+                        onFocus={() => setFocusedField('city')}
+                        onBlur={() => setFocusedField(null)}
                     />
                     {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
                 </View>
                 <View style={[styles.formGroup, styles.flex1]}>
                     <Text style={styles.formLabel}>Province</Text>
                     <TextInput
-                        style={styles.input}
+                        style={[
+                            styles.input,
+                            focusedField === 'stateProvince' && styles.inputFocused
+                        ]}
                         value={form.stateProvince}
                         onChangeText={(text) => handleChange('stateProvince', text)}
                         placeholder="e.g. NCR"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={theme.colors.textLight}
+                        onFocus={() => setFocusedField('stateProvince')}
+                        onBlur={() => setFocusedField(null)}
                     />
                 </View>
             </View>
@@ -245,12 +282,18 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 <View style={[styles.formGroup, styles.flex1]}>
                     <Text style={styles.formLabel}>Postal Code *</Text>
                     <TextInput
-                        style={[styles.input, errors.postalCode && styles.inputError]}
+                        style={[
+                            styles.input,
+                            focusedField === 'postalCode' && styles.inputFocused,
+                            errors.postalCode && styles.inputError
+                        ]}
                         value={form.postalCode}
                         onChangeText={(text) => handleChange('postalCode', text)}
                         placeholder="e.g. 1000"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={theme.colors.textLight}
                         keyboardType="number-pad"
+                        onFocus={() => setFocusedField('postalCode')}
+                        onBlur={() => setFocusedField(null)}
                     />
                     {errors.postalCode && <Text style={styles.errorText}>{errors.postalCode}</Text>}
                 </View>
@@ -270,8 +313,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 <Switch
                     value={form.isDefault}
                     onValueChange={(value) => handleChange('isDefault', value)}
-                    trackColor={{ false: '#d1d5db', true: '#c4b5fd' }}
-                    thumbColor={form.isDefault ? '#7c3aed' : '#f4f3f4'}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+                    thumbColor={form.isDefault ? theme.colors.primary : theme.colors.surface}
                 />
             </View>
 
@@ -282,8 +325,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     <Switch
                         value={saveForFuture}
                         onValueChange={setSaveForFuture}
-                        trackColor={{ false: '#d1d5db', true: '#c4b5fd' }}
-                        thumbColor={saveForFuture ? '#7c3aed' : '#f4f3f4'}
+                        trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
+                        thumbColor={saveForFuture ? theme.colors.primary : theme.colors.surface}
                     />
                 </View>
             )}
@@ -318,73 +361,82 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     sectionTitle: {
-        fontSize: 14,
+        fontSize: theme.typography.sizes.sm,
         fontWeight: '500',
-        color: '#374151',
-        marginBottom: 8,
+        color: theme.colors.text,
+        marginBottom: theme.spacing.sm,
+        fontFamily: theme.typography.fontFamily,
     },
     labelSection: {
-        marginBottom: 16,
+        marginBottom: theme.spacing.md,
     },
     labelOptions: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: theme.spacing.sm,
     },
     labelPill: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#f3f4f6',
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        borderRadius: theme.borderRadius.full,
+        backgroundColor: theme.colors.subtle,
         borderWidth: 1,
-        borderColor: '#e5e7eb',
+        borderColor: theme.colors.border,
     },
     labelPillActive: {
-        backgroundColor: '#7c3aed',
-        borderColor: '#7c3aed',
+        backgroundColor: theme.colors.primaryLight,
+        borderColor: theme.colors.primary,
     },
     labelPillText: {
-        fontSize: 14,
-        color: '#6b7280',
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
     },
     labelPillTextActive: {
-        color: '#fff',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     formGroup: {
-        marginBottom: 16,
+        marginBottom: theme.spacing.md,
     },
     formLabel: {
-        fontSize: 14,
+        fontSize: theme.typography.sizes.sm,
         fontWeight: '500',
-        color: '#374151',
+        color: theme.colors.text,
         marginBottom: 6,
+        fontFamily: theme.typography.fontFamily,
     },
     input: {
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#d1d5db',
-        borderRadius: 8,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        fontSize: 15,
-        color: '#111827',
+        backgroundColor: theme.colors.surface,
+        borderWidth: 2,
+        borderColor: theme.colors.border,
+        borderRadius: 16,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: 14, // increased vertical padding
+        fontSize: theme.typography.sizes.base,
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+    },
+    inputFocused: {
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
     },
     inputError: {
-        borderColor: '#ef4444',
+        borderColor: theme.colors.error,
     },
     disabledInput: {
-        backgroundColor: '#f9fafb',
-        color: '#9ca3af',
+        backgroundColor: theme.colors.subtle,
+        color: theme.colors.textLight,
     },
     errorText: {
-        fontSize: 12,
-        color: '#ef4444',
+        fontSize: theme.typography.sizes.xs,
+        color: theme.colors.error,
         marginTop: 4,
+        fontFamily: theme.typography.fontFamily,
     },
     row: {
         flexDirection: 'row',
-        gap: 12,
+        gap: theme.spacing.md,
     },
     flex1: {
         flex: 1,
@@ -393,43 +445,47 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 12,
+        paddingVertical: theme.spacing.md,
         borderTopWidth: 1,
-        borderTopColor: '#f3f4f6',
+        borderTopColor: theme.colors.subtle,
     },
     switchLabel: {
-        fontSize: 14,
-        color: '#374151',
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     actions: {
         flexDirection: 'row',
-        gap: 12,
-        marginTop: 24,
+        gap: theme.spacing.md,
+        marginTop: theme.spacing.lg,
         marginBottom: 40,
     },
     cancelButton: {
         flex: 1,
         paddingVertical: 14,
-        borderRadius: 8,
-        backgroundColor: '#f3f4f6',
+        borderRadius: theme.borderRadius.md,
+        backgroundColor: theme.colors.subtle,
         alignItems: 'center',
     },
     cancelButtonText: {
-        fontSize: 15,
+        fontSize: theme.typography.sizes.base,
         fontWeight: '600',
-        color: '#374151',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     saveButton: {
         flex: 2,
         paddingVertical: 14,
-        borderRadius: 8,
-        backgroundColor: '#7c3aed',
+        borderRadius: theme.borderRadius.md,
+        backgroundColor: theme.colors.primary,
         alignItems: 'center',
+        ...theme.shadows.md,
     },
     saveButtonText: {
-        fontSize: 15,
+        fontSize: theme.typography.sizes.base,
         fontWeight: '600',
-        color: '#fff',
+        color: theme.colors.primaryText,
+        fontFamily: theme.typography.fontFamily,
     },
     disabledButton: {
         opacity: 0.6,

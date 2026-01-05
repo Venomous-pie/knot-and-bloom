@@ -2,19 +2,25 @@ import ProductCard from "@/components/ProductCard";
 import { Product } from "@/types/products";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import * as ImagePicker from 'expo-image-picker';
+import { uploadToImageKit } from '@/lib/imagekit';
+import ImageCropperModal from '@/components/admin/ImageCropperModal';
+import { apiClient } from "@/api/api";
+import Animated, { LinearTransition } from "react-native-reanimated";
 import {
     ActivityIndicator,
     Image,
     Pressable,
-    FlatList,
     StyleSheet,
     Text,
     useWindowDimensions,
     View,
     ListRenderItem,
-    ScrollView
+    ScrollView,
+    TextInput,
+    Modal
 } from "react-native";
-import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck } from "lucide-react-native";
+import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck, Camera, Pin, PinOff, Edit2, Save, Search, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/app/auth";
 
@@ -22,17 +28,20 @@ interface SellerProfileData {
     uid: number;
     name: string;
     slug: string;
-    description?: string;
-    logo?: string;
-    banner?: string;
+    description?: string | null;
+    logo?: string | null;
+    banner?: string | null;
     products: Product[];
     createdAt?: string;
-    location?: string;
+    location?: string | null;
     totalSales?: number;
     rating?: number;
+    pinnedProductIds?: number[];
 }
 
+
 type TabType = 'products' | 'about' | 'reviews';
+type FilterType = 'All' | 'Newest' | 'Price: Low to High' | 'Handcrafted';
 
 export default function SellerProfile() {
     const { slug } = useLocalSearchParams();
@@ -44,11 +53,60 @@ export default function SellerProfile() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<TabType>('products');
+    const [activeFilter, setActiveFilter] = useState<FilterType>('All');
+    const [isEditingAbout, setIsEditingAbout] = useState(false);
+    const [aboutText, setAboutText] = useState('');
+    const [showProfileModal, setShowProfileModal] = useState(false);
     const { user } = useAuth();
 
+    // Image Upload State
+    const [showCropper, setShowCropper] = useState(false);
+    const [cropImageUri, setCropImageUri] = useState<string | null>(null);
+    const [targetImageField, setTargetImageField] = useState<'logo' | 'banner' | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+
+    // Search State
+    const [searchQuery, setSearchQuery] = useState('');
+
     // Derived state
-    const activeProducts = seller?.products.filter(p => !p.status || p.status === 'ACTIVE') || [];
-    const pendingProducts = seller?.products.filter(p => p.status === 'PENDING') || [];
+    // Derived state with seller info injection
+    const activeProducts = seller?.products
+        .filter(p => !p.status || p.status === 'ACTIVE')
+        .map(p => ({ ...p, seller: p.seller || { name: seller.name, slug: seller.slug } }))
+        .filter(p => {
+            // Search filter
+            if (searchQuery.trim()) {
+                const query = searchQuery.toLowerCase();
+                const nameMatch = p.name?.toLowerCase().includes(query);
+                const descMatch = p.description?.toLowerCase().includes(query);
+                const categoryMatch = p.categories?.some((c: string) => c.toLowerCase().includes(query));
+                if (!nameMatch && !descMatch && !categoryMatch) return false;
+            }
+            // Category filter
+            if (activeFilter === 'Handcrafted') {
+                return p.categories && p.categories.some((c: string) => c.toLowerCase().includes('handcrafted'));
+            }
+            return true;
+        })
+        .sort((a, b) => {
+            const isAPinned = seller?.pinnedProductIds?.includes(a.uid);
+            const isBPinned = seller?.pinnedProductIds?.includes(b.uid);
+            if (isAPinned && !isBPinned) return -1;
+            if (!isAPinned && isBPinned) return 1;
+
+            if (activeFilter === 'Price: Low to High') {
+                return (Number(a.basePrice) || 0) - (Number(b.basePrice) || 0);
+            }
+            if (activeFilter === 'Newest') {
+                return (b.uid || 0) - (a.uid || 0);
+            }
+            return 0;
+        }) || [];
+
+    const pendingProducts = seller?.products
+        .filter(p => p.status === 'PENDING')
+        .map(p => ({ ...p, seller: p.seller || { name: seller.name, slug: seller.slug } })) || [];
+
     const isOwner = user?.sellerId === seller?.uid;
 
     useEffect(() => {
@@ -56,6 +114,7 @@ export default function SellerProfile() {
 
         const fetchSeller = async () => {
             try {
+                // Use apiClient or fetch - standard fetch is fine for public GET
                 const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers/${slug}`);
                 if (!response.ok) {
                     if (response.status === 404) throw new Error("Seller not found");
@@ -63,15 +122,57 @@ export default function SellerProfile() {
                 }
                 const data = await response.json();
                 setSeller(data);
+                setAboutText(data.description || '');
             } catch (err) {
                 setError(err instanceof Error ? err.message : "An error occurred");
             } finally {
                 setLoading(false);
             }
         };
-
         fetchSeller();
     }, [slug]);
+
+    const handlePickImage = async (field: 'logo' | 'banner') => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 1,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            setCropImageUri(result.assets[0].uri);
+            setTargetImageField(field);
+            setShowCropper(true);
+            if (field === 'logo') setShowProfileModal(false);
+        }
+    };
+
+    const handleCropComplete = async (uri: string) => {
+        if (!targetImageField || !seller) return;
+        setShowCropper(false);
+        setUploadingImage(true);
+
+        try {
+            const uploadResult = await uploadToImageKit({
+                uri,
+                name: `${seller.slug}-${targetImageField}-${Date.now()}.jpg`
+            });
+
+            // Update Backend using apiClient (automatically adds auth token)
+            await apiClient.put(`/sellers/${seller.uid}`, { [targetImageField]: uploadResult.url });
+
+            // Update Local State
+            setSeller({ ...seller, [targetImageField]: uploadResult.url });
+
+        } catch (error) {
+            alert('Failed to update image');
+            console.error(error);
+        } finally {
+            setUploadingImage(false);
+            setTargetImageField(null);
+            setCropImageUri(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -101,7 +202,7 @@ export default function SellerProfile() {
         if (!seller) return [];
         switch (activeTab) {
             case 'products':
-                return activeProducts;
+                return isOwner ? [...pendingProducts, ...activeProducts] : activeProducts;
             case 'about':
                 return ['about-section']; // Dummy item to render single functional component
             case 'reviews':
@@ -125,6 +226,13 @@ export default function SellerProfile() {
                     </View>
                 )}
 
+                {isOwner && (
+                    <Pressable style={styles.editBannerButton} onPress={() => handlePickImage('banner')}>
+                        {uploadingImage && targetImageField === 'banner' ? <ActivityIndicator size="small" color="white" /> : <Camera size={20} color="white" />}
+                        <Text style={styles.editButtonText}>Edit Banner</Text>
+                    </Pressable>
+                )}
+
                 <SafeAreaView style={styles.headerOverlay}>
                     <Pressable onPress={() => router.back()} style={styles.backButtonCircle}>
                         <ArrowLeft size={24} color="#333" />
@@ -137,14 +245,17 @@ export default function SellerProfile() {
                 {/* Profile Header Block */}
                 <View style={styles.profileHeader}>
                     <View style={styles.logoWrapper}>
-                        {seller.logo ? (
-                            <Image source={{ uri: seller.logo }} style={styles.logo} />
-                        ) : (
-                            <View style={[styles.logo, styles.logoPlaceholder]}>
-                                <Text style={styles.logoInitials}>{seller.name.charAt(0)}</Text>
-                            </View>
-                        )}
-                        {/* Verification Badge - Always show for now or logic here */}
+                        <Pressable onPress={() => isOwner && setShowProfileModal(true)}>
+                            {seller.logo ? (
+                                <Image source={{ uri: seller.logo }} style={styles.logo} />
+                            ) : (
+                                <View style={[styles.logo, styles.logoPlaceholder]}>
+                                    <Text style={styles.logoInitials}>{seller.name.charAt(0)}</Text>
+                                </View>
+                            )}
+                        </Pressable>
+
+                        {/* Verification Badge */}
                         <View style={styles.verificationBadge}>
                             <CheckCircle size={16} color="white" fill="#4CAF50" />
                         </View>
@@ -246,24 +357,26 @@ export default function SellerProfile() {
 
                 {activeTab === 'products' && (
                     <View>
-                        {/* Pending Products Section (Owner Only) */}
-                        {isOwner && pendingProducts.length > 0 && (
-                            <View style={styles.pendingSection}>
-                                <View style={styles.sectionHeader}>
-                                    <View style={styles.pendingBadge}>
-                                        <Text style={styles.pendingBadgeText}>Pending Approval</Text>
-                                    </View>
-                                    <View style={styles.sectionLine} />
-                                </View>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pendingList}>
-                                    {pendingProducts.map((product) => (
-                                        <View key={product.uid} style={styles.pendingCardWrapper}>
-                                            <ProductCard product={product} style={styles.productCardFixed} />
-                                        </View>
-                                    ))}
-                                </ScrollView>
+                        {/* Pending Products Section merged into main list */}
+
+                        {/* Search Bar - Prominent Position */}
+                        <View style={styles.searchContainer}>
+                            <View style={styles.searchBar}>
+                                <Search size={18} color="#999" />
+                                <TextInput
+                                    style={styles.searchInput}
+                                    placeholder="Search products..."
+                                    placeholderTextColor="#999"
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                />
+                                {searchQuery.length > 0 && (
+                                    <Pressable onPress={() => setSearchQuery('')} hitSlop={10}>
+                                        <X size={18} color="#999" />
+                                    </Pressable>
+                                )}
                             </View>
-                        )}
+                        </View>
 
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>Shop Collection</Text>
@@ -271,18 +384,15 @@ export default function SellerProfile() {
                         </View>
 
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterContent}>
-                            <Pressable style={[styles.filterChip, styles.filterChipActive]}>
-                                <Text style={[styles.filterText, styles.filterTextActive]}>All</Text>
-                            </Pressable>
-                            <Pressable style={styles.filterChip}>
-                                <Text style={styles.filterText}>Newest</Text>
-                            </Pressable>
-                            <Pressable style={styles.filterChip}>
-                                <Text style={styles.filterText}>Price: Low to High</Text>
-                            </Pressable>
-                            <Pressable style={styles.filterChip}>
-                                <Text style={styles.filterText}>Handcrafted</Text>
-                            </Pressable>
+                            {(['All', 'Newest', 'Price: Low to High', 'Handcrafted'] as FilterType[]).map((filter) => (
+                                <Pressable
+                                    key={filter}
+                                    style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
+                                    onPress={() => setActiveFilter(filter)}
+                                >
+                                    <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
+                                </Pressable>
+                            ))}
                         </ScrollView>
                     </View>
                 )}
@@ -293,8 +403,39 @@ export default function SellerProfile() {
     const renderAboutSection = () => (
         <View style={[styles.aboutContainer, isDesktop && styles.aboutContainerDesktop]}>
             <View style={styles.aboutCard}>
-                <Text style={styles.aboutTitle}>About the Artisan</Text>
-                <Text style={styles.aboutText}>{seller.description || "No description available."}</Text>
+                <View style={styles.aboutHeaderRow}>
+                    <Text style={styles.aboutTitle}>About the Artisan</Text>
+                    {isOwner && (
+                        <Pressable onPress={async () => {
+                            if (isEditingAbout) {
+                                try {
+                                    // Save logic using apiClient
+                                    await apiClient.put(`/sellers/${seller.uid}`, { description: aboutText });
+
+                                    setSeller({ ...seller, description: aboutText });
+                                } catch (err) {
+                                    console.error(err);
+                                    alert("Failed to save description");
+                                }
+                            }
+                            setIsEditingAbout(!isEditingAbout);
+                        }} style={styles.editAboutButton}>
+                            {isEditingAbout ? <Save size={18} color="#B36979" /> : <Edit2 size={18} color="#999" />}
+                        </Pressable>
+                    )}
+                </View>
+
+                {isEditingAbout ? (
+                    <TextInput
+                        style={styles.aboutInput}
+                        multiline
+                        value={aboutText}
+                        onChangeText={setAboutText}
+                        placeholder="Tell your story..."
+                    />
+                ) : (
+                    <Text style={styles.aboutText}>{seller.description || "No description available."}</Text>
+                )}
 
                 <View style={styles.divider} />
 
@@ -340,12 +481,34 @@ export default function SellerProfile() {
     const renderItem: ListRenderItem<any> = ({ item }) => {
         if (activeTab === 'products') {
             return (
-                <View style={[
-                    styles.productWrapper,
-                    isDesktop ? styles.productWrapperDesktop : styles.productWrapperMobile
-                ]}>
-                    <ProductCard product={item} />
-                </View>
+                <Animated.View
+                    layout={LinearTransition.springify().damping(15)}
+                    style={[
+                        styles.productWrapper,
+                        isDesktop ? styles.productWrapperDesktop : styles.productWrapperMobile
+                    ]}
+                >
+                    <ProductCard
+                        product={item}
+                        style={{ marginBottom: 0 }}
+                        isPinned={seller?.pinnedProductIds?.includes(item.uid)}
+                        onPinPress={isOwner ? () => {
+                            const currentPinned = seller.pinnedProductIds || [];
+                            const newPinned = currentPinned.includes(item.uid)
+                                ? currentPinned.filter(id => id !== item.uid)
+                                : [...currentPinned, item.uid];
+                            setSeller({ ...seller, pinnedProductIds: newPinned });
+                        } : undefined}
+                    />
+
+                    {/* Pinned Badge for Visitors (and Owner) */}
+                    {seller?.pinnedProductIds?.includes(item.uid) && (
+                        <View style={styles.pinnedBadge}>
+                            <Pin size={10} color="white" fill="white" />
+                            <Text style={styles.pinnedBadgeText}>Pinned</Text>
+                        </View>
+                    )}
+                </Animated.View>
             );
         } else if (activeTab === 'about') {
             return renderAboutSection();
@@ -359,12 +522,12 @@ export default function SellerProfile() {
         <View style={styles.container}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <FlatList
+            <Animated.FlatList
                 data={loadTabContent()}
                 keyExtractor={(item, index) => item.uid ? String(item.uid) : `item-${index}`}
                 renderItem={renderItem}
                 ListHeaderComponent={renderHeader}
-                numColumns={activeTab === 'products' ? (isDesktop ? 3 : 2) : 1}
+                numColumns={activeTab === 'products' ? (isDesktop ? 4 : 2) : 1}
                 key={activeTab === 'products' ? (isDesktop ? 'desktop-grid' : 'mobile-grid') : 'single-col'}
                 columnWrapperStyle={activeTab === 'products' ? [
                     styles.productList,
@@ -384,7 +547,54 @@ export default function SellerProfile() {
                     ) : null
                 }
             />
-        </View>
+
+            {/* Profile Customization Modal */}
+            <Modal
+                visible={showProfileModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowProfileModal(false)}
+            >
+                <Pressable
+                    style={styles.modalOverlay}
+                    onPress={() => setShowProfileModal(false)}
+                >
+                    <View style={styles.modalContent}>
+                        <Pressable style={styles.modalCloseButton} onPress={() => setShowProfileModal(false)}>
+                            <Text style={styles.modalCloseText}>✕</Text>
+                        </Pressable>
+
+                        <Text style={styles.modalTitle}>Customize Profile</Text>
+
+                        <View style={styles.modalImageWrapper}>
+                            {seller?.logo ? (
+                                <Image source={{ uri: seller.logo }} style={styles.modalImage} />
+                            ) : (
+                                <View style={[styles.modalImage, styles.logoPlaceholder]}>
+                                    <Text style={[styles.logoInitials, { fontSize: 48 }]}>
+                                        {seller?.name.charAt(0)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        <Pressable style={styles.uploadButton} onPress={() => handlePickImage('logo')}>
+                            {uploadingImage && targetImageField === 'logo' ? <ActivityIndicator size="small" color="white" /> : <Camera size={20} color="white" />}
+                            <Text style={styles.uploadButtonText}>Upload New Photo</Text>
+                        </Pressable>
+                    </View>
+                </Pressable>
+            </Modal>
+
+            {/* Image Cropper Modal */}
+            <ImageCropperModal
+                visible={showCropper}
+                imageUri={cropImageUri}
+                onCrop={handleCropComplete}
+                onSkip={() => setShowCropper(false)}
+                onCancel={() => setShowCropper(false)}
+            />
+        </View >
     );
 }
 
@@ -485,11 +695,6 @@ const styles = StyleSheet.create({
     logoWrapper: {
         marginTop: -50, // Pull logo up
         marginBottom: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 5,
         position: 'relative',
     },
     verificationBadge: {
@@ -700,18 +905,14 @@ const styles = StyleSheet.create({
 
     // Product List & Grid
     productWrapper: {
-        padding: 4, // Space between grid items
-        height: 380, // Fixed height for uniformity
+        padding: 2, // Space between grid items
     },
-    productCardFixed: {
-        flex: 1,
-        marginBottom: 0,
-    },
+
     productWrapperMobile: {
         width: '50%',
     },
     productWrapperDesktop: {
-        width: '33.33%',
+        width: '25%',
     },
     productList: {
         justifyContent: 'flex-start', // Prevent spreading to edges for incomplete rows
@@ -848,31 +1049,215 @@ const styles = StyleSheet.create({
         color: 'white',
     },
 
-    // Pending Section
-    pendingSection: {
-        marginBottom: 32,
-    },
-    pendingBadge: {
-        backgroundColor: '#FFF4E5',
+
+    // Editing Controls
+    editBannerButton: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: 'rgba(0,0,0,0.5)',
         paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#FFB74D',
+        paddingVertical: 8,
+        borderRadius: 20,
+        zIndex: 20,
     },
-    pendingBadgeText: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#F57C00',
+    editButtonText: {
+        color: 'white',
+        fontWeight: '600',
+        fontSize: 12,
         fontFamily: 'Quicksand',
     },
-    pendingList: {
-        paddingRight: 20,
-        gap: 16,
-        paddingTop: 10,
+    editLogoButton: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: '#B36979',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'white',
+        zIndex: 5,
     },
-    pendingCardWrapper: {
-        width: 200,
-        height: 380, // Fixed height to match grid
+
+    // Pinning
+    pinButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
+        zIndex: 20,
+    },
+    pinButtonActive: {
+        backgroundColor: '#B36979',
+    },
+    pinnedBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#B36979',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        zIndex: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 3,
+    },
+    pinnedBadgeText: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
+
+    // New Profile Styles
+    centeredCameraIcon: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        borderRadius: 30,
+    },
+
+    // About Edit Styles
+    aboutHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    editAboutButton: {
+        padding: 8,
+    },
+    aboutInput: {
+        fontSize: 15,
+        color: '#333',
+        lineHeight: 24,
+        fontFamily: 'Quicksand',
+        borderWidth: 1,
+        borderColor: '#DDD',
+        borderRadius: 12,
+        padding: 12,
+        minHeight: 100,
+        textAlignVertical: 'top',
+        backgroundColor: '#FAFAFA',
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        borderRadius: 24,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+        elevation: 10,
+        position: 'relative',
+    },
+    modalCloseButton: {
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        padding: 8,
+    },
+    modalCloseText: {
+        fontSize: 20,
+        color: '#999',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+        marginBottom: 24,
+        fontFamily: 'Quicksand',
+    },
+    modalImageWrapper: {
+        marginBottom: 24,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    modalImage: {
+        width: 150,
+        height: 150,
+        borderRadius: 50, // Squircle
+        borderWidth: 4,
+        borderColor: 'white',
+    },
+    uploadButton: {
+        backgroundColor: '#B36979',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 30,
+        width: '100%',
+        justifyContent: 'center',
+    },
+    uploadButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
+        fontFamily: 'Quicksand',
+    },
+    searchContainer: {
+        paddingHorizontal: 16,
+        marginBottom: 16,
+        marginTop: 8,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f0f0',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        height: 44,
+        gap: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#333',
+        height: '100%',
+        borderWidth: 0,
+        outlineStyle: 'none' as any,
     },
 });

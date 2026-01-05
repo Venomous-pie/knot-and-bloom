@@ -2,7 +2,7 @@ import { Product } from "@/types/products";
 import { findLowestPrice } from "@/utils/pricing";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, RelativePathString, router } from "expo-router";
-import { Star } from "lucide-react-native";
+import { Pin, Star } from "lucide-react-native";
 import React, { useState } from "react";
 import {
     Image,
@@ -21,6 +21,8 @@ interface ProductCardProps {
     onPress?: () => void;
     onWishlistToggle?: (productId: number, isWishlisted: boolean) => void;
     isWishlisted?: boolean;
+    onPinPress?: () => void;
+    isPinned?: boolean;
     style?: StyleProp<ViewStyle>;
 }
 
@@ -41,6 +43,8 @@ export default function ProductCard({
     onPress,
     onWishlistToggle,
     isWishlisted: externalWishlisted,
+    onPinPress,
+    isPinned,
     style,
 }: ProductCardProps) {
     const { width } = useWindowDimensions();
@@ -108,18 +112,45 @@ export default function ProductCard({
                         </View>
                     )}
 
-                    {/* Discount Badge */}
-                    {hasDiscount && (
+                    {/* Pending Badge */}
+                    {product.status === 'PENDING' && (
+                        <View style={[styles.discountBadge, { backgroundColor: '#FFA000', zIndex: 10 }]}>
+                            <Text style={styles.discountBadgeText}>Pending</Text>
+                        </View>
+                    )}
+
+                    {/* Discount Badge - Only if not pending, or stack? Let's hide discount if pending to avoid clutter, or show below */}
+                    {hasDiscount && product.status !== 'PENDING' && (
                         <View style={styles.discountBadge}>
                             <Text style={styles.discountBadgeText}>-{Math.round(discountPct)}%</Text>
                         </View>
                     )}
 
+                    {/* Pin Button (Custom Action) */}
+                    {onPinPress && (
+                        <Pressable
+                            style={({ pressed }) => [
+                                styles.actionButton,
+                                { right: 50 }, // Position to the left of wishlist
+                                pressed && styles.actionButtonPressed,
+                                isPinned && styles.actionButtonActive
+                            ]}
+                            onPress={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onPinPress();
+                            }}
+                        >
+                            <Pin size={16} fill={isPinned ? "white" : "none"} color={isPinned ? "white" : "#666"} />
+                        </Pressable>
+                    )}
+
                     {/* Wishlist Button (Presaved from old card) */}
                     <Pressable
                         style={({ pressed }) => [
-                            styles.wishlistButton,
-                            pressed && styles.wishlistButtonPressed,
+                            styles.actionButton,
+                            styles.wishlistButtonPosition, // right: 12
+                            pressed && styles.actionButtonPressed,
                         ]}
                         onPress={(e) => {
                             e.preventDefault();
@@ -286,10 +317,9 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "700",
     },
-    wishlistButton: {
+    actionButton: {
         position: "absolute",
         top: 12,
-        right: 12,
         width: 30,
         height: 30,
         borderRadius: 15,
@@ -302,8 +332,14 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
     },
-    wishlistButtonPressed: {
+    wishlistButtonPosition: {
+        right: 12,
+    },
+    actionButtonPressed: {
         opacity: 0.8,
+    },
+    actionButtonActive: {
+        backgroundColor: COLORS.primary,
     },
     productInfo: {
         padding: 16,

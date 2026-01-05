@@ -1,5 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
+import { MapPin, Briefcase, Gift, Package, Home, Trash2, Edit2, Star } from 'lucide-react-native';
 
 export interface Address {
     uid: number;
@@ -28,12 +30,12 @@ interface AddressCardProps {
     selectable?: boolean;
 }
 
-const LABEL_ICONS: Record<string, string> = {
-    'Home': '🏠',
-    'Work': '💼',
-    'Office': '💼',
-    'Gift': '🎁',
-    'PO Box': '📦',
+const getLabelIcon = (label?: string | null) => {
+    const l = label?.toLowerCase() || '';
+    if (l.includes('home')) return <Home size={16} color={theme.colors.primary} />;
+    if (l.includes('work') || l.includes('office')) return <Briefcase size={16} color={theme.colors.primary} />;
+    if (l.includes('gift')) return <Gift size={16} color={theme.colors.primary} />;
+    return <MapPin size={16} color={theme.colors.primary} />;
 };
 
 export const AddressCard: React.FC<AddressCardProps> = ({
@@ -46,8 +48,6 @@ export const AddressCard: React.FC<AddressCardProps> = ({
     showActions = true,
     selectable = false,
 }) => {
-    const labelIcon = address.label ? LABEL_ICONS[address.label] || '📍' : '📍';
-
     const formatPhone = (phone: string) => {
         // Format PH phone: 09171234567 -> (0917) 123-4567
         if (phone.startsWith('+63')) {
@@ -72,11 +72,15 @@ export const AddressCard: React.FC<AddressCardProps> = ({
             {/* Header with label and default badge */}
             <View style={styles.header}>
                 <View style={styles.labelContainer}>
-                    <Text style={styles.labelIcon}>{labelIcon}</Text>
-                    <Text style={styles.label}>{address.label || 'Address'}</Text>
+                    <View style={styles.iconContainer}>
+                        {getLabelIcon(address.label)}
+                    </View>
+                    <Text style={[styles.label, isSelected && styles.labelSelected]}>
+                        {address.label || 'Address'}
+                    </Text>
                     {address.isDefault && (
                         <View style={styles.defaultBadge}>
-                            <Text style={styles.defaultBadgeText}>DEFAULT</Text>
+                            <Text style={styles.defaultBadgeText}>Default</Text>
                         </View>
                     )}
                 </View>
@@ -106,16 +110,19 @@ export const AddressCard: React.FC<AddressCardProps> = ({
                 <View style={styles.actions}>
                     {onEdit && (
                         <Pressable style={styles.actionButton} onPress={onEdit}>
+                            <Edit2 size={14} color={theme.colors.textSecondary} />
                             <Text style={styles.actionText}>Edit</Text>
                         </Pressable>
                     )}
                     {onDelete && (
                         <Pressable style={styles.actionButton} onPress={onDelete}>
+                            <Trash2 size={14} color={theme.colors.error} />
                             <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
                         </Pressable>
                     )}
                     {!address.isDefault && onSetDefault && (
                         <Pressable style={styles.actionButton} onPress={onSetDefault}>
+                            <Star size={14} color={theme.colors.textSecondary} />
                             <Text style={styles.actionText}>Set Default</Text>
                         </Pressable>
                     )}
@@ -127,106 +134,124 @@ export const AddressCard: React.FC<AddressCardProps> = ({
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
         borderWidth: 1,
-        borderColor: '#e5e5e5',
-        marginBottom: 12,
+        borderColor: theme.colors.border,
+        marginBottom: theme.spacing.sm,
+        ...theme.shadows.sm,
     },
     cardSelected: {
-        borderColor: '#7c3aed',
+        borderColor: theme.colors.primary,
         borderWidth: 2,
-        backgroundColor: '#faf5ff',
+        backgroundColor: theme.colors.primaryLight + '20', // Very light pink tint
     },
     cardSelectable: {
-        cursor: 'pointer',
+
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: theme.spacing.sm,
     },
     labelContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: theme.spacing.xs,
     },
-    labelIcon: {
-        fontSize: 16,
+    iconContainer: {
+        padding: 4,
+        backgroundColor: theme.colors.primaryLight,
+        borderRadius: theme.borderRadius.full,
     },
     label: {
-        fontSize: 14,
+        fontSize: theme.typography.sizes.sm,
         fontWeight: '600',
-        color: '#374151',
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    labelSelected: {
+        color: theme.colors.primary,
     },
     defaultBadge: {
-        backgroundColor: '#7c3aed',
-        paddingHorizontal: 8,
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: theme.spacing.sm,
         paddingVertical: 2,
-        borderRadius: 4,
-        marginLeft: 8,
+        borderRadius: theme.borderRadius.full,
+        marginLeft: theme.spacing.xs,
     },
     defaultBadgeText: {
-        color: '#fff',
+        color: theme.colors.primaryText,
         fontSize: 10,
         fontWeight: '700',
+        fontFamily: theme.typography.fontFamily,
     },
     radio: {
         width: 20,
         height: 20,
         borderRadius: 10,
         borderWidth: 2,
-        borderColor: '#d1d5db',
+        borderColor: theme.colors.border,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: theme.colors.surface,
     },
     radioSelected: {
-        borderColor: '#7c3aed',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
     },
     radioInner: {
         width: 10,
         height: 10,
         borderRadius: 5,
-        backgroundColor: '#7c3aed',
+        backgroundColor: theme.colors.primary,
     },
     details: {
-        marginBottom: 12,
+        marginBottom: theme.spacing.md,
+        paddingLeft: 4, // Indent slightly to align with label text not icon
     },
     name: {
-        fontSize: 15,
+        fontSize: theme.typography.sizes.base,
         fontWeight: '600',
-        color: '#111827',
-        marginBottom: 4,
+        color: theme.colors.text,
+        marginBottom: 2,
+        fontFamily: theme.typography.fontFamily,
     },
     addressLine: {
-        fontSize: 14,
-        color: '#6b7280',
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
         lineHeight: 20,
+        fontFamily: theme.typography.fontFamily,
     },
     phone: {
-        fontSize: 14,
-        color: '#6b7280',
-        marginTop: 8,
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
+        marginTop: theme.spacing.xs,
+        fontFamily: theme.typography.fontFamily,
     },
     actions: {
         flexDirection: 'row',
-        gap: 16,
+        gap: theme.spacing.md,
         borderTopWidth: 1,
-        borderTopColor: '#f3f4f6',
-        paddingTop: 12,
+        borderTopColor: theme.colors.subtle,
+        paddingTop: theme.spacing.sm,
     },
     actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingVertical: 4,
+        gap: 4,
     },
     actionText: {
-        fontSize: 13,
-        color: '#7c3aed',
+        fontSize: theme.typography.sizes.xs,
+        color: theme.colors.textSecondary,
         fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
     },
     deleteText: {
-        color: '#ef4444',
+        color: theme.colors.error,
     },
 });
 

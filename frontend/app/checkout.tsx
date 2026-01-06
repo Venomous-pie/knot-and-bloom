@@ -169,17 +169,16 @@ function CheckoutContent() {
             return;
         }
 
-        // 1. Set Shipping Info in Context (if not already synced)
-        // Ideally context uses ID, or we pass object. 
-        // Based on previous refactor, setShippingInfo takes an object.
-        setShippingInfo({
+        // 1. Set Shipping Info
+        const shippingData = {
             fullName: selectedAddress.fullName,
             address: selectedAddress.streetAddress, // simplified mapping
             city: selectedAddress.city,
             postalCode: selectedAddress.postalCode,
             phone: selectedAddress.phone,
             notes: deliveryNotes,
-        });
+        };
+        setShippingInfo(shippingData);
 
         // 2. Process Payment
         // This will internally trigger 'validateAndProceedToPayment' equivalent if needed,
@@ -215,7 +214,7 @@ function CheckoutContent() {
             const result = await processPayment(backendPaymentMethod);
             if (result) {
                 // If payment successful (returns paymentId), complete the order
-                const success = await completeCheckout(result);
+                const success = await completeCheckout(result, shippingData);
                 if (success) {
                     router.replace('/checkout/success' as any);
                 }

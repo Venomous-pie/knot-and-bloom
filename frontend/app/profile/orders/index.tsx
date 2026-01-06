@@ -42,13 +42,17 @@ const parseProducts = (jsonString: string): ProductItem[] => {
     try {
         const items = JSON.parse(jsonString);
         if (Array.isArray(items)) {
-            return items.map(item => ({
-                name: item.name || 'Product',
-                quantity: item.quantity || 1,
-                price: item.price || 0,
-                image: item.image || null,
-                variant: item.variant || null
-            }));
+            return items.map(item => {
+                // Handle nested product object (item.product.name) or direct fields (item.name)
+                const productData = item.product || item;
+                return {
+                    name: productData.name || 'Product',
+                    quantity: item.quantity || 1,
+                    price: item.unitPrice || item.finalPrice || item.price || productData.discountedPrice || productData.basePrice || 0,
+                    image: productData.image || item.image || null,
+                    variant: item.variant || null
+                };
+            });
         }
     } catch (e) {
         console.error('Failed to parse products JSON', e);
@@ -56,18 +60,8 @@ const parseProducts = (jsonString: string): ProductItem[] => {
     return [];
 };
 
-/* Get product summary text with quantities */
-const getProductSummaryText = (products: ProductItem[]): string => {
-    if (products.length === 0) return 'Order Items';
 
-    const firstItem = products[0];
-    const firstItemText = `${firstItem.name}${firstItem.quantity > 1 ? ` × ${firstItem.quantity}` : ''}`;
 
-    if (products.length === 1) return firstItemText;
-
-    const remainingCount = products.length - 1;
-    return `${firstItemText} + ${remainingCount} more`;
-};
 
 /* Get total item count */
 const getTotalItemCount = (products: ProductItem[]): number => {
@@ -86,6 +80,7 @@ interface OrderSummary {
     courierName?: string;
     estimatedCompletionDate?: string;
     estimatedDeliveryDate?: string;
+    paymentStatus?: string;
 }
 
 type TabKey = 'all' | 'to_pay' | 'to_ship' | 'to_receive' | 'completed' | 'cancelled' | 'return_refund';
@@ -348,41 +343,47 @@ export default function OrderHistoryPage() {
             </View>
 
             {/* Status Filter Tabs */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.tabsContainer}
-                contentContainerStyle={[styles.tabsContent, { flexGrow: 1, justifyContent: 'center' }]}
-            >
-                {TABS.map((tab) => {
-                    const count = getTabCount(tab.key);
-                    const isActive = activeTab === tab.key;
-                    return (
-                        <Pressable
-                            key={tab.key}
-                            style={[styles.tab, isActive && styles.tabActive]}
-                            onPress={() => setActiveTab(tab.key)}
-                        >
-                            <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                                {tab.label}
-                            </Text>
-                            {count > 0 && (
-                                <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-                                    <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
-                                        {count}
-                                    </Text>
-                                </View>
-                            )}
-                        </Pressable>
-                    );
-                })}
-            </ScrollView>
+            <View style={styles.tabsWrapper}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.tabsContainer}
+                    contentContainerStyle={[styles.tabsContent, { flexGrow: 1, justifyContent: 'center' }]}
+                >
+                    {TABS.map((tab) => {
+                        const count = getTabCount(tab.key);
+                        const isActive = activeTab === tab.key;
+                        return (
+                            <Pressable
+                                key={tab.key}
+                                style={[styles.tab, isActive && styles.tabActive]}
+                                onPress={() => setActiveTab(tab.key)}
+                            >
+                                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                                    {tab.label}
+                                </Text>
+                                {count > 0 && (
+                                    <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                                        <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                                            {count}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                        );
+                    })}
+                </ScrollView>
+            </View>
 
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 {filteredOrders.length === 0 ? (
                     <View style={styles.emptyState}>
                         <Package size={64} color="#ddd" />
-                        <Text style={styles.emptyTitle}>No orders found.</Text>
+                        <Text style={styles.emptyTitle}>
+                            {activeTab === 'all'
+                                ? "No orders found."
+                                : `No orders in ${TABS.find(t => t.key === activeTab)?.label || 'this category'}`}
+                        </Text>
                         {activeTab !== 'all' && (
                             <Pressable onPress={() => setActiveTab('all')}>
                                 <Text style={styles.viewAllLink}>View all orders</Text>
@@ -402,7 +403,7 @@ export default function OrderHistoryPage() {
                         {filteredOrders.map((order) => {
                             const products = parseProducts(order.products);
                             const totalItems = getTotalItemCount(products);
-                            const productSummary = getProductSummaryText(products);
+
 
                             return (
                                 <Pressable
@@ -434,7 +435,17 @@ export default function OrderHistoryPage() {
                                         {renderProductThumbnails(products)}
                                         <View style={styles.productInfo}>
                                             <Text style={styles.productText} numberOfLines={2}>
-                                                {productSummary}
+                                                {products.length > 0 ? (
+                                                    <>
+                                                        {products[0].name}
+                                                        {products[0].quantity > 1 && (
+                                                            <Text style={{ color: '#888' }}> × {products[0].quantity}</Text>
+                                                        )}
+                                                        {products.length > 1 && ` + ${products.length - 1} more`}
+                                                    </>
+                                                ) : (
+                                                    'Order Items'
+                                                )}
                                             </Text>
                                             <Text style={styles.itemCount}>
                                                 {totalItems} {totalItems === 1 ? 'item' : 'items'}
@@ -479,9 +490,11 @@ export default function OrderHistoryPage() {
                                     {/* Footer with Total and Actions */}
                                     <View style={styles.footer}>
                                         <View style={styles.totalSection}>
-                                            <Text style={styles.totalLabel}>Total:</Text>
+                                            <Text style={styles.totalLabel}>
+                                                {order.paymentStatus === 'PARTIALLY_PAID' ? 'Balance:' : 'Total:'}
+                                            </Text>
                                             <Text style={styles.totalPrice}>
-                                                ₱{Number(order.total || 0).toFixed(2)}
+                                                ₱{((Number(order.total || 0) + 60) * (order.paymentStatus === 'PARTIALLY_PAID' ? 0.8 : 1)).toFixed(2)}
                                             </Text>
                                         </View>
                                         {renderQuickActions(order)}
@@ -526,10 +539,15 @@ const styles = StyleSheet.create({
         color: '#333',
         fontFamily: 'Quicksand',
     },
-    tabsContainer: {
-        maxHeight: 50,
+    tabsWrapper: {
+        width: '100%',
+        maxWidth: 800,
+        alignSelf: 'center',
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
+    },
+    tabsContainer: {
+        maxHeight: 50,
     },
     tabsContent: {
         paddingHorizontal: 16,
@@ -549,10 +567,10 @@ const styles = StyleSheet.create({
     tabText: {
         fontSize: 14,
         color: '#666',
+        fontFamily: 'Quicksand',
     },
     tabTextActive: {
         color: '#C88EA7',
-        fontWeight: '700',
         fontFamily: 'Quicksand',
     },
     tabBadge: {
@@ -578,6 +596,7 @@ const styles = StyleSheet.create({
         maxWidth: 800,
         alignSelf: 'center',
         width: '100%',
+        minHeight: 600,
     },
     emptyState: {
         alignItems: 'center',

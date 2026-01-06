@@ -254,6 +254,10 @@ export default function OrderDetailsPage() {
 
     const canExtend = (order.status === 'SHIPPED' || order.status === 'DELIVERED') && order.autoConfirmAt;
 
+    const shippingFee = 60.00;
+    const subtotal = parseFloat(order.total);
+    const totalAmount = subtotal + shippingFee;
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -417,7 +421,7 @@ export default function OrderDetailsPage() {
                                             <Text style={styles.quantityText}>Qty: {item.quantity}</Text>
                                         </View>
                                         <Text style={styles.itemPrice}>
-                                            ₱{parseFloat(String(price)).toFixed(2)}
+                                            ₱{parseFloat(String(price)).toFixed(2)} x {item.quantity}
                                         </Text>
                                     </View>
                                 </Pressable>
@@ -430,16 +434,28 @@ export default function OrderDetailsPage() {
                     <Text style={styles.sectionTitle}>Order Summary</Text>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Subtotal</Text>
-                        <Text style={styles.summaryValue}>₱{parseFloat(order.total).toFixed(2)}</Text>
+                        <Text style={styles.summaryValue}>₱{subtotal.toFixed(2)}</Text>
                     </View>
                     <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Shipping</Text>
-                        <Text style={styles.summaryValue}>Free</Text>
+                        <Text style={styles.summaryLabel}>Shipping Fee</Text>
+                        <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
                     </View>
                     <View style={[styles.summaryRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                        <Text style={styles.totalLabel}>Total</Text>
-                        <Text style={styles.totalValue}>₱{parseFloat(order.total).toFixed(2)}</Text>
+                        <Text style={styles.totalLabel}>Order Total</Text>
+                        <Text style={styles.totalValue}>₱{totalAmount.toFixed(2)}</Text>
                     </View>
+                    {order.paymentStatus === 'PARTIALLY_PAID' && (
+                        <>
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, { color: '#059669' }]}>Less: Deposit Paid (20%)</Text>
+                                <Text style={[styles.summaryValue, { color: '#059669' }]}>-₱{(totalAmount * 0.20).toFixed(2)}</Text>
+                            </View>
+                            <View style={[styles.summaryRow, { marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#eee' }]}>
+                                <Text style={[styles.totalLabel, { color: '#B45309' }]}>Balance Due</Text>
+                                <Text style={[styles.totalValue, { color: '#B45309' }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
+                            </View>
+                        </>
+                    )}
 
                     {/* Payment Status Info */}
                     <View style={{ marginTop: 12, backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8 }}>
@@ -449,26 +465,13 @@ export default function OrderDetailsPage() {
                         </View>
                         <View style={[styles.summaryRow, { marginBottom: 0 }]}>
                             <Text style={styles.summaryLabel}>Status:</Text>
-                            <Text style={[styles.summaryValue, { color: order.paymentStatus === 'PARTIALLY_PAID' ? '#F59E0B' : '#059669' }]}>
+                            <Text style={[styles.summaryValue, { color: order.paymentStatus === 'PARTIALLY_PAID' ? '#B36979' : '#059669' }]}>
                                 {order.paymentStatus?.replace(/_/g, ' ') || 'PENDING'}
                             </Text>
                         </View>
                     </View>
 
-                    {/* Split Breakdown for COD */}
-                    {order.paymentStatus === 'PARTIALLY_PAID' && (
-                        <View style={{ marginTop: 8, padding: 12, backgroundColor: '#F0F9FF', borderRadius: 8, borderWidth: 1, borderColor: '#BAE6FD' }}>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#0369A1', marginBottom: 8 }}>Payment Plan (COD 20% Deposit)</Text>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Deposited (20%):</Text>
-                                <Text style={[styles.summaryValue, { color: '#059669' }]}>₱{(parseFloat(order.total) * 0.20).toFixed(2)}</Text>
-                            </View>
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Due on Delivery (80%):</Text>
-                                <Text style={[styles.summaryValue, { color: '#B91C1C', fontWeight: 'bold' }]}>₱{(parseFloat(order.total) * 0.80).toFixed(2)}</Text>
-                            </View>
-                        </View>
-                    )}
+
                 </View>
 
                 <View style={styles.section}>
@@ -488,10 +491,12 @@ export default function OrderDetailsPage() {
                     ) : (
                         <>
                             <Text style={styles.addressText}>{user?.name}</Text>
-                            <Text style={styles.addressText}>{user?.address || 'No address provided'}</Text>
+                            <Text style={styles.addressText}>{user?.address || 'Address not recorded'}</Text>
                             <Text style={styles.addressText}>{user?.phone}</Text>
                             <Text style={styles.addressText}>{user?.email}</Text>
-                            <Text style={{ fontSize: 12, color: '#999', marginTop: 4, fontStyle: 'italic' }}>(Current Profile Address)</Text>
+                            <Text style={{ fontSize: 12, color: '#999', marginTop: 4, fontStyle: 'italic' }}>
+                                {user?.address ? '(Current Profile Address)' : '(Shipping address unavailable)'}
+                            </Text>
                         </>
                     )}
                 </View>
@@ -563,8 +568,16 @@ export default function OrderDetailsPage() {
                                 <Text style={styles.receiptValue}>{new Date(order.uploaded).toLocaleDateString()}</Text>
                             </View>
                             <View style={styles.receiptLine}>
+                                <Text style={styles.receiptLabel}>Subtotal:</Text>
+                                <Text style={styles.receiptValue}>₱{subtotal.toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.receiptLine}>
+                                <Text style={styles.receiptLabel}>Shipping:</Text>
+                                <Text style={styles.receiptValue}>₱{shippingFee.toFixed(2)}</Text>
+                            </View>
+                            <View style={styles.receiptLine}>
                                 <Text style={styles.receiptLabel}>Total:</Text>
-                                <Text style={styles.receiptValue}>₱{parseFloat(order.total).toFixed(2)}</Text>
+                                <Text style={styles.receiptValue}>₱{totalAmount.toFixed(2)}</Text>
                             </View>
 
                             {/* Proof Photos */}

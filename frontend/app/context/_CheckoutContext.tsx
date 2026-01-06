@@ -46,7 +46,7 @@ interface CheckoutContextType extends CheckoutState {
     setShippingInfo: (info: ShippingInfo) => void;
     validateAndProceedToPayment: () => Promise<boolean>;
     processPayment: (paymentMethod: string) => Promise<number | null>;
-    completeCheckout: (paymentIdOverride?: number) => Promise<boolean>;
+    completeCheckout: (paymentIdOverride?: number, shippingInfoOverride?: ShippingInfo) => Promise<boolean>;
     cancelCheckout: () => Promise<void>;
     setStep: (step: CheckoutStep) => void;
     clearError: () => void;
@@ -272,8 +272,9 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [state.sessionId, paymentIdempotencyKey]);
 
-    const completeCheckout = useCallback(async (paymentIdOverride?: number): Promise<boolean> => {
+    const completeCheckout = useCallback(async (paymentIdOverride?: number, shippingInfoOverride?: ShippingInfo): Promise<boolean> => {
         const paymentIdToUse = paymentIdOverride ?? state.paymentId;
+        const shippingInfoToUse = shippingInfoOverride ?? state.shippingInfo;
 
         if (!state.sessionId || !paymentIdToUse) {
             setState(prev => ({ ...prev, error: 'Missing session or payment information' }));
@@ -288,7 +289,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 error: null,
             }));
 
-            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse, undefined, state.shippingInfo);
+            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse, undefined, shippingInfoToUse);
             const data = response.data;
 
             if (data.success && (data.orderId || data.orderIds)) {
@@ -318,7 +319,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
             }));
             return false;
         }
-    }, [state.sessionId, state.paymentId]);
+    }, [state.sessionId, state.paymentId, state.shippingInfo]);
 
     const cancelCheckout = useCallback(async () => {
         if (state.sessionId) {

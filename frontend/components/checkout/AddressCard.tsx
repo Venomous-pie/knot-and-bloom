@@ -10,7 +10,10 @@ export interface Address {
     phone: string;
     streetAddress: string;
     aptSuite?: string | null;
+    region?: string | null;
+    province?: string | null;
     city: string;
+    barangay?: string | null;
     stateProvince?: string | null;
     postalCode: string;
     country: string;
@@ -99,7 +102,7 @@ export const AddressCard: React.FC<AddressCardProps> = ({
                     <Text style={styles.addressLine}>{address.aptSuite}</Text>
                 )}
                 <Text style={styles.addressLine}>
-                    {address.city}{address.stateProvince ? `, ${address.stateProvince}` : ''} {address.postalCode}
+                    {address.barangay ? `${address.barangay}, ` : ''}{address.city}{address.province || address.stateProvince ? `, ${address.province || address.stateProvince}` : ''} {address.postalCode}
                 </Text>
                 <Text style={styles.addressLine}>{address.country}</Text>
                 <Text style={styles.phone}>{formatPhone(address.phone)}</Text>

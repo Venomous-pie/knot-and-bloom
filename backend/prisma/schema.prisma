@@ -290,6 +290,9 @@ model Address {
   streetAddress String
   aptSuite      String?
   city          String
+  region        String?
+  province      String?
+  barangay      String?
   stateProvince String?
   postalCode    String
   country       String   @default("Philippines")

@@ -1,53 +1,77 @@
 import { cartAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
-import { Cart, CartItem } from "@/types/cart";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { CartItem as CartItemType } from "@/types/cart";
+import { router, Stack } from "expo-router";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import {
     ActivityIndicator,
-    Dimensions,
+    LayoutAnimation,
+    Alert,
     FlatList,
-    Image,
-    Pressable,
     StyleSheet,
-    Text,
-    View
+    View,
+    Platform,
+    useWindowDimensions
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { theme } from "@/constants/theme";
 
-const { width } = Dimensions.get('window');
+import { CartEmptyState } from "@/components/cart/CartEmptyState";
+import { FreeShippingProgress } from "@/components/cart/FreeShippingProgress";
+import { CartBottomBar } from "@/components/cart/CartBottomBar";
+import { CartTableHeader } from "@/components/cart/CartTableHeader";
+import { CartShopGroup } from "@/components/cart/CartShopGroup";
 
-const SimpleCheckbox = ({ checked, onChange }: { checked: boolean, onChange: () => void }) => (
-    <Pressable
-        style={[styles.checkbox, checked && styles.checkboxChecked]}
-        onPress={onChange}
-    >
-        {checked && <Text style={styles.checkmark}>✓</Text>}
-    </Pressable>
-);
+const FREE_SHIPPING_THRESHOLD = 500;
+
+interface ShopGroup {
+    sellerName: string;
+    sellerId?: number | null;
+    isOfficialShop: boolean;
+    items: CartItemType[];
+}
 
 export default function CartPage() {
     const { user } = useAuth();
     const { refreshCart } = useCart();
-    const [cart, setCart] = useState<Cart | null>(null);
-    const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 768;
+
+    const [cartItems, setCartItems] = useState<CartItemType[]>([]);
     const [loading, setLoading] = useState(true);
     const [subtotal, setSubtotal] = useState(0);
     const [totalSavings, setTotalSavings] = useState(0);
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
     const [checkoutLoading, setCheckoutLoading] = useState(false);
+    const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
+
+    // Group items by seller
+    const shopGroups: ShopGroup[] = useMemo(() => {
+        const groups: { [key: string]: ShopGroup } = {};
+        cartItems.forEach(item => {
+            const sellerName = item.product.seller?.name || 'Knot & Bloom';
+            const sellerId = item.product.sellerId;
+            if (!groups[sellerName]) {
+                groups[sellerName] = {
+                    sellerName,
+                    sellerId,
+                    isOfficialShop: sellerName === 'Knot & Bloom', // Official shop flag
+                    items: []
+                };
+            }
+            groups[sellerName].items.push(item);
+        });
+        return Object.values(groups);
+    }, [cartItems]);
 
     useEffect(() => {
-        if (user) {
-            fetchCart();
-        } else {
-            setLoading(false);
-        }
+        if (user) fetchCart();
+        else setLoading(false);
     }, [user]);
 
-    // Recalculate subtotal when selection changes (using backend priceInfo)
     useEffect(() => {
-        calculateSubtotalFromSelection();
+        calculateSubtotal();
     }, [cartItems, selectedItems]);
 
     const fetchCart = async () => {
@@ -55,495 +79,206 @@ export default function CartPage() {
             setLoading(true);
             if (!user?.uid) return;
             const response = await cartAPI.getCart(user.uid);
-            const cartData = response.data.cart;
-            console.log("🛒 Fetched Cart:", cartData.items.length, "items");
-
-            setCart(cartData);
-            setCartItems(cartData.items);
-
-            // Default select all
-            const allIds = new Set(cartData.items.map((item: CartItem) => item.uid));
-            setSelectedItems(allIds);
-
-            // Use backend-calculated totals when all items are selected
-            setSubtotal(cartData.subtotal ?? 0);
-            setTotalSavings(cartData.totalSavings ?? 0);
+            const items = response.data.cart.items || [];
+            setCartItems(items);
+            if (items.length > 0 && selectedItems.size === 0) {
+                setSelectedItems(new Set(items.map((i: CartItemType) => i.uid)));
+            }
         } catch (error) {
             console.error("Failed to fetch cart:", error);
-            if (typeof window !== 'undefined') {
-                window.alert("Error: Could not load your cart.");
-            }
         } finally {
             setLoading(false);
         }
     };
 
-    // Calculate subtotal from selected items using backend priceInfo
-    const calculateSubtotalFromSelection = () => {
-        let total = 0;
-        let savings = 0;
-
+    const calculateSubtotal = () => {
+        let total = 0, savings = 0;
         cartItems.forEach(item => {
             if (selectedItems.has(item.uid)) {
-                // Use backend-provided priceInfo if available
                 if (item.priceInfo) {
                     total += item.priceInfo.lineTotal;
                     if (item.priceInfo.hasDiscount) {
-                        const fullPrice = item.priceInfo.effectivePrice * item.quantity;
-                        savings += fullPrice - item.priceInfo.lineTotal;
+                        savings += (item.priceInfo.effectivePrice * item.quantity) - item.priceInfo.lineTotal;
                     }
                 } else {
-                    // Fallback: use product basePrice (shouldn't happen with updated backend)
-                    const price = Number(item.product.basePrice);
-                    total += price * item.quantity;
+                    total += Number(item.product.basePrice) * item.quantity;
                 }
             }
         });
-
-        setSubtotal(Math.round(total * 100) / 100);
-        setTotalSavings(Math.round(savings * 100) / 100);
+        setSubtotal(total);
+        setTotalSavings(savings);
     };
 
-    const handleQuantityChange = async (item: CartItem, change: number) => {
-        const newQuantity = item.quantity + change;
-        if (newQuantity < 1) return;
+    // Debounce timers for quantity changes
+    const quantityDebounceTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+    const pendingQuantities = useRef<Map<number, number>>(new Map());
 
+    const syncQuantityToServer = useCallback(async (itemId: number, quantity: number) => {
         try {
-            // Optimistic update
-            const updatedItems = cartItems.map(i =>
-                i.uid === item.uid ? { ...i, quantity: newQuantity } : i
-            );
-            setCartItems(updatedItems);
-
-            await cartAPI.updateCartItem(item.uid, newQuantity);
-        } catch (error) {
-            console.error("Failed to update quantity:", error);
-            // Revert on failure
-            fetchCart();
+            await cartAPI.updateCartItem(itemId, quantity);
+            // Silently refresh price info in the background
+            const response = await cartAPI.getCart(user!.uid);
+            const updated = response.data.cart.items.find((i: CartItemType) => i.uid === itemId);
+            if (updated) {
+                setCartItems(prev => prev.map(i => i.uid === itemId ? { ...i, priceInfo: updated.priceInfo } : i));
+            }
+        } catch {
+            // Revert to server state on error
+            const response = await cartAPI.getCart(user!.uid);
+            setCartItems(response.data.cart.items || []);
+            Alert.alert("Error", "Failed to update quantity");
+        } finally {
+            pendingQuantities.current.delete(itemId);
         }
-    };
+    }, [user]);
+
+    const handleQuantityChange = useCallback((item: CartItemType, newQty: number) => {
+        if (newQty < 1) return;
+
+        // Immediately update UI (optimistic)
+        setCartItems(prev => prev.map(i => i.uid === item.uid ? { ...i, quantity: newQty } : i));
+
+        // Track pending quantity
+        pendingQuantities.current.set(item.uid, newQty);
+
+        // Clear existing timer for this item
+        const existingTimer = quantityDebounceTimers.current.get(item.uid);
+        if (existingTimer) clearTimeout(existingTimer);
+
+        // Set new debounced timer (500ms delay)
+        const timer = setTimeout(() => {
+            const finalQty = pendingQuantities.current.get(item.uid);
+            if (finalQty !== undefined) {
+                syncQuantityToServer(item.uid, finalQty);
+            }
+            quantityDebounceTimers.current.delete(item.uid);
+        }, 500);
+
+        quantityDebounceTimers.current.set(item.uid, timer);
+    }, [syncQuantityToServer]);
 
     const handleRemoveItem = async (itemId: number) => {
-        console.log("🗑️ Attempting to remove item:", itemId);
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        const oldItems = [...cartItems];
+        setCartItems(prev => prev.filter(i => i.uid !== itemId));
+        setSelectedItems(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+        try {
+            await cartAPI.removeFromCart(itemId);
+            await refreshCart();
+        } catch {
+            setCartItems(oldItems);
+            Alert.alert("Error", "Failed to remove item");
+        }
+    };
 
-        if (typeof window !== 'undefined') {
-            const confirmed = window.confirm("Are you sure you want to remove this item?");
+    const toggleItemSelect = (id: number) => {
+        const n = new Set(selectedItems);
+        n.has(id) ? n.delete(id) : n.add(id);
+        setSelectedItems(n);
+    };
 
-            if (confirmed) {
-                try {
-                    // Optimistic Update
-                    const updatedItems = cartItems.filter(i => i.uid !== itemId);
-                    setCartItems(updatedItems);
-                    const newSelected = new Set(selectedItems);
-                    newSelected.delete(itemId);
-                    setSelectedItems(newSelected);
+    const toggleShopSelect = (items: CartItemType[]) => {
+        const ids = items.map(i => i.uid);
+        const allSelected = ids.every(id => selectedItems.has(id));
+        const n = new Set(selectedItems);
+        if (allSelected) ids.forEach(id => n.delete(id));
+        else ids.forEach(id => n.add(id));
+        setSelectedItems(n);
+    };
 
-                    console.log("📡 Sending delete request for item:", itemId);
-                    await cartAPI.removeFromCart(itemId);
+    const toggleSelectAll = () => {
+        if (selectedItems.size === cartItems.length) setSelectedItems(new Set());
+        else setSelectedItems(new Set(cartItems.map(i => i.uid)));
+    };
 
-                    // Refresh global cart state (badge)
-                    await refreshCart();
-                } catch (error) {
-                    console.error("Failed to remove item:", error);
-                    // Revert on failure
-                    fetchCart();
-                    window.alert("Error: Failed to remove item. Please try again.");
+    const handleDeleteSelected = () => {
+        if (selectedItems.size === 0) return;
+        Alert.alert("Delete Selected", `Remove ${selectedItems.size} item(s)?`, [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete", style: "destructive", onPress: () => {
+                    Array.from(selectedItems).forEach(id => handleRemoveItem(id));
                 }
             }
-        }
+        ]);
     };
 
-    const toggleSelection = (itemId: number) => {
-        const newSelected = new Set(selectedItems);
-        if (newSelected.has(itemId)) {
-            newSelected.delete(itemId);
-        } else {
-            newSelected.add(itemId);
-        }
-        setSelectedItems(newSelected);
-    };
-
-    const handleCheckout = async () => {
+    const handleCheckout = () => {
         if (selectedItems.size === 0) {
-            if (typeof window !== 'undefined') {
-                window.alert("No Items Selected: Please select items to checkout.");
-            }
+            Alert.alert("No Items", "Please select items to checkout.");
             return;
         }
-
-        // Navigate to the checkout page with selected items
-        const selectedItemIds = Array.from(selectedItems).join(',');
-        router.push(`/checkout?items=${selectedItemIds}`);
+        setCheckoutLoading(true);
+        setTimeout(() => {
+            router.push(`/checkout?items=${Array.from(selectedItems).join(',')}`);
+            setCheckoutLoading(false);
+        }, 300);
     };
 
-    const renderItem = ({ item }: { item: CartItem }) => {
-        // Use backend-provided price or fallback
-        const displayPrice = item.priceInfo?.finalPrice ?? Number(item.product.basePrice);
-
-        // Determine Image
-        const imageUrl = item.productVariant?.image || item.product.image;
-
-        // Stock Logic
-        const maxStock = item.productVariant?.stock ?? 0;
-        const isMaxStock = item.quantity >= maxStock;
-
+    if (!user || (loading && cartItems.length === 0)) {
         return (
-            <View style={styles.cartItem}>
-                <View style={styles.itemHeader}>
-                    <SimpleCheckbox
-                        checked={selectedItems.has(item.uid)}
-                        onChange={() => toggleSelection(item.uid)}
-                    />
-                </View>
-
-                <Pressable
-                    style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
-                    onPress={() => router.push(`/product/${item.productId}`)}
-                >
-                    <View style={styles.imageContainer}>
-                        {imageUrl ? (
-                            <Image
-                                source={{ uri: imageUrl }}
-                                style={styles.productImage}
-                                resizeMode="cover"
-                            />
-                        ) : (
-                            <Text style={{ fontSize: 24 }}>📦</Text>
-                        )}
-                    </View>
-
-                    <View style={styles.itemDetails}>
-                        <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
-                        {item.productVariant && <Text style={styles.variantText}>Variant: {item.productVariant.name}</Text>}
-                        <Text style={styles.itemPrice}>
-                            ₱{displayPrice.toFixed(2)}
-                        </Text>
-
-                        {/* Move controls out of Pressable to prevent conflict, or handle propagation? 
-                            Actually, nested Pressables can be tricky. 
-                            Better to keep controls OUTSIDE the main navigation press area 
-                            OR put the items in a View and only make the text/image clickable.
-                            The current structure wraps Image + Details.
-                            The Controls are inside Details. 
-                            We should move Controls OUT of the Pressable.
-                        */}
-                    </View>
-                </Pressable>
-
-                {/* Controls - Moved outside the navigation pressable for better touch handling */}
-                <View style={styles.controlsLeft}>
-                    <View style={styles.quantityControls}>
-                        <Pressable
-                            style={styles.qtyBtn}
-                            onPress={() => handleQuantityChange(item, -1)}
-                        >
-                            <Text style={styles.qtyBtnText}>-</Text>
-                        </Pressable>
-                        <Text style={styles.quantityText}>{item.quantity}</Text>
-                        <Pressable
-                            style={[styles.qtyBtn, isMaxStock && styles.disabledQtyBtn]}
-                            onPress={() => {
-                                if (!isMaxStock) handleQuantityChange(item, 1);
-                            }}
-                        >
-                            <Text style={[styles.qtyBtnText, isMaxStock && styles.disabledQtyBtnText]}>+</Text>
-                        </Pressable>
-                    </View>
-
-                    <Pressable onPress={() => handleRemoveItem(item.uid)} style={{ marginTop: 8 }}>
-                        <Text style={styles.removeText}>Remove</Text>
-                    </Pressable>
-                </View>
-            </View>
-        );
-    };
-
-    if (!user) {
-        return (
-            <View style={styles.centered}>
-                <Text style={styles.messageText}>Please log in to view your cart.</Text>
-                <Pressable style={styles.loginBtn} onPress={() => router.push('/auth')}>
-                    <Text style={styles.loginBtnText}>Go to Login</Text>
-                </Pressable>
-            </View>
-        );
-    }
-
-    if (loading) {
-        return (
-            <View style={styles.centered}>
-                <ActivityIndicator size="large" color="#8b5cf6" />
-                <Text style={{ marginTop: 10 }}>Loading Cart...</Text>
-            </View>
+            <SafeAreaView style={styles.centerContainer}>
+                <Stack.Screen options={{ title: 'Shopping Cart', headerTitleAlign: 'center' }} />
+                <ActivityIndicator size="large" color="#B36979" />
+            </SafeAreaView>
         );
     }
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.headerTitle}>Shopping Cart ({cartItems.length})</Text>
+        <SafeAreaView style={styles.container} edges={['top']}>
+            <Stack.Screen options={{ title: `Shopping Cart (${cartItems.length})`, headerTitleStyle: { fontFamily: theme.typography.fontFamily }, headerStyle: { backgroundColor: theme.colors.background } }} />
 
-            <FlatList
-                data={cartItems}
-                renderItem={renderItem}
-                keyExtractor={(item) => item.uid.toString()}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>Your cart is empty.</Text>
-                        <Pressable style={styles.shopBtn} onPress={() => router.push('/')}>
-                            <Text style={styles.shopBtnText}>Start Shopping</Text>
-                        </Pressable>
-                    </View>
-                }
-            />
+            <View style={styles.contentContainer}>
+                <FlatList
+                    data={shopGroups}
+                    keyExtractor={(group) => group.sellerName}
+                    contentContainerStyle={[styles.listContent, { paddingBottom: 140 }]}
+                    ListHeaderComponent={
+                        <>
+                            <FreeShippingProgress currentTotal={subtotal} threshold={FREE_SHIPPING_THRESHOLD} />
+                            <CartTableHeader
+                                allSelected={selectedItems.size === cartItems.length && cartItems.length > 0}
+                                onToggleSelectAll={toggleSelectAll}
+                            />
+                        </>
+                    }
+                    ListEmptyComponent={<CartEmptyState />}
+                    renderItem={({ item: group }) => (
+                        <CartShopGroup
+                            sellerName={group.sellerName}
+                            isOfficialShop={group.isOfficialShop}
+                            items={group.items}
+                            selectedItems={selectedItems}
+                            updatingItems={updatingItems}
+                            onToggleShopSelect={toggleShopSelect}
+                            onToggleItemSelect={toggleItemSelect}
+                            onUpdateQuantity={handleQuantityChange}
+                            onRemoveItem={handleRemoveItem}
+                        />
+                    )}
+                />
+            </View>
 
             {cartItems.length > 0 && (
-                <View style={styles.footer}>
-                    <View style={styles.summaryContainer}>
-                        <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Selected Total:</Text>
-                            <Text style={styles.summaryValue}>₱{subtotal.toFixed(2)}</Text>
-                        </View>
-                        {totalSavings > 0 && (
-                            <View style={styles.summaryRow}>
-                                <Text style={styles.savingsLabel}>You Saved:</Text>
-                                <Text style={styles.savingsValue}>₱{totalSavings.toFixed(2)}</Text>
-                            </View>
-                        )}
-                    </View>
-                    <Pressable
-                        style={[
-                            styles.checkoutBtn,
-                            (selectedItems.size === 0 || checkoutLoading) && styles.disabledBtn
-                        ]}
-                        onPress={handleCheckout}
-                        disabled={selectedItems.size === 0 || checkoutLoading}
-                    >
-                        {checkoutLoading ? (
-                            <ActivityIndicator color="white" />
-                        ) : (
-                            <Text style={styles.checkoutBtnText}>Checkout ({selectedItems.size})</Text>
-                        )}
-                    </Pressable>
-                </View>
+                <CartBottomBar
+                    subtotal={subtotal}
+                    totalSavings={totalSavings}
+                    selectedCount={selectedItems.size}
+                    totalItems={cartItems.length}
+                    allSelected={selectedItems.size === cartItems.length && cartItems.length > 0}
+                    onToggleSelectAll={toggleSelectAll}
+                    onCheckout={handleCheckout}
+                    onDeleteSelected={handleDeleteSelected}
+                    loading={checkoutLoading}
+                />
             )}
-        </View >
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fa',
-    },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        padding: 20,
-        color: '#111827',
-    },
-    listContent: {
-        paddingHorizontal: 20,
-        paddingBottom: 100,
-    },
-    cartItem: {
-        flexDirection: 'row',
-        backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 2,
-    },
-    itemHeader: {
-        marginRight: 10,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderWidth: 2,
-        borderColor: '#8b5cf6',
-        borderRadius: 4,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    checkboxChecked: {
-        backgroundColor: '#8b5cf6',
-    },
-    checkmark: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: 'bold',
-    },
-    imageContainer: {
-        width: 80,
-        height: 80,
-        backgroundColor: '#e5e7eb',
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    itemDetails: {
-        flex: 1,
-    },
-    itemName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: 4,
-    },
-    variantText: {
-        fontSize: 12,
-        color: '#6b7280',
-        marginBottom: 4,
-    },
-    itemPrice: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#10b981',
-        marginBottom: 8,
-    },
-    controlsLeft: {
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        marginLeft: 10
-    },
-    productImage: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 8,
-    },
-    disabledQtyBtn: {
-        opacity: 0.3
-    },
-    disabledQtyBtnText: {
-        color: '#ccc'
-    },
-    quantityControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f3f4f6',
-        borderRadius: 8,
-    },
-    qtyBtn: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    qtyBtnText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#374151',
-    },
-    quantityText: {
-        paddingHorizontal: 8,
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    removeText: {
-        fontSize: 12,
-        color: '#ef4444',
-        fontWeight: '500',
-    },
-    footer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'white',
-        padding: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#e5e7eb',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    summaryContainer: {
-        marginBottom: 16,
-    },
-    summaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    summaryLabel: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#374151',
-    },
-    summaryValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#10b981',
-    },
-    savingsLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#ef4444',
-    },
-    savingsValue: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: '#ef4444',
-    },
-    checkoutBtn: {
-        backgroundColor: '#8b5cf6',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-    },
-    disabledBtn: {
-        backgroundColor: '#d1d5db',
-    },
-    checkoutBtnText: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    messageText: {
-        fontSize: 16,
-        color: '#374151',
-        marginBottom: 20,
-    },
-    loginBtn: {
-        backgroundColor: '#8b5cf6',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-    },
-    loginBtnText: {
-        color: 'white',
-        fontWeight: '600',
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        marginTop: 50,
-    },
-    emptyText: {
-        fontSize: 18,
-        color: '#6b7280',
-        marginBottom: 20,
-    },
-    shopBtn: {
-        backgroundColor: '#8b5cf6',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-    },
-    shopBtnText: {
-        color: 'white',
-        fontWeight: '600',
-    },
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    contentContainer: { flex: 1, maxWidth: 1100, width: '100%', alignSelf: 'center' },
+    centerContainer: { flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' },
+    listContent: { padding: theme.spacing.lg },
 });

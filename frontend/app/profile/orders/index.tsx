@@ -484,10 +484,17 @@ export default function OrderHistoryPage() {
                                                 {new Date(order.uploaded).toLocaleDateString()}
                                             </Text>
                                         </View>
-                                        <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
-                                            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-                                                {getStatusLabel(order.status)}
-                                            </Text>
+                                        <View style={styles.statusRow}>
+                                            {order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' && (
+                                                <View style={styles.paidBadge}>
+                                                    <Text style={styles.paidBadgeText}>PAID</Text>
+                                                </View>
+                                            )}
+                                            <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
+                                                <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+                                                    {getStatusLabel(order.status)}
+                                                </Text>
+                                            </View>
                                         </View>
                                     </View>
 
@@ -561,9 +568,6 @@ export default function OrderHistoryPage() {
                                             </Text>
                                         </View>
                                         <View style={styles.footerRight}>
-                                            {order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' && (
-                                                <Text style={styles.paidText}>PAID</Text>
-                                            )}
                                             {renderQuickActions(order)}
                                         </View>
                                     </View>
@@ -638,7 +642,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
     tabTextActive: {
-        color: '#C88EA7',
+        color: '#B36979',
         fontFamily: 'Quicksand',
     },
     tabBadge: {
@@ -842,11 +846,21 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#B36979',
     },
-    paidText: {
-        fontSize: 12,
+    statusRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    paidBadge: {
+        backgroundColor: '#E8F5E9',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    paidBadgeText: {
+        fontSize: 11,
         fontWeight: 'bold',
         color: '#4CAF50',
-        marginRight: 10,
     },
     footerRight: {
         flexDirection: 'row',

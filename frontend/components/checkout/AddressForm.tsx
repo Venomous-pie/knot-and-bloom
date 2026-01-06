@@ -250,15 +250,74 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
             </View>
 
-            {/* Location Picker */}
-            <LocationPickerField
-                region={form.region}
-                province={form.province}
-                city={form.city}
-                barangay={form.barangay}
-                onPress={() => setShowLocationPicker(true)}
-                error={errors.region || errors.city}
-            />
+            {/* Location Section */}
+            {mode === 'edit' && form.region && form.province && form.city && form.barangay ? (
+                /* Show individual location fields in edit mode */
+                <View style={styles.locationFieldsContainer}>
+                    <View style={styles.locationHeader}>
+                        <Text style={styles.sectionTitle}>Location</Text>
+                        <Pressable onPress={() => setShowLocationPicker(true)} style={styles.changeLocationBtn}>
+                            <Text style={styles.changeLocationText}>Change</Text>
+                        </Pressable>
+                    </View>
+
+                    <View style={styles.row}>
+                        <View style={[styles.formGroup, styles.flex1]}>
+                            <Text style={styles.formLabel}>Region</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={form.region}
+                                onChangeText={(text) => handleChange('region', text)}
+                                placeholder="Region"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                        </View>
+                        <View style={[styles.formGroup, styles.flex1]}>
+                            <Text style={styles.formLabel}>Province</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={form.province}
+                                onChangeText={(text) => handleChange('province', text)}
+                                placeholder="Province"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                        </View>
+                    </View>
+
+                    <View style={styles.row}>
+                        <View style={[styles.formGroup, styles.flex1]}>
+                            <Text style={styles.formLabel}>City/Municipality</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={form.city}
+                                onChangeText={(text) => handleChange('city', text)}
+                                placeholder="City"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                        </View>
+                        <View style={[styles.formGroup, styles.flex1]}>
+                            <Text style={styles.formLabel}>Barangay</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={form.barangay}
+                                onChangeText={(text) => handleChange('barangay', text)}
+                                placeholder="Barangay"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                        </View>
+                    </View>
+                </View>
+            ) : (
+                /* Show picker field in create mode or when location not complete */
+                <LocationPickerField
+                    region={form.region}
+                    province={form.province}
+                    city={form.city}
+                    barangay={form.barangay}
+                    onPress={() => setShowLocationPicker(true)}
+                    error={errors.region || errors.city}
+                />
+            )}
 
             {/* Street Address */}
             <View style={styles.formGroup}>
@@ -542,6 +601,27 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.sizes.sm,
         fontWeight: '600',
         color: theme.colors.primary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    locationFieldsContainer: {
+        marginBottom: theme.spacing.md,
+    },
+    locationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.sm,
+    },
+    changeLocationBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: theme.colors.primary,
+        borderRadius: 8,
+    },
+    changeLocationText: {
+        fontSize: theme.typography.sizes.xs,
+        fontWeight: '600',
+        color: theme.colors.primaryText,
         fontFamily: theme.typography.fontFamily,
     },
 });

@@ -8,7 +8,7 @@ import DropdownMenu from "@/shared/DropdownMenu";
 import MenuSideBar from "@/shared/MenuSideBar";
 import { Product } from "@/types/products";
 import { Link, RelativePathString, router, Stack, usePathname } from "expo-router";
-import { ChevronDown, Handbag, Heart, Menu, Search, UserRound, X } from "lucide-react-native";
+import { ChevronDown, ChevronLeft, Handbag, Heart, Menu, Search, UserRound, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { DropdownItem } from "@/shared/DropdownMenu";
@@ -435,15 +435,29 @@ export default function NavBar() {
             <Stack
                 screenOptions={{
                     headerTitleAlign: 'center',
-                    header: mobile ? () => (
-                        <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
-                            <MobileNavbar
-                                cartCount={cartCount}
-                                setCartIconPosition={setCartIconPosition}
-                                setIsMenuOpen={setIsMenuOpen}
-                            />
-                        </View>
-                    ) : undefined,
+                    header: mobile ? () => {
+                        if (pathname?.includes('/auth') || pathname?.includes('/secure')) {
+                            return (
+                                <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, justifyContent: 'space-between', backgroundColor: 'white' }}>
+                                    <Pressable onPress={() => router.back()} style={{ padding: 5 }}>
+                                        <ChevronLeft size={24} color="#333" />
+                                    </Pressable>
+                                    <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
+                                        <Text style={{ color: '#B36979', fontSize: 14 }}>Need Assistance?</Text>
+                                    </Pressable>
+                                </View>
+                            );
+                        }
+                        return (
+                            <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                                <MobileNavbar
+                                    cartCount={cartCount}
+                                    setCartIconPosition={setCartIconPosition}
+                                    setIsMenuOpen={setIsMenuOpen}
+                                />
+                            </View>
+                        );
+                    } : undefined,
                     headerLeft: () => {
                         return (
                             <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginLeft: width * navMargin }}>
@@ -482,13 +496,13 @@ export default function NavBar() {
                     },
 
                     headerTitle: () => {
-                        if (!pathname?.includes('/auth')) {
+                        if (!pathname?.includes('/auth') && !pathname?.includes('/secure')) {
                             return <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />;
                         }
                         return null;
                     },
                     headerRight: () => {
-                        if (pathname?.includes('/auth')) {
+                        if (pathname?.includes('/auth') || pathname?.includes('/secure')) {
                             return (
                                 <View style={{ marginRight: width * navMargin }}>
                                     <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
@@ -644,7 +658,7 @@ export default function NavBar() {
                 }}
             />
             <MenuSideBar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-            {mobile && <MobileTabBar />}
+            {mobile && !pathname?.includes('/auth') && !pathname?.includes('/secure') && <MobileTabBar />}
         </View >
     );
 

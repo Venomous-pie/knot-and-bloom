@@ -22,7 +22,7 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items 
                 {isDesktop && (
                     <>
                         <Text style={[styles.headerText, { flex: 1, textAlign: 'center' }]}>Unit Price</Text>
-                        <Text style={[styles.headerText, { flex: 1, textAlign: 'center' }]}>Amount</Text>
+                        <Text style={[styles.headerText, { flex: 1, textAlign: 'center' }]}>Quantity</Text>
                         <Text style={[styles.headerText, { flex: 1, textAlign: 'right' }]}>Item Subtotal</Text>
                     </>
                 )}

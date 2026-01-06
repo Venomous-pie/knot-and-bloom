@@ -99,6 +99,7 @@ function CheckoutContent() {
     // Address Form Mode
     const [addrFormMode, setAddrFormMode] = useState<'create' | 'edit'>('create');
     const [editingAddr, setEditingAddr] = useState<Address | null>(null);
+    const [isSavingAddr, setIsSavingAddr] = useState(false);
 
     // Payment Logic
     // Payment Logic
@@ -233,6 +234,7 @@ function CheckoutContent() {
             streetAddress: data.street || data.fullAddress,
             city: data.city,
             stateProvince: data.state,
+            province: data.state,
             postalCode: data.zipCode,
             country: data.country || 'Philippines',
             isDefault: prev?.isDefault ?? false,
@@ -265,7 +267,7 @@ function CheckoutContent() {
                                     <Ionicons name="close" size={24} color={theme.colors.text} />
                                 </Pressable>
                             </View>
-                            <ScrollView style={{ maxHeight: '80%' }} showsVerticalScrollIndicator={false}>
+                            <ScrollView style={{ maxHeight: '100%' }} showsVerticalScrollIndicator={false}>
                                 <AddressSelector
                                     addresses={addresses}
                                     selectedId={selectedAddress?.uid ?? null}
@@ -312,23 +314,29 @@ function CheckoutContent() {
                                         phone: editingAddr.phone,
                                         streetAddress: editingAddr.streetAddress,
                                         aptSuite: editingAddr.aptSuite ?? undefined,
+                                        region: editingAddr.region ?? undefined,
+                                        province: editingAddr.province ?? editingAddr.stateProvince ?? undefined,
                                         city: editingAddr.city,
-                                        province: editingAddr.stateProvince ?? undefined,
+                                        barangay: editingAddr.barangay ?? undefined,
                                         postalCode: editingAddr.postalCode,
                                         country: editingAddr.country,
                                         isDefault: editingAddr.isDefault,
                                     } : undefined}
                                     onSave={async (data) => {
+                                        if (isSavingAddr) return; // Prevent duplicate submissions
+                                        setIsSavingAddr(true);
                                         try {
                                             if (addrFormMode === 'create') await addressAPI.createAddress(data);
                                             else await addressAPI.updateAddress(editingAddr!.uid, data);
                                             await fetchAddresses();
                                             setViewMode('address_selection');
                                         } catch (e) { Alert.alert('Error', 'Failed to save'); }
+                                        finally { setIsSavingAddr(false); }
                                     }}
                                     onCancel={() => setViewMode('address_selection')}
                                     onOpenMap={() => setViewMode('map_picker')}
                                     showSaveCheckbox
+                                    isSaving={isSavingAddr}
                                 />
                             </ScrollView>
                         </>

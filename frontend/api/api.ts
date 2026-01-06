@@ -263,12 +263,12 @@ export const checkoutAPI = {
     /**
      * Complete checkout - finalize order after payment
      */
-complete: (sessionId: number, paymentId: number, idempotencyKey?: string, shippingInfo?: any) =>
-    apiClient.post<CompleteCheckoutResponse>(`/checkout/${sessionId}/complete`, {
-        paymentId,
-        idempotencyKey,
-        shippingAddress: shippingInfo
-    }),
+    complete: (sessionId: number, paymentId: number, idempotencyKey?: string, shippingInfo?: any) =>
+        apiClient.post<CompleteCheckoutResponse>(`/checkout/${sessionId}/complete`, {
+            paymentId,
+            idempotencyKey,
+            shippingAddress: shippingInfo
+        }),
 
     /**
      * Cancel checkout session
@@ -276,11 +276,11 @@ complete: (sessionId: number, paymentId: number, idempotencyKey?: string, shippi
     cancel: (sessionId: number) =>
         apiClient.delete(`/checkout/${sessionId}`),
 
-        /**
-         * Get available payment methods
-         */
-        getPaymentMethods: () =>
-            apiClient.get<{ success: boolean; methods: string[] }>('/checkout/methods/available'),
+    /**
+     * Get available payment methods
+     */
+    getPaymentMethods: () =>
+        apiClient.get<{ success: boolean; methods: string[] }>('/checkout/methods/available'),
 };
 
 // ============================================
@@ -294,8 +294,11 @@ export interface Address {
     phone: string;
     streetAddress: string;
     aptSuite?: string | null;
+    region?: string | null;
+    province?: string | null; // Keeping as alias or primary depending on backend, but let's add region/barangay
     city: string;
-    stateProvince?: string | null;
+    barangay?: string | null;
+    stateProvince?: string | null; // Legacy support or alias
     postalCode: string;
     country: string;
     isDefault: boolean;
@@ -309,7 +312,10 @@ export interface AddressInput {
     phone: string;
     streetAddress: string;
     aptSuite?: string;
+    region?: string;
+    province?: string;
     city: string;
+    barangay?: string;
     stateProvince?: string;
     postalCode: string;
     country?: string;

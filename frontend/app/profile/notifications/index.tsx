@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     markAllText: {
-        color: '#C88EA7',
+        color: '#B36979',
         fontSize: 14,
         fontWeight: '500',
     },

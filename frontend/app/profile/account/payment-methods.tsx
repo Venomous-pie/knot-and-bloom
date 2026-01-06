@@ -1,7 +1,7 @@
 import { paymentMethodAPI, PaymentMethod, PaymentMethodType, PaymentMethodInput } from '@/api/api';
 import { useAuth } from '@/app/auth';
 import { RelativePathString, useRouter } from 'expo-router';
-import { CreditCard } from 'lucide-react-native';
+import { CreditCard, Plus } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -13,9 +13,11 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    View
+    View,
+    useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme } from '@/constants/theme';
 
 const PAYMENT_TYPE_ICONS: Record<PaymentMethodType, string> = {
     GCASH: '📱',
@@ -32,6 +34,8 @@ const PAYMENT_TYPE_LABELS: Record<PaymentMethodType, string> = {
 export default function PaymentMethodsPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 1024;
 
     const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,6 +49,7 @@ export default function PaymentMethodsPage() {
     const [accountNumber, setAccountNumber] = useState('');
     const [bankName, setBankName] = useState('');
     const [isDefault, setIsDefault] = useState(false);
+    const [focusedField, setFocusedField] = useState<string | null>(null);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -67,13 +72,7 @@ export default function PaymentMethodsPage() {
     };
 
     const openAddModal = () => {
-        setEditingMethod(null);
-        setSelectedType('GCASH');
-        setAccountName('');
-        setAccountNumber('');
-        setBankName('');
-        setIsDefault(false);
-        setShowModal(true);
+        router.push('/secure/payment-methods/add/select');
     };
 
     const openEditModal = (method: PaymentMethod) => {
@@ -171,17 +170,18 @@ export default function PaymentMethodsPage() {
                         <Text style={styles.backButtonText}>← Back</Text>
                     </Pressable>
                     <Text style={styles.title}>Payment Methods</Text>
-                    <Pressable onPress={openAddModal} style={styles.addButton}>
-                        <Text style={styles.addButtonText}>+ Add</Text>
+                    <Pressable onPress={() => router.push('/secure/payment-methods/add/select' as any)} style={styles.addButton}>
+                        <Plus size={20} color="white" />
+                        <Text style={styles.addButtonText}>Add New</Text>
                     </Pressable>
                 </View>
 
                 {paymentMethods.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <CreditCard style={styles.emptyIcon} size={40}/>
+                        <CreditCard style={styles.emptyIcon} size={40} />
                         <Text style={styles.emptyTitle}>No Payment Methods</Text>
                         <Text style={styles.emptyText}>Add a payment method for faster checkout</Text>
-                        <Pressable style={styles.emptyButton} onPress={openAddModal}>
+                        <Pressable style={styles.emptyButton} onPress={() => router.push('/secure/payment-methods/add/select' as any)}>
                             <Text style={styles.emptyButtonText}>Add Payment Method</Text>
                         </Pressable>
                     </View>
@@ -194,8 +194,10 @@ export default function PaymentMethodsPage() {
                                 onPress={() => openEditModal(method)}
                             >
                                 <View style={styles.cardLeft}>
-                                    <Text style={styles.cardIcon}>{PAYMENT_TYPE_ICONS[method.type]}</Text>
-                                    <View>
+                                    <View style={styles.iconWrapper}>
+                                        <Text style={styles.cardIcon}>{PAYMENT_TYPE_ICONS[method.type]}</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
                                         <View style={styles.cardTitleRow}>
                                             <Text style={styles.cardTitle}>{PAYMENT_TYPE_LABELS[method.type]}</Text>
                                             {method.isDefault && (
@@ -228,9 +230,9 @@ export default function PaymentMethodsPage() {
             </ScrollView>
 
             {/* Add/Edit Modal */}
-            <Modal visible={showModal} animationType="slide" transparent>
+            <Modal visible={showModal} animationType="fade" transparent>
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                    <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>
                                 {editingMethod ? 'Edit Payment Method' : 'Add Payment Method'}
@@ -260,29 +262,38 @@ export default function PaymentMethodsPage() {
 
                             <Text style={styles.formLabel}>Account Name</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, focusedField === 'accountName' && styles.inputFocused]}
                                 value={accountName}
                                 onChangeText={setAccountName}
                                 placeholder="Name on account"
+                                placeholderTextColor="#999"
+                                onFocus={() => setFocusedField('accountName')}
+                                onBlur={() => setFocusedField(null)}
                             />
 
                             <Text style={styles.formLabel}>Account Number</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, focusedField === 'accountNumber' && styles.inputFocused]}
                                 value={accountNumber}
                                 onChangeText={setAccountNumber}
                                 placeholder={selectedType === 'BANK' ? 'Account number' : 'Mobile number'}
                                 keyboardType="numeric"
+                                placeholderTextColor="#999"
+                                onFocus={() => setFocusedField('accountNumber')}
+                                onBlur={() => setFocusedField(null)}
                             />
 
                             {selectedType === 'BANK' && (
                                 <>
                                     <Text style={styles.formLabel}>Bank Name</Text>
                                     <TextInput
-                                        style={styles.input}
+                                        style={[styles.input, focusedField === 'bankName' && styles.inputFocused]}
                                         value={bankName}
                                         onChangeText={setBankName}
                                         placeholder="e.g., BDO, BPI, UnionBank"
+                                        placeholderTextColor="#999"
+                                        onFocus={() => setFocusedField('bankName')}
+                                        onBlur={() => setFocusedField(null)}
                                     />
                                 </>
                             )}
@@ -340,7 +351,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 24,
     },
     backButton: {
         padding: 8,
@@ -350,21 +361,26 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     title: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#333',
         fontFamily: 'Quicksand',
     },
     addButton: {
-        backgroundColor: '#C88EA7',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        gap: 8,
+        ...theme.shadows.md,
     },
     addButtonText: {
         color: 'white',
         fontWeight: '600',
         fontSize: 14,
+        fontFamily: 'Quicksand',
     },
     emptyState: {
         alignItems: 'center',
@@ -389,7 +405,7 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     emptyButton: {
-        backgroundColor: '#C88EA7',
+        backgroundColor: '#B36979',
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 8,
@@ -399,35 +415,44 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     list: {
-        gap: 12,
+        gap: 16,
     },
     card: {
         backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 16,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 1,
+        borderRadius: 16,
+        padding: 20,
+        ...theme.shadows.sm,
+        borderWidth: 1,
+        borderColor: '#f0f0f0',
     },
     cardLeft: {
         flexDirection: 'row',
         alignItems: 'flex-start',
+        marginBottom: 16,
+    },
+    iconWrapper: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FDF2F5',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
     },
     cardIcon: {
-        fontSize: 32,
-        marginRight: 12,
+        fontSize: 24,
     },
     cardTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        marginBottom: 4,
     },
     cardTitle: {
         fontSize: 16,
         fontWeight: '600',
         color: '#333',
+        fontFamily: 'Quicksand',
     },
     defaultBadge: {
         backgroundColor: '#E8F5E9',
@@ -446,24 +471,26 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     cardNumber: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#888',
         marginTop: 2,
     },
     cardActions: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
-        marginTop: 12,
-        gap: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f5f5f5',
+        paddingTop: 12,
+        gap: 16,
     },
     actionButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
     },
     actionText: {
-        color: '#C88EA7',
+        color: '#B36979',
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     deleteText: {
         color: '#E53935',
@@ -471,33 +498,45 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
     },
     modalContent: {
         backgroundColor: 'white',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderRadius: 24,
+        width: '100%',
         maxHeight: '90%',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 8,
+        overflow: 'hidden',
+    },
+    modalContentDesktop: {
+        width: 600,
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
+        padding: 24,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: '#f0f0f0',
     },
     modalTitle: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 20,
+        fontWeight: 'bold',
         color: '#333',
+        fontFamily: 'Quicksand',
     },
     modalClose: {
         fontSize: 24,
         color: '#888',
     },
     modalBody: {
-        padding: 20,
+        padding: 24,
     },
     formLabel: {
         fontSize: 14,
@@ -505,6 +544,7 @@ const styles = StyleSheet.create({
         color: '#333',
         marginBottom: 8,
         marginTop: 16,
+        fontFamily: 'Quicksand',
     },
     typeButtons: {
         flexDirection: 'row',
@@ -512,23 +552,25 @@ const styles = StyleSheet.create({
     },
     typeButton: {
         flex: 1,
-        padding: 12,
+        padding: 16,
         borderRadius: 12,
-        borderWidth: 2,
+        borderWidth: 1,
         borderColor: '#eee',
         alignItems: 'center',
+        backgroundColor: '#FAFAFA',
     },
     typeButtonActive: {
-        borderColor: '#C88EA7',
+        borderColor: '#B36979',
         backgroundColor: '#FDF2F5',
     },
     typeButtonIcon: {
         fontSize: 24,
-        marginBottom: 4,
+        marginBottom: 8,
     },
     typeButtonText: {
         fontSize: 12,
         color: '#666',
+        fontWeight: '500',
     },
     typeButtonTextActive: {
         color: '#C88EA7',
@@ -536,15 +578,23 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 12,
+        borderColor: '#e0e0e0',
+        borderRadius: 12,
+        padding: 14,
         fontSize: 16,
+        backgroundColor: '#FAFAFA',
+        color: '#333',
+        outlineStyle: 'none' as any,
+    },
+    inputFocused: {
+        borderColor: '#C88EA7',
+        backgroundColor: '#fff',
     },
     checkboxRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 20,
+        marginTop: 24,
+        marginBottom: 8,
     },
     checkbox: {
         width: 24,
@@ -557,27 +607,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkboxChecked: {
-        backgroundColor: '#C88EA7',
-        borderColor: '#C88EA7',
+        backgroundColor: '#B36979',
+        borderColor: '#B36979',
     },
     checkmark: {
         color: 'white',
         fontWeight: 'bold',
+        fontSize: 14,
     },
     checkboxLabel: {
         fontSize: 14,
         color: '#333',
     },
     modalFooter: {
-        padding: 20,
+        padding: 24,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: '#f0f0f0',
+        backgroundColor: 'white',
     },
     saveButton: {
         backgroundColor: '#C88EA7',
         padding: 16,
         borderRadius: 12,
         alignItems: 'center',
+        ...theme.shadows.sm,
     },
     disabledButton: {
         opacity: 0.7,
@@ -586,5 +639,6 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+        fontFamily: 'Quicksand',
     },
 });

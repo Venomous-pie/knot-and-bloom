@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     badge: {
-        backgroundColor: '#C88EA7',
+        backgroundColor: '#B36979',
         borderRadius: 10,
         paddingHorizontal: 8,
         paddingVertical: 2,

@@ -46,7 +46,9 @@ export const CheckoutAddressSection: React.FC<CheckoutAddressSectionProps> = ({
                             <Text style={styles.addressText}>
                                 {selectedAddress.streetAddress}
                                 {selectedAddress.aptSuite ? `, ${selectedAddress.aptSuite}` : ''}
+                                {selectedAddress.barangay ? `, ${selectedAddress.barangay}` : ''}
                                 {', '}{selectedAddress.city}
+                                {selectedAddress.province || selectedAddress.stateProvince ? `, ${selectedAddress.province || selectedAddress.stateProvince}` : ''}
                                 {', '}{selectedAddress.postalCode}
                             </Text>
                             {selectedAddress.isDefault && (

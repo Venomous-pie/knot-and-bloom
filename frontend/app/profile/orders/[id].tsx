@@ -421,7 +421,7 @@ export default function OrderDetailsPage() {
                                             <Text style={styles.quantityText}>Qty: {item.quantity}</Text>
                                         </View>
                                         <Text style={styles.itemPrice}>
-                                            ₱{parseFloat(String(price)).toFixed(2)} x {item.quantity}
+                                            ₱{parseFloat(String(price)).toFixed(2)} <Text style={{ color: '#888' }}>x {item.quantity}</Text>
                                         </Text>
                                     </View>
                                 </Pressable>
@@ -441,18 +441,18 @@ export default function OrderDetailsPage() {
                         <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
                     </View>
                     <View style={[styles.summaryRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                        <Text style={styles.totalLabel}>Order Total</Text>
-                        <Text style={styles.totalValue}>₱{totalAmount.toFixed(2)}</Text>
+                        <Text style={styles.summaryLabel}>Order Total</Text>
+                        <Text style={styles.summaryValue}>₱{totalAmount.toFixed(2)}</Text>
                     </View>
                     {order.paymentStatus === 'PARTIALLY_PAID' && (
                         <>
                             <View style={styles.summaryRow}>
-                                <Text style={[styles.summaryLabel, { color: '#059669' }]}>Less: Deposit Paid (20%)</Text>
-                                <Text style={[styles.summaryValue, { color: '#059669' }]}>-₱{(totalAmount * 0.20).toFixed(2)}</Text>
+                                <Text style={[styles.summaryLabel, { color: '#666' }]}>Less: Deposit Paid (20%)</Text>
+                                <Text style={[styles.summaryValue, { color: '#dd1537ff' }]}>-₱{(totalAmount * 0.20).toFixed(2)}</Text>
                             </View>
                             <View style={[styles.summaryRow, { marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                                <Text style={[styles.totalLabel, { color: '#B45309' }]}>Balance Due</Text>
-                                <Text style={[styles.totalValue, { color: '#B45309' }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
+                                <Text style={[styles.totalLabel, { color: '#333' }]}>Balance Due</Text>
+                                <Text style={[styles.totalValue, { color: '#B36979' }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
                             </View>
                         </>
                     )}
@@ -547,37 +547,141 @@ export default function OrderDetailsPage() {
                 onRequestClose={() => setReceiptModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { maxHeight: '80%' }]}>
-                        <ScrollView showsVerticalScrollIndicator={false}>
+                    <View style={[styles.modalContent, { maxHeight: '90%', width: '100%', maxWidth: 500 }]}>
+                        <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Order Receipt</Text>
+                            <Pressable onPress={() => setReceiptModalVisible(false)} hitSlop={10}>
+                                <Text style={{ fontSize: 24, color: '#666', lineHeight: 28 }}>×</Text>
+                            </Pressable>
+                        </View>
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
 
-                            <View style={styles.qrContainer}>
-                                <Image
-                                    source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=ORDER-${order.uid}` }}
-                                    style={styles.qrCode}
-                                />
-                                <Text style={styles.qrText}>Scan to find order</Text>
+                            {/* Receipt Header */}
+                            <View style={styles.receiptHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}>
+                                    <Image
+                                        source={require('@/assets/yarn.png')}
+                                        style={{ width: 50, height: 50, marginRight: -5 }}
+                                        resizeMode='contain'
+                                    />
+                                    <Text style={{ fontFamily: 'Lovingly', color: '#B36979', fontWeight: 'bold', marginTop: 12, fontSize: 32 }}>Knot</Text>
+                                    <Text style={{ fontFamily: 'Lovingly', color: '#567F4F', fontWeight: 'bold', marginTop: 12, fontSize: 32 }}>&Bloom</Text>
+                                </View>
+                                <Text style={styles.receiptSubHeader}>Thank you for your order!</Text>
                             </View>
 
-                            <View style={styles.receiptLine}>
-                                <Text style={styles.receiptLabel}>Order #:</Text>
-                                <Text style={styles.receiptValue}>{order.uid}</Text>
+                            <View style={styles.receiptDivider} />
+
+                            {/* Order Meta & Customer Info Grid */}
+                            <View style={styles.receiptSection}>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>Order ID:</Text>
+                                    <Text style={[styles.receiptValue, { fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '600' }]}>
+                                        {order.referenceNumber || `#${order.uid}`}
+                                    </Text>
+                                </View>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>Date:</Text>
+                                    <Text style={styles.receiptValue}>{new Date(order.uploaded).toLocaleDateString()} {new Date(order.uploaded).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                                </View>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>Status:</Text>
+                                    <Text style={[styles.receiptValue, { color: getStatusColor(order.status), fontWeight: '600' }]}>{getStatusLabel(order.status)}</Text>
+                                </View>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>Payment:</Text>
+                                    <Text style={styles.receiptValue}>{order.paymentMethod || 'N/A'}</Text>
+                                </View>
                             </View>
-                            <View style={styles.receiptLine}>
-                                <Text style={styles.receiptLabel}>Date:</Text>
-                                <Text style={styles.receiptValue}>{new Date(order.uploaded).toLocaleDateString()}</Text>
+
+                            <View style={styles.receiptDivider} />
+
+                            {/* Customer & Shipping */}
+                            <View style={styles.receiptSection}>
+                                <Text style={styles.receiptSectionTitle}>Customer Details</Text>
+                                <Text style={styles.receiptText}>{shippingAddress?.fullName || user?.name || 'Guest'}</Text>
+                                <Text style={styles.receiptText}>{shippingAddress?.phone || user?.phone || ''}</Text>
+                                <Text style={styles.receiptText}>{shippingAddress?.email || user?.email || ''}</Text>
+
+                                <Text style={[styles.receiptSectionTitle, { marginTop: 12 }]}>Shipping Address</Text>
+                                {shippingAddress ? (
+                                    <>
+                                        <Text style={styles.receiptText}>{shippingAddress.address}</Text>
+                                        <Text style={styles.receiptText}>{shippingAddress.city}, {shippingAddress.postalCode}</Text>
+                                        <Text style={styles.receiptText}>{shippingAddress.country || 'Philippines'}</Text>
+                                    </>
+                                ) : (
+                                    <Text style={[styles.receiptText, { color: '#999', fontStyle: 'italic' }]}>No shipping address recorded</Text>
+                                )}
                             </View>
-                            <View style={styles.receiptLine}>
-                                <Text style={styles.receiptLabel}>Subtotal:</Text>
-                                <Text style={styles.receiptValue}>₱{subtotal.toFixed(2)}</Text>
+
+                            <View style={styles.receiptDivider} />
+
+                            {/* Items List */}
+                            <View style={styles.receiptSection}>
+                                <Text style={styles.receiptSectionTitle}>Order Items</Text>
+                                <View style={{ marginTop: 8 }}>
+                                    {orderItems.map((item, index) => {
+                                        const price = item.finalPrice ?? item.unitPrice ?? item.product.discountedPrice ?? item.product.basePrice ?? 0;
+                                        const lineTotal = parseFloat(String(price)) * item.quantity;
+
+                                        return (
+                                            <View key={index} style={{ marginBottom: 12 }}>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <View style={{ flex: 1, paddingRight: 8 }}>
+                                                        <Text style={styles.receiptItemName}>{item.product.name}</Text>
+                                                        {item.variant && (
+                                                            <Text style={styles.receiptItemVariant}>
+                                                                {typeof item.variant === 'string' ? item.variant : (item.variant as any).name}
+                                                            </Text>
+                                                        )}
+                                                        {/* Fallback Vendor Name if we had it, otherwise generic */}
+                                                        {/* <Text style={{fontSize: 10, color: '#999'}}>Sold by: Knot & Bloom</Text> */}
+                                                    </View>
+                                                    <Text style={styles.receiptItemTotal}>₱{lineTotal.toFixed(2)}</Text>
+                                                </View>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
+                                                    <Text style={{ fontSize: 12, color: '#666' }}>{item.quantity} x ₱{parseFloat(String(price)).toFixed(2)}</Text>
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
                             </View>
-                            <View style={styles.receiptLine}>
-                                <Text style={styles.receiptLabel}>Shipping:</Text>
-                                <Text style={styles.receiptValue}>₱{shippingFee.toFixed(2)}</Text>
-                            </View>
-                            <View style={styles.receiptLine}>
-                                <Text style={styles.receiptLabel}>Total:</Text>
-                                <Text style={styles.receiptValue}>₱{totalAmount.toFixed(2)}</Text>
+
+                            <View style={[styles.receiptDivider, { borderStyle: 'dashed' }]} />
+
+                            {/* Totals */}
+                            <View style={styles.receiptSection}>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>Subtotal</Text>
+                                    <Text style={styles.receiptValue}>₱{subtotal.toFixed(2)}</Text>
+                                </View>
+                                <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>Shipping Fee</Text>
+                                    <Text style={styles.receiptValue}>₱{shippingFee.toFixed(2)}</Text>
+                                </View>
+                                {/* Discount placeholder if needed */}
+                                {/* <View style={styles.receiptRow}>
+                                    <Text style={styles.receiptLabel}>Discount</Text>
+                                    <Text style={[styles.receiptValue, { color: 'green' }]}>-₱0.00</Text>
+                                </View> */}
+                                <View style={[styles.receiptRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#eee' }]}>
+                                    <Text style={[styles.receiptLabel, { fontSize: 16, color: '#666' }]}>Total</Text>
+                                    <Text style={[styles.receiptValue, { fontSize: 18, fontWeight: 'bold', color: '#333' }]}>₱{totalAmount.toFixed(2)}</Text>
+                                </View>
+                                {order.paymentStatus === 'PARTIALLY_PAID' && (
+                                    <>
+                                        <View style={styles.receiptRow}>
+                                            <Text style={styles.receiptLabel}>Less: Deposit (20%)</Text>
+                                            <Text style={[styles.receiptValue, { color: '#dd1537ff' }]}>-₱{(totalAmount * 0.20).toFixed(2)}</Text>
+                                        </View>
+                                        <View style={[styles.receiptRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#eee', borderStyle: 'dashed' }]}>
+                                            <Text style={[styles.receiptLabel, { fontSize: 16, fontWeight: 'bold', color: '#333' }]}>BALANCE DUE</Text>
+                                            <Text style={[styles.receiptValue, { fontSize: 18, fontWeight: 'bold', color: '#B36979' }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
+                                        </View>
+                                    </>
+                                )}
                             </View>
 
                             {/* Proof Photos */}
@@ -589,9 +693,10 @@ export default function OrderDetailsPage() {
 
                                 if (photos.length > 0) {
                                     return (
-                                        <View style={{ marginTop: 20 }}>
-                                            <Text style={[styles.sectionTitle, { fontSize: 16, marginBottom: 10 }]}>Proof of Fulfillment</Text>
-                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                                        <View style={{ marginTop: 10 }}>
+                                            <View style={styles.receiptDivider} />
+                                            <Text style={styles.receiptSectionTitle}>Proof of Fulfillment</Text>
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', marginTop: 8 }}>
                                                 {photos.map((url, i) => (
                                                     <Image key={i} source={{ uri: url }} style={styles.proofPhoto} />
                                                 ))}
@@ -602,8 +707,27 @@ export default function OrderDetailsPage() {
                                 return null;
                             })()}
 
-                            <Pressable style={[styles.confirmBtn, { marginTop: 20 }]} onPress={() => setReceiptModalVisible(false)}>
-                                <Text style={styles.confirmBtnText}>Close</Text>
+                            {/* Footer / QR / Policy */}
+                            <View style={{ alignItems: 'center', marginTop: 30, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#eee', borderStyle: 'dashed' }}>
+                                <View style={styles.qrContainer}>
+                                    <Image
+                                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=ORDER-${order.uid}` }}
+                                        style={styles.qrCode}
+                                    />
+                                    <Text style={[styles.qrText, { marginTop: 8 }]}>Scan for digital copy</Text>
+                                </View>
+
+                                <Text style={{ textAlign: 'center', color: '#888', fontSize: 12, marginTop: 20, lineHeight: 18 }}>
+                                    If you have any questions, please contact us at{'\n'}
+                                    <Text style={{ color: '#B36979', fontWeight: 'bold' }}>support@knotandbloom.com</Text>
+                                </Text>
+                                <Text style={{ textAlign: 'center', color: '#aaa', fontSize: 10, marginTop: 10 }}>
+                                    Returns accepted within 5 business days after delivery.{'\n'}See our website for full return policy.
+                                </Text>
+                            </View>
+
+                            <Pressable style={[styles.confirmBtn, { marginTop: 24, backgroundColor: '#B36979' }]} onPress={() => setReceiptModalVisible(false)}>
+                                <Text style={styles.confirmBtnText}>Close Receipt</Text>
                             </Pressable>
                         </ScrollView>
                     </View>
@@ -797,6 +921,38 @@ const styles = StyleSheet.create({
     infoBanner: { padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 16 },
     infoBannerText: { fontWeight: '600', fontSize: 14 },
     infoBannerTitle: { fontWeight: 'bold', marginBottom: 4 },
+
+    // Receipt Modal Styles
+    receiptHeader: { alignItems: 'center', marginBottom: 20 },
+    receiptBrand: { fontSize: 24, fontWeight: 'bold', color: '#B36979', fontFamily: Platform.OS === 'web' ? 'serif' : 'System' },
+    receiptSubHeader: { fontSize: 14, color: '#666', marginTop: 4 },
+    receiptDivider: { height: 1, backgroundColor: '#eee', marginVertical: 12 },
+    receiptSection: { marginBottom: 16 },
+    receiptSectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#888', textTransform: 'uppercase', marginBottom: 8, letterSpacing: 1 },
+    receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+    receiptLabel: { fontSize: 14, color: '#666' },
+    receiptValue: { fontSize: 14, color: '#333', fontWeight: '500', flex: 1, textAlign: 'right' },
+    receiptText: { fontSize: 14, color: '#333', marginBottom: 2 },
+
+    receiptItemName: { fontSize: 14, fontWeight: '600', color: '#333' },
+
+    proofPhoto: {
+        width: 80,
+        height: 80,
+        borderRadius: 8,
+        marginRight: 8,
+        backgroundColor: '#f5f5f5',
+        borderWidth: 1,
+        borderColor: '#eee'
+    },
+    receiptItemVariant: { fontSize: 12, color: '#888', marginTop: 2 },
+    receiptItemTotal: { fontSize: 14, fontWeight: '600', color: '#333' },
+
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' }, // Existing or update
+    qrContainer: { alignItems: 'center', justifyContent: 'center' },
+    qrCode: { width: 100, height: 100 },
+    qrText: { fontSize: 12, color: '#888', marginTop: 4 },
 
     // New Action Button Styles
     actionButton: {

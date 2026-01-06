@@ -40,6 +40,8 @@ interface OrderDetail {
     disputeStartedAt?: string | null;
     shippingMethod?: string | null;
     proofPhotos?: string | null; // JSON string
+    shippingAddressSnapshot?: string | null; // JSON string
+    referenceNumber?: string;
     timeline: {
         uid: number;
         status: string;
@@ -74,6 +76,7 @@ export default function OrderDetailsPage() {
     const router = useRouter();
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [orderItems, setOrderItems] = useState<OrderItemSnapshot[]>([]);
+    const [shippingAddress, setShippingAddress] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
 
@@ -123,6 +126,15 @@ export default function OrderDetailsPage() {
             } catch (e) {
                 console.error("Failed to parse order items", e);
                 setOrderItems([]);
+            }
+
+            // Parse Shipping Snapshot
+            try {
+                if (orderData.shippingAddressSnapshot) {
+                    setShippingAddress(JSON.parse(orderData.shippingAddressSnapshot));
+                }
+            } catch (e) {
+                console.error("Failed to parse shipping snapshot", e);
             }
 
         } catch (error) {
@@ -279,7 +291,7 @@ export default function OrderDetailsPage() {
                 </View>
 
                 <View style={styles.titleSection}>
-                    <Text style={styles.title}>Order #{order.uid}</Text>
+                    <Text style={styles.title}>Order #{order.referenceNumber || order.uid}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
                         <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
                             {order.status.replace(/_/g, ' ')}
@@ -484,10 +496,27 @@ export default function OrderDetailsPage() {
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Shipping Details</Text>
-                    <Text style={styles.addressText}>{user?.name}</Text>
-                    <Text style={styles.addressText}>{user?.address || 'No address provided'}</Text>
-                    <Text style={styles.addressText}>{user?.phone}</Text>
-                    <Text style={styles.addressText}>{user?.email}</Text>
+                    {shippingAddress ? (
+                        <>
+                            <Text style={[styles.addressText, { fontWeight: '600', color: '#333' }]}>{shippingAddress.fullName}</Text>
+                            <Text style={styles.addressText}>{shippingAddress.address}</Text>
+                            <Text style={styles.addressText}>{shippingAddress.city}, {shippingAddress.postalCode}</Text>
+                            <Text style={styles.addressText}>{shippingAddress.phone}</Text>
+                            {shippingAddress.notes && (
+                                <View style={{ marginTop: 8, padding: 8, backgroundColor: '#f9f9f9', borderRadius: 6 }}>
+                                    <Text style={{ fontSize: 12, color: '#666', fontStyle: 'italic' }}>Note: {shippingAddress.notes}</Text>
+                                </View>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.addressText}>{user?.name}</Text>
+                            <Text style={styles.addressText}>{user?.address || 'No address provided'}</Text>
+                            <Text style={styles.addressText}>{user?.phone}</Text>
+                            <Text style={styles.addressText}>{user?.email}</Text>
+                            <Text style={{ fontSize: 12, color: '#999', marginTop: 4, fontStyle: 'italic' }}>(Current Profile Address)</Text>
+                        </>
+                    )}
                 </View>
 
             </ScrollView>

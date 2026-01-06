@@ -135,6 +135,10 @@ model Order {
   // Handmade Shipping Fields
   shippingMethod String? // "TRACKED" or "UNTRACKED"
   proofPhotos    String? // JSON string of photo URLs: ["url1", "url2"]
+
+  // New Fields
+  referenceNumber         String? @unique
+  shippingAddressSnapshot String? // JSON string of the address at time of order
 }
 
 enum OrderStatus {

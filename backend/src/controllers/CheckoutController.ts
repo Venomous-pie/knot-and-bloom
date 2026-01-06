@@ -8,6 +8,7 @@ import { notifications } from '../services/notificationService.js';
 import { PaymentService } from '../services/PaymentService.js';
 import { socketService } from '../services/SocketService.js';
 import { SellerService } from '../services/SellerService.js';
+import { generateOrderReference } from '../utils/orderUtils.js';
 
 import type {
     LockedPriceItem,
@@ -546,7 +547,7 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
 const completeCheckout = async (req: Request, res: Response): Promise<void> => {
     try {
         const { sessionId } = req.params;
-        const { paymentId, idempotencyKey } = req.body;
+        const { paymentId, idempotencyKey, shippingAddress } = req.body;
 
         const session = await prisma.checkoutSession.findUnique({
             where: { uid: Number(sessionId) },
@@ -693,6 +694,8 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                         paymentStatus: successfulPayment.method === 'COD' ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.SUCCEEDED,
                         // Append index to idempotency key to satisfy unique constraint: "key-1", "key-2"
                         idempotencyKey: `${idempotencyKey || session.idempotencyKey}-${orderIndex}`,
+                        referenceNumber: generateOrderReference(),
+                        shippingAddressSnapshot: shippingAddress ? JSON.stringify(shippingAddress) : null,
                         items: {
                             create: sellerItems.map(item => ({
                                 productId: item.productId,

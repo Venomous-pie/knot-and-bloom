@@ -288,7 +288,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 error: null,
             }));
 
-            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse);
+            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse, undefined, state.shippingInfo);
             const data = response.data;
 
             if (data.success && (data.orderId || data.orderIds)) {

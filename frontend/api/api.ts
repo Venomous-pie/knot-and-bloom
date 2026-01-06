@@ -263,11 +263,12 @@ export const checkoutAPI = {
     /**
      * Complete checkout - finalize order after payment
      */
-    complete: (sessionId: number, paymentId: number, idempotencyKey?: string) =>
-        apiClient.post<CompleteCheckoutResponse>(`/checkout/${sessionId}/complete`, {
-            paymentId,
-            idempotencyKey,
-        }),
+complete: (sessionId: number, paymentId: number, idempotencyKey?: string, shippingInfo?: any) =>
+    apiClient.post<CompleteCheckoutResponse>(`/checkout/${sessionId}/complete`, {
+        paymentId,
+        idempotencyKey,
+        shippingAddress: shippingInfo
+    }),
 
     /**
      * Cancel checkout session
@@ -275,11 +276,11 @@ export const checkoutAPI = {
     cancel: (sessionId: number) =>
         apiClient.delete(`/checkout/${sessionId}`),
 
-    /**
-     * Get available payment methods
-     */
-    getPaymentMethods: () =>
-        apiClient.get<{ success: boolean; methods: string[] }>('/checkout/methods/available'),
+        /**
+         * Get available payment methods
+         */
+        getPaymentMethods: () =>
+            apiClient.get<{ success: boolean; methods: string[] }>('/checkout/methods/available'),
 };
 
 // ============================================

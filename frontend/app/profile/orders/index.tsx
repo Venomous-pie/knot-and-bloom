@@ -3,7 +3,7 @@ import { useAuth } from '@/app/auth';
 import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';
 import * as Clipboard from 'expo-clipboard';
 import { RelativePathString, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -14,7 +14,9 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    View
+    View,
+    Animated,
+    Easing
 } from 'react-native';
 import {
     ChevronRight,
@@ -23,6 +25,8 @@ import {
     ExternalLink,
     Package,
     RefreshCw,
+    RotateCcw,
+    LoaderCircle,
     ShoppingBag,
     Truck
 } from 'lucide-react-native';
@@ -81,6 +85,7 @@ interface OrderSummary {
     estimatedCompletionDate?: string;
     estimatedDeliveryDate?: string;
     paymentStatus?: string;
+    paymentMethod?: string;
 }
 
 type TabKey = 'all' | 'to_pay' | 'to_ship' | 'to_receive' | 'completed' | 'cancelled' | 'return_refund';
@@ -106,8 +111,38 @@ export default function OrderHistoryPage() {
     const router = useRouter();
     const [orders, setOrders] = useState<OrderSummary[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>('all');
     const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
+
+    // Animation Ref
+    const spinValue = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (refreshing) {
+            Animated.loop(
+                Animated.timing(spinValue, {
+                    toValue: 1,
+                    duration: 1000,
+                    easing: Easing.linear,
+                    useNativeDriver: true,
+                })
+            ).start();
+        } else {
+            spinValue.setValue(0);
+        }
+    }, [refreshing]);
+
+    const spin = spinValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await fetchOrders();
+        setRefreshing(false);
+    };
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -129,16 +164,36 @@ export default function OrderHistoryPage() {
         }
     };
 
-    const filteredOrders = orders.filter(order => {
-        const tab = TABS.find(t => t.key === activeTab);
-        if (!tab || tab.statuses.length === 0) return true;
-        return tab.statuses.includes(order.status);
-    });
+    const shouldShowInTab = (order: OrderSummary, tabKey: TabKey): boolean => {
+        if (tabKey === 'all') return true;
+
+        if (tabKey === 'to_pay') {
+            // Include PENDING or Confirmed Partial Payments (COD)
+            return order.status === 'PENDING' ||
+                (order.status === 'CONFIRMED' && order.paymentStatus === 'PARTIALLY_PAID');
+        }
+
+        if (tabKey === 'to_ship') {
+            // Standard To Ship statuses
+            if (!['CONFIRMED', 'PROCESSING', 'IN_PRODUCTION', 'READY_TO_SHIP'].includes(order.status)) {
+                return false;
+            }
+            // Exclude Confirmed Partial Payments (they go to To Pay)
+            if (order.status === 'CONFIRMED' && order.paymentStatus === 'PARTIALLY_PAID') {
+                return false;
+            }
+            return true;
+        }
+
+        // For other tabs, use the standard status list
+        const tab = TABS.find(t => t.key === tabKey);
+        return tab ? tab.statuses.includes(order.status) : false;
+    };
+
+    const filteredOrders = orders.filter(order => shouldShowInTab(order, activeTab));
 
     const getTabCount = (tabKey: TabKey): number => {
-        const tab = TABS.find(t => t.key === tabKey);
-        if (!tab || tab.statuses.length === 0) return orders.length;
-        return orders.filter(order => tab.statuses.includes(order.status)).length;
+        return orders.filter(order => shouldShowInTab(order, tabKey)).length;
     };
 
     if (loading || authLoading) {
@@ -339,7 +394,15 @@ export default function OrderHistoryPage() {
                     <Text style={styles.backButtonText}>← Back</Text>
                 </Pressable>
                 <Text style={styles.title}>My Orders</Text>
-                <View style={{ width: 40 }} />{/* Spacer for center alignment */}
+                <Pressable
+                    onPress={() => {
+                        setLoading(true);
+                        fetchOrders();
+                    }}
+                    style={{ width: 40, alignItems: 'flex-end', justifyContent: 'center' }}
+                >
+                    <RotateCcw size={20} color="#333" />
+                </Pressable>
             </View>
 
             {/* Status Filter Tabs */}
@@ -497,7 +560,12 @@ export default function OrderHistoryPage() {
                                                 ₱{((Number(order.total || 0) + 60) * (order.paymentStatus === 'PARTIALLY_PAID' ? 0.8 : 1)).toFixed(2)}
                                             </Text>
                                         </View>
-                                        {renderQuickActions(order)}
+                                        <View style={styles.footerRight}>
+                                            {order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' && (
+                                                <Text style={styles.paidText}>PAID</Text>
+                                            )}
+                                            {renderQuickActions(order)}
+                                        </View>
                                     </View>
                                 </Pressable>
                             );
@@ -773,6 +841,16 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         color: '#B36979',
+    },
+    paidText: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#4CAF50',
+        marginRight: 10,
+    },
+    footerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     statusBadge: {
         paddingHorizontal: 10,

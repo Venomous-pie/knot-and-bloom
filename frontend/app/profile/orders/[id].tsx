@@ -442,8 +442,8 @@ export default function OrderDetailsPage() {
                         <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
                     </View>
                     <View style={[styles.summaryRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                        <Text style={styles.summaryLabel}>Order Total</Text>
-                        <Text style={styles.summaryValue}>₱{totalAmount.toFixed(2)}</Text>
+                        <Text style={order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' ? [styles.totalLabel, { color: '#333' }] : styles.summaryLabel}>Order Total</Text>
+                        <Text style={order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' ? [styles.totalValue, { color: '#B36979' }] : styles.summaryValue}>₱{totalAmount.toFixed(2)}</Text>
                     </View>
                     {order.paymentStatus === 'PARTIALLY_PAID' && (
                         <>

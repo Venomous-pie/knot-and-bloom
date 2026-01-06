@@ -1,5 +1,6 @@
 import { orderAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
+import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';
 import { RelativePathString, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -249,35 +250,7 @@ export default function OrderDetailsPage() {
 
     if (!order) return null;
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'PENDING': return '#F59E0B'; // Amber - Pending Seller Action
-            case 'CONFIRMED': return '#0EA5E9'; // Sky Blue - Accepted
-            case 'IN_PRODUCTION': return '#8B5CF6'; // Purple - Making it
-            case 'READY_TO_SHIP': return '#EC4899'; // Pink - Packed
-            case 'SHIPPED': return '#10B981'; // Emerald - On the way
-            case 'DELIVERED': return '#059669'; // Green - Arrived
-            case 'COMPLETED': return '#059669'; // Green - Verified
-            case 'CANCELLED': return '#EF4444'; // Red
-            case 'DISPUTED': return '#DC2626'; // Red
-            default: return '#6B7280';
-        }
-    };
-
-    const getStatusBgColor = (status: string) => {
-        switch (status) {
-            case 'PENDING': return '#FEF3C7';
-            case 'CONFIRMED': return '#E0F2FE';
-            case 'IN_PRODUCTION': return '#F3E8FF';
-            case 'READY_TO_SHIP': return '#FCE7F3';
-            case 'SHIPPED': return '#D1FAE5';
-            case 'DELIVERED': return '#D1FAE5';
-            case 'COMPLETED': return '#D1FAE5';
-            case 'CANCELLED': return '#FEE2E2';
-            case 'DISPUTED': return '#FEE2E2';
-            default: return '#F3F4F6';
-        }
-    };
+    // Use shared status color utilities (imported at top)
 
     const canExtend = (order.status === 'SHIPPED' || order.status === 'DELIVERED') && order.autoConfirmAt;
 
@@ -429,7 +402,11 @@ export default function OrderDetailsPage() {
                             const price = item.finalPrice ?? item.unitPrice ?? item.product.discountedPrice ?? item.product.basePrice ?? 0;
 
                             return (
-                                <View key={index} style={styles.itemCard}>
+                                <Pressable
+                                    key={index}
+                                    style={styles.itemCard}
+                                    onPress={() => router.push(`/product/${item.product.uid}` as RelativePathString)}
+                                >
                                     {item.product.image && (
                                         <Image source={{ uri: item.product.image }} style={styles.itemImage} />
                                     )}
@@ -443,7 +420,7 @@ export default function OrderDetailsPage() {
                                             ₱{parseFloat(String(price)).toFixed(2)}
                                         </Text>
                                     </View>
-                                </View>
+                                </Pressable>
                             );
                         })}
                     </View>

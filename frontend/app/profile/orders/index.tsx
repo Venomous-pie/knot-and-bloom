@@ -1,5 +1,7 @@
 import { orderAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
+import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';
+import * as Clipboard from 'expo-clipboard';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -110,6 +112,7 @@ export default function OrderHistoryPage() {
     const [orders, setOrders] = useState<OrderSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<TabKey>('all');
+    const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -151,68 +154,48 @@ export default function OrderHistoryPage() {
         );
     }
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'PENDING': return '#FFA500';
-            case 'CONFIRMED': return '#2196F3';
-            case 'PROCESSING': return '#2196F3';
-            case 'IN_PRODUCTION': return '#9C27B0';
-            case 'READY_TO_SHIP': return '#00BCD4';
-            case 'SHIPPED': return '#9C27B0';
-            case 'DELIVERED': return '#4CAF50';
-            case 'COMPLETED': return '#2E7D32';
-            case 'CANCELLED': return '#F44336';
-            case 'REFUNDED': return '#FF5722';
-            case 'DISPUTED': return '#FF9800';
-            default: return '#888';
-        }
-    };
+    // Status color/label functions imported from @/utils/orderStatus
 
-    const getStatusBgColor = (status: string) => {
-        switch (status) {
-            case 'PENDING': return '#FFF3E0';
-            case 'CONFIRMED': return '#E3F2FD';
-            case 'PROCESSING': return '#E3F2FD';
-            case 'IN_PRODUCTION': return '#F3E5F5';
-            case 'READY_TO_SHIP': return '#E0F7FA';
-            case 'SHIPPED': return '#F3E5F5';
-            case 'DELIVERED': return '#E8F5E9';
-            case 'COMPLETED': return '#E8F5E9';
-            case 'CANCELLED': return '#FFEBEE';
-            case 'REFUNDED': return '#FBE9E7';
-            case 'DISPUTED': return '#FFF3E0';
-            default: return '#F5F5F5';
-        }
-    };
-
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'PENDING': return 'To Pay';
-            case 'CONFIRMED': return 'Confirmed';
-            case 'PROCESSING': return 'Processing';
-            case 'IN_PRODUCTION': return 'In Production';
-            case 'READY_TO_SHIP': return 'Ready to Ship';
-            case 'SHIPPED': return 'Shipped';
-            case 'DELIVERED': return 'Delivered';
-            case 'COMPLETED': return 'Completed';
-            case 'CANCELLED': return 'Cancelled';
-            case 'REFUNDED': return 'Refunded';
-            case 'DISPUTED': return 'Disputed';
-            default: return status;
-        }
-    };
 
     const copyToClipboard = async (text: string) => {
+        let success = false;
         try {
-            if (Platform.OS === 'web' && navigator.clipboard) {
-                await navigator.clipboard.writeText(text);
-                Alert.alert('Copied', 'Tracking number copied to clipboard');
-            } else {
-                // Fallback for non-web platforms or if clipboard API not available
-                Alert.alert('Tracking Number', text);
-            }
+            success = await Clipboard.setStringAsync(text);
         } catch (error) {
-            console.error('Failed to copy:', error);
+            console.warn('Clipboard.setStringAsync failed, trying fallback:', error);
+        }
+
+        if (success) {
+            setCopiedTracking(text);
+            setTimeout(() => setCopiedTracking(null), 2000);
+        } else {
+            // Fallback for web if standard API fails or returns false
+            if (Platform.OS === 'web') {
+                try {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    // Ensure it's not visible but part of DOM
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    textArea.style.top = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+
+                    const fallbackSuccess = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+
+                    if (fallbackSuccess) {
+                        setCopiedTracking(text);
+                        setTimeout(() => setCopiedTracking(null), 2000);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+            }
+
+            // If all else fails
             Alert.alert('Tracking Number', text);
         }
     };
@@ -460,15 +443,23 @@ export default function OrderHistoryPage() {
                                         <ChevronRight size={20} color="#ccc" />
                                     </View>
 
-                                    {/* Tracking Info (for shipped orders) */}
                                     {order.status === 'SHIPPED' && order.trackingNumber && (
                                         <View style={styles.trackingRow}>
                                             <Truck size={14} color="#B36979" />
                                             <Text style={styles.trackingText}>
                                                 {order.courierName || 'Courier'}: {order.trackingNumber}
                                             </Text>
-                                            <Pressable onPress={() => copyToClipboard(order.trackingNumber!)}>
+                                            <Pressable
+                                                onPress={() => copyToClipboard(order.trackingNumber!)}
+                                                style={{ position: 'relative' }}
+                                                hitSlop={8}
+                                            >
                                                 <Copy size={14} color="#B36979" />
+                                                {copiedTracking === order.trackingNumber && (
+                                                    <View style={styles.tooltip}>
+                                                        <Text style={styles.tooltipText}>Copied!</Text>
+                                                    </View>
+                                                )}
                                             </Pressable>
                                         </View>
                                     )}
@@ -821,6 +812,21 @@ const styles = StyleSheet.create({
     outlineActionText: {
         color: '#555',
         fontSize: 13,
+        fontWeight: '600',
+    },
+    tooltip: {
+        position: 'absolute',
+        bottom: 25,
+        right: -10,
+        backgroundColor: '#333',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        zIndex: 10,
+    },
+    tooltipText: {
+        color: 'white',
+        fontSize: 10,
         fontWeight: '600',
     },
 });

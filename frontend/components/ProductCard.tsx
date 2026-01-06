@@ -67,7 +67,7 @@ export default function ProductCard({
     const finalPrice = variantPrice * (1 - discountPct / 100);
     const hasDiscount = discountPct > 0;
 
-    const isAvailable = selectedVariant?.stock ? selectedVariant.stock > 0 : true;
+    const isAvailable = selectedVariant ? selectedVariant.stock > 0 : true;
 
     // Images: specific variant image or default product image
     const displayImage = selectedVariant?.image || product.image;

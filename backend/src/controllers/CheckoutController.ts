@@ -58,7 +58,9 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
                         uid: { in: selectedItemIds.map((id: any) => Number(id)) },
                     },
                     include: {
-                        product: true,
+                        product: {
+                            include: { seller: true }
+                        },
                         productVariant: true,
                     },
                 },
@@ -125,6 +127,7 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
                 variantName: item.productVariant?.name ?? null,
                 image: item.productVariant?.image ?? item.product.image ?? null,
                 sellerId: item.product.sellerId ?? null,
+                sellerName: item.product.seller?.name ?? null,
             };
         });
 
@@ -671,6 +674,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                         uid: item.productId,
                         name: item.productName,
                         image: item.image,
+                        seller: item.sellerName ? { name: item.sellerName } : null,
                     },
                     quantity: item.quantity,
                     unitPrice: item.unitPrice,

@@ -36,6 +36,7 @@ interface LockedPriceItem {
     variantName: string | null;
     image: string | null;
     sellerId: number | null;
+    sellerName: string | null;
 }
 
 interface AuditLogEntry {

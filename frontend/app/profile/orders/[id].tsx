@@ -60,6 +60,7 @@ interface OrderItemSnapshot {
         // Legacy support
         basePrice?: string | number;
         discountedPrice?: string | number;
+        seller?: { name: string } | null;
     };
     quantity: number;
     unitPrice?: number; // Snapshot price
@@ -512,7 +513,7 @@ export default function OrderDetailsPage() {
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={[styles.modalTitle, { color: '#B91C1C' }]}>Report an Issue</Text>
+                        <Text style={[styles.reportModalTitle, { color: '#B91C1C' }]}>Report an Issue</Text>
                         <Text style={styles.subTitle}>Please describe the problem. This will pause the auto-completion timer.</Text>
 
                         <TextInput
@@ -623,13 +624,18 @@ export default function OrderDetailsPage() {
                                 <View style={{ marginTop: 8 }}>
                                     {orderItems.map((item, index) => {
                                         const price = item.finalPrice ?? item.unitPrice ?? item.product.discountedPrice ?? item.product.basePrice ?? 0;
-                                        const lineTotal = parseFloat(String(price)) * item.quantity;
+                                        const lineTotal = parseFloat(String(price));
 
                                         return (
                                             <View key={index} style={{ marginBottom: 12 }}>
                                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                                     <View style={{ flex: 1, paddingRight: 8 }}>
                                                         <Text style={styles.receiptItemName}>{item.product.name}</Text>
+                                                        {item.product.seller?.name && (
+                                                            <Text style={{ fontSize: 11, color: '#888', fontStyle: 'italic', marginBottom: 2 }}>
+                                                                Sold by: {item.product.seller.name}
+                                                            </Text>
+                                                        )}
                                                         {item.variant && (
                                                             <Text style={styles.receiptItemVariant}>
                                                                 {typeof item.variant === 'string' ? item.variant : (item.variant as any).name}
@@ -641,7 +647,7 @@ export default function OrderDetailsPage() {
                                                     <Text style={styles.receiptItemTotal}>₱{lineTotal.toFixed(2)}</Text>
                                                 </View>
                                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-                                                    <Text style={{ fontSize: 12, color: '#666' }}>{item.quantity} x ₱{parseFloat(String(price)).toFixed(2)}</Text>
+                                                    <Text style={{ fontSize: 12, color: '#666' }}>₱{parseFloat(String(price)).toFixed(2)} x {item.quantity}</Text>
                                                 </View>
                                             </View>
                                         );
@@ -667,8 +673,8 @@ export default function OrderDetailsPage() {
                                     <Text style={[styles.receiptValue, { color: 'green' }]}>-₱0.00</Text>
                                 </View> */}
                                 <View style={[styles.receiptRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                                    <Text style={[styles.receiptLabel, { fontSize: 16, color: '#666' }]}>Total</Text>
-                                    <Text style={[styles.receiptValue, { fontSize: 18, fontWeight: 'bold', color: '#333' }]}>₱{totalAmount.toFixed(2)}</Text>
+                                    <Text style={[styles.receiptLabel, { color: '#666' }]}>Total</Text>
+                                    <Text style={[styles.receiptValue, { color: '#333' }]}>₱{totalAmount.toFixed(2)}</Text>
                                 </View>
                                 {order.paymentStatus === 'PARTIALLY_PAID' && (
                                     <>
@@ -973,7 +979,7 @@ const styles = StyleSheet.create({
     textBtnText: { color: '#DC2626', fontSize: 14, fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     modalContent: { backgroundColor: 'white', width: '90%', maxWidth: 400, padding: 24, borderRadius: 16, elevation: 5 },
-    modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
+    reportModalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
     subTitle: { fontSize: 14, color: '#666', marginBottom: 20 },
     input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 15, backgroundColor: '#fff' },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
@@ -982,12 +988,4 @@ const styles = StyleSheet.create({
     btnText: { color: '#4b5563', fontWeight: '600' },
     confirmBtnText: { color: 'white', fontWeight: '600' },
 
-    // Receipt Styles
-    qrContainer: { alignItems: 'center', marginBottom: 24 },
-    qrCode: { width: 150, height: 150, backgroundColor: '#f0f0f0' },
-    qrText: { marginTop: 8, fontSize: 12, color: '#666' },
-    receiptLine: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingBottom: 8 },
-    receiptLabel: { color: '#666' },
-    receiptValue: { fontWeight: '600', color: '#111' },
-    proofPhoto: { width: 100, height: 100, marginRight: 8, borderRadius: 8, backgroundColor: '#f0f0f0' }
 });

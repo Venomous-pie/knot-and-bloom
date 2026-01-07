@@ -93,7 +93,11 @@ const customerRegisterController = async (input: unknown) => {
                 role: customer.role,
                 passwordResetRequired: customer.passwordResetRequired,
                 sellerId: undefined, // New users are not sellers yet
-                sellerStatus: undefined
+                sellerStatus: undefined,
+                sellerSlug: undefined,
+                sellerRating: undefined,
+                sellerTotalSales: undefined,
+                sellerTotalOrders: undefined
             }
         };
     } catch (error) {
@@ -160,7 +164,11 @@ const customerLoginController = async (input: unknown) => {
                 sellerId: customer.sellerProfile?.uid,
                 sellerStatus: customer.sellerProfile?.status,
                 sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
-                sellerStoreName: customer.sellerProfile?.name
+                sellerStoreName: customer.sellerProfile?.name,
+                sellerSlug: customer.sellerProfile?.slug,
+                sellerRating: customer.sellerProfile?.rating,
+                sellerTotalSales: customer.sellerProfile?.totalSales,
+                sellerTotalOrders: customer.sellerProfile?.totalOrders
             }
         };
 
@@ -190,7 +198,11 @@ const getCustomerProfile = async (userId: number) => {
         sellerId: customer.sellerProfile?.uid,
         sellerStatus: customer.sellerProfile?.status,
         sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
-        sellerStoreName: customer.sellerProfile?.name
+        sellerStoreName: customer.sellerProfile?.name,
+        sellerSlug: customer.sellerProfile?.slug,
+        sellerRating: customer.sellerProfile?.rating,
+        sellerTotalSales: customer.sellerProfile?.totalSales,
+        sellerTotalOrders: customer.sellerProfile?.totalOrders
     };
 };
 
@@ -310,7 +322,11 @@ const googleLoginController = async (input: unknown) => {
                 sellerId: customer.sellerProfile?.uid,
                 sellerStatus: customer.sellerProfile?.status,
                 sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
-                sellerStoreName: customer.sellerProfile?.name
+                sellerStoreName: customer.sellerProfile?.name,
+                sellerSlug: customer.sellerProfile?.slug,
+                sellerRating: customer.sellerProfile?.rating,
+                sellerTotalSales: customer.sellerProfile?.totalSales,
+                sellerTotalOrders: customer.sellerProfile?.totalOrders
             }
         };
 

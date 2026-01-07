@@ -39,6 +39,12 @@ export interface CheckoutState {
         newPrice: number;
     }> | null;
     sellerMetrics: Record<number, { avgShipTimeHours: number; successRate: number }> | null;
+    codInfo: {
+        allowed: boolean;
+        depositPercent: number;
+        disabledBy?: string[] | null;
+        reason?: string | null;
+    } | null;
 }
 
 interface CheckoutContextType extends CheckoutState {
@@ -69,6 +75,7 @@ const initialState: CheckoutState = {
     statusMessage: null,
     priceChanges: null,
     sellerMetrics: null,
+    codInfo: null,
 };
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
@@ -156,6 +163,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                     totalAmount: data.totalAmount,
                     expiresAt: data.expiresAt,
                     sellerMetrics: data.sellerMetrics || null,
+                    codInfo: data.codInfo || null, // NEW
                     step: 'shipping',
                     isProcessing: false,
                     statusMessage: null,

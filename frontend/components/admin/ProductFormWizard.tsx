@@ -14,6 +14,7 @@ import {
     TextInput,
     useWindowDimensions,
     View,
+    Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageUploader from './ImageUploader';
@@ -37,9 +38,9 @@ export interface ProductFormData {
     basePrice: string;
     discountPercentage: string;
     image: string;
-    description: string;
     materials: string;
     bundleQuantity: string;
+    isCodAllowed: boolean;
 }
 
 interface ProductFormWizardProps {
@@ -94,6 +95,7 @@ export default function ProductFormWizard({
         description: '',
         materials: '',
         bundleQuantity: '1',
+        isCodAllowed: true,
     });
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [variants, setVariants] = useState<VariantData[]>([
@@ -479,6 +481,24 @@ export default function ProductFormWizard({
                                 />
                             </View>
                         </View>
+
+                        {/* Intelligent COD Toggle */}
+                        {Number(formData.basePrice) >= 200 && (
+                            <View style={styles.switchContainer}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.switchLabel}>Allow Cash on Delivery (COD)?</Text>
+                                    <Text style={styles.switchSub}>
+                                        For items over ₱200, you can disable COD to reduce cancellation risks.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    trackColor={{ false: "#767577", true: "#B36979" }}
+                                    thumbColor={formData.isCodAllowed ? "#f4f3f4" : "#f4f3f4"}
+                                    onValueChange={() => setFormData(prev => ({ ...prev, isCodAllowed: !prev.isCodAllowed }))}
+                                    value={formData.isCodAllowed}
+                                />
+                            </View>
+                        )}
 
                         {/* Materials & Bundle Row */}
                         <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
@@ -1136,6 +1156,32 @@ const styles = StyleSheet.create({
         color: '#333',
         fontSize: 14,
         fontWeight: '600',
+    },
+    skuReqTextDone: {
+        color: '#4CAF50',
+    },
+    // Switch Styles
+    switchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFF5F7',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#FCC2D7'
+    },
+    switchLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#B36979',
+        marginBottom: 2
+    },
+    switchSub: {
+        fontSize: 12,
+        color: '#666',
+        marginRight: 16
     },
     materialSuggestions: {
         marginTop: 8,

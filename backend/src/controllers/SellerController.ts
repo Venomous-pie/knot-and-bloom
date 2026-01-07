@@ -310,7 +310,16 @@ export const sellerController = {
                 orderBy: { uploaded: 'desc' }
             });
 
-            res.json(orders);
+            // Cast Decimal to Number for frontend consumption
+            const safeOrders = orders.map(order => ({
+                ...order,
+                total: Number(order.total),
+                subtotal: Number(order.subtotal),
+                platformFee: Number(order.platformFee),
+                sellerEarnings: Number(order.sellerEarnings),
+            }));
+
+            res.json(safeOrders);
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: "Failed to fetch orders" });

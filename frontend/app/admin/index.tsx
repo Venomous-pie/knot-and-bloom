@@ -18,10 +18,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AdminDashboardPage() {
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    const { user, token, loading: authLoading } = useAuth();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedTerm, setDebouncedTerm] = useState("");
+    const [stats, setStats] = useState<any>(null);
 
     const {
         products,
@@ -29,6 +30,18 @@ export default function AdminDashboardPage() {
         refresh: refetchProducts,
         updateParams
     } = useProducts({ limit: 50 });
+
+    const fetchStats = async () => {
+        try {
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/earnings/admin/stats`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (res.ok) setStats(data);
+        } catch (e) {
+            console.error("Failed to fetch admin stats", e);
+        }
+    };
 
     // Auth Check
     useEffect(() => {
@@ -55,13 +68,14 @@ export default function AdminDashboardPage() {
         updateParams({ searchTerm: debouncedTerm });
     }, [debouncedTerm]);
 
-    // Fetch Products on Focus (if admin)
+    // Fetch Products & Stats on Focus (if admin)
     useFocusEffect(
         React.useCallback(() => {
             if (user?.role === 'ADMIN') {
                 refetchProducts();
+                fetchStats();
             }
-        }, [user])
+        }, [user, token])
     );
 
     const handleDelete = (id: number) => {
@@ -144,6 +158,29 @@ export default function AdminDashboardPage() {
                 </View>
             </View>
 
+            {/* Key Metrics */}
+            {stats && (
+                <View style={styles.metricsContainer}>
+                    <View style={styles.metricCard}>
+                        <Text style={styles.metricLabel}>Platform Revenue</Text>
+                        <Text style={styles.metricValue}>₱{Number(stats.revenue || 0).toLocaleString()}</Text>
+                        <Text style={styles.metricSub}>From 5% Fees</Text>
+                    </View>
+                    <View style={styles.metricCard}>
+                        <Text style={styles.metricLabel}>Total GMV</Text>
+                        <Text style={styles.metricValue}>₱{Number(stats.gmv || 0).toLocaleString()}</Text>
+                        <Text style={styles.metricSub}>Gross Sales</Text>
+                    </View>
+                    <View style={[styles.metricCard, stats.pendingWithdrawals > 0 && { borderColor: '#F59E0B', borderWidth: 2 }]}>
+                        <Text style={styles.metricLabel}>Pending Payouts</Text>
+                        <Text style={[styles.metricValue, stats.pendingWithdrawals > 0 && { color: '#F59E0B' }]}>
+                            {stats.pendingWithdrawals}
+                        </Text>
+                        <Text style={styles.metricSub}>Requests</Text>
+                    </View>
+                </View>
+            )}
+
             <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.searchInput}
@@ -181,13 +218,12 @@ const styles = StyleSheet.create({
         alignItems: "center"
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        // flexDirection: 'row', // Removed to stack title and buttons
         padding: 20,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
+        gap: 12
     },
     title: {
         fontSize: 24,
@@ -277,5 +313,37 @@ const styles = StyleSheet.create({
         marginTop: 40,
         color: '#666',
         fontSize: 16,
+    },
+    metricsContainer: {
+        flexDirection: 'row',
+        padding: 16,
+        gap: 12,
+    },
+    metricCard: {
+        flex: 1,
+        backgroundColor: 'white',
+        padding: 16,
+        borderRadius: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    metricLabel: {
+        fontSize: 12,
+        color: '#666',
+        marginBottom: 4,
+        fontWeight: '600',
+    },
+    metricValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#333',
+    },
+    metricSub: {
+        fontSize: 10,
+        color: '#999',
+        marginTop: 2,
     },
 });

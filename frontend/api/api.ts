@@ -186,6 +186,12 @@ export interface InitiateCheckoutResponse {
     message: string;
     isExisting?: boolean;
     sellerMetrics?: Record<number, { avgShipTimeHours: number; successRate: number }>;
+    codInfo?: {
+        allowed: boolean;
+        depositPercent: number;
+        disabledBy?: string[] | null;
+        reason?: string | null;
+    };
 }
 
 export interface CheckoutSessionResponse {

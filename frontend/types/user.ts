@@ -10,6 +10,10 @@ interface User {
     sellerStatus?: string; // 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED'
     sellerHasSeenWelcomeModal?: boolean;
     sellerStoreName?: string;
+    sellerSlug?: string;
+    sellerRating?: string | number;
+    sellerTotalSales?: string | number;
+    sellerTotalOrders?: number;
     passwordResetRequired?: boolean;
 }
 

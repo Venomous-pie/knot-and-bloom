@@ -18,6 +18,7 @@ import authRoutes from './routes/authRoutes.js';
 import imagekitRoutes from './routes/imagekitRoutes.js';
 import locationRoutes from './routes/locationRoutes.js';
 import servicesRoutes from './routes/servicesRoutes.js';
+import earningsRoutes from './routes/earningsRoutes.js';
 import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
@@ -74,6 +75,7 @@ app.use('/api/account', accountRoutes);
 app.use('/api/imagekit', imagekitRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/services', servicesRoutes);
+app.use('/api/earnings', earningsRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 

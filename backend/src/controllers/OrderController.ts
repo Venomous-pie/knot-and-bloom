@@ -194,6 +194,21 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
             if (!rejectionReason) return res.status(400).json({ error: "Reason required for cancellation" });
             updateData.rejectionReason = rejectionReason;
             timelineTitle = 'Order Cancelled';
+
+            // Intelligent COD: Punish bad behavior
+            // If Buyer cancels (or Rejected due to buyer fault), check payment method
+            const isBuyerFault = rejectionReason.toLowerCase().includes('change of mind') || rejectionReason.toLowerCase().includes('refused');
+
+            // Note: rejectionReason usually comes from Seller "Rejecting" OR Buyer "Cancelling"
+            if (isBuyerFault && order.paymentMethod === 'COD') {
+                await prisma.customer.update({
+                    where: { uid: order.customerId },
+                    data: {
+                        codCancellationCount: { increment: 1 },
+                        trustScore: { decrement: 10 }
+                    }
+                });
+            }
         }
         else if (status === 'SHIPPED') {
             // New Handmade Logic
@@ -260,11 +275,20 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
 
             // Escrow Release: Credit Seller
             if (order.sellerId) {
+                // Determine earnings to release
+                // If the order has sellerEarnings calculated (Phase 1+), use that.
+                // Fallback to order.total for legacy orders (though commission logic implies we should calculate it now if missing, but simpler to rely on stored value)
+                const earningsToRelease = order.sellerEarnings && Number(order.sellerEarnings) > 0
+                    ? order.sellerEarnings
+                    : order.total; // Fallback for old orders (0% commission effectively)
+
                 await prisma.seller.update({
                     where: { uid: order.sellerId },
                     data: {
-                        totalSales: { increment: order.total },
-                        totalOrders: { increment: 1 }
+                        totalSales: { increment: order.total }, // GMV
+                        totalOrders: { increment: 1 },
+                        pendingBalance: { decrement: earningsToRelease },
+                        availableBalance: { increment: earningsToRelease }
                     }
                 });
             }

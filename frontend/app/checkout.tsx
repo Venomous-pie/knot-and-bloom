@@ -62,8 +62,13 @@ function CheckoutContent() {
         statusMessage,
         initiateCheckout,
         completeCheckout,
-        sellerMetrics
+        sellerMetrics,
+        codInfo // NEW
     } = useCheckout();
+
+    // COD Eligibility & Deposit
+    const isCodAllowed = codInfo?.allowed !== false;
+    const codDepositPercent = codInfo?.depositPercent ?? 0;
 
     // Dynamic Delivery Estimate
     const { shipTimeStr, deliveryDateStr } = React.useMemo(() => {
@@ -415,11 +420,22 @@ function CheckoutContent() {
                                 </View>
                                 <View style={styles.paymentMethods}>
                                     <Pressable
-                                        style={[styles.paymentChip, paymentMethod === 'cod' && styles.paymentChipSelected]}
-                                        onPress={() => setPaymentMethod('cod')}
+                                        style={[
+                                            styles.paymentChip,
+                                            paymentMethod === 'cod' && styles.paymentChipSelected,
+                                            !isCodAllowed && { opacity: 0.5, backgroundColor: '#eee' }
+                                        ]}
+                                        onPress={() => isCodAllowed && setPaymentMethod('cod')}
+                                        disabled={!isCodAllowed}
                                     >
-                                        <Text style={[styles.paymentChipText, paymentMethod === 'cod' && styles.paymentChipTextSelected]}>Cash on Delivery</Text>
-                                        {paymentMethod === 'cod' && <Check size={16} color={theme.colors.primary} />}
+                                        <Text style={[
+                                            styles.paymentChipText,
+                                            paymentMethod === 'cod' && styles.paymentChipTextSelected,
+                                            !isCodAllowed && { color: '#999' }
+                                        ]}>
+                                            {isCodAllowed ? 'Cash on Delivery' : 'COD Unavailable'}
+                                        </Text>
+                                        {paymentMethod === 'cod' && isCodAllowed && <Check size={16} color={theme.colors.primary} />}
                                     </Pressable>
 
                                     <Pressable
@@ -467,14 +483,27 @@ function CheckoutContent() {
                                 {/* Split Breakdown if COD */}
                                 {paymentMethod === 'cod' ? (
                                     <View style={styles.splitPaymentContainer}>
-                                        <View style={styles.splitRow}>
-                                            <Text style={styles.splitLabel}>Due Now (20% Deposit):</Text>
-                                            <Text style={styles.splitValue}>₱{((totalAmount + 60) * 0.20).toFixed(2)}</Text>
-                                        </View>
-                                        <View style={styles.splitRow}>
-                                            <Text style={styles.splitLabel}>Due on Delivery (80%):</Text>
-                                            <Text style={styles.splitValue}>₱{((totalAmount + 60) * 0.80).toFixed(2)}</Text>
-                                        </View>
+                                        {codDepositPercent > 0 ? (
+                                            <>
+                                                {codInfo?.reason && (
+                                                    <Text style={{ fontSize: 12, color: '#F59E0B', marginBottom: 8, fontWeight: '600' }}>
+                                                        ⚠️ {codInfo.reason}
+                                                    </Text>
+                                                )}
+                                                <View style={styles.splitRow}>
+                                                    <Text style={styles.splitLabel}>Due Now ({codDepositPercent}% Deposit):</Text>
+                                                    <Text style={styles.splitValue}>₱{((totalAmount + 60) * (codDepositPercent / 100)).toFixed(2)}</Text>
+                                                </View>
+                                                <View style={styles.splitRow}>
+                                                    <Text style={styles.splitLabel}>Due on Delivery ({100 - codDepositPercent}%):</Text>
+                                                    <Text style={styles.splitValue}>₱{((totalAmount + 60) * ((100 - codDepositPercent) / 100)).toFixed(2)}</Text>
+                                                </View>
+                                            </>
+                                        ) : (
+                                            <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 18 }}>
+                                                ✅ Full amount of <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{(totalAmount + 60).toFixed(2)}</Text> is due on delivery. No deposit required.
+                                            </Text>
+                                        )}
                                     </View>
                                 ) : (
                                     <View style={styles.splitPaymentContainer}>
@@ -494,7 +523,7 @@ function CheckoutContent() {
                                     >
                                         {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.placeOrderText}>
                                             {paymentMethod === 'cod'
-                                                ? `Pay Deposit ₱${((totalAmount + 60) * 0.20).toFixed(2)}`
+                                                ? (codDepositPercent > 0 ? `Pay Deposit ₱${((totalAmount + 60) * (codDepositPercent / 100)).toFixed(2)}` : 'Place Order (Pay on Delivery)')
                                                 : 'Place Order'}
                                         </Text>}
                                     </Pressable>

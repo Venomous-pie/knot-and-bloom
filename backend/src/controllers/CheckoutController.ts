@@ -154,13 +154,39 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
         const sellerIds = [...new Set(lockedPrices.map(item => item.sellerId).filter((id): id is number => id !== null))];
         const sellerMetrics = await SellerService.getMetricsForSellers(sellerIds);
 
+        // --- COD Eligibility Check ---
+        // 1. Check if ANY product in the cart has isCodAllowed = false
+        const productIdsInCart = cart.items.map(i => i.productId);
+        const productsWithCodDisabled = await prisma.product.findMany({
+            where: { uid: { in: productIdsInCart }, isCodAllowed: false },
+            select: { uid: true, name: true }
+        });
+        const codAllowedByProducts = productsWithCodDisabled.length === 0;
+        const codDisabledProductNames = productsWithCodDisabled.map(p => p.name);
+
+        // 2. Check customer's cancellation count
+        const customer = await prisma.customer.findUnique({
+            where: { uid: Number(customerId) },
+            select: { codCancellationCount: true }
+        });
+        const isRepeatOffender = (customer?.codCancellationCount ?? 0) >= 2;
+        const codDepositPercent = isRepeatOffender ? 20 : 0;
+
+        const codInfo = {
+            allowed: codAllowedByProducts,
+            depositPercent: codDepositPercent,
+            disabledBy: codAllowedByProducts ? null : codDisabledProductNames,
+            reason: !codAllowedByProducts ? 'Some products do not allow COD' : (isRepeatOffender ? 'A 20% deposit is required due to previous cancellations.' : null)
+        };
+
         res.status(201).json({
             success: true,
             sessionId: session.uid,
             lockedPrices,
             totalAmount,
             expiresAt: session.expiresAt,
-            sellerMetrics, // NEW
+            sellerMetrics,
+            codInfo, // NEW
             message: 'Checkout session created successfully.',
         });
 
@@ -460,11 +486,31 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
             data: { status: CheckoutStatus.PROCESSING_PAYMENT },
         });
 
-        // Calculate charge amount (20% Deposit for COD)
+        // Fetch customer to check COD eligibility
+        const customer = await prisma.customer.findUnique({
+            where: { uid: session.customerId },
+            select: { codCancellationCount: true }
+        });
+
+        // COD Logic: Standard vs Restricted
+        // Standard: 0% Deposit
+        // Restricted (Repeat Offender): 20% Deposit
         let chargeAmount = Number(session.totalAmount);
+        let requiresDeposit = false;
+
         if (paymentMethod === 'COD') {
-            chargeAmount = chargeAmount * 0.20;
+            const isRepeatOffender = (customer?.codCancellationCount || 0) >= 2;
+
+            if (isRepeatOffender) {
+                // Require 20% deposit for risky users
+                chargeAmount = chargeAmount * 0.20;
+                requiresDeposit = true;
+            } else {
+                // Standard COD = No upfront charge
+                chargeAmount = 0;
+            }
         }
+
 
         // Create payment record
         const payment = await prisma.payment.create({
@@ -686,16 +732,29 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                     } : null,
                 }));
 
+                // Commission Calculation
+                const seller = await tx.seller.findUnique({ where: { uid: sellerId! } });
+                const commissionRate = seller?.commissionRate ? Number(seller.commissionRate) : 0.05;
+                const platformFee = Number((orderTotal * commissionRate).toFixed(2));
+                const sellerEarnings = Number((orderTotal - platformFee).toFixed(2));
+
                 const newOrder = await tx.order.create({
                     data: {
                         customerId: session.customerId,
                         sellerId: sellerId, // Assign to seller
                         products: JSON.stringify(orderedProducts),
                         total: orderTotal,
+                        subtotal: orderTotal, // Subtotal is same as total for now (no extra order-level fees yet)
+                        platformFee: platformFee,
+                        sellerEarnings: sellerEarnings,
                         discount: 0,
                         status: OrderStatus.CONFIRMED,
                         paymentMethod: successfulPayment.method,
-                        paymentStatus: successfulPayment.method === 'COD' ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.SUCCEEDED,
+                        // If COD and amount > 0, it means a deposit was paid -> PARTIALLY_PAID
+                        // If COD and amount == 0, it means trust-based -> PENDING (Collect full on delivery)
+                        paymentStatus: successfulPayment.method === 'COD'
+                            ? (Number(successfulPayment.amount) > 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PENDING)
+                            : PaymentStatus.SUCCEEDED,
                         // Append index to idempotency key to satisfy unique constraint: "key-1", "key-2"
                         idempotencyKey: `${idempotencyKey || session.idempotencyKey}-${orderIndex}`,
                         referenceNumber: generateOrderReference(),
@@ -713,6 +772,16 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                         }
                     },
                 });
+
+                // Update Seller Pending Balance
+                if (sellerId) {
+                    await tx.seller.update({
+                        where: { uid: sellerId },
+                        data: {
+                            pendingBalance: { increment: sellerEarnings }
+                        }
+                    });
+                }
 
                 orderIds.push(newOrder.uid);
 

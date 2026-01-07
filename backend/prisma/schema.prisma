@@ -31,6 +31,8 @@ model Product {
   deletedBy Int?
   version   Int           @default(0)
 
+  isCodAllowed Boolean @default(true) // Seller toggle (Only effective if price > 200)
+
   orderItems OrderItem[]
 }
 
@@ -52,13 +54,16 @@ model ProductVariant {
 }
 
 model Customer {
-  uid                   Int                   @id @default(autoincrement())
-  name                  String
-  email                 String?               @unique
-  password              String?
-  googleId              String?               @unique
-  phone                 String?               @unique
-  address               String?
+  uid                  Int     @id @default(autoincrement())
+  name                 String
+  email                String? @unique
+  password             String?
+  googleId             String? @unique
+  phone                String? @unique
+  address              String?
+  codCancellationCount Int     @default(0) // Track bad COD behavior
+  trustScore           Int     @default(100) // 0-100, drops on cancellation
+
   avatar                String?
   uploaded              DateTime              @default(now())
   updated               DateTime              @updatedAt
@@ -139,6 +144,11 @@ model Order {
   // New Fields
   referenceNumber         String? @unique
   shippingAddressSnapshot String? // JSON string of the address at time of order
+
+  // Commission & Earnings
+  subtotal       Decimal @default(0)
+  platformFee    Decimal @default(0)
+  sellerEarnings Decimal @default(0)
 }
 
 enum OrderStatus {
@@ -243,7 +253,7 @@ model Seller {
   status           SellerStatus @default(PENDING)
   termsAccepted    Boolean      @default(false)
   termsAcceptedAt  DateTime?
-  commissionRate   Decimal      @default(0.15)
+  commissionRate   Decimal      @default(0.05)
   totalSales       Decimal      @default(0)
   totalOrders      Int          @default(0)
   createdAt        DateTime     @default(now())
@@ -258,6 +268,12 @@ model Seller {
 
   hasSeenWelcomeModal Boolean   @default(false)
   approvedAt          DateTime?
+
+  // Earnings & Payouts
+  pendingBalance     Decimal             @default(0)
+  availableBalance   Decimal             @default(0)
+  totalWithdrawn     Decimal             @default(0)
+  withdrawalRequests WithdrawalRequest[]
 
   @@index([customerId, hasSeenWelcomeModal])
 }
@@ -377,4 +393,27 @@ model OrderTimeline {
   createdAt DateTime    @default(now())
 
   @@index([orderId])
+}
+
+model WithdrawalRequest {
+  uid       Int              @id @default(autoincrement())
+  sellerId  Int
+  seller    Seller           @relation(fields: [sellerId], references: [uid])
+  amount    Decimal
+  status    WithdrawalStatus @default(PENDING)
+  method    String // GCASH, BANK, etc.
+  details   String? // Account number, Account name
+  adminNote String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([sellerId])
+  @@index([status])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSED
 }

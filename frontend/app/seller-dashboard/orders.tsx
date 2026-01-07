@@ -24,6 +24,10 @@ interface Order {
     courierName: string | null;
     customer: { name: string; email: string };
     items: OrderItem[];
+    // Financials
+    subtotal: number;
+    platformFee: number;
+    sellerEarnings: number;
 }
 
 export default function SellerOrders() {
@@ -394,7 +398,12 @@ export default function SellerOrders() {
 
             <View style={styles.customerInfo}>
                 <Text style={styles.customerConfig}>Customer: {item.customer.name}</Text>
-                <Text style={styles.totalAmount}>Total: ₱{Number(item.total).toFixed(2)}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.subText}>Subtotal: ₱{Number(item.subtotal || item.total).toFixed(2)}</Text>
+                    <Text style={[styles.subText, { color: '#EF4444' }]}>Platform Fee (5%): -₱{Number(item.platformFee || 0).toFixed(2)}</Text>
+                    <View style={styles.divider} />
+                    <Text style={styles.earningsText}>Earnings: ₱{Number(item.sellerEarnings || item.total).toFixed(2)}</Text>
+                </View>
             </View>
 
             {/* Escrow Note for Pending/Confirmed */}
@@ -715,6 +724,11 @@ const styles = StyleSheet.create({
     itemDetails: { flex: 1, justifyContent: 'center' },
     productName: { fontWeight: '600', fontSize: 14, color: '#374151', marginBottom: 2 },
     qtyText: { fontSize: 13, color: '#6b7280' },
+
+    // Financial Styles
+    subText: { fontSize: 12, color: '#6b7280', marginBottom: 2 },
+    earningsText: { fontSize: 14, fontWeight: '700', color: '#059669', marginTop: 2 },
+    divider: { height: 1, backgroundColor: '#E5E7EB', width: '100%', marginVertical: 4 },
 
     actions: { borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 16, alignItems: 'flex-end' },
     actionRow: { flexDirection: 'row', gap: 12 },

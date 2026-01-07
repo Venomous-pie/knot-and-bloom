@@ -22,8 +22,13 @@ import {
     MapPin,
     Megaphone,
     Package,
+    ShoppingBag,
+    LayoutDashboard,
+    Star,
+    DollarSign,
     Trash2,
-    User
+    User,
+    Wallet
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePathname } from 'expo-router';
@@ -83,6 +88,46 @@ const MenuSection: React.FC<MenuSectionProps> = ({ title, children }) => (
     <View style={styles.section}>
         <Text style={styles.sectionTitle}>{title}</Text>
         <View style={styles.sectionContent}>{children}</View>
+    </View>
+);
+
+interface StoreHealthProps {
+    rating: string | number;
+    sales: string | number;
+    orders: number;
+}
+
+const StoreHealthItem: React.FC<StoreHealthProps> = ({ rating, sales, orders }) => (
+    <View style={styles.healthContainer}>
+        <View style={styles.healthItem}>
+            <View style={[styles.healthIcon, { backgroundColor: '#FFF3E0' }]}>
+                <Star size={16} color="#FF9800" fill="#FF9800" />
+            </View>
+            <View>
+                <Text style={styles.healthValue}>{Number(rating || 0).toFixed(1)}</Text>
+                <Text style={styles.healthLabel}>Rating</Text>
+            </View>
+        </View>
+        <View style={styles.healthDivider} />
+        <View style={styles.healthItem}>
+            <View style={[styles.healthIcon, { backgroundColor: '#E8F5E9' }]}>
+                <DollarSign size={16} color="#4CAF50" />
+            </View>
+            <View>
+                <Text style={styles.healthValue}>₱{Number(sales || 0).toLocaleString()}</Text>
+                <Text style={styles.healthLabel}>Sales</Text>
+            </View>
+        </View>
+        <View style={styles.healthDivider} />
+        <View style={styles.healthItem}>
+            <View style={[styles.healthIcon, { backgroundColor: '#E3F2FD' }]}>
+                <Package size={16} color="#2196F3" />
+            </View>
+            <View>
+                <Text style={styles.healthValue}>{orders || 0}</Text>
+                <Text style={styles.healthLabel}>Orders</Text>
+            </View>
+        </View>
     </View>
 );
 
@@ -179,6 +224,47 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                             </Text>
                         </View>
                     </Pressable>
+                )}
+
+                {/* Seller Store Section */}
+                {user.sellerStatus === 'ACTIVE' && (
+                    <MenuSection title="My Store">
+                        <View style={styles.healthWrapper}>
+                            <StoreHealthItem
+                                rating={user.sellerRating || 0}
+                                sales={user.sellerTotalSales || 0}
+                                orders={user.sellerTotalOrders || 0}
+                            />
+                        </View>
+
+                        <MenuItem
+                            icon={<LayoutDashboard size={20} />}
+                            title="Seller Dashboard"
+                            subtitle="Manage your business"
+                            isActive={pathname.startsWith('/seller-dashboard')}
+                            onPress={() => router.push('/seller-dashboard/orders' as RelativePathString)}
+                        />
+                        <MenuItem
+                            icon={<ShoppingBag size={20} />}
+                            title="My Store"
+                            subtitle="View your storefront"
+                            onPress={() => user.sellerSlug && router.push(`/seller/${user.sellerSlug}` as RelativePathString)}
+                        />
+                        <MenuItem
+                            icon={<Package size={20} />}
+                            title="Products"
+                            subtitle="Manage inventory"
+                            isActive={pathname === '/seller-dashboard/products'}
+                            onPress={() => router.push('/seller-dashboard/products' as RelativePathString)}
+                        />
+                        <MenuItem
+                            icon={<Wallet size={20} />}
+                            title="Earnings & Payouts"
+                            subtitle="Cash out your sales"
+                            isActive={pathname === '/seller-dashboard/earnings'}
+                            onPress={() => router.push('/seller-dashboard/earnings' as RelativePathString)}
+                        />
+                    </MenuSection>
                 )}
 
                 {/* My Account Section */}
@@ -442,5 +528,48 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
     },
-
+    healthWrapper: {
+        padding: 16,
+        paddingBottom: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    healthContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#F9F9F9',
+        borderRadius: 12,
+        padding: 12,
+    },
+    healthItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center', // Center content within the item
+    },
+    healthIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+    healthValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#333',
+    },
+    healthLabel: {
+        fontSize: 10,
+        color: '#888',
+        fontWeight: '500',
+    },
+    healthDivider: {
+        width: 1,
+        height: 24,
+        backgroundColor: '#E0E0E0',
+        marginHorizontal: 4,
+    },
 });

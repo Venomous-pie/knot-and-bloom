@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { Role, SellerStatus } from '../types/authTypes.js';
+import { SellerStatus } from '@prisma/client';
+import { Role } from '../types/authTypes.js';
 import type { AuthPayload } from '../types/authTypes.js';
 import prisma from '../utils/prismaUtils.js';
 import { ensureAdminSellerProfile } from '../utils/sellerUtils.js';
@@ -74,16 +75,47 @@ export const sellerController = {
             if (!req.user) return res.status(401).json({ error: "Unauthorized" });
             const user = req.user as AuthPayload;
 
+            // Need email for seller profile
+            if (!user.email) {
+                return res.status(400).json({ error: "Email is required to become a seller" });
+            }
+
             const data = sellerSchema.parse(req.body);
             const userId = user.id;
 
             // Check if already has seller profile
             const existingSeller = await prisma.seller.findUnique({ where: { customerId: userId } });
-            if (existingSeller) return res.status(409).json({ error: "User is already a seller" });
 
-            // Need email for seller profile
-            if (!user.email) {
-                return res.status(400).json({ error: "Email is required to become a seller" });
+            if (existingSeller) {
+                // Allow re-submission if previously rejected
+                if (existingSeller.status === SellerStatus.REJECTED) {
+                    // Generate slug (same logic as create)
+                    let slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                    // Check slug uniqueness (excluding current seller)
+                    const urlCheck = await prisma.seller.findFirst({
+                        where: {
+                            slug,
+                            NOT: { uid: existingSeller.uid }
+                        }
+                    });
+                    if (urlCheck) slug = `${slug}-${Date.now()}`;
+
+                    const updatedSeller = await prisma.seller.update({
+                        where: { uid: existingSeller.uid },
+                        data: {
+                            name: data.name,
+                            slug,
+                            email: user.email!,
+                            description: data.description ?? null,
+                            logo: data.logo ?? null,
+                            banner: data.banner ?? null,
+                            status: SellerStatus.PENDING
+                        }
+                    });
+                    return res.status(200).json(updatedSeller);
+                }
+
+                return res.status(409).json({ error: "User is already a seller" });
             }
 
             // Generate slug

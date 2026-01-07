@@ -69,6 +69,7 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
         } else if (user.role === Role.ADMIN) {
             // Admin keeps input sellerId or null (for Knot & Bloom direct) => FIX: Enforce Admin Seller Profile if none provided
             if (!sellerId) {
+                if (!user.email) throw new Error("Admin email required for seller profile creation");
                 sellerId = await ensureAdminSellerProfile(user.id, user.email);
             }
         }

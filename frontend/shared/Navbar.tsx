@@ -358,8 +358,6 @@ export default function NavBar() {
 
     const expandedAnim = useRef(new Animated.Value(0)).current;
 
-
-
     const navSearchWidth = expandedAnim.interpolate({
         inputRange: [0, 1],
         outputRange: [40, 300]
@@ -375,7 +373,12 @@ export default function NavBar() {
         outputRange: [0, 0, 1]
     });
 
-
+    // Helper to determine if we are on a "bespoke" page (Auth, Secure Checkout, Seller Onboarding)
+    // These pages have limited navigation (Brand + Support only)
+    const isBespokePage = pathname?.includes('/auth') ||
+        pathname?.includes('/secure') ||
+        pathname?.includes('/seller/apply') ||
+        pathname?.includes('/seller/application-');
 
     // Fetch suggestions on component mount for better UX
 
@@ -436,7 +439,7 @@ export default function NavBar() {
                 screenOptions={{
                     headerTitleAlign: 'center',
                     header: mobile ? () => {
-                        if (pathname?.includes('/auth') || pathname?.includes('/secure')) {
+                        if (isBespokePage) {
                             return (
                                 <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, justifyContent: 'space-between', backgroundColor: 'white' }}>
                                     <Pressable onPress={() => router.back()} style={{ padding: 5 }}>
@@ -496,13 +499,13 @@ export default function NavBar() {
                     },
 
                     headerTitle: () => {
-                        if (!pathname?.includes('/auth') && !pathname?.includes('/secure')) {
+                        if (!isBespokePage) {
                             return <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />;
                         }
                         return null;
                     },
                     headerRight: () => {
-                        if (pathname?.includes('/auth') || pathname?.includes('/secure')) {
+                        if (isBespokePage) {
                             return (
                                 <View style={{ marginRight: width * navMargin }}>
                                     <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
@@ -658,7 +661,7 @@ export default function NavBar() {
                 }}
             />
             <MenuSideBar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-            {mobile && !pathname?.includes('/auth') && !pathname?.includes('/secure') && <MobileTabBar />}
+            {mobile && !isBespokePage && <MobileTabBar />}
         </View >
     );
 

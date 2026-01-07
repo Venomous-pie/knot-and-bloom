@@ -218,6 +218,7 @@ enum SellerStatus {
   ACTIVE
   SUSPENDED
   BANNED
+  REJECTED
 }
 
 enum ProductStatus {

@@ -85,16 +85,16 @@ export default function ApplicationSubmittedPage() {
                         <View style={styles.buttonContainer}>
                             <Pressable
                                 style={styles.primaryButton}
-                                onPress={() => router.replace("/" as RelativePathString)}
+                                onPress={() => router.push("/seller/application-status" as RelativePathString)}
                             >
-                                <Text style={styles.primaryButtonText}>Return to Marketplace →</Text>
+                                <Text style={styles.primaryButtonText}>View Application Status</Text>
                             </Pressable>
 
                             <Pressable
                                 style={styles.secondaryButton}
-                                onPress={() => router.push("/seller-dashboard/orders" as RelativePathString)}
+                                onPress={() => router.push("/" as RelativePathString)}
                             >
-                                <Text style={styles.secondaryButtonText}>View Seller Dashboard</Text>
+                                <Text style={styles.secondaryButtonText}>Return to Home</Text>
                             </Pressable>
                         </View>
                     </View>

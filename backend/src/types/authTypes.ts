@@ -8,7 +8,8 @@ export enum SellerStatus {
     PENDING = 'PENDING',
     ACTIVE = 'ACTIVE',
     SUSPENDED = 'SUSPENDED',
-    BANNED = 'BANNED'
+    BANNED = 'BANNED',
+    REJECTED = 'REJECTED'
 }
 
 export interface AuthPayload {

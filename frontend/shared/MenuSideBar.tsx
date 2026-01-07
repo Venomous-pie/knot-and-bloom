@@ -444,6 +444,29 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                     </Link>
                                 );
                             })}
+
+                            <View style={{ height: 15 }} />
+
+                            {/* Only show "Sell on Knot&Bloom" if user is NOT a seller or admin */}
+                            {!((user?.sellerId && (user.sellerStatus === 'ACTIVE' || user.sellerStatus === 'PENDING')) || user?.role === 'ADMIN') && (
+                                <Link href={'/seller/apply' as RelativePathString} asChild>
+                                    <Pressable onPress={onClose}>
+                                        {({ hovered }) => (
+                                            <View style={[
+                                                styles.menuItem,
+                                                pathname === '/seller/apply' && styles.menuItemActive,
+                                                hovered && styles.menuItemHovered
+                                            ]}>
+                                                <Text style={[
+                                                    styles.menuItemText,
+                                                    pathname === '/seller/apply' && styles.menuItemTextActive,
+                                                    { color: '#B36979', fontWeight: 'bold' }
+                                                ]}>Sell on Knot&Bloom</Text>
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                </Link>
+                            )}
                         </View>
                     </View>
 

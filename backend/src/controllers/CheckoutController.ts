@@ -20,6 +20,10 @@ const SESSION_EXPIRY_MS = 15 * 60 * 1000;
 // Payment timeout (45 seconds)
 const PAYMENT_TIMEOUT_MS = 45000;
 
+// Shipping fee constants
+const FREE_SHIPPING_THRESHOLD = 500; // Free shipping for orders >= 500
+const STANDARD_SHIPPING_FEE = 60; // Standard shipping fee in PHP
+
 const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
     try {
         const { customerId, selectedItemIds, idempotencyKey } = req.body;
@@ -738,13 +742,21 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 const platformFee = Number((orderTotal * commissionRate).toFixed(2));
                 const sellerEarnings = Number((orderTotal - platformFee).toFixed(2));
 
+                // Calculate shipping fee server-side based on total checkout amount
+                // Shipping fee is applied to the first order only (for multi-seller orders)
+                const checkoutTotal = Number(session.totalAmount);
+                const calculatedShippingFee = checkoutTotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+                const orderShippingFee = orderIndex === 1 ? calculatedShippingFee : 0;
+                const orderTotalWithShipping = orderTotal + orderShippingFee;
+
                 const newOrder = await tx.order.create({
                     data: {
                         customerId: session.customerId,
                         sellerId: sellerId, // Assign to seller
                         products: JSON.stringify(orderedProducts),
-                        total: orderTotal,
-                        subtotal: orderTotal, // Subtotal is same as total for now (no extra order-level fees yet)
+                        total: orderTotalWithShipping, // Total includes shipping
+                        subtotal: orderTotal, // Product subtotal only
+                        shippingFee: orderShippingFee, // Shipping fee (0 for subsequent orders in multi-seller)
                         platformFee: platformFee,
                         sellerEarnings: sellerEarnings,
                         discount: 0,

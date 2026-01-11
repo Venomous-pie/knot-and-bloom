@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -65,6 +65,8 @@ function CheckoutContent() {
         completeCheckout,
         sellerMetrics,
         codInfo, // NEW
+        expiresAt,
+        cancelCheckout,
     } = useCheckout();
 
     // COD Eligibility & Deposit
@@ -73,6 +75,7 @@ function CheckoutContent() {
 
     // Shipping Fee Logic
     const shippingFee = totalAmount >= FREE_SHIPPING_THRESHOLD ? 0 : 60.00;
+    const hasFreeShipping = shippingFee === 0;
 
 
     // Dynamic Delivery Estimate
@@ -117,6 +120,10 @@ function CheckoutContent() {
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'card'>('cod');
     const [deliveryNotes, setDeliveryNotes] = useState('');
 
+    // Session Expiration State
+    const [showExpirationDialog, setShowExpirationDialog] = useState(false);
+    const expirationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // --------------------------------------------------------------------------
     // Effects
     // --------------------------------------------------------------------------
@@ -146,6 +153,47 @@ function CheckoutContent() {
     }, [user, items]);
 
     // --------------------------------------------------------------------------
+    // Session Expiration Monitoring
+    // --------------------------------------------------------------------------
+    useEffect(() => {
+        // Clear any existing timer
+        if (expirationTimerRef.current) {
+            clearTimeout(expirationTimerRef.current);
+            expirationTimerRef.current = null;
+        }
+
+        if (!expiresAt) return;
+
+        const expirationTime = new Date(expiresAt).getTime();
+        const now = Date.now();
+        const timeUntilExpiry = expirationTime - now;
+
+        if (timeUntilExpiry <= 0) {
+            // Already expired
+            setShowExpirationDialog(true);
+        } else {
+            // Set timer to trigger expiration dialog
+            expirationTimerRef.current = setTimeout(() => {
+                setShowExpirationDialog(true);
+            }, timeUntilExpiry);
+        }
+
+        // Cleanup on unmount or when expiresAt changes
+        return () => {
+            if (expirationTimerRef.current) {
+                clearTimeout(expirationTimerRef.current);
+                expirationTimerRef.current = null;
+            }
+        };
+    }, [expiresAt]);
+
+    const handleExpirationDismiss = async () => {
+        setShowExpirationDialog(false);
+        await cancelCheckout();
+        router.replace('/cart');
+    };
+
+    // --------------------------------------------------------------------------
     // Address Handlers
     // --------------------------------------------------------------------------
     const fetchAddresses = async () => {
@@ -159,8 +207,10 @@ function CheckoutContent() {
                 const def = res.data.addresses.find((a: Address) => a.isDefault);
                 setSelectedAddress(def || res.data.addresses[0]);
             }
+            return res.data.addresses;
         } catch (e) {
             console.error(e);
+            return [];
         } finally {
             setLoadingAddr(false);
         }
@@ -263,18 +313,23 @@ function CheckoutContent() {
     };
 
     // Address Selection Modal
+    const closeModal = () => {
+        if (viewMode === 'map_picker') setViewMode('address_form');
+        else setViewMode('checkout');
+    };
+
     const renderAddressModal = () => (
         <Modal
             visible={viewMode !== 'checkout'}
             animationType="slide"
             transparent={true}
-            onRequestClose={() => {
-                if (viewMode === 'map_picker') setViewMode('address_form');
-                else setViewMode('checkout');
-            }}
+            onRequestClose={closeModal}
         >
-            <View style={styles.modalOverlay}>
-                <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}>
+            <Pressable style={styles.modalOverlay} onPress={closeModal}>
+                <Pressable
+                    style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}
+                    onPress={(e) => e.stopPropagation()}
+                >
                     {viewMode === 'address_selection' ? (
                         <>
                             <View style={styles.modalHeader}>
@@ -298,7 +353,17 @@ function CheckoutContent() {
                                     }}
                                     onDelete={async (id) => {
                                         await addressAPI.deleteAddress(id);
-                                        fetchAddresses();
+                                        const newAddresses = await fetchAddresses();
+
+                                        // If we deleted the currently selected address, pick a new one
+                                        if (selectedAddress?.uid === id) {
+                                            if (newAddresses && newAddresses.length > 0) {
+                                                const def = newAddresses.find((a: Address) => a.isDefault);
+                                                setSelectedAddress(def || newAddresses[0]);
+                                            } else {
+                                                setSelectedAddress(null);
+                                            }
+                                        }
                                     }}
                                     onSetDefault={async (id) => {
                                         await addressAPI.setDefaultAddress(id);
@@ -353,6 +418,7 @@ function CheckoutContent() {
                                     onOpenMap={() => setViewMode('map_picker')}
                                     showSaveCheckbox
                                     isSaving={isSavingAddr}
+                                    isFirstAddress={addresses.length === 0}
                                 />
                             </ScrollView>
                         </>
@@ -365,8 +431,8 @@ function CheckoutContent() {
                             />
                         </View>
                     )}
-                </View>
-            </View>
+                </Pressable>
+            </Pressable>
         </Modal>
     );
 
@@ -384,6 +450,35 @@ function CheckoutContent() {
                     </Pressable>
                 </View>
             </View>
+
+            {/* Session Expiration Dialog */}
+            <Modal
+                visible={showExpirationDialog}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={handleExpirationDismiss}
+            >
+                <View style={styles.expirationOverlay}>
+                    <View style={styles.expirationDialog}>
+                        <View style={styles.expirationIconContainer}>
+                            <Ionicons name="time-outline" size={48} color={theme.colors.error} />
+                        </View>
+                        <Text style={styles.expirationTitle}>Session Expired</Text>
+                        <Text style={styles.expirationMessage}>
+                            Your checkout session has expired due to inactivity. The items in your cart may have been released.
+                        </Text>
+                        <Text style={styles.expirationSubtext}>
+                            Please return to your cart to start a new checkout.
+                        </Text>
+                        <Pressable
+                            style={styles.expirationButton}
+                            onPress={handleExpirationDismiss}
+                        >
+                            <Text style={styles.expirationButtonText}>Return to Cart</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
 
             {renderAddressModal()}
 
@@ -408,12 +503,36 @@ function CheckoutContent() {
                                     <Truck size={20} color={theme.colors.primary} />
                                     <Text style={styles.sectionTitle}>Shipping Option</Text>
                                 </View>
-                                <View style={styles.shippingOptionRow}>
-                                    <View>
-                                        <Text style={styles.shippingName}>Standard Local Delivery</Text>
+
+                                {/* Professional Free Shipping Indicator */}
+                                {hasFreeShipping && (
+                                    <View style={styles.freeShippingSimpleContainer}>
+                                        <Text style={styles.freeShippingSimpleText}>Standard Local Shipping is on us.</Text>
+                                    </View>
+                                )}
+
+                                <View style={[styles.shippingOptionRow, hasFreeShipping && styles.shippingOptionRowActive]}>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Text style={styles.shippingName}>Standard Local Delivery</Text>
+                                            {hasFreeShipping && (
+                                                <View style={styles.freeBadgeProfessional}>
+                                                    <Text style={styles.freeBadgeTextProfessional}>FREE</Text>
+                                                </View>
+                                            )}
+                                        </View>
                                         <Text style={styles.shippingTime}>Get by {deliveryDateStr} (Seller ships in {shipTimeStr})</Text>
                                     </View>
-                                    <Text style={styles.shippingPrice}>₱60.00</Text>
+                                    <View style={{ alignItems: 'flex-end' }}>
+                                        {hasFreeShipping ? (
+                                            <>
+                                                <Text style={styles.shippingPriceStrikethrough}>₱60.00</Text>
+                                                <Text style={styles.shippingPriceFreeProfessional}>₱0.00</Text>
+                                            </>
+                                        ) : (
+                                            <Text style={styles.shippingPrice}>₱60.00</Text>
+                                        )}
+                                    </View>
                                 </View>
                                 <TextInput
                                     placeholder="Message for seller/courier..."
@@ -483,7 +602,14 @@ function CheckoutContent() {
                                 </View>
                                 <View style={styles.totalRow}>
                                     <Text style={styles.summaryLabel}>Shipping Total:</Text>
-                                    <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
+                                    {hasFreeShipping ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Text style={[styles.summaryValue, { textDecorationLine: 'line-through', color: theme.colors.textSecondary, fontSize: 13 }]}>₱60.00</Text>
+                                            <Text style={[styles.summaryValue, { color: theme.colors.primary, fontWeight: '600' }]}>Free</Text>
+                                        </View>
+                                    ) : (
+                                        <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
+                                    )}
                                 </View>
                                 <View style={[styles.totalRow, { marginTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }]}>
                                     <Text style={styles.totalLabel}>Total Payment:</Text>
@@ -642,6 +768,51 @@ const styles = StyleSheet.create({
     shippingName: { fontWeight: '600', color: theme.colors.text, fontSize: 14 },
     shippingTime: { color: theme.colors.textSecondary, fontSize: 12 },
     shippingPrice: { fontWeight: '600', color: theme.colors.text },
+    shippingPriceStrikethrough: {
+        fontWeight: '400',
+        color: theme.colors.textSecondary,
+        fontSize: 12,
+        textDecorationLine: 'line-through',
+    },
+    shippingPriceFreeProfessional: {
+        fontWeight: '600',
+        color: theme.colors.primary,
+        fontSize: 14,
+    },
+    shippingOptionRowActive: {
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.primary,
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginVertical: 8,
+        borderBottomColor: theme.colors.primary, // Explicitly override base style
+    },
+
+    // Professional Free Shipping Styles
+    freeShippingSimpleContainer: {
+        marginBottom: 8,
+    },
+    freeShippingSimpleText: {
+        fontSize: 13,
+        color: theme.colors.primary,
+        fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
+    },
+    freeBadgeProfessional: {
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    freeBadgeTextProfessional: {
+        color: 'white',
+        fontSize: 10,
+        fontWeight: '600',
+        fontFamily: theme.typography.fontFamily,
+        letterSpacing: 0.5,
+    },
 
     paymentMethods: {
         flexDirection: 'row',
@@ -809,6 +980,71 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: theme.colors.primary,
         fontWeight: '700',
+        fontFamily: theme.typography.fontFamily,
+    },
+
+    // Session Expiration Dialog Styles
+    expirationOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    expirationDialog: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 24,
+        padding: 32,
+        maxWidth: 400,
+        width: '100%',
+        alignItems: 'center',
+        ...theme.shadows.lg,
+    },
+    expirationIconContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: theme.colors.error + '15',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    expirationTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    expirationMessage: {
+        fontSize: 15,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 8,
+    },
+    expirationSubtext: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    expirationButton: {
+        backgroundColor: theme.colors.primary,
+        paddingVertical: 14,
+        paddingHorizontal: 32,
+        borderRadius: 12,
+        minWidth: 180,
+        alignItems: 'center',
+        ...theme.shadows.sm,
+    },
+    expirationButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
         fontFamily: theme.typography.fontFamily,
     },
 });

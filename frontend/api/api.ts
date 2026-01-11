@@ -273,7 +273,7 @@ export const checkoutAPI = {
         apiClient.post<CompleteCheckoutResponse>(`/checkout/${sessionId}/complete`, {
             paymentId,
             idempotencyKey,
-            shippingAddress: shippingInfo
+            shippingAddress: shippingInfo,
         }),
 
     /**

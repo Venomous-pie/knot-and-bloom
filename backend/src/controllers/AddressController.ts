@@ -124,11 +124,11 @@ const deleteAddress = async (userId: number, addressId: number) => {
         throw new ErrorHandler.ForbiddenError("You do not have permission to delete this address");
     }
 
-    // Check if this is the last address
-    const addressCount = await prisma.address.count({ where: { customerId: userId } });
-    if (addressCount <= 1) {
-        throw new ErrorHandler.BadRequestError("You must have at least one address");
-    }
+    // Check removed: Users are now allowed to have 0 addresses.
+    // const addressCount = await prisma.address.count({ where: { customerId: userId } });
+    // if (addressCount <= 1) {
+    //    throw new ErrorHandler.BadRequestError("You must have at least one address");
+    // }
 
     // Delete the address
     await prisma.address.delete({ where: { uid: addressId } });

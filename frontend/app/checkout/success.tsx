@@ -7,18 +7,23 @@ import { isMobile } from '@/constants/layout';
 import { useEffect, useState } from 'react';
 import { productAPI } from '@/api/api';
 import { Product } from '@/types/products';
+import { useCart } from '@/app/context/CartContext';
 
 export default function CheckoutSuccessPage() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const mobile = isMobile(width);
+    const { refreshCart } = useCart();
 
     // State for recommendations
     const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Refresh cart count after successful checkout (items were removed on backend)
+        refreshCart();
+
         const fetchRecommendations = async () => {
             try {
                 // Fetch random/latest products as recommendations

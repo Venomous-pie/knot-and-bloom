@@ -37,6 +37,7 @@ interface AddressFormProps {
     isSaving?: boolean;
     mode?: 'create' | 'edit';
     onOpenMap?: () => void;
+    isFirstAddress?: boolean;
 }
 
 const LABEL_OPTIONS = ['Home', 'Work', 'Gift', 'Other'];
@@ -59,6 +60,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     isSaving = false,
     mode = 'create',
     onOpenMap,
+    isFirstAddress = false, // New Prop
 }) => {
     const [form, setForm] = useState<AddressFormData>({
         label: initialData.label || '',
@@ -72,7 +74,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         barangay: initialData.barangay || '',
         postalCode: initialData.postalCode || '',
         country: initialData.country || 'Philippines',
-        isDefault: initialData.isDefault ?? true,
+        isDefault: initialData.isDefault ?? isFirstAddress, // Default to true if first
     });
 
     const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -80,6 +82,17 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     const [saveForFuture, setSaveForFuture] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [focusedField, setFocusedField] = useState<string | null>(null);
+
+    // UX: Sync isDefault based on saveForFuture and isFirstAddress
+    React.useEffect(() => {
+        if (!saveForFuture) {
+            // If not saving, cannot be default
+            setForm(prev => ({ ...prev, isDefault: false }));
+        } else if (isFirstAddress) {
+            // If first address and saving, MUST be default
+            setForm(prev => ({ ...prev, isDefault: true }));
+        }
+    }, [saveForFuture, isFirstAddress]);
 
     const validateField = (field: keyof typeof VALIDATION_RULES, value: string): string | null => {
         const rules = VALIDATION_RULES[field];
@@ -169,10 +182,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         if (initialData) {
             setForm(prev => ({
                 ...prev,
-                ...initialData
+                ...initialData,
+                isDefault: initialData.isDefault ?? (isFirstAddress && saveForFuture)
             }));
         }
-    }, [initialData]);
+    }, [initialData, isFirstAddress, saveForFuture]);
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -401,10 +415,18 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
             {/* Set as Default */}
             <View style={styles.switchRow}>
-                <Text style={styles.switchLabel}>Set as default address</Text>
+                <View>
+                    <Text style={styles.switchLabel}>Set as default address</Text>
+                    {(isFirstAddress && saveForFuture) && (
+                        <Text style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2 }}>
+                            Your first address is automatically set as default.
+                        </Text>
+                    )}
+                </View>
                 <Switch
                     value={form.isDefault}
                     onValueChange={(value) => handleChange('isDefault', value)}
+                    disabled={isFirstAddress || !saveForFuture} // Locked if first OR not saving
                     trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
                     thumbColor={form.isDefault ? theme.colors.primary : theme.colors.surface}
                 />

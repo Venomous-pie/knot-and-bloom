@@ -114,7 +114,7 @@ export const AddressSelector: React.FC<AddressSelectorProps> = ({
                                 onSelect={() => onSelect(address.uid)}
                                 onEdit={() => onEdit(address)}
                                 onDelete={
-                                    addresses.length > 1 && deletingId !== address.uid
+                                    deletingId !== address.uid
                                         ? () => handleDelete(address.uid)
                                         : undefined
                                 }

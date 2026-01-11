@@ -148,6 +148,7 @@ model Order {
 
   // Commission & Earnings
   subtotal       Decimal @default(0)
+  shippingFee    Decimal @default(0) // Shipping cost (0 for free shipping)
   platformFee    Decimal @default(0)
   sellerEarnings Decimal @default(0)
 }

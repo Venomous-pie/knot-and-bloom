@@ -1,4 +1,5 @@
-import { orderAPI } from '@/api/api';
+import { orderAPI, cartAPI } from '@/api/api';
+import { useCart } from '@/app/context/CartContext';
 import { useAuth } from '@/app/auth';
 import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';
 import * as Clipboard from 'expo-clipboard';
@@ -114,6 +115,8 @@ export default function OrderHistoryPage() {
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>('all');
     const [copiedTracking, setCopiedTracking] = useState<string | null>(null);
+    const [buyAgainLoading, setBuyAgainLoading] = useState<number | null>(null);
+    const { refreshCart } = useCart();
 
     // Animation Ref
     const spinValue = useRef(new Animated.Value(0)).current;
@@ -301,8 +304,45 @@ export default function OrderHistoryPage() {
                 router.push(`/profile/orders/${order.uid}` as RelativePathString);
                 break;
             case 'buyAgain':
-                router.push(`/profile/orders/${order.uid}` as RelativePathString);
+                handleBuyAgain(order);
                 break;
+        }
+    };
+
+    const handleBuyAgain = async (order: OrderSummary) => {
+        if (!user) return;
+
+        setBuyAgainLoading(order.uid);
+        try {
+            const products = parseProducts(order.products);
+
+            // Add each product to cart
+            for (const item of products) {
+                // We need the product ID from the parsed data
+                // The products JSON should have product.uid
+                const productData = JSON.parse(order.products);
+                const matchingItem = productData.find((p: any) =>
+                    (p.product?.name || p.name) === item.name
+                );
+
+                if (matchingItem) {
+                    const productId = matchingItem.product?.uid || matchingItem.productId;
+                    const variant = matchingItem.variant?.name || matchingItem.variant || null;
+
+                    if (productId) {
+                        await cartAPI.addToCart(user.uid, productId, item.quantity, variant);
+                    }
+                }
+            }
+
+            // Refresh cart count and navigate
+            await refreshCart();
+            router.push('/cart' as RelativePathString);
+        } catch (error) {
+            console.error('Failed to add items to cart:', error);
+            Alert.alert('Error', 'Failed to add items to cart. Some products may no longer be available.');
+        } finally {
+            setBuyAgainLoading(null);
         }
     };
 
@@ -340,13 +380,21 @@ export default function OrderHistoryPage() {
                     </Pressable>
                 );
             case 'COMPLETED':
+                const isLoading = buyAgainLoading === order.uid;
                 return (
                     <Pressable
-                        style={[styles.actionButton, styles.outlineAction]}
+                        style={[styles.actionButton, styles.outlineAction, isLoading && { opacity: 0.6 }]}
                         onPress={() => handleQuickAction(order, 'buyAgain')}
+                        disabled={isLoading}
                     >
-                        <RefreshCw size={14} color="#555" />
-                        <Text style={styles.outlineActionText}>Buy Again</Text>
+                        {isLoading ? (
+                            <ActivityIndicator size="small" color="#555" />
+                        ) : (
+                            <>
+                                <RefreshCw size={14} color="#555" />
+                                <Text style={styles.outlineActionText}>Buy Again</Text>
+                            </>
+                        )}
                     </Pressable>
                 );
             default:
@@ -564,7 +612,7 @@ export default function OrderHistoryPage() {
                                                 {order.paymentStatus === 'PARTIALLY_PAID' ? 'Balance:' : 'Total:'}
                                             </Text>
                                             <Text style={styles.totalPrice}>
-                                                ₱{((Number(order.total || 0) + 60) * (order.paymentStatus === 'PARTIALLY_PAID' ? 0.8 : 1)).toFixed(2)}
+                                                ₱{(Number(order.total || 0) * (order.paymentStatus === 'PARTIALLY_PAID' ? 0.8 : 1)).toFixed(2)}
                                             </Text>
                                         </View>
                                         <View style={styles.footerRight}>

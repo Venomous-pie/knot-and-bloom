@@ -8,7 +8,7 @@ import DropdownMenu from "@/shared/DropdownMenu";
 import MenuSideBar from "@/shared/MenuSideBar";
 import { Product } from "@/types/products";
 import { Link, RelativePathString, router, Stack, usePathname } from "expo-router";
-import { ChevronDown, ChevronLeft, Handbag, Heart, Menu, Search, UserRound, X } from "lucide-react-native";
+import { ChevronDown, ChevronLeft, Handbag, Heart, Menu, Search, UserRound, X, LayoutDashboard, Store, User, Package, LogOut } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { DropdownItem } from "@/shared/DropdownMenu";
@@ -571,11 +571,12 @@ export default function NavBar() {
                                 {(user) ? (
                                     <DropdownMenu
                                         items={[
-                                            ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString }] : []),
-                                            ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString }] : []),
-                                            { title: 'Edit Profile', href: '/profile' as RelativePathString },
-                                            { title: 'My Orders', href: '/profile/orders' as RelativePathString },
-                                            { title: 'Log Out', onPress: handleLogout },
+                                            ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString, icon: <LayoutDashboard size={16} color="#666" /> }] : []),
+                                            ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString, icon: <Store size={16} color="#666" /> }] : []),
+                                            { title: 'Edit Profile', href: '/profile' as RelativePathString, icon: <User size={16} color="#666" /> },
+                                            { title: 'My Orders', href: '/profile/orders' as RelativePathString, icon: <Package size={16} color="#666" /> },
+                                            { type: 'separator' },
+                                            { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color="#666" /> },
                                         ]}
                                         style={({ hovered }) => [
                                             styles.iconButton,

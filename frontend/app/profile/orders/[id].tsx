@@ -43,6 +43,8 @@ interface OrderDetail {
     proofPhotos?: string | null; // JSON string
     shippingAddressSnapshot?: string | null; // JSON string
     referenceNumber?: string;
+    subtotal?: string; // Product subtotal from backend
+    shippingFee?: string; // Shipping fee from backend (0 for free shipping)
     timeline: {
         uid: number;
         status: string;
@@ -256,8 +258,10 @@ export default function OrderDetailsPage() {
     const maxExtensions = order.status === 'SHIPPED' ? 2 : 1;
     const canExtend = (order.status === 'SHIPPED' || order.status === 'DELIVERED') && order.autoConfirmAt && (order.extensionCount || 0) < maxExtensions;
 
-    const shippingFee = 60.00;
-    const subtotal = parseFloat(order.total);
+    // Use actual shipping fee from order, fallback to 0 for legacy orders without the field
+    const shippingFee = order.shippingFee ? parseFloat(order.shippingFee) : 0;
+    // Use subtotal from order if available, otherwise calculate from total minus shipping
+    const subtotal = order.subtotal ? parseFloat(order.subtotal) : parseFloat(order.total);
     const totalAmount = subtotal + shippingFee;
 
     return (
@@ -442,7 +446,9 @@ export default function OrderDetailsPage() {
                     </View>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Shipping Fee</Text>
-                        <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
+                        <Text style={[styles.summaryValue, shippingFee === 0 && { color: '#059669', fontWeight: '600' }]}>
+                            {shippingFee === 0 ? 'Free' : `₱${shippingFee.toFixed(2)}`}
+                        </Text>
                     </View>
                     <View style={[styles.summaryRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }]}>
                         <Text style={order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' ? [styles.totalLabel, { color: '#333' }] : styles.summaryLabel}>Order Total</Text>
@@ -668,7 +674,9 @@ export default function OrderDetailsPage() {
                                 </View>
                                 <View style={styles.receiptRow}>
                                     <Text style={styles.receiptLabel}>Shipping Fee</Text>
-                                    <Text style={styles.receiptValue}>₱{shippingFee.toFixed(2)}</Text>
+                                    <Text style={[styles.receiptValue, shippingFee === 0 && { color: '#059669' }]}>
+                                        {shippingFee === 0 ? 'Free' : `₱${shippingFee.toFixed(2)}`}
+                                    </Text>
                                 </View>
                                 {/* Discount placeholder if needed */}
                                 {/* <View style={styles.receiptRow}>

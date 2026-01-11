@@ -67,6 +67,7 @@ export interface DropdownItem {
     href?: RelativePathString;
     onPress?: () => void;
     type?: 'link' | 'separator';
+    icon?: React.ReactNode;
 }
 
 interface DropdownMenuProps {
@@ -161,12 +162,19 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                                 style={styles.dropdownItem}
                             >
                                 {({ hovered }) => (
-                                    <Text style={[
-                                        styles.dropdownText,
-                                        (hovered || isLinkActive) && styles.dropdownTextHovered,
-                                    ]}>
-                                        {item.title}
-                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        {item.icon && (
+                                            <View style={{ width: 18, alignItems: 'center' }}>
+                                                {item.icon}
+                                            </View>
+                                        )}
+                                        <Text style={[
+                                            styles.dropdownText,
+                                            (hovered || isLinkActive) && styles.dropdownTextHovered,
+                                        ]}>
+                                            {item.title}
+                                        </Text>
+                                    </View>
                                 )}
                             </Pressable>
                         );

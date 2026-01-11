@@ -471,17 +471,31 @@ export default function SellerApplyPage() {
                     <View style={[styles.contentContainer, isDesktop ? styles.row : styles.column]}>
                         {/* Left Side - Branding (Desktop Only or simplified on Mobile) */}
                         <View style={[styles.brandingSection, isDesktop ? { width: "50%" } : { width: "100%", paddingVertical: 20, minHeight: 150 }]}>
-                            {/* Simplified Branding for space efficiency */}
-                            <View style={styles.brandingContent}>
-                                <Text style={styles.brandEmoji}>🏪</Text>
-                                <Text style={styles.brandTitle}>Become a Seller</Text>
-                                {!isDesktop && <Text style={styles.brandSubtitle}>Step {currentStep} of {totalSteps}</Text>}
-                                {isDesktop && (
-                                    <Text style={styles.brandSubtitle}>
-                                        Join our community of artisans and share your creations.
-                                    </Text>
-                                )}
-                            </View>
+                            {isDesktop ? (
+                                <>
+                                    <Image
+                                        source={require('@/assets/bespoke_seller_onboarding.png')}
+                                        style={styles.brandingImage}
+                                        resizeMode="cover"
+                                    />
+                                    <View style={styles.brandingOverlay} />
+                                    <View style={styles.brandingTextContainer}>
+                                        <Text style={styles.brandingTagline}>Focus on Creating</Text>
+                                        <Text style={styles.brandingSubtagline}>
+                                            We handle the audience, marketing, and platform hassles—so you can do what you love.
+                                        </Text>
+                                        <Text style={styles.brandingHighlight}>
+                                            No fees. No stress. Just your craft.
+                                        </Text>
+                                    </View>
+                                </>
+                            ) : (
+                                <View style={styles.brandingContent}>
+                                    <Text style={styles.brandEmoji}>🏪</Text>
+                                    <Text style={styles.brandTitle}>Become a Seller</Text>
+                                    <Text style={styles.brandSubtitle}>Step {currentStep} of {totalSteps}</Text>
+                                </View>
+                            )}
                         </View>
 
                         {/* Right Side - Wizard Form */}
@@ -600,6 +614,51 @@ const styles = StyleSheet.create({
     brandingContent: {
         zIndex: 2,
         alignItems: "center",
+    },
+    brandingImage: {
+        width: "100%",
+        height: "100%",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    brandingOverlay: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.45)",
+    },
+    brandingTextContainer: {
+        position: "absolute",
+        bottom: 60,
+        left: 40,
+        right: 40,
+        zIndex: 3,
+    },
+    brandingTagline: {
+        fontSize: 36,
+        fontWeight: "bold",
+        color: "#fff",
+        marginBottom: 12,
+        textShadowColor: "rgba(0, 0, 0, 0.5)",
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+    },
+    brandingSubtagline: {
+        fontSize: 16,
+        color: "rgba(255, 255, 255, 0.9)",
+        lineHeight: 24,
+        marginBottom: 16,
+    },
+    brandingHighlight: {
+        fontSize: 14,
+        color: "#C88EA7",
+        fontWeight: "600",
+        fontStyle: "italic",
     },
     brandEmoji: {
         fontSize: 40,

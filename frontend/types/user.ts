@@ -26,6 +26,7 @@ interface AuthContextType {
     refreshUser: () => Promise<void>;
     loginWithGoogle: (data: { token?: string, accessToken?: string }) => Promise<void>;
     loginWithToken: (token: string) => Promise<void>;
+    token: string | null;
 }
 
 export { AuthContextType, User };

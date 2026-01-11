@@ -122,13 +122,13 @@ router.get('/admin', authenticate, authorize([Role.ADMIN]), async (req: any, res
 router.patch('/admin/:id/status', authenticate, authorize([Role.ADMIN]), async (req: any, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, rejectionReason } = req.body;
 
         if (!status) {
             return res.status(400).json({ success: false, error: 'Status is required' });
         }
 
-        const product = await updateProductStatus(id, status);
+        const product = await updateProductStatus(id, status, rejectionReason);
         res.json({ success: true, product });
     } catch (error: any) {
         console.error('Update product status error:', error);

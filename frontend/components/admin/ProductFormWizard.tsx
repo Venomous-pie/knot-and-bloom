@@ -41,6 +41,7 @@ export interface ProductFormData {
     materials: string;
     bundleQuantity: string;
     isCodAllowed: boolean;
+    description: string;
 }
 
 interface ProductFormWizardProps {
@@ -1226,8 +1227,5 @@ const styles = StyleSheet.create({
     skuReqText: {
         fontSize: 12,
         color: '#888',
-    },
-    skuReqTextDone: {
-        color: '#4CAF50',
     },
 });

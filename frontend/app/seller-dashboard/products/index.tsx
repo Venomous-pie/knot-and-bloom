@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { sellerProductsAPI } from '../../../api/api';
 
 type Product = {
@@ -48,26 +48,39 @@ export default function SellerProducts() {
         }
     };
 
+    const performDelete = async (id: string | number) => {
+        try {
+            await sellerProductsAPI.deleteProduct(id);
+            loadProducts();
+        } catch (err: any) {
+            const msg = err.response?.data?.error || "Failed to delete product";
+            if (Platform.OS === 'web') {
+                window.alert(msg);
+            } else {
+                Alert.alert("Error", msg);
+            }
+        }
+    };
+
     const handleDelete = (id: string | number) => {
-        Alert.alert(
-            "Delete Product",
-            "Are you sure you want to delete this product?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            await sellerProductsAPI.deleteProduct(id);
-                            loadProducts();
-                        } catch (err) {
-                            Alert.alert("Error", "Failed to delete product");
-                        }
+        if (Platform.OS === 'web') {
+            if (window.confirm("Are you sure you want to delete this product?")) {
+                performDelete(id);
+            }
+        } else {
+            Alert.alert(
+                "Delete Product",
+                "Are you sure you want to delete this product?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => performDelete(id)
                     }
-                }
-            ]
-        );
+                ]
+            );
+        }
     };
 
     const getStatusColor = (status: string | null) => {

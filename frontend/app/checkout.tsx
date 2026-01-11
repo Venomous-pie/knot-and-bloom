@@ -24,6 +24,7 @@ import AddressSelector from '@/components/checkout/AddressSelector';
 import AddressForm from '@/components/checkout/AddressForm';
 import { Address } from '@/components/checkout/AddressCard';
 import { theme } from '@/constants/theme';
+import { FREE_SHIPPING_THRESHOLD } from './cart';
 
 // New Components
 import { CheckoutAddressSection } from '@/components/checkout/CheckoutAddressSection';
@@ -63,12 +64,16 @@ function CheckoutContent() {
         initiateCheckout,
         completeCheckout,
         sellerMetrics,
-        codInfo // NEW
+        codInfo, // NEW
     } = useCheckout();
 
     // COD Eligibility & Deposit
     const isCodAllowed = codInfo?.allowed !== false;
     const codDepositPercent = codInfo?.depositPercent ?? 0;
+
+    // Shipping Fee Logic
+    const shippingFee = totalAmount >= FREE_SHIPPING_THRESHOLD ? 0 : 60.00;
+
 
     // Dynamic Delivery Estimate
     const { shipTimeStr, deliveryDateStr } = React.useMemo(() => {
@@ -171,7 +176,13 @@ function CheckoutContent() {
 
     const handlePlaceOrder = async () => {
         if (!selectedAddress) {
-            Alert.alert('Missing Info', 'Please add a delivery address.');
+            // Automatically open address selection if missing
+            setViewMode('address_selection');
+            return;
+        }
+
+        if (!paymentMethod) {
+            Alert.alert('Missing Info', 'Please select a payment method.');
             return;
         }
 
@@ -472,44 +483,38 @@ function CheckoutContent() {
                                 </View>
                                 <View style={styles.totalRow}>
                                     <Text style={styles.summaryLabel}>Shipping Total:</Text>
-                                    <Text style={styles.summaryValue}>₱60.00</Text>
+                                    <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
                                 </View>
                                 <View style={[styles.totalRow, { marginTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }]}>
                                     <Text style={styles.totalLabel}>Total Payment:</Text>
-                                    <Text style={styles.totalAmount}>₱{(totalAmount + 60).toFixed(2)}</Text>
+                                    <Text style={styles.totalAmount}>₱{(totalAmount + shippingFee).toFixed(2)}</Text>
                                 </View>
 
                                 {/* Split Breakdown if COD */}
                                 {/* Split Breakdown if COD */}
                                 {paymentMethod === 'cod' ? (
-                                    <View style={styles.splitPaymentContainer}>
-                                        {codDepositPercent > 0 ? (
-                                            <>
-                                                {codInfo?.reason && (
-                                                    <Text style={{ fontSize: 12, color: '#F59E0B', marginBottom: 8, fontWeight: '600' }}>
-                                                        ⚠️ {codInfo.reason}
-                                                    </Text>
-                                                )}
-                                                <View style={styles.splitRow}>
-                                                    <Text style={styles.splitLabel}>Due Now ({codDepositPercent}% Deposit):</Text>
-                                                    <Text style={styles.splitValue}>₱{((totalAmount + 60) * (codDepositPercent / 100)).toFixed(2)}</Text>
-                                                </View>
-                                                <View style={styles.splitRow}>
-                                                    <Text style={styles.splitLabel}>Due on Delivery ({100 - codDepositPercent}%):</Text>
-                                                    <Text style={styles.splitValue}>₱{((totalAmount + 60) * ((100 - codDepositPercent) / 100)).toFixed(2)}</Text>
-                                                </View>
-                                            </>
-                                        ) : (
-                                            <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 18 }}>
-                                                ✅ Full amount of <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{(totalAmount + 60).toFixed(2)}</Text> is due on delivery. No deposit required.
-                                            </Text>
-                                        )}
-                                    </View>
+                                    codDepositPercent > 0 && (
+                                        <View style={styles.splitPaymentContainer}>
+                                            {codInfo?.reason && (
+                                                <Text style={{ fontSize: 12, color: '#F59E0B', marginBottom: 8, fontWeight: '600' }}>
+                                                    ⚠️ {codInfo.reason}
+                                                </Text>
+                                            )}
+                                            <View style={styles.splitRow}>
+                                                <Text style={styles.splitLabel}>Due Now ({codDepositPercent}% Deposit):</Text>
+                                                <Text style={styles.splitValue}>₱{((totalAmount + shippingFee) * (codDepositPercent / 100)).toFixed(2)}</Text>
+                                            </View>
+                                            <View style={styles.splitRow}>
+                                                <Text style={styles.splitLabel}>Due on Delivery ({100 - codDepositPercent}%):</Text>
+                                                <Text style={styles.splitValue}>₱{((totalAmount + shippingFee) * ((100 - codDepositPercent) / 100)).toFixed(2)}</Text>
+                                            </View>
+                                        </View>
+                                    )
                                 ) : (
                                     <View style={styles.splitPaymentContainer}>
                                         <Text style={[styles.splitLabel, { marginBottom: 4 }]}>Strict Escrow Protection</Text>
                                         <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 18, fontFamily: theme.typography.fontFamily }}>
-                                            You are paying the full amount of <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{(totalAmount + 60).toFixed(2)}</Text>.
+                                            You are paying the full amount of <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{(totalAmount + shippingFee).toFixed(2)}</Text>.
                                             This amount is held securely. <Text style={{ fontWeight: '700' }}>If the item is damaged or incorrect, you can request a return or refund.</Text> Funds are only released to the seller after you verify the item.
                                         </Text>
                                     </View>
@@ -523,7 +528,7 @@ function CheckoutContent() {
                                     >
                                         {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.placeOrderText}>
                                             {paymentMethod === 'cod'
-                                                ? (codDepositPercent > 0 ? `Pay Deposit ₱${((totalAmount + 60) * (codDepositPercent / 100)).toFixed(2)}` : 'Place Order (Pay on Delivery)')
+                                                ? (codDepositPercent > 0 ? `Pay Deposit ₱${((totalAmount + shippingFee) * (codDepositPercent / 100)).toFixed(2)}` : 'Place Order (Pay on Delivery)')
                                                 : 'Place Order'}
                                         </Text>}
                                     </Pressable>

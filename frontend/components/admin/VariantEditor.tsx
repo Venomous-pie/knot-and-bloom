@@ -195,41 +195,79 @@ export default function VariantEditor({
 
     const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
     const [generatingSkuIndex, setGeneratingSkuIndex] = useState<number | null>(null);
-    const [focusedField, setFocusedField] = useState<string | null>(null);
+    const [errors, setErrors] = useState<Record<string, string | null>>({});
 
-    // Color Picker State
-    const [colorPickerVisible, setColorPickerVisible] = useState(false);
-    const [pickingVariantIndex, setPickingVariantIndex] = useState<number | null>(null);
-    const [savedPalette, setSavedPalette] = useState<string[]>([]);
-    const PALETTE_KEY = 'seller_custom_palette';
+    const validateNumeric = (value: string, allowDecimal = false): boolean => {
+        if (!value) return true; // Allow empty for typing
+        const regex = allowDecimal ? /^\d*\.?\d*$/ : /^\d*$/;
+        return regex.test(value);
+    };
 
-    // Load palette on mount
-    React.useEffect(() => {
-        loadPalette();
-    }, []);
-
-    const loadPalette = async () => {
-        try {
-            const stored = await AsyncStorage.getItem(PALETTE_KEY);
-            if (stored) {
-                setSavedPalette(JSON.parse(stored));
+    const handleNumericInput = (index: number, field: keyof VariantData, value: string, allowDecimal = false, max?: number) => {
+        if (validateNumeric(value, allowDecimal)) {
+            if (max !== undefined && Number(value) > max) {
+                setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: `Max ${max}` }));
+                // Still update value but show error? Or prevent?
+                // Let's prevent values > max
+                // updateVariant(index, field, value); 
+                return;
             }
-        } catch (e) {
-            console.error('Failed to load palette', e);
+            // Clear error if valid
+            setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: null }));
+            updateVariant(index, field, value);
+        } else {
+            setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: allowDecimal ? "Numbers only" : "Integers only" }));
         }
     };
 
-    const addToPalette = async (color: string) => {
-        if (savedPalette.includes(color)) return;
-        const newPalette = [...savedPalette, color];
-        setSavedPalette(newPalette);
-        await AsyncStorage.setItem(PALETTE_KEY, JSON.stringify(newPalette));
+    // ----------------------------------------------------------------------
+    // Missing Logic Restoration
+    // ----------------------------------------------------------------------
+    const [focusedField, setFocusedField] = useState<string | null>(null);
+    const [colorPickerVisible, setColorPickerVisible] = useState(false);
+    const [pickingVariantIndex, setPickingVariantIndex] = useState<number | null>(null);
+    const [savedPalette, setSavedPalette] = useState<string[]>([]);
+
+    const getFieldKey = (index: number, field: string) => `${index}-${field}`;
+
+    const addVariant = () => {
+        const newVariant: VariantData = {
+            name: '',
+            stock: '0',
+            sku: '',
+            price: '',
+            discountPercentage: '',
+            image: '',
+            color: '',
+            size: ''
+        };
+        onVariantsChange([...variants, newVariant]);
+        setExpandedIndex(variants.length);
     };
 
-    const removeFromPalette = async (color: string) => {
-        const newPalette = savedPalette.filter(c => c !== color);
-        setSavedPalette(newPalette);
-        await AsyncStorage.setItem(PALETTE_KEY, JSON.stringify(newPalette));
+    const removeVariant = (index: number) => {
+        const newVariants = [...variants];
+        newVariants.splice(index, 1);
+        onVariantsChange(newVariants);
+        if (expandedIndex === index) setExpandedIndex(null);
+    };
+
+    const updateVariant = (index: number, field: keyof VariantData, value: string) => {
+        const newVariants = [...variants];
+        newVariants[index] = { ...newVariants[index], [field]: value };
+        onVariantsChange(newVariants);
+    };
+
+    const toggleExpand = (index: number) => {
+        const newIndex = expandedIndex === index ? null : index;
+        setExpandedIndex(newIndex);
+        if (onExpandedChange) onExpandedChange(newIndex);
+    };
+
+    const handleGenerateSku = async (index: number) => {
+        setGeneratingSkuIndex(index);
+        await onGenerateVariantSku(index);
+        setGeneratingSkuIndex(null);
     };
 
     const openColorPicker = (index: number) => {
@@ -240,54 +278,29 @@ export default function VariantEditor({
     const handleColorSelect = (color: string) => {
         if (pickingVariantIndex !== null) {
             updateVariant(pickingVariantIndex, 'color', color);
-            // If it was a custom color, ensure customColor is cleared or handled
-            // Actually, we use 'color' field directly now for the hex value
-            updateVariant(pickingVariantIndex, 'customColor', color); // Keep customColor in sync if used
+        }
+        setColorPickerVisible(false);
+    };
+
+    const addToPalette = (color: string) => {
+        if (!savedPalette.includes(color)) {
+            const newPalette = [...savedPalette, color];
+            setSavedPalette(newPalette);
+            AsyncStorage.setItem('variantColorPalette', JSON.stringify(newPalette));
         }
     };
 
-    const addVariant = () => {
-        onVariantsChange([
-            ...variants,
-            { name: '', stock: '0', sku: '', price: '', discountPercentage: '', image: '' }
-        ]);
-        setExpandedIndex(variants.length);
+    const removeFromPalette = (color: string) => {
+        const newPalette = savedPalette.filter(c => c !== color);
+        setSavedPalette(newPalette);
+        AsyncStorage.setItem('variantColorPalette', JSON.stringify(newPalette));
     };
 
-    const removeVariant = (index: number) => {
-        if (variants.length <= 1) return;
-        const newVariants = [...variants];
-        newVariants.splice(index, 1);
-        onVariantsChange(newVariants);
-        if (expandedIndex === index) {
-            setExpandedIndex(null);
-        } else if (expandedIndex !== null && expandedIndex > index) {
-            setExpandedIndex(expandedIndex - 1);
-        }
-    };
-
-    const updateVariant = (index: number, field: keyof VariantData, value: string) => {
-        const updated = [...variants];
-        updated[index] = { ...updated[index], [field]: value };
-        onVariantsChange(updated);
-    };
-
-    const handleGenerateSku = async (index: number) => {
-        setGeneratingSkuIndex(index);
-        try {
-            await onGenerateVariantSku(index);
-        } finally {
-            setGeneratingSkuIndex(null);
-        }
-    };
-
-    const toggleExpand = (index: number) => {
-        const newIndex = expandedIndex === index ? null : index;
-        setExpandedIndex(newIndex);
-        onExpandedChange?.(newIndex);
-    };
-
-    const getFieldKey = (index: number, field: string) => `${index}-${field}`;
+    React.useEffect(() => {
+        AsyncStorage.getItem('variantColorPalette').then(stored => {
+            if (stored) setSavedPalette(JSON.parse(stored));
+        });
+    }, []);
 
     return (
         <View style={styles.container}>
@@ -409,41 +422,62 @@ export default function VariantEditor({
                                     <View style={[styles.field, !mobile && { flex: 1 }]}>
                                         <Text style={styles.fieldLabel}>Stock *</Text>
                                         <TextInput
-                                            style={[styles.input, focusedField === getFieldKey(index, 'stock') && styles.inputFocused]}
+                                            style={[
+                                                styles.input,
+                                                focusedField === getFieldKey(index, 'stock') && styles.inputFocused,
+                                                errors[getFieldKey(index, 'stock')] ? styles.inputError : null
+                                            ]}
                                             value={variant.stock}
-                                            onChangeText={(text) => updateVariant(index, 'stock', text)}
+                                            onChangeText={(text) => handleNumericInput(index, 'stock', text, false)}
                                             placeholder="0"
                                             placeholderTextColor="#999"
                                             keyboardType="numeric"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'stock'))}
                                             onBlur={() => setFocusedField(null)}
                                         />
+                                        {errors[getFieldKey(index, 'stock')] && (
+                                            <Text style={styles.errorText}>{errors[getFieldKey(index, 'stock')]}</Text>
+                                        )}
                                     </View>
                                     <View style={[styles.field, !mobile && { flex: 1 }]}>
                                         <Text style={styles.fieldLabel}>Price (₱)</Text>
                                         <TextInput
-                                            style={[styles.input, focusedField === getFieldKey(index, 'price') && styles.inputFocused]}
+                                            style={[
+                                                styles.input,
+                                                focusedField === getFieldKey(index, 'price') && styles.inputFocused,
+                                                errors[getFieldKey(index, 'price')] ? styles.inputError : null
+                                            ]}
                                             value={variant.price}
-                                            onChangeText={(text) => updateVariant(index, 'price', text)}
+                                            onChangeText={(text) => handleNumericInput(index, 'price', text, true)}
                                             placeholder={basePrice ? `Inherits ${basePrice}` : 'Optional'}
                                             placeholderTextColor="#999"
                                             keyboardType="numeric"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'price'))}
                                             onBlur={() => setFocusedField(null)}
                                         />
+                                        {errors[getFieldKey(index, 'price')] && (
+                                            <Text style={styles.errorText}>{errors[getFieldKey(index, 'price')]}</Text>
+                                        )}
                                     </View>
                                     <View style={[styles.field, !mobile && { flex: 1 }]}>
                                         <Text style={styles.fieldLabel}>Discount %</Text>
                                         <TextInput
-                                            style={[styles.input, focusedField === getFieldKey(index, 'discount') && styles.inputFocused]}
+                                            style={[
+                                                styles.input,
+                                                focusedField === getFieldKey(index, 'discount') && styles.inputFocused,
+                                                errors[getFieldKey(index, 'discountPercentage')] ? styles.inputError : null
+                                            ]}
                                             value={variant.discountPercentage}
-                                            onChangeText={(text) => updateVariant(index, 'discountPercentage', text)}
+                                            onChangeText={(text) => handleNumericInput(index, 'discountPercentage', text, false, 100)}
                                             placeholder={baseDiscount ? `Inherits ${baseDiscount}%` : '0'}
                                             placeholderTextColor="#999"
                                             keyboardType="numeric"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'discount'))}
                                             onBlur={() => setFocusedField(null)}
                                         />
+                                        {errors[getFieldKey(index, 'discountPercentage')] && (
+                                            <Text style={styles.errorText}>{errors[getFieldKey(index, 'discountPercentage')]}</Text>
+                                        )}
                                     </View>
                                 </View>
 
@@ -715,6 +749,14 @@ const styles = StyleSheet.create({
     inputFocused: {
         borderColor: '#B36979',
         backgroundColor: 'white',
+    },
+    inputError: {
+        borderColor: '#EF4444',
+    },
+    errorText: {
+        fontSize: 11,
+        color: '#EF4444',
+        marginTop: 2,
     },
     colorPicker: {
         flexDirection: 'row',

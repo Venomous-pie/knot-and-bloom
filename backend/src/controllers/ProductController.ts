@@ -333,7 +333,7 @@ export const getAdminProducts = async (options: { status?: string; limit?: numbe
 };
 
 // Admin-only: Update product status (approve/reject)
-export const updateProductStatus = async (productId: string, status: string) => {
+export const updateProductStatus = async (productId: string, status: string, rejectionReason?: string) => {
     const parsedId = parseInt(productId);
     if (isNaN(parsedId)) {
         throw new ErrorHandler.ValidationError([{ message: "Invalid product ID", path: ['productId'] }]);
@@ -349,9 +349,16 @@ export const updateProductStatus = async (productId: string, status: string) => 
         throw new ErrorHandler.NotFoundError('Product', productId);
     }
 
+    const updateData: any = { status: status as ProductStatus };
+    if (status === 'SUSPENDED' && rejectionReason) {
+        updateData.rejectionReason = rejectionReason;
+    } else if (status === 'ACTIVE') {
+        updateData.rejectionReason = null; // Clear rejection reason if activated
+    }
+
     const updated = await prisma.product.update({
         where: { uid: parsedId },
-        data: { status: status as ProductStatus },
+        data: updateData,
         include: {
             variants: true,
             seller: { select: { uid: true, name: true, email: true } }

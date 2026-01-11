@@ -14,12 +14,14 @@ const AuthContext = createContext<AuthContextType>({
     refreshUser: async () => { },
     loginWithGoogle: async (data: { token?: string, accessToken?: string }) => { },
     loginWithToken: async (token: string) => { },
+    token: null,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     const segments = useSegments();
@@ -45,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (token && userData) {
                 const parsedUser = JSON.parse(userData);
                 setUser(parsedUser);
+                setToken(token);
                 if (parsedUser.passwordResetRequired) {
                     router.replace('/auth/reset-password' as RelativePathString);
                 }
@@ -67,6 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await AsyncStorage.setItem('authToken', token);
                 await AsyncStorage.setItem('authUser', JSON.stringify(user));
                 setUser(user);
+                setToken(token);
 
                 if (user.passwordResetRequired) {
                     router.replace('/auth/reset-password' as RelativePathString);
@@ -89,6 +93,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await AsyncStorage.setItem('authToken', token);
                 await AsyncStorage.setItem('authUser', JSON.stringify(finalUser));
                 setUser(finalUser);
+                setToken(token);
                 router.replace('/');
             }
         } catch (error) {
@@ -100,6 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await AsyncStorage.removeItem('authToken');
         await AsyncStorage.removeItem('authUser');
         setUser(null);
+        setToken(null);
         router.replace('/auth/login' as RelativePathString);
     };
 
@@ -126,6 +132,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await AsyncStorage.setItem('authToken', authToken);
                 await AsyncStorage.setItem('authUser', JSON.stringify(user));
                 setUser(user);
+                setToken(authToken);
 
                 if (user.passwordResetRequired) {
                     router.replace('/auth/reset-password' as RelativePathString);
@@ -142,6 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             if (token) {
                 await AsyncStorage.setItem('authToken', token);
+                setToken(token);
                 // We need to fetch the user profile now
                 await refreshUser();
 
@@ -167,7 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle, loginWithToken }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, loginWithGoogle, loginWithToken, token }}>
             {children}
         </AuthContext.Provider>
     );

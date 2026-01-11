@@ -253,7 +253,8 @@ export default function OrderDetailsPage() {
 
     // Use shared status color utilities (imported at top)
 
-    const canExtend = (order.status === 'SHIPPED' || order.status === 'DELIVERED') && order.autoConfirmAt;
+    const maxExtensions = order.status === 'SHIPPED' ? 2 : 1;
+    const canExtend = (order.status === 'SHIPPED' || order.status === 'DELIVERED') && order.autoConfirmAt && (order.extensionCount || 0) < maxExtensions;
 
     const shippingFee = 60.00;
     const subtotal = parseFloat(order.total);
@@ -283,7 +284,7 @@ export default function OrderDetailsPage() {
                     <Text style={styles.sectionTitle}>Order Status</Text>
 
                     {/* Guarantee / Auto Validation Section */}
-                    {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'DISPUTED') && order.autoConfirmAt && (
+                    {(order.status === 'SHIPPED' || order.status === 'DELIVERED' || order.status === 'DISPUTED') && (
                         <View style={[styles.infoBanner, { backgroundColor: order.status === 'DISPUTED' ? '#FEE2E2' : '#F0F9FF', borderColor: order.status === 'DISPUTED' ? '#FECACA' : '#BAE6FD', marginBottom: 20 }]}>
                             {order.status === 'DISPUTED' ? (
                                 <>
@@ -295,9 +296,11 @@ export default function OrderDetailsPage() {
                                     <Text style={[styles.infoBannerText, { color: '#0369A1', marginBottom: 6 }]}>
                                         🛡️ Knot & Bloom Guarantee
                                     </Text>
-                                    <Text style={{ color: '#0C4A6E', marginBottom: 12 }}>
-                                        Order will automatically complete on: <Text style={{ fontWeight: 'bold' }}>{new Date(order.autoConfirmAt).toLocaleDateString()} {new Date(order.autoConfirmAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                                    </Text>
+                                    {order.autoConfirmAt && (
+                                        <Text style={{ color: '#0C4A6E', marginBottom: 12 }}>
+                                            Order will automatically complete on: <Text style={{ fontWeight: 'bold' }}>{new Date(order.autoConfirmAt).toLocaleDateString()} {new Date(order.autoConfirmAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                                        </Text>
+                                    )}
 
                                     <View style={{ flexDirection: 'row', gap: 10 }}>
                                         <Pressable

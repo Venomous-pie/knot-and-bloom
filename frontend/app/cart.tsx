@@ -23,7 +23,7 @@ import { CartBottomBar } from "@/components/cart/CartBottomBar";
 import { CartTableHeader } from "@/components/cart/CartTableHeader";
 import { CartShopGroup } from "@/components/cart/CartShopGroup";
 
-const FREE_SHIPPING_THRESHOLD = 500;
+export const FREE_SHIPPING_THRESHOLD = 500;
 
 interface ShopGroup {
     sellerName: string;

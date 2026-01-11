@@ -1,24 +1,9 @@
 import { Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { productAPI } from '../../api/api';
 import { useAuth } from '../auth';
-
-interface Product {
-    uid: number;
-    name: string;
-    image: string | null;
-    basePrice: number;
-    status: string | null;
-    categories: string[];
-    seller?: {
-        uid: number;
-        name: string;
-        slug: string;
-        email: string;
-    };
-    uploaded: string;
-}
+import { Product } from '../../types/products';
 
 const STATUS_TABS = [
     { key: 'PENDING', label: 'Pending Approval' },
@@ -31,6 +16,9 @@ export default function AdminProducts() {
     const { user, loading: authLoading } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [rejectModalVisible, setRejectModalVisible] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState('PENDING');
     const [total, setTotal] = useState(0);
 
@@ -55,14 +43,22 @@ export default function AdminProducts() {
         }
     };
 
-    const updateStatus = async (id: number, status: string) => {
+    const updateStatus = async (id: number, status: string, reason?: string) => {
+        // If suspending, show modal first to get reason
+        if (status === 'SUSPENDED' && !reason) {
+            setSelectedProductId(id);
+            setRejectionReason('');
+            setRejectModalVisible(true);
+            return; // Stop here, wait for modal submit
+        }
+
         try {
-            await productAPI.updateProductStatus(id, status);
+            await productAPI.updateProductStatus(id, status, reason);
             // Optimistic update
             setProducts(prev => prev.map(p =>
                 p.uid === id ? { ...p, status } : p
             ));
-            Alert.alert("Success", `Product ${status === 'ACTIVE' ? 'approved' : 'updated'} successfully`);
+            Alert.alert("Success", `Product ${status === 'ACTIVE' ? 'approved' : 'suspended'} successfully`);
 
             // If we're filtering by PENDING, remove the approved/rejected item from list
             if (statusFilter === 'PENDING' && status !== 'PENDING') {
@@ -72,6 +68,16 @@ export default function AdminProducts() {
             console.error(error);
             Alert.alert("Error", "Failed to update product status");
         }
+    };
+
+    const confirmRejection = () => {
+        if (!selectedProductId) return;
+        if (!rejectionReason.trim()) {
+            Alert.alert("Required", "Please provide a reason for rejection/suspension.");
+            return;
+        }
+        updateStatus(selectedProductId, 'SUSPENDED', rejectionReason);
+        setRejectModalVisible(false);
     };
 
     const getStatusColor = (status: string | null) => {
@@ -189,6 +195,45 @@ export default function AdminProducts() {
                     }
                 />
             )}
+
+            {/* Rejection Modal */}
+            <Modal
+                visible={rejectModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setRejectModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Reject/Suspend Product</Text>
+                        <Text style={styles.modalSubtitle}>Please provide a reason for this action:</Text>
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder="e.g. Violation of policy, details unclear..."
+                            multiline
+                            numberOfLines={3}
+                            value={rejectionReason}
+                            onChangeText={setRejectionReason}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.cancelBtn]}
+                                onPress={() => setRejectModalVisible(false)}
+                            >
+                                <Text style={styles.modalBtnTextCancel}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalBtn, styles.confirmDeleteBtn]}
+                                onPress={confirmRejection}
+                            >
+                                <Text style={styles.modalBtnTextConfirm}>Confirm Rejection</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -320,5 +365,64 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: '#6B7280',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 20,
+        width: '100%',
+        maxWidth: 400,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#EF4444',
+        marginBottom: 8,
+    },
+    modalSubtitle: {
+        fontSize: 14,
+        color: '#4B5563',
+        marginBottom: 12,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 8,
+        padding: 12,
+        minHeight: 80,
+        textAlignVertical: 'top',
+        marginBottom: 16,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    modalBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    cancelBtn: {
+        backgroundColor: '#E5E7EB',
+    },
+    confirmDeleteBtn: {
+        backgroundColor: '#EF4444',
+    },
+    modalBtnTextCancel: {
+        color: '#4B5563',
+        fontWeight: '600',
+    },
+    modalBtnTextConfirm: {
+        color: '#fff',
+        fontWeight: '600',
     },
 });

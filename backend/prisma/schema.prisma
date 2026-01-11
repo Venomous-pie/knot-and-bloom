@@ -26,10 +26,11 @@ model Product {
   sellerId Int?
   seller   Seller? @relation(fields: [sellerId], references: [uid])
 
-  status    ProductStatus @default(PENDING)
-  deletedAt DateTime?
-  deletedBy Int?
-  version   Int           @default(0)
+  status          ProductStatus @default(PENDING)
+  deletedAt       DateTime?
+  deletedBy       Int?
+  version         Int           @default(0)
+  rejectionReason String?
 
   isCodAllowed Boolean @default(true) // Seller toggle (Only effective if price > 200)
 

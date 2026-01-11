@@ -118,8 +118,8 @@ export const productAPI = {
     getAdminProducts: (params?: { status?: string; limit?: number; offset?: number }) =>
         apiClient.get<{ success: boolean; products: Product[]; total: number }>('/products/admin', { params }),
 
-    updateProductStatus: (id: string | number, status: string) =>
-        apiClient.patch<{ success: boolean; product: Product }>(`/products/admin/${id}/status`, { status }),
+    updateProductStatus: (id: string | number, status: string, rejectionReason?: string) =>
+        apiClient.patch<{ success: boolean; product: Product }>(`/products/admin/${id}/status`, { status, rejectionReason }),
 };
 
 export const authAPI = {

@@ -52,14 +52,24 @@ api.interceptors.response.use(
             console.error('API Error:', error.response.status, error.response.data);
 
             if (error.response.status === 401) {
-                // Get the error message from backend
-                const errorMessage = error.response.data?.error || 'Authentication error';
+                // Check if this is an auth endpoint (login/register) - these return 401 for invalid credentials
+                // and should NOT trigger session error toast or logout
+                const requestUrl = error.config?.url || '';
+                const isAuthEndpoint = ['/customers/login', '/customers/register', '/customers/login/google'].some(
+                    endpoint => requestUrl.includes(endpoint)
+                );
 
-                // Emit error for toast display
-                authEvents.emit('ERROR', { message: errorMessage });
+                if (!isAuthEndpoint) {
+                    // Get the error message from backend
+                    const errorMessage = error.response.data?.error || 'Authentication error';
 
-                // Emit logout event to trigger AuthContext cleanup
-                authEvents.emit('LOGOUT');
+                    // Emit error for toast display
+                    authEvents.emit('ERROR', { message: errorMessage });
+
+                    // Emit logout event to trigger AuthContext cleanup
+                    authEvents.emit('LOGOUT');
+                }
+                // For auth endpoints, just let the error propagate to the form's error handling
             }
         } else if (error.request) {
             console.error('Network Error:', error.message);
@@ -362,8 +372,9 @@ export const addressAPI = {
 
 export const sellerAPI = {
     getSellers: () => apiClient.get<any[]>('/sellers'),
-    updateSellerStatus: (id: number, status: string) => apiClient.put(`/sellers/${id}`, { status }),
+    updateSellerStatus: (id: number, status: string, rejectionReason?: string) => apiClient.put(`/sellers/${id}`, { status, rejectionReason }),
     markWelcomeSeen: () => apiClient.patch('/sellers/me/welcome-seen', {}),
+    cancelApplication: () => apiClient.delete('/sellers/me/application'),
 };
 
 export const sellerProductsAPI = {

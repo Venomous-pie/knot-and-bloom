@@ -1,8 +1,7 @@
-
 import { sellerAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     Animated,
     Dimensions,
@@ -11,8 +10,12 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    Platform,
+    Image,
+    Easing
 } from "react-native";
+import Constants from 'expo-constants';
 
 const { width, height } = Dimensions.get('window');
 const MOBILE_BREAKPOINT = 768;
@@ -21,49 +24,35 @@ const STEPS = [
     {
         id: 1,
         icon: "🎉",
-        title: "Congratulations!",
-        body: (name: string) => `You're now an official seller on Knot & Bloom!\n\nYour shop is ready to welcome customers from across the Philippines.`,
-        cta: "Get Started",
-        secondary: "Skip for now"
+        title: "Welcome to the Community!",
+        body: (name: string) => `Congratulations, ${name.split(' ')[0]}!\n\nYour seller application has been approved. You are now part of our curated marketplace of local artisans.`,
+        cta: "Let's Get Started",
+        secondary: "Close"
     },
     {
         id: 2,
-        icon: "📦",
-        title: "Add Your First Product",
-        body: () => `Start by listing an item you're proud of.\n\nGreat product photos and detailed descriptions help customers fall in love with your creations.`,
+        icon: "✨",
+        title: "Create Your First Listing",
+        body: () => `Showcase your products with beautiful photos and stories.\n\nHere are some tips for a great listing:`,
         tips: [
-            "Use clear, well-lit photos",
-            "Write detailed descriptions",
-            "Set competitive pricing",
-            "Add relevant tags"
+            "Use natural lighting for photos",
+            "Tell the story behind your product",
+            "Be specific about materials & size",
+            "Set clear policies"
         ],
         cta: "Next",
         secondary: "Back"
     },
     {
         id: 3,
-        icon: "💡",
-        title: "How Selling Works",
-        body: () => `Here's what happens when customers buy:`,
-        timeline: [
-            { title: "Customer places order", desc: "You get instant notification" },
-            { title: "You prepare & ship", desc: "Mark as 'Shipped' & add tracking" },
-            { title: "Customer receives", desc: "They confirm delivery" },
-            { title: "You get paid", desc: "Funds released to your account" }
-        ],
-        cta: "Next",
-        secondary: "Back"
-    },
-    {
-        id: 4,
-        icon: "📊",
-        title: "Your Seller Dashboard",
-        body: () => `Everything you need in one place:`,
+        icon: "🚀",
+        title: "Ready to Sell?",
+        body: () => `Your dashboard is your command center.`,
         features: [
-            "📈 Sales Analytics",
-            "📋 Order Management",
-            "🏪 Shop Settings",
-            "💬 Customer Messages"
+            { label: "Track Orders", icon: "cart-outline" },
+            { label: "View Analytics", icon: "bar-chart-outline" },
+            { label: "Manage Products", icon: "pricetag-outline" },
+            { label: "Chat with Buyers", icon: "chatbubbles-outline" }
         ],
         cta: "Go to Dashboard",
         secondary: "Back"
@@ -78,40 +67,83 @@ interface Props {
 export default function SellerWelcomeModal({ visible, onClose }: Props) {
     const { user, refreshUser } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(50)).current;
 
-    React.useEffect(() => {
+    // Animations
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
+    const scaleAnim = useRef(new Animated.Value(0.95)).current;
+    const iconFloat = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
         if (visible) {
+            setCurrentStep(0);
             Animated.parallel([
                 Animated.timing(fadeAnim, {
                     toValue: 1,
-                    duration: 300,
+                    duration: 400,
                     useNativeDriver: true,
+                    easing: Easing.out(Easing.cubic),
                 }),
                 Animated.timing(slideAnim, {
                     toValue: 0,
+                    duration: 500,
+                    useNativeDriver: true,
+                    easing: Easing.out(Easing.back(1.5)), // Slight bounce
+                }),
+                Animated.timing(scaleAnim, {
+                    toValue: 1,
                     duration: 400,
                     useNativeDriver: true,
+                    easing: Easing.out(Easing.cubic),
                 })
             ]).start();
+
+            // Icon floating loop
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(iconFloat, {
+                        toValue: -10,
+                        duration: 1500,
+                        easing: Easing.inOut(Easing.sin),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(iconFloat, {
+                        toValue: 0,
+                        duration: 1500,
+                        easing: Easing.inOut(Easing.sin),
+                        useNativeDriver: true,
+                    })
+                ])
+            ).start();
+        } else {
+            fadeAnim.setValue(0);
+            slideAnim.setValue(30);
+            scaleAnim.setValue(0.95);
         }
     }, [visible]);
 
     const handleComplete = async () => {
         try {
             await sellerAPI.markWelcomeSeen();
-            await refreshUser(); // Update local user state
+            await refreshUser();
             onClose();
         } catch (error) {
             console.error(error);
-            onClose(); // Close anyway on error
+            onClose();
         }
     };
 
     const handleNext = () => {
         if (currentStep < STEPS.length - 1) {
-            setCurrentStep(currentStep + 1);
+            // Fade out slightly before switching?
+            Animated.sequence([
+                Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+                Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true })
+            ]).start();
+
+            setTimeout(() => {
+                setCurrentStep(currentStep + 1);
+            }, 150);
         } else {
             handleComplete();
         }
@@ -119,33 +151,64 @@ export default function SellerWelcomeModal({ visible, onClose }: Props) {
 
     const handleBack = () => {
         if (currentStep > 0) {
-            setCurrentStep(currentStep - 1);
+            Animated.sequence([
+                Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+                Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true })
+            ]).start();
+
+            setTimeout(() => {
+                setCurrentStep(currentStep - 1);
+            }, 150);
         }
     };
 
     const stepData = STEPS[currentStep];
-    const isMobile = width < MOBILE_BREAKPOINT;
+    const isMobile = Platform.OS !== 'web' || width < MOBILE_BREAKPOINT;
 
     if (!visible) return null;
 
     return (
-        <Modal transparent visible={visible} animationType="none">
+        <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
             <View style={styles.overlay}>
                 <Animated.View style={[
                     styles.modalContainer,
                     isMobile && styles.mobileModal,
-                    { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                    {
+                        opacity: fadeAnim,
+                        transform: [
+                            { translateY: slideAnim },
+                            { scale: scaleAnim }
+                        ]
+                    }
                 ]}>
-                    {/* Progress Bar */}
-                    <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: `${((currentStep + 1) / 4) * 100}%` }]} />
+                    {/* Header Image / Pattern */}
+                    <View style={styles.headerPattern}>
+                        <View style={styles.headerCircle1} />
+                        <View style={styles.headerCircle2} />
+                    </View>
+
+                    {/* Progress Dots */}
+                    <View style={styles.progressContainer}>
+                        {STEPS.map((_, i) => (
+                            <View
+                                key={i}
+                                style={[
+                                    styles.progressDot,
+                                    i === currentStep && styles.progressDotActive,
+                                    i < currentStep && styles.progressDotCompleted
+                                ]}
+                            />
+                        ))}
                     </View>
 
                     {/* Content */}
                     <ScrollView contentContainerStyle={styles.content}>
-                        <Text style={styles.icon}>{stepData.icon}</Text>
+                        <Animated.Text style={[styles.icon, { transform: [{ translateY: iconFloat }] }]}>
+                            {stepData.icon}
+                        </Animated.Text>
+
                         <Text style={styles.title}>
-                            {currentStep === 0 ? stepData.title.replace("Congratulations!", `Congratulations, ${user?.name?.split(' ')[0]}!`) : stepData.title}
+                            {currentStep === 0 ? stepData.title : stepData.title}
                         </Text>
 
                         <Text style={styles.body}>
@@ -154,37 +217,27 @@ export default function SellerWelcomeModal({ visible, onClose }: Props) {
 
                         {/* Step 2 Tips */}
                         {stepData.tips && (
-                            <View style={styles.listContainer}>
+                            <View style={styles.tipsContainer}>
                                 {stepData.tips.map((tip, i) => (
-                                    <View key={i} style={styles.listItem}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                                        <Text style={styles.listText}>{tip}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-
-                        {/* Step 3 Timeline */}
-                        {stepData.timeline && (
-                            <View style={styles.timelineContainer}>
-                                {stepData.timeline.map((item, i) => (
-                                    <View key={i} style={styles.timelineItem}>
-                                        <View style={styles.timelineNumber}><Text style={styles.numberText}>{i + 1}</Text></View>
-                                        <View>
-                                            <Text style={styles.timelineTitle}>{item.title}</Text>
-                                            <Text style={styles.timelineDesc}>{item.desc}</Text>
+                                    <View key={i} style={styles.tipItem}>
+                                        <View style={styles.tipIconBg}>
+                                            <Ionicons name="checkmark" size={12} color="white" />
                                         </View>
+                                        <Text style={styles.tipText}>{tip}</Text>
                                     </View>
                                 ))}
                             </View>
                         )}
 
-                        {/* Step 4 Features */}
+                        {/* Step 3 Features Grid */}
                         {stepData.features && (
                             <View style={styles.gridContainer}>
                                 {stepData.features.map((feature, i) => (
                                     <View key={i} style={styles.gridItem}>
-                                        <Text style={styles.gridText}>{feature}</Text>
+                                        <View style={styles.gridIconContainer}>
+                                            <Ionicons name={feature.icon as any} size={24} color="#8B4513" />
+                                        </View>
+                                        <Text style={styles.gridText}>{feature.label}</Text>
                                     </View>
                                 ))}
                             </View>
@@ -193,25 +246,17 @@ export default function SellerWelcomeModal({ visible, onClose }: Props) {
 
                     {/* Footer / Buttons */}
                     <View style={styles.footer}>
-                        {currentStep === 0 ? (
-                            <>
-                                <TouchableOpacity style={styles.secondaryBtn} onPress={handleComplete}>
-                                    <Text style={styles.secondaryBtnText}>{stepData.secondary}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.primaryBtn} onPress={handleNext}>
-                                    <Text style={styles.primaryBtnText}>{stepData.cta} →</Text>
-                                </TouchableOpacity>
-                            </>
-                        ) : (
-                            <>
-                                <TouchableOpacity style={styles.secondaryBtn} onPress={handleBack}>
-                                    <Text style={styles.secondaryBtnText}>← Back</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.primaryBtn} onPress={handleNext}>
-                                    <Text style={styles.primaryBtnText}>{stepData.cta} {currentStep < 3 && '→'}</Text>
-                                </TouchableOpacity>
-                            </>
-                        )}
+                        <TouchableOpacity
+                            style={styles.secondaryBtn}
+                            onPress={currentStep === 0 ? onClose : handleBack}
+                        >
+                            <Text style={styles.secondaryBtnText}>{stepData.secondary}</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.primaryBtn} onPress={handleNext}>
+                            <Text style={styles.primaryBtnText}>{stepData.cta}</Text>
+                            <Ionicons name="arrow-forward" size={16} color="white" style={{ marginLeft: 8 }} />
+                        </TouchableOpacity>
                     </View>
                 </Animated.View>
             </View>
@@ -222,134 +267,176 @@ export default function SellerWelcomeModal({ visible, onClose }: Props) {
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(50, 30, 20, 0.4)', // Warm dark overlay
         justifyContent: 'center',
         alignItems: 'center',
+        padding: 20
     },
     modalContainer: {
-        width: 600,
+        width: 500,
         maxHeight: '90%',
-        backgroundColor: '#FFFBF0', // Cream background
-        borderRadius: 16,
+        backgroundColor: '#FFF',
+        borderRadius: 24,
         overflow: 'hidden',
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.25,
-        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 15 },
+        shadowOpacity: 0.2,
+        shadowRadius: 30,
         elevation: 10,
     },
     mobileModal: {
-        width: '90%',
-        maxHeight: '85%',
-    },
-    progressBar: {
-        height: 6,
-        backgroundColor: '#E5E5E5',
         width: '100%',
     },
-    progressFill: {
-        height: '100%',
-        backgroundColor: '#10B981', // Success green
+    headerPattern: {
+        height: 120,
+        backgroundColor: '#FFF8E1', // Light cream/yellow
+        position: 'relative',
+        overflow: 'hidden',
+    },
+    headerCircle1: {
+        position: 'absolute',
+        top: -50,
+        right: -50,
+        width: 150,
+        height: 150,
+        borderRadius: 75,
+        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    },
+    headerCircle2: {
+        position: 'absolute',
+        bottom: -20,
+        left: 20,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255, 152, 0, 0.15)',
+    },
+    progressContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: -15, // Pull up into header area
+        marginBottom: 20,
+    },
+    progressDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#E0E0E0',
+    },
+    progressDotActive: {
+        backgroundColor: '#8B4513',
+        width: 20,
+    },
+    progressDotCompleted: {
+        backgroundColor: '#10B981',
     },
     content: {
-        padding: 32,
+        paddingHorizontal: 32,
+        paddingBottom: 24,
         alignItems: 'center',
+        paddingTop: 0,
     },
     icon: {
-        fontSize: 48,
+        fontSize: 64,
+        marginTop: -50, // Pull up to overlap header
         marginBottom: 16,
+        textShadowColor: 'rgba(0,0,0,0.1)',
+        textShadowOffset: { width: 0, height: 4 },
+        textShadowRadius: 10,
     },
     title: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: 'bold',
-        color: '#8B4513', // Warm brown
+        color: '#2D1F16',
         textAlign: 'center',
-        marginBottom: 16,
-        fontFamily: 'serif',
+        marginBottom: 12,
+        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     },
     body: {
         fontSize: 16,
-        color: '#4A4A4A',
+        color: '#5D5D5D',
         textAlign: 'center',
         lineHeight: 24,
         marginBottom: 24,
+        maxWidth: 320,
     },
-    listContainer: {
+    tipsContainer: {
         width: '100%',
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 8,
+        backgroundColor: '#FAFAF9',
+        padding: 20,
+        borderRadius: 16,
         gap: 12,
     },
-    listItem: {
+    tipItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-    },
-    listText: {
-        fontSize: 15,
-        color: '#333',
-    },
-    timelineContainer: {
-        width: '100%',
-        gap: 16,
-    },
-    timelineItem: {
-        flexDirection: 'row',
         gap: 12,
     },
-    timelineNumber: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#F59E0B',
+    tipIconBg: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#10B981',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    numberText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 12,
-    },
-    timelineTitle: {
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    timelineDesc: {
-        color: '#666',
-        fontSize: 14,
+    tipText: {
+        fontSize: 15,
+        color: '#444',
+        flex: 1,
     },
     gridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 16,
         justifyContent: 'center',
+        width: '100%',
     },
     gridItem: {
-        backgroundColor: '#fff',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
+        width: '45%',
+        backgroundColor: '#FFF',
         borderWidth: 1,
-        borderColor: '#E5E5E5',
+        borderColor: '#EEE',
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        gap: 8,
+    },
+    gridIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFF4E5',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     gridText: {
-        color: '#555',
+        fontSize: 13,
         fontWeight: '600',
+        color: '#555',
+        textAlign: 'center',
     },
     footer: {
         padding: 24,
         borderTopWidth: 1,
-        borderTopColor: '#E5E5E5',
+        borderTopColor: '#F0F0F0',
         flexDirection: 'row',
         justifyContent: 'space-between',
-        backgroundColor: '#fff',
+        alignItems: 'center',
     },
     primaryBtn: {
         backgroundColor: '#8B4513',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
+        paddingVertical: 14,
+        paddingHorizontal: 28,
+        borderRadius: 30,
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: "#8B4513",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     primaryBtnText: {
         color: 'white',
@@ -358,10 +445,11 @@ const styles = StyleSheet.create({
     },
     secondaryBtn: {
         paddingVertical: 12,
-        paddingHorizontal: 24,
+        paddingHorizontal: 20,
     },
     secondaryBtnText: {
-        color: '#666',
+        color: '#888',
         fontSize: 16,
+        fontWeight: '500',
     },
 });

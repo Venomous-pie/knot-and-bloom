@@ -1,9 +1,10 @@
+import { sellerAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { RelativePathString, useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Image,
+    Alert,
     Platform,
     Pressable,
     ScrollView,
@@ -15,14 +16,47 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function ApplicationStatusPage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, refreshUser } = useAuth();
     const router = useRouter();
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         if (!authLoading && !user) {
             router.replace("/auth/login" as RelativePathString);
         }
     }, [user, authLoading]);
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await refreshUser();
+        setRefreshing(false);
+    };
+
+    const handleCancel = async () => {
+        Alert.alert(
+            "Cancel Application",
+            "Are you sure you want to cancel your seller application? This action cannot be undone.",
+            [
+                { text: "No", style: "cancel" },
+                {
+                    text: "Yes, Cancel",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            setRefreshing(true);
+                            await sellerAPI.cancelApplication();
+                            await refreshUser();
+                            Alert.alert("Success", "Application cancelled successfully.");
+                        } catch (error) {
+                            Alert.alert("Error", "Failed to cancel application.");
+                        } finally {
+                            setRefreshing(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     if (authLoading || !user) {
         return (
@@ -50,6 +84,17 @@ export default function ApplicationStatusPage() {
                         <Text style={styles.noteText}>
                             We'll verify your information and notify you via SMS/Email once approved.
                         </Text>
+
+                        <View style={styles.buttonGroup}>
+                            <Pressable style={styles.refreshButton} onPress={handleRefresh} disabled={refreshing}>
+                                {refreshing ? <ActivityIndicator color="#666" size="small" /> : <Ionicons name="refresh-outline" size={20} color="#666" />}
+                                <Text style={styles.refreshButtonText}>Check Status</Text>
+                            </Pressable>
+
+                            <Pressable style={styles.cancelLink} onPress={handleCancel}>
+                                <Text style={styles.cancelLinkText}>Cancel Application</Text>
+                            </Pressable>
+                        </View>
                     </View>
                 );
             case "APPROVED":
@@ -89,6 +134,10 @@ export default function ApplicationStatusPage() {
                             onPress={() => router.push("/seller/apply" as RelativePathString)}
                         >
                             <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Update Application</Text>
+                        </Pressable>
+
+                        <Pressable style={styles.cancelLink} onPress={handleCancel}>
+                            <Text style={styles.cancelLinkText}>Cancel Application</Text>
                         </Pressable>
                     </View >
                 );
@@ -226,6 +275,31 @@ const styles = StyleSheet.create({
     },
     secondaryButtonText: {
         color: "#B36979",
+    },
+    buttonGroup: {
+        marginTop: 20,
+        gap: 16,
+        alignItems: 'center',
+    },
+    refreshButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        gap: 8,
+    },
+    refreshButtonText: {
+        color: '#666',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    cancelLink: {
+        padding: 10,
+        marginTop: 10,
+    },
+    cancelLinkText: {
+        color: '#999',
+        textDecorationLine: 'underline',
+        fontSize: 14,
     },
     backLink: {
         marginTop: 40,

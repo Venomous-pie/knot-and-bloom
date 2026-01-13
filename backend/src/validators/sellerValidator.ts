@@ -7,6 +7,9 @@ export const sellerSchema = z.object({
     logo: z.string().optional(),
     banner: z.string().optional(),
     location: z.string().optional(),
+    phone: z.string().optional(),
+    socialMediaLink: z.string().optional(),
+    email: z.string().email().optional(),
 });
 
 // Validator for Direct Registration (Customer + Seller)

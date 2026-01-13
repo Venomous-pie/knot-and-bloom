@@ -249,6 +249,8 @@ model Seller {
   description      String?
   logo             String?
   banner           String?
+  socialMediaLink  String?
+  rejectionReason  String?
   location         String?
   rating           Decimal      @default(0)
   pinnedProductIds Int[]

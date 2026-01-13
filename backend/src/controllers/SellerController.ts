@@ -75,12 +75,15 @@ export const sellerController = {
             if (!req.user) return res.status(401).json({ error: "Unauthorized" });
             const user = req.user as AuthPayload;
 
-            // Need email for seller profile
-            if (!user.email) {
+            const data = sellerSchema.parse(req.body);
+
+            // Determine email to use (User's auth email takes precedence, fallback to body email)
+            const emailToUse = user.email || data.email;
+
+            if (!emailToUse) {
                 return res.status(400).json({ error: "Email is required to become a seller" });
             }
 
-            const data = sellerSchema.parse(req.body);
             const userId = user.id;
 
             // Check if already has seller profile
@@ -105,11 +108,14 @@ export const sellerController = {
                         data: {
                             name: data.name,
                             slug,
-                            email: user.email!,
+                            email: emailToUse,
                             description: data.description ?? null,
                             logo: data.logo ?? null,
                             banner: data.banner ?? null,
-                            status: SellerStatus.PENDING
+                            phone: req.body.contactNumber ?? data.phone ?? null,
+                            socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
+                            status: SellerStatus.PENDING,
+                            rejectionReason: null // Clear previous rejection reason
                         }
                     });
                     return res.status(200).json(updatedSeller);
@@ -129,10 +135,13 @@ export const sellerController = {
                     customerId: userId,
                     name: data.name,
                     slug,
-                    email: user.email,
+                    email: emailToUse,
                     description: data.description ?? null,
                     logo: data.logo ?? null,
                     banner: data.banner ?? null,
+                    // Map contactNumber (frontend) to phone (schema)
+                    phone: req.body.contactNumber ?? data.phone ?? null,
+                    socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
                     status: SellerStatus.PENDING
                 }
             });
@@ -231,6 +240,18 @@ export const sellerController = {
 
                 const updatedSeller = await prisma.seller.findUnique({ where: { uid: targetSellerId } });
                 return res.json(updatedSeller);
+            }
+
+            // Admin Rejecting Seller: ensure rejectionReason is saved
+            if (user.role === Role.ADMIN && updates.status === SellerStatus.REJECTED) {
+                const seller = await prisma.seller.update({
+                    where: { uid: targetSellerId },
+                    data: {
+                        status: SellerStatus.REJECTED,
+                        rejectionReason: updates.rejectionReason || "Application rejected by admin."
+                    }
+                });
+                return res.json(seller);
             }
 
             // Regular update (no status change to ACTIVE)
@@ -426,6 +447,35 @@ export const sellerController = {
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: "Failed to update status" });
+        }
+    },
+
+    // Cancel Application (Pending only)
+    async cancelApplication(req: Request, res: Response) {
+        try {
+            if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+            const user = req.user as AuthPayload;
+
+            const seller = await prisma.seller.findUnique({
+                where: { customerId: user.id }
+            });
+
+            if (!seller) {
+                return res.status(404).json({ error: "No application found" });
+            }
+
+            if (seller.status !== SellerStatus.PENDING && seller.status !== SellerStatus.REJECTED) {
+                return res.status(400).json({ error: "Cannot cancel an active or suspended account" });
+            }
+
+            await prisma.seller.delete({
+                where: { uid: seller.uid }
+            });
+
+            res.json({ success: true, message: "Application cancelled" });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: "Failed to cancel application" });
         }
     }
 };

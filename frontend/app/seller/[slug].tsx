@@ -57,6 +57,7 @@ export default function SellerProfile() {
     const [isEditingAbout, setIsEditingAbout] = useState(false);
     const [aboutText, setAboutText] = useState('');
     const [showProfileModal, setShowProfileModal] = useState(false);
+    const [showBannerFullScreen, setShowBannerFullScreen] = useState(false);
     const { user } = useAuth();
 
     // Image Upload State
@@ -217,7 +218,9 @@ export default function SellerProfile() {
             {/* Banner Section */}
             <View style={styles.bannerContainer}>
                 {seller.banner ? (
-                    <Image source={{ uri: seller.banner }} style={styles.banner} resizeMode="cover" />
+                    <Pressable onPress={() => setShowBannerFullScreen(true)} style={{ flex: 1 }}>
+                        <Image source={{ uri: seller.banner }} style={styles.banner} resizeMode="cover" />
+                    </Pressable>
                 ) : (
                     <View style={[styles.banner, styles.bannerPlaceholder]}>
                         <View style={styles.patternDot} />
@@ -583,6 +586,30 @@ export default function SellerProfile() {
                             <Text style={styles.uploadButtonText}>Upload New Photo</Text>
                         </Pressable>
                     </View>
+                </Pressable>
+            </Modal>
+
+            {/* Banner Full-Screen Modal */}
+            <Modal
+                visible={showBannerFullScreen}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowBannerFullScreen(false)}
+            >
+                <Pressable
+                    style={styles.bannerModalOverlay}
+                    onPress={() => setShowBannerFullScreen(false)}
+                >
+                    <Pressable style={styles.bannerModalCloseBtn} onPress={() => setShowBannerFullScreen(false)}>
+                        <X size={22} color="white" />
+                    </Pressable>
+                    {seller?.banner && (
+                        <Image
+                            source={{ uri: seller.banner }}
+                            style={styles.bannerFullScreenImage}
+                            resizeMode="contain"
+                        />
+                    )}
                 </Pressable>
             </Modal>
 
@@ -1260,5 +1287,30 @@ const styles = StyleSheet.create({
         height: '100%',
         borderWidth: 0,
         outlineStyle: 'none' as any,
+    },
+
+    // Banner Full-Screen Modal
+    bannerModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.92)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bannerModalCloseBtn: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        zIndex: 10,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    bannerFullScreenImage: {
+        width: '95%',
+        height: '60%',
+        borderRadius: 8,
     },
 });

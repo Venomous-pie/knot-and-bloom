@@ -21,11 +21,32 @@ export default function SellerProductForm() {
     } | undefined>(undefined);
     const [productStatus, setProductStatus] = useState<string | null>(null);
 
+    // Optimization Score State
+    const [optScore, setOptScore] = useState(0);
+    const [optChecklist, setOptChecklist] = useState<{ label: string; done: boolean; points: number }[]>([]);
+    const [showOptDetails, setShowOptDetails] = useState(false);
+
     useEffect(() => {
         if (isEditing) {
             loadProduct();
         }
     }, [id]);
+
+    const calculateOptimization = (data: { formData: ProductFormData; selectedCategories: string[]; variants: VariantData[] }) => {
+        // Optimization Logic (Matches List View Logic)
+        const checklist = [
+            { label: 'Has at least 1 image', done: !!data.formData.image, points: 20 },
+            { label: 'Product Name >= 20 chars', done: (data.formData.name?.length || 0) >= 20, points: 20 },
+            { label: 'Description >= 50 chars', done: (data.formData.description?.length || 0) >= 50, points: 20 },
+            { label: 'Has at least 1 variant in stock', done: data.variants.some(v => parseInt(v.stock) > 0), points: 20 },
+            { label: 'Category Selected', done: data.selectedCategories.length > 0, points: 10 },
+            { label: 'SKU Generated', done: !!data.formData.sku, points: 10 },
+        ];
+
+        const totalScore = checklist.reduce((acc, item) => acc + (item.done ? item.points : 0), 0);
+        setOptScore(totalScore);
+        setOptChecklist(checklist);
+    };
 
     const loadProduct = async () => {
         try {
@@ -45,6 +66,7 @@ export default function SellerProductForm() {
                         description: p.description || '',
                         materials: p.materials || '',
                         bundleQuantity: p.bundleQuantity ? String(p.bundleQuantity) : '1',
+                        isCodAllowed: p.isCodAllowed ?? true,
                     },
                     selectedCategories: Array.isArray(p.categories) ? p.categories : [],
                     variants: p.variants && p.variants.length > 0
@@ -139,6 +161,42 @@ export default function SellerProductForm() {
                 </View>
             )}
 
+            {/* Optimization Score Card */}
+            <View style={styles.scoreCard}>
+                <TouchableOpacity
+                    style={styles.scoreHeader}
+                    onPress={() => setShowOptDetails(!showOptDetails)}
+                >
+                    <View style={styles.scoreTitleRow}>
+                        <Ionicons name="stats-chart" size={20} color="#B36979" />
+                        <Text style={styles.scoreTitle}>Optimization Score</Text>
+                    </View>
+                    <View style={styles.scoreValueRow}>
+                        <Text style={[styles.scoreValue, {
+                            color: optScore >= 80 ? '#10B981' : optScore >= 50 ? '#F59E0B' : '#EF4444'
+                        }]}>{optScore}/100</Text>
+                        <Ionicons name={showOptDetails ? "chevron-up" : "chevron-down"} size={20} color="#6B7280" />
+                    </View>
+                </TouchableOpacity>
+
+                {showOptDetails && (
+                    <View style={styles.checklist}>
+                        {optChecklist.map((item, index) => (
+                            <View key={index} style={styles.checklistItem}>
+                                <Ionicons
+                                    name={item.done ? "checkmark-circle" : "ellipse-outline"}
+                                    size={18}
+                                    color={item.done ? "#10B981" : "#D1D5DB"}
+                                />
+                                <Text style={[styles.checklistText, item.done && styles.checklistTextDone]}>
+                                    {item.label} (+{item.points})
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+            </View>
+
             {/* Reuse the Admin ProductForm Component */}
             {/* Reuse the Admin ProductForm Component */}
             <ProductFormWizard
@@ -155,6 +213,7 @@ export default function SellerProductForm() {
                     }
                 }}
                 isEditing={isEditing}
+                onDataChange={calculateOptimization}
             />
         </View>
     );
@@ -195,4 +254,58 @@ const styles = StyleSheet.create({
         marginTop: 12,
     },
     statusText: { fontWeight: '600', fontSize: 13 },
+    scoreCard: {
+        backgroundColor: '#FFF',
+        marginHorizontal: 16,
+        marginTop: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        overflow: 'hidden',
+    },
+    scoreHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+    },
+    scoreTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    scoreTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    scoreValueRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    scoreValue: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    checklist: {
+        padding: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+    },
+    checklistItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    checklistText: {
+        fontSize: 13,
+        color: '#6B7280',
+    },
+    checklistTextDone: {
+        color: '#111827',
+        textDecorationLine: 'line-through',
+    },
 });

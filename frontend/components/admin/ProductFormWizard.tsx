@@ -64,6 +64,11 @@ interface ProductFormWizardProps {
     loading: boolean;
     submitLabel: string;
     isEditing?: boolean;
+    onDataChange?: (data: {
+        formData: ProductFormData;
+        selectedCategories: string[];
+        variants: VariantData[];
+    }) => void;
 }
 
 const STEPS = [
@@ -81,6 +86,7 @@ export default function ProductFormWizard({
     loading,
     submitLabel,
     isEditing = false,
+    onDataChange,
 }: ProductFormWizardProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
@@ -123,13 +129,16 @@ export default function ProductFormWizard({
 
     // Save draft on change
     useEffect(() => {
+        if (onDataChange) {
+            onDataChange({ formData, selectedCategories, variants });
+        }
         if (!isEditing) {
             const timer = setTimeout(() => {
                 saveDraft();
             }, 1000);
             return () => clearTimeout(timer);
         }
-    }, [formData, selectedCategories, variants, isEditing]);
+    }, [formData, selectedCategories, variants, isEditing, onDataChange]);
 
     const loadDraft = async () => {
         try {

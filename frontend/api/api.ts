@@ -3,8 +3,8 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosR
 import type { CreateProductData, GetProductsParams, GetProductsResponse, Product } from '../types/products';
 import { authEvents } from '@/utils/authEvents';
 
-// Base URL for the API - replace with your actual API base URL
-const BASE_URL = 'http://192.168.1.39:3030/api';
+// Base URL for the API - uses EXPO_PUBLIC_API_URL env var with localhost fallback
+const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api`;
 
 const api: AxiosInstance = axios.create({
     baseURL: BASE_URL,
@@ -375,6 +375,7 @@ export const sellerAPI = {
     updateSellerStatus: (id: number, status: string, rejectionReason?: string) => apiClient.put(`/sellers/${id}`, { status, rejectionReason }),
     markWelcomeSeen: () => apiClient.patch('/sellers/me/welcome-seen', {}),
     cancelApplication: () => apiClient.delete('/sellers/me/application'),
+    getDashboardStats: () => apiClient.get<any>('/sellers/me/dashboard-stats').then(res => res.data),
 };
 
 export const sellerProductsAPI = {

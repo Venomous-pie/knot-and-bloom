@@ -477,5 +477,143 @@ export const sellerController = {
             console.error(error);
             res.status(500).json({ error: "Failed to cancel application" });
         }
+    },
+
+    // Dashboard Stats
+    async getDashboardStats(req: Request, res: Response) {
+        try {
+            if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+            const user = req.user as AuthPayload;
+
+            let sellerId = user.sellerId;
+            if (!sellerId) {
+                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                sellerId = seller?.uid;
+            }
+
+            if (!sellerId) return res.status(404).json({ error: "Seller profile not found" });
+
+            const now = new Date();
+            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+            // 1. Today's Metrics
+            const todayOrders = await prisma.order.findMany({
+                where: {
+                    sellerId,
+                    uploaded: { gte: startOfDay }
+                },
+                select: { total: true }
+            });
+            const todayRevenue = todayOrders.reduce((sum, order) => sum + Number(order.total), 0);
+            const todayOrderCount = todayOrders.length;
+
+            // 2. Pending Actions
+            const pendingOrdersCount = await prisma.order.count({
+                where: {
+                    sellerId,
+                    status: 'PENDING'
+                }
+            });
+
+            // Low stock (Variants with stock < 5)
+            // Note: Efficiently query variants directly via Product relation
+            const lowStockCount = await prisma.productVariant.count({
+                where: {
+                    product: { sellerId, deletedAt: null },
+                    stock: { lt: 5 }
+                }
+            });
+
+            // 3. Quick Stats (Month vs Last Month)
+            const thisMonthMetrics = await prisma.order.aggregate({
+                where: {
+                    sellerId,
+                    uploaded: { gte: startOfMonth }
+                },
+                _sum: { total: true },
+                _count: { uid: true }
+            });
+
+            const lastMonthMetrics = await prisma.order.aggregate({
+                where: {
+                    sellerId,
+                    uploaded: { gte: startOfLastMonth, lte: endOfLastMonth }
+                },
+                _sum: { total: true },
+                _count: { uid: true }
+            });
+
+            const totalOrdersDistribution = await prisma.order.groupBy({
+                by: ['status'],
+                where: { sellerId },
+                _count: { uid: true }
+            });
+
+            // Map distribution to handy object
+            const orderCounts = {
+                PENDING: 0,
+                TO_SHIP: 0, // In Production + Ready to Ship
+                COMPLETED: 0
+            };
+
+            totalOrdersDistribution.forEach(group => {
+                if (group.status === 'PENDING') orderCounts.PENDING += group._count.uid;
+                else if (['IN_PRODUCTION', 'READY_TO_SHIP'].includes(group.status)) orderCounts.TO_SHIP += group._count.uid;
+                else if (group.status === 'COMPLETED') orderCounts.COMPLETED += group._count.uid;
+            });
+
+            // 4. Sales Graph (Last 7 Days)
+            // Simple daily aggregation
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+            sevenDaysAgo.setHours(0, 0, 0, 0);
+
+            const recentOrders = await prisma.order.findMany({
+                where: {
+                    sellerId,
+                    uploaded: { gte: sevenDaysAgo }
+                },
+                select: { uploaded: true, total: true }
+            });
+
+            const salesGraph = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(sevenDaysAgo);
+                date.setDate(date.getDate() + i);
+                const dateString = date.toISOString().split('T')[0];
+
+                const dayOrders = recentOrders.filter(o =>
+                    o.uploaded.toISOString().split('T')[0] === dateString
+                );
+
+                salesGraph.push({
+                    date: dateString,
+                    sales: dayOrders.reduce((sum, o) => sum + Number(o.total), 0)
+                });
+            }
+
+            res.json({
+                performanceSnapshot: {
+                    todayRevenue,
+                    todayOrders: todayOrderCount,
+                    todayVisitors: 0, // Placeholder until analytics
+                    pendingActions: pendingOrdersCount + lowStockCount
+                },
+                quickStats: {
+                    thisMonthSales: Number(thisMonthMetrics._sum.total || 0),
+                    lastMonthSales: Number(lastMonthMetrics._sum.total || 0),
+                    totalOrders: orderCounts,
+                    conversionRate: 0 // Placeholder
+                },
+                performanceGraph: salesGraph
+            });
+
+        } catch (error) {
+            console.error('Dashboard Stats Error:', error);
+            res.status(500).json({ error: "Failed to fetch dashboard stats" });
+        }
     }
 };

@@ -39,6 +39,7 @@ export default function SellerEarnings() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [data, setData] = useState<EarningsData | null>(null);
+    const [filterType, setFilterType] = useState<'ALL' | 'EARNING' | 'WITHDRAWAL'>('ALL');
 
     // Withdrawal Modal State
     const [modalVisible, setModalVisible] = useState(false);
@@ -142,6 +143,27 @@ export default function SellerEarnings() {
         ...(data?.history.withdrawals.map(w => ({ ...w, type: 'WITHDRAWAL', date: w.createdAt })) || [])
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+    const filteredHistory = mergedHistory.filter(item => {
+        if (filterType === 'ALL') return true;
+        return item.type === filterType;
+    });
+
+    // Commission Data
+    const totalGmv = data?.balance.gmv || 0;
+    // Assuming 5% fee roughly or calculated from orders if needed. 
+    // For visualization let's use the actual sums from history actions if available, but 'data.balance' has totals.
+    // We'll approximate visual based on loaded data or just Fixed 5% vs 95% if strictly platform rule.
+    // Let's use strict logic: Fees = GMV - Earnings (Total). 
+    // But data.balance might not have totalEarnings lifetime. 
+    // We'll just show the breakdown of the "Pending + Available" roughly?
+    // Actually, let's visualize the "Recent Transactions" split if meaningful, or just a static explanation of the spread.
+    // Better: A generic "Revenue Split" bar showing the user's effective take rate.
+
+    // Total Revenue Context
+    const revenueDisplay = totalGmv > 0 ? totalGmv : 1;
+    const feePart = revenueDisplay * 0.05; // 5% Platform Fee
+    const earningPart = revenueDisplay * 0.95;
+
     return (
         <View style={styles.container}>
             <Navbar />
@@ -194,13 +216,49 @@ export default function SellerEarnings() {
                     </View>
                 </View>
 
+                {/* Commission Breakdown Chart */}
+                <View style={styles.chartSection}>
+                    <Text style={styles.sectionTitle}>Revenue Breakdown</Text>
+                    <View style={styles.chartCard}>
+                        <View style={styles.barContainer}>
+                            <View style={[styles.barPart, { flex: 95, backgroundColor: '#10B981', borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }]} />
+                            <View style={[styles.barPart, { flex: 5, backgroundColor: '#EF4444', borderTopRightRadius: 8, borderBottomRightRadius: 8 }]} />
+                        </View>
+                        <View style={styles.legendContainer}>
+                            <View style={styles.legendItem}>
+                                <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
+                                <Text style={styles.legendText}>Net Earnings (95%)</Text>
+                            </View>
+                            <View style={styles.legendItem}>
+                                <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
+                                <Text style={styles.legendText}>Platform Fee (5%)</Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Filters */}
+                <View style={styles.filterRow}>
+                    {['ALL', 'EARNING', 'WITHDRAWAL'].map(type => (
+                        <Pressable
+                            key={type}
+                            style={[styles.filterChip, filterType === type && styles.filterChipActive]}
+                            onPress={() => setFilterType(type as any)}
+                        >
+                            <Text style={[styles.filterText, filterType === type && styles.filterTextActive]}>
+                                {type === 'ALL' ? 'All Transactions' : type === 'EARNING' ? 'Earnings' : 'Withdrawals'}
+                            </Text>
+                        </Pressable>
+                    ))}
+                </View>
+
                 {/* Transaction History */}
                 <View style={styles.historySection}>
                     <Text style={styles.sectionTitle}>Recent Transactions</Text>
-                    {mergedHistory.length === 0 ? (
-                        <Text style={styles.emptyText}>No recent transactions.</Text>
+                    {filteredHistory.length === 0 ? (
+                        <Text style={styles.emptyText}>No transactions found.</Text>
                     ) : (
-                        mergedHistory.map((item: any, index) => (
+                        filteredHistory.map((item: any, index) => (
                             <View key={index} style={styles.historyItem}>
                                 <View style={styles.historyLeft}>
                                     <View style={[styles.historyIcon,
@@ -354,5 +412,21 @@ const styles = StyleSheet.create({
     cancelButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' },
     confirmButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#B36979', alignItems: 'center' },
     cancelButtonText: { color: '#374151', fontWeight: '600' },
-    confirmButtonText: { color: 'white', fontWeight: '600' }
+    confirmButtonText: { color: 'white', fontWeight: '600' },
+
+    // Chart & Filters
+    chartSection: { paddingHorizontal: 20, marginTop: 10 },
+    chartCard: { backgroundColor: 'white', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
+    barContainer: { flexDirection: 'row', height: 24, width: '100%', marginBottom: 12 },
+    barPart: { height: '100%' },
+    legendContainer: { flexDirection: 'row', justifyContent: 'center', gap: 24 },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    dot: { width: 10, height: 10, borderRadius: 5 },
+    legendText: { fontSize: 13, color: '#4B5563', fontFamily: 'Quicksand' },
+
+    filterRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 24, marginBottom: 8 },
+    filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
+    filterChipActive: { backgroundColor: '#FFF1F2', borderColor: '#B36979' },
+    filterText: { fontSize: 13, color: '#6B7280', fontWeight: '600' },
+    filterTextActive: { color: '#B36979' },
 });

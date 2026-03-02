@@ -7,6 +7,10 @@ import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleShee
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
+import * as Print from 'expo-print';
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const LATE_THRESHOLD_DAYS = 3;
 
 interface OrderItem {
     uid: number;
@@ -58,6 +62,10 @@ export default function SellerOrders() {
     const [message, setMessage] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [scanning, setScanning] = useState(false);
+
+    // Bulk Selection
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
     // Validation Errors
     const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -117,43 +125,41 @@ export default function SellerOrders() {
         }
     }, [user]);
 
-    const handleUpdateStatus = async (status: string, extraData: any = {}, orderOverride?: Order) => {
-        const targetOrder = orderOverride || selectedOrder;
-        if (!targetOrder) return false;
+    const handleUpdateStatus = async (status: string, extraData: any = {}, orderOverrides?: Order[]) => {
+        const targets = orderOverrides || (selectedOrder ? [selectedOrder] : []);
+        if (targets.length === 0) return false;
 
         try {
             setSubmitting(true);
             const token = await AsyncStorage.getItem('authToken');
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/orders/${targetOrder.uid}/status`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ status, message, ...extraData })
-            });
 
-            const contentType = res.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1) {
+            // Sequential update for MVP (Ideal: Bulk API)
+            await Promise.all(targets.map(async (order) => {
+                const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/orders/${order.uid}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status, message, ...extraData })
+                });
+                if (!res.ok) throw new Error(`Failed to update order #${order.uid}`);
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Update failed");
-
                 if (data.success) {
-                    setOrders(prev => prev.map(o => o.uid === targetOrder.uid ? { ...o, ...data.order } : o));
-                    Alert.alert("Success", `Order updated to ${status}`);
-
-                    // Close all modals
-                    setShipModalVisible(false);
-                    setAcceptModalVisible(false);
-                    setRejectModalVisible(false);
-                    setSelectedOrder(null);
-                    return true;
+                    setOrders(prev => prev.map(o => o.uid === order.uid ? { ...o, ...data.order } : o));
                 }
-            } else {
-                const text = await res.text();
-                // console.error("Non-JSON API response:", text); // Debugging
-                throw new Error("Server error: The server returned an invalid response.");
-            }
+            }));
+
+            Alert.alert("Success", targets.length > 1 ? "Bulk update completed" : `Order updated to ${status}`);
+
+            // Close all modals and reset selection
+            setShipModalVisible(false);
+            setAcceptModalVisible(false);
+            setRejectModalVisible(false);
+            setSelectedOrder(null);
+            setSelectionMode(false);
+            setSelectedIds(new Set());
+            return true;
         } catch (error: any) {
             console.error(error);
             Alert.alert("Error", error.message || "Something went wrong.");
@@ -161,6 +167,112 @@ export default function SellerOrders() {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const isLate = (order: Order) => {
+        if (['SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED'].includes(order.status)) return false;
+        const uploadedTime = new Date(order.uploaded).getTime();
+        const now = Date.now();
+        // If > 3 days and still not shipped
+        return (now - uploadedTime) > (LATE_THRESHOLD_DAYS * ONE_DAY_MS);
+    };
+
+    const toggleSelection = (id: number) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+            if (newSet.size === 0) setSelectionMode(false);
+        } else {
+            newSet.add(id);
+            setSelectionMode(true);
+        }
+        setSelectedIds(newSet);
+    };
+
+    const handleBulkPrint = async () => {
+        if (selectedIds.size === 0) return;
+        const selectedOrders = orders.filter(o => selectedIds.has(o.uid));
+
+        try {
+            const html = `
+                <html>
+                <head>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; }
+                        .slip { border-bottom: 2px dashed #333; padding-bottom: 20px; margin-bottom: 20px; page-break-after: always; }
+                        .header { text-align: center; margin-bottom: 20px; }
+                        .title { font-size: 20px; font-weight: bold; }
+                        .meta { display: flex; justify-content: space-between; margin-bottom: 10px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                    </style>
+                </head>
+                <body>
+                    ${selectedOrders.map(order => `
+                        <div class="slip">
+                            <div class="header">
+                                <div class="title">PACKING SLIP</div>
+                                <div>Order #${order.uid}</div>
+                            </div>
+                            <div class="meta">
+                                <div>
+                                    <strong>Customer:</strong><br>
+                                    ${order.customer.name}<br>
+                                    ${order.customer.email}
+                                </div>
+                                <div style="text-align: right;">
+                                    <strong>Date:</strong> ${new Date(order.uploaded).toLocaleDateString()}<br>
+                                    <strong>Status:</strong> ${order.status}
+                                </div>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Qty</th>
+                                        <th>SKU</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${order.items.map(item => `
+                                        <tr>
+                                            <td>${item.product.name}</td>
+                                            <td>${item.quantity}</td>
+                                            <td>-</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `).join('')}
+                </body>
+                </html>
+            `;
+            await Print.printAsync({ html });
+        } catch (error) {
+            Alert.alert("Error", "Failed to print");
+        }
+    };
+
+    const handleBulkReady = () => {
+        const selectedOrders = orders.filter(o => selectedIds.has(o.uid));
+        // Only allow if logic permits (e.g. must be IN_PRODUCTION)
+        // For MVP, just try to update all valid ones
+        const validOrders = selectedOrders.filter(o => o.status === 'IN_PRODUCTION');
+        if (validOrders.length === 0) {
+            Alert.alert("Info", "Only orders in 'In Production' status can be marked as Ready to Ship.");
+            return;
+        }
+
+        Alert.alert(
+            "Confirm Bulk Update",
+            `Mark ${validOrders.length} orders as Ready to Ship?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                { text: "Confirm", onPress: () => handleUpdateStatus('READY_TO_SHIP', {}, validOrders) }
+            ]
+        );
     };
 
     const openModal = (order: Order, type: 'ship' | 'accept' | 'reject') => {
@@ -363,13 +475,13 @@ export default function SellerOrders() {
                 );
             case 'CONFIRMED':
                 return (
-                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => handleUpdateStatus('IN_PRODUCTION', {}, item)}>
+                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => handleUpdateStatus('IN_PRODUCTION', {}, [item])}>
                         <Text style={styles.primaryBtnText}>Start Production</Text>
                     </TouchableOpacity>
                 );
             case 'IN_PRODUCTION':
                 return (
-                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => handleUpdateStatus('READY_TO_SHIP', {}, item)}>
+                    <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={() => handleUpdateStatus('READY_TO_SHIP', {}, [item])}>
                         <Text style={styles.primaryBtnText}>Mark Ready to Ship</Text>
                     </TouchableOpacity>
                 );
@@ -384,52 +496,80 @@ export default function SellerOrders() {
         }
     };
 
-    const renderOrder = ({ item }: { item: Order }) => (
-        <View style={styles.card}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.orderId}>Order #{item.uid}</Text>
-                    <Text style={styles.date}>{new Date(item.uploaded).toLocaleDateString()}</Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status.replace(/_/g, ' ')}</Text>
-                </View>
-            </View>
+    const renderOrder = ({ item }: { item: Order }) => {
+        const late = isLate(item);
+        const isSelected = selectedIds.has(item.uid);
 
-            <View style={styles.customerInfo}>
-                <Text style={styles.customerConfig}>Customer: {item.customer.name}</Text>
-                <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.subText}>Subtotal: ₱{Number(item.subtotal || item.total).toFixed(2)}</Text>
-                    <Text style={[styles.subText, { color: '#EF4444' }]}>Platform Fee (5%): -₱{Number(item.platformFee || 0).toFixed(2)}</Text>
-                    <View style={styles.divider} />
-                    <Text style={styles.earningsText}>Earnings: ₱{Number(item.sellerEarnings || item.total).toFixed(2)}</Text>
-                </View>
-            </View>
-
-            {/* Escrow Note for Pending/Confirmed */}
-            {['PENDING', 'CONFIRMED', 'IN_PRODUCTION'].includes(item.status) && (
-                <View style={styles.escrowNote}>
-                    <Text style={styles.escrowText}>🔒 Payment held in Escrow</Text>
-                </View>
-            )}
-
-            <View style={styles.itemsList}>
-                {item.items.map(orderItem => (
-                    <View key={orderItem.uid} style={styles.itemRow}>
-                        {orderItem.product.image && <Image source={{ uri: orderItem.product.image }} style={styles.image} />}
-                        <View style={styles.itemDetails}>
-                            <Text style={styles.productName}>{orderItem.product.name}</Text>
-                            <Text style={styles.qtyText}>Qty: {orderItem.quantity} x ₱{Number(orderItem.price).toFixed(2)}</Text>
+        return (
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onLongPress={() => toggleSelection(item.uid)}
+                onPress={() => selectionMode ? toggleSelection(item.uid) : null}
+                style={[styles.card, isSelected && styles.cardSelected, late && styles.cardLate]}
+            >
+                {/* Selection Overlay */}
+                {selectionMode && (
+                    <View style={styles.checkboxOverlay}>
+                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                            {isSelected && <Ionicons name="checkmark" size={14} color="white" />}
                         </View>
                     </View>
-                ))}
-            </View>
+                )}
 
-            <View style={styles.actions}>
-                {renderOrderActions(item)}
-            </View>
-        </View>
-    );
+                {late && (
+                    <View style={styles.lateBadge}>
+                        <Ionicons name="alarm" size={14} color="#B91C1C" />
+                        <Text style={styles.lateText}>Late Shipment</Text>
+                    </View>
+                )}
+
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.orderId}>Order #{item.uid}</Text>
+                        <Text style={styles.date}>{new Date(item.uploaded).toLocaleDateString()}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                        <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status.replace(/_/g, ' ')}</Text>
+                    </View>
+                </View>
+
+                <View style={styles.customerInfo}>
+                    <Text style={styles.customerConfig}>Customer: {item.customer.name}</Text>
+                    <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.subText}>Subtotal: ₱{Number(item.subtotal || item.total).toFixed(2)}</Text>
+                        <Text style={[styles.subText, { color: '#EF4444' }]}>Platform Fee (5%): -₱{Number(item.platformFee || 0).toFixed(2)}</Text>
+                        <View style={styles.divider} />
+                        <Text style={styles.earningsText}>Earnings: ₱{Number(item.sellerEarnings || item.total).toFixed(2)}</Text>
+                    </View>
+                </View>
+
+                {/* Escrow Note for Pending/Confirmed */}
+                {['PENDING', 'CONFIRMED', 'IN_PRODUCTION'].includes(item.status) && (
+                    <View style={styles.escrowNote}>
+                        <Text style={styles.escrowText}>🔒 Payment held in Escrow</Text>
+                    </View>
+                )}
+
+                <View style={styles.itemsList}>
+                    {item.items.map(orderItem => (
+                        <View key={orderItem.uid} style={styles.itemRow}>
+                            {orderItem.product.image && <Image source={{ uri: orderItem.product.image }} style={styles.image} />}
+                            <View style={styles.itemDetails}>
+                                <Text style={styles.productName}>{orderItem.product.name}</Text>
+                                <Text style={styles.qtyText}>Qty: {orderItem.quantity} x ₱{Number(orderItem.price).toFixed(2)}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+
+                {!selectionMode && (
+                    <View style={styles.actions}>
+                        {renderOrderActions(item)}
+                    </View>
+                )}
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -451,6 +591,26 @@ export default function SellerOrders() {
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={<Text style={styles.empty}>No orders found.</Text>}
                 />
+            )}
+
+            {/* Bulk Action Bar */}
+            {selectionMode && (
+                <View style={styles.bulkBar}>
+                    <Text style={styles.bulkCount}>{selectedIds.size} Selected</Text>
+                    <View style={styles.bulkActions}>
+                        <TouchableOpacity style={styles.bulkBtn} onPress={handleBulkPrint}>
+                            <Ionicons name="print" size={20} color="#374151" />
+                            <Text style={styles.bulkBtnText}>Print</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.bulkBtn} onPress={handleBulkReady}>
+                            <Ionicons name="cube" size={20} color="#10B981" />
+                            <Text style={[styles.bulkBtnText, { color: '#10B981' }]}>Ship</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.bulkBtn} onPress={() => { setSelectedIds(new Set()); setSelectionMode(false); }}>
+                            <Ionicons name="close" size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
             )}
 
             {/* Ship Modal */}
@@ -794,4 +954,92 @@ const styles = StyleSheet.create({
 
     infoBox: { padding: 12, borderRadius: 12, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', marginTop: 4, marginBottom: 8, },
     infoText: { fontSize: 13, color: '#1E40AF' },
+
+    // Late & Selection Styles
+    cardLate: {
+        borderLeftWidth: 4,
+        borderLeftColor: '#EF4444',
+    },
+    cardSelected: {
+        borderColor: '#B36979',
+        borderWidth: 2,
+        backgroundColor: '#FFF1F2'
+    },
+    lateBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 8,
+        backgroundColor: '#FEF2F2',
+        padding: 4,
+        borderRadius: 4,
+        alignSelf: 'flex-start',
+    },
+    lateText: {
+        fontSize: 12,
+        color: '#B91C1C',
+        fontWeight: 'bold',
+    },
+    checkboxOverlay: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 10,
+    },
+    checkbox: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        borderWidth: 2,
+        borderColor: '#B36979',
+        backgroundColor: 'white',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxSelected: {
+        backgroundColor: '#B36979',
+    },
+    bulkBar: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        padding: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 10,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    bulkCount: {
+        fontWeight: 'bold',
+        fontSize: 16,
+        color: '#111827',
+        marginLeft: 8,
+    },
+    bulkActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    bulkBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+    },
+    bulkBtnText: {
+        fontWeight: '600',
+        fontSize: 13,
+        color: '#374151'
+    }
 });

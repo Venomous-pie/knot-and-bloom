@@ -13,6 +13,19 @@ type Product = {
     status: 'DRAFT' | 'PENDING' | 'ACTIVE' | 'SUSPENDED' | null;
     stock?: number;
     variants?: any[];
+    description?: string;
+    views?: number;
+};
+
+const calculateOptimizationScore = (product: Product) => {
+    let score = 0;
+    if (product.image) score += 20;
+    if (product.name && product.name.length >= 20) score += 20;
+    if (product.description && product.description.length >= 50) score += 20;
+    if ((product.variants && product.variants.some(v => v.stock > 0)) || (product.stock && product.stock > 0)) score += 20;
+    // Placeholder 'competitiveness' check
+    score += 20;
+    return score;
 };
 
 const STATUS_TABS = [
@@ -28,6 +41,8 @@ export default function SellerProducts() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [selectionMode, setSelectionMode] = useState(false);
 
     useEffect(() => {
         loadProducts();
@@ -83,6 +98,44 @@ export default function SellerProducts() {
         }
     };
 
+    const toggleSelection = (id: number) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+            if (newSelected.size === 0) setSelectionMode(false);
+        } else {
+            newSelected.add(id);
+            setSelectionMode(true);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleBulkAction = async (action: 'PUBLISH' | 'UNPUBLISH' | 'DELETE') => {
+        if (selectedIds.size === 0) return;
+
+        try {
+            setLoading(true);
+            const ids = Array.from(selectedIds);
+
+            // Loop for MVP (Ideal: Bulk API endpoint)
+            await Promise.all(ids.map(id => {
+                if (action === 'DELETE') return sellerProductsAPI.deleteProduct(id);
+                const status = action === 'PUBLISH' ? 'ACTIVE' : 'SUSPENDED';
+                return sellerProductsAPI.updateProduct(id, { status });
+            }));
+
+            Alert.alert("Success", "Bulk action completed");
+            setSelectedIds(new Set());
+            setSelectionMode(false);
+            loadProducts();
+        } catch (err) {
+            console.error(err);
+            Alert.alert("Error", "Failed to perform bulk action");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const getStatusColor = (status: string | null) => {
         switch (status) {
             case 'ACTIVE': return '#10B981';
@@ -107,8 +160,20 @@ export default function SellerProducts() {
             ? item.variants.reduce((acc, v) => acc + (v.stock || 0), 0)
             : (item.stock || 0);
 
+        const optScore = calculateOptimizationScore(item);
+        const isSelected = selectedIds.has(item.uid);
+
         return (
-            <View style={styles.card}>
+            <Pressable
+                onLongPress={() => toggleSelection(item.uid)}
+                onPress={() => selectionMode ? toggleSelection(item.uid) : null}
+                style={[styles.card, isSelected && styles.cardSelected]}
+            >
+                {selectionMode && (
+                    <View style={styles.checkbox}>
+                        {isSelected && <Ionicons name="checkmark" size={16} color="#FFF" />}
+                    </View>
+                )}
                 <Image
                     source={{ uri: item.image || 'https://via.placeholder.com/100' }}
                     style={styles.image}
@@ -122,25 +187,36 @@ export default function SellerProducts() {
                                 {item.status || 'LEGACY'}
                             </Text>
                         </View>
-                        <Text style={styles.statusInfo}>{getStatusInfo(item.status)}</Text>
+                        <Text style={styles.stock}>Stock: {totalStock}</Text>
                     </View>
-                    <Text style={styles.stock}>Stock: {totalStock}</Text>
+
+                    {/* Optimization Score */}
+                    <View style={styles.scoreRow}>
+                        <Text style={styles.scoreLabel}>Optimization Score:</Text>
+                        <View style={styles.scoreBarBg}>
+                            <View style={[styles.scoreBarFill, { width: `${optScore}%`, backgroundColor: optScore > 80 ? '#10B981' : optScore > 50 ? '#F59E0B' : '#EF4444' }]} />
+                        </View>
+                        <Text style={styles.scoreValue}>{optScore}/100</Text>
+                    </View>
                 </View>
-                <View style={styles.actions}>
-                    <TouchableOpacity
-                        onPress={() => router.push({ pathname: '/seller-dashboard/products/form', params: { id: item.uid } })}
-                        style={styles.actionBtn}
-                    >
-                        <Ionicons name="create-outline" size={20} color="#4B5563" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => handleDelete(item.uid)}
-                        style={[styles.actionBtn, styles.deleteBtn]}
-                    >
-                        <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                    </TouchableOpacity>
-                </View>
-            </View>
+
+                {!selectionMode && (
+                    <View style={styles.actions}>
+                        <TouchableOpacity
+                            onPress={() => router.push({ pathname: '/seller-dashboard/products/form', params: { id: item.uid } })}
+                            style={styles.actionBtn}
+                        >
+                            <Ionicons name="create-outline" size={20} color="#4B5563" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => handleDelete(item.uid)}
+                            style={[styles.actionBtn, styles.deleteBtn]}
+                        >
+                            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </Pressable>
         );
     };
 
@@ -208,6 +284,30 @@ export default function SellerProducts() {
                         </View>
                     }
                 />
+            )}
+
+            {/* Bulk Action Bar */}
+            {selectionMode && (
+                <View style={styles.bulkBar}>
+                    <Text style={styles.bulkCount}>{selectedIds.size} Selected</Text>
+                    <View style={styles.bulkActions}>
+                        <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('PUBLISH')}>
+                            <Ionicons name="eye" size={20} color="#10B981" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('UNPUBLISH')}>
+                            <Ionicons name="eye-off" size={20} color="#F59E0B" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('DELETE')}>
+                            <Ionicons name="trash" size={20} color="#EF4444" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.bulkBtn} onPress={() => {
+                            setSelectionMode(false);
+                            setSelectedIds(new Set());
+                        }}>
+                            <Ionicons name="close" size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
             )}
         </View>
     );
@@ -379,4 +479,76 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontStyle: 'italic',
     },
+    cardSelected: {
+        borderColor: '#B36979',
+        borderWidth: 2,
+        backgroundColor: '#FFF1F2'
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        backgroundColor: '#B36979',
+        marginRight: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    scoreRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+    },
+    scoreLabel: {
+        fontSize: 10,
+        color: '#6B7280',
+        marginRight: 4,
+    },
+    scoreBarBg: {
+        flex: 1,
+        height: 4,
+        backgroundColor: '#E5E7EB',
+        borderRadius: 2,
+        marginRight: 4,
+    },
+    scoreBarFill: {
+        height: '100%',
+        borderRadius: 2,
+    },
+    scoreValue: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#4B5563',
+    },
+    bulkBar: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        backgroundColor: '#FFF',
+        borderRadius: 12,
+        padding: 12,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    bulkCount: {
+        fontWeight: 'bold',
+        fontSize: 16,
+        color: '#111827',
+        marginLeft: 8,
+    },
+    bulkActions: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    bulkBtn: {
+        padding: 5,
+    }
 });

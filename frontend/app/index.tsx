@@ -22,7 +22,6 @@ export default function Index() {
   // Use centralized hook for data fetching
   const { products, loading } = useProducts({
     limit: 10,
-    newArrival: true
   });
 
   const getNumColumns = () => {
@@ -55,7 +54,7 @@ export default function Index() {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.sectionTitle}>New Arrivals</Text>
+        <Text style={styles.sectionTitle}>Featured Products</Text>
         {loading ? (
           <ActivityIndicator size="large" color="#B36979" />
         ) : (

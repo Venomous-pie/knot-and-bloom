@@ -1209,6 +1209,7 @@ const styles = StyleSheet.create({
     modalImageWrapper: {
         marginBottom: 24,
         shadowColor: "#000",
+        borderRadius: 50, // Squircle
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

@@ -9,6 +9,7 @@ import { PaymentService } from '../services/PaymentService.js';
 import { socketService } from '../services/SocketService.js';
 import { SellerService } from '../services/SellerService.js';
 import { generateOrderReference } from '../utils/orderUtils.js';
+import { groupItemsBySeller, calculateShippingFee, buildOrderedProducts } from '../utils/checkoutHelpers.js';
 
 import type {
     LockedPriceItem,
@@ -667,14 +668,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
 
         // Group items by seller
-        const itemsBySeller = new Map<number | null, LockedPriceItem[]>();
-        for (const item of lockedPrices) {
-            const sellerId = item.sellerId;
-            if (!itemsBySeller.has(sellerId)) {
-                itemsBySeller.set(sellerId, []);
-            }
-            itemsBySeller.get(sellerId)!.push(item);
-        }
+        const itemsBySeller = groupItemsBySeller(lockedPrices);
 
         // Atomic transaction: update stock and create orders
         const createdOrderIds = await prisma.$transaction(async (tx) => {
@@ -718,23 +712,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 // Calculate total for this specific order
                 const orderTotal = sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0);
 
-                // Prepare order products data
-                const orderedProducts = sellerItems.map(item => ({
-                    product: {
-                        uid: item.productId,
-                        name: item.productName,
-                        image: item.image,
-                        seller: item.sellerName ? { name: item.sellerName } : null,
-                    },
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    finalPrice: item.finalPrice,
-                    discountPercentage: item.discountPercentage,
-                    variant: item.variantName ? {
-                        uid: item.variantId,
-                        name: item.variantName,
-                    } : null,
-                }));
+                const orderedProducts = buildOrderedProducts(sellerItems);
 
                 // Commission Calculation
                 const seller = await tx.seller.findUnique({ where: { uid: sellerId! } });
@@ -742,11 +720,9 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 const platformFee = Number((orderTotal * commissionRate).toFixed(2));
                 const sellerEarnings = Number((orderTotal - platformFee).toFixed(2));
 
-                // Calculate shipping fee server-side based on total checkout amount
-                // Shipping fee is applied to the first order only (for multi-seller orders)
+                // Calculate shipping fee server-side
                 const checkoutTotal = Number(session.totalAmount);
-                const calculatedShippingFee = checkoutTotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
-                const orderShippingFee = orderIndex === 1 ? calculatedShippingFee : 0;
+                const orderShippingFee = orderIndex === 1 ? calculateShippingFee(checkoutTotal) : 0;
                 const orderTotalWithShipping = orderTotal + orderShippingFee;
 
                 const newOrder = await tx.order.create({

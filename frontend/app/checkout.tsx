@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     LayoutAnimation,
     Modal,
@@ -15,7 +14,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Check, ChevronRight, CreditCard, Truck } from 'lucide-react-native';
+import { Truck } from 'lucide-react-native';
 
 import { CheckoutProvider, useCheckout } from '@/app/context/_CheckoutContext';
 import { useAuth } from '@/app/auth';
@@ -26,11 +25,12 @@ import { Address } from '@/components/checkout/AddressCard';
 import { theme } from '@/constants/theme';
 import { FREE_SHIPPING_THRESHOLD } from './cart';
 
-// New Components
 import { CheckoutAddressSection } from '@/components/checkout/CheckoutAddressSection';
 import { CheckoutProductList } from '@/components/checkout/CheckoutProductList';
 import { AddressMapPicker } from '@/components/checkout/AddressMapPicker';
-import { TrustBadge } from '@/components/checkout/TrustBadge';
+import { CheckoutSessionExpiredDialog } from '@/components/checkout/CheckoutSessionExpiredDialog';
+import { CheckoutPaymentSection } from '@/components/checkout/CheckoutPaymentSection';
+import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
 
 export default function CheckoutPage() {
     return (
@@ -114,9 +114,7 @@ function CheckoutContent() {
     const [editingAddr, setEditingAddr] = useState<Address | null>(null);
     const [isSavingAddr, setIsSavingAddr] = useState(false);
 
-    // Payment Logic
-    // Payment Logic
-    // Payment Logic
+    // Payment method
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'card'>('cod');
     const [deliveryNotes, setDeliveryNotes] = useState('');
 
@@ -451,34 +449,10 @@ function CheckoutContent() {
                 </View>
             </View>
 
-            {/* Session Expiration Dialog */}
-            <Modal
+            <CheckoutSessionExpiredDialog
                 visible={showExpirationDialog}
-                animationType="fade"
-                transparent={true}
-                onRequestClose={handleExpirationDismiss}
-            >
-                <View style={styles.expirationOverlay}>
-                    <View style={styles.expirationDialog}>
-                        <View style={styles.expirationIconContainer}>
-                            <Ionicons name="time-outline" size={48} color={theme.colors.error} />
-                        </View>
-                        <Text style={styles.expirationTitle}>Session Expired</Text>
-                        <Text style={styles.expirationMessage}>
-                            Your checkout session has expired due to inactivity. The items in your cart may have been released.
-                        </Text>
-                        <Text style={styles.expirationSubtext}>
-                            Please return to your cart to start a new checkout.
-                        </Text>
-                        <Pressable
-                            style={styles.expirationButton}
-                            onPress={handleExpirationDismiss}
-                        >
-                            <Text style={styles.expirationButtonText}>Return to Cart</Text>
-                        </Pressable>
-                    </View>
-                </View>
-            </Modal>
+                onDismiss={handleExpirationDismiss}
+            />
 
             {renderAddressModal()}
 
@@ -506,8 +480,8 @@ function CheckoutContent() {
 
                                 {/* Professional Free Shipping Indicator */}
                                 {hasFreeShipping && (
-                                    <View style={styles.freeShippingSimpleContainer}>
-                                        <Text style={styles.freeShippingSimpleText}>Standard Local Shipping is on us.</Text>
+                                    <View style={{ marginBottom: 8 }}>
+                                        <Text style={{ fontSize: 13, color: theme.colors.primary, fontWeight: '500', fontFamily: theme.typography.fontFamily }}>Standard Local Shipping is on us.</Text>
                                     </View>
                                 )}
 
@@ -516,8 +490,8 @@ function CheckoutContent() {
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                             <Text style={styles.shippingName}>Standard Local Delivery</Text>
                                             {hasFreeShipping && (
-                                                <View style={styles.freeBadgeProfessional}>
-                                                    <Text style={styles.freeBadgeTextProfessional}>FREE</Text>
+                                                <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '600', fontFamily: theme.typography.fontFamily, letterSpacing: 0.5 }}>FREE</Text>
                                                 </View>
                                             )}
                                         </View>
@@ -545,122 +519,30 @@ function CheckoutContent() {
                             {/* 4. Payment Method */}
                             <View style={styles.sectionContainer}>
                                 <View style={styles.sectionHeader}>
-                                    <CreditCard size={20} color={theme.colors.primary} />
+                                    <Truck size={20} color={theme.colors.primary} />
                                     <Text style={styles.sectionTitle}>Payment Method</Text>
                                 </View>
-                                <View style={styles.paymentMethods}>
-                                    <Pressable
-                                        style={[
-                                            styles.paymentChip,
-                                            paymentMethod === 'cod' && styles.paymentChipSelected,
-                                            !isCodAllowed && { opacity: 0.5, backgroundColor: '#eee' }
-                                        ]}
-                                        onPress={() => isCodAllowed && setPaymentMethod('cod')}
-                                        disabled={!isCodAllowed}
-                                    >
-                                        <Text style={[
-                                            styles.paymentChipText,
-                                            paymentMethod === 'cod' && styles.paymentChipTextSelected,
-                                            !isCodAllowed && { color: '#999' }
-                                        ]}>
-                                            {isCodAllowed ? 'Cash on Delivery' : 'COD Unavailable'}
-                                        </Text>
-                                        {paymentMethod === 'cod' && isCodAllowed && <Check size={16} color={theme.colors.primary} />}
-                                    </Pressable>
-
-                                    <Pressable
-                                        style={[styles.paymentChip, paymentMethod === 'gcash' && styles.paymentChipSelected]}
-                                        onPress={() => setPaymentMethod('gcash')}
-                                    >
-                                        <Text style={[styles.paymentChipText, paymentMethod === 'gcash' && styles.paymentChipTextSelected]}>GCash</Text>
-                                        {paymentMethod === 'gcash' && <Check size={16} color={theme.colors.primary} />}
-                                    </Pressable>
-
-                                    <Pressable
-                                        style={[styles.paymentChip, paymentMethod === 'paymaya' && styles.paymentChipSelected]}
-                                        onPress={() => setPaymentMethod('paymaya')}
-                                    >
-                                        <Text style={[styles.paymentChipText, paymentMethod === 'paymaya' && styles.paymentChipTextSelected]}>Maya</Text>
-                                        {paymentMethod === 'paymaya' && <Check size={16} color={theme.colors.primary} />}
-                                    </Pressable>
-
-                                    <Pressable
-                                        style={[styles.paymentChip, paymentMethod === 'card' && styles.paymentChipSelected]}
-                                        onPress={() => setPaymentMethod('card')}
-                                    >
-                                        <Text style={[styles.paymentChipText, paymentMethod === 'card' && styles.paymentChipTextSelected]}>Credit/Debit Card</Text>
-                                        {paymentMethod === 'card' && <Check size={16} color={theme.colors.primary} />}
-                                    </Pressable>
-                                </View>
+                                <CheckoutPaymentSection
+                                    paymentMethod={paymentMethod}
+                                    onSelect={setPaymentMethod}
+                                    isCodAllowed={isCodAllowed}
+                                    codDepositPercent={codDepositPercent}
+                                    codReason={codInfo?.reason}
+                                    totalAmount={totalAmount}
+                                    shippingFee={shippingFee}
+                                />
                             </View>
 
-                            {/* 5. Order Totals (Integrated at bottom) */}
-                            <View style={styles.totalsSection}>
-                                <View style={styles.totalRow}>
-                                    <Text style={styles.summaryLabel}>Merchandise Subtotal:</Text>
-                                    <Text style={styles.summaryValue}>₱{totalAmount.toFixed(2)}</Text>
-                                </View>
-                                <View style={styles.totalRow}>
-                                    <Text style={styles.summaryLabel}>Shipping Total:</Text>
-                                    {hasFreeShipping ? (
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                            <Text style={[styles.summaryValue, { textDecorationLine: 'line-through', color: theme.colors.textSecondary, fontSize: 13 }]}>₱60.00</Text>
-                                            <Text style={[styles.summaryValue, { color: theme.colors.primary, fontWeight: '600' }]}>Free</Text>
-                                        </View>
-                                    ) : (
-                                        <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
-                                    )}
-                                </View>
-                                <View style={[styles.totalRow, { marginTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }]}>
-                                    <Text style={styles.totalLabel}>Total Payment:</Text>
-                                    <Text style={styles.totalAmount}>₱{(totalAmount + shippingFee).toFixed(2)}</Text>
-                                </View>
-
-                                {/* Split Breakdown if COD */}
-                                {/* Split Breakdown if COD */}
-                                {paymentMethod === 'cod' ? (
-                                    codDepositPercent > 0 && (
-                                        <View style={styles.splitPaymentContainer}>
-                                            {codInfo?.reason && (
-                                                <Text style={{ fontSize: 12, color: '#F59E0B', marginBottom: 8, fontWeight: '600' }}>
-                                                    ⚠️ {codInfo.reason}
-                                                </Text>
-                                            )}
-                                            <View style={styles.splitRow}>
-                                                <Text style={styles.splitLabel}>Due Now ({codDepositPercent}% Deposit):</Text>
-                                                <Text style={styles.splitValue}>₱{((totalAmount + shippingFee) * (codDepositPercent / 100)).toFixed(2)}</Text>
-                                            </View>
-                                            <View style={styles.splitRow}>
-                                                <Text style={styles.splitLabel}>Due on Delivery ({100 - codDepositPercent}%):</Text>
-                                                <Text style={styles.splitValue}>₱{((totalAmount + shippingFee) * ((100 - codDepositPercent) / 100)).toFixed(2)}</Text>
-                                            </View>
-                                        </View>
-                                    )
-                                ) : (
-                                    <View style={styles.splitPaymentContainer}>
-                                        <Text style={[styles.splitLabel, { marginBottom: 4 }]}>Strict Escrow Protection</Text>
-                                        <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 18, fontFamily: theme.typography.fontFamily }}>
-                                            You are paying the full amount of <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{(totalAmount + shippingFee).toFixed(2)}</Text>.
-                                            This amount is held securely. <Text style={{ fontWeight: '700' }}>If the item is damaged or incorrect, you can request a return or refund.</Text> Funds are only released to the seller after you verify the item.
-                                        </Text>
-                                    </View>
-                                )}
-
-                                <View style={styles.actionRow}>
-                                    <Pressable
-                                        style={[styles.placeOrderButton, isProcessing && styles.disabledButton]}
-                                        onPress={handlePlaceOrder}
-                                        disabled={isProcessing}
-                                    >
-                                        {isProcessing ? <ActivityIndicator color="white" /> : <Text style={styles.placeOrderText}>
-                                            {paymentMethod === 'cod'
-                                                ? (codDepositPercent > 0 ? `Pay Deposit ₱${((totalAmount + shippingFee) * (codDepositPercent / 100)).toFixed(2)}` : 'Place Order (Pay on Delivery)')
-                                                : 'Place Order'}
-                                        </Text>}
-                                    </Pressable>
-                                </View>
-                                <TrustBadge />
-                            </View>
+                            {/* 5. Order Summary */}
+                            <CheckoutOrderSummary
+                                totalAmount={totalAmount}
+                                shippingFee={shippingFee}
+                                hasFreeShipping={hasFreeShipping}
+                                paymentMethod={paymentMethod}
+                                codDepositPercent={codDepositPercent}
+                                isProcessing={isProcessing}
+                                onPlaceOrder={handlePlaceOrder}
+                            />
 
                         </View>
                     </View>
@@ -791,123 +673,7 @@ const styles = StyleSheet.create({
     },
 
     // Professional Free Shipping Styles
-    freeShippingSimpleContainer: {
-        marginBottom: 8,
-    },
-    freeShippingSimpleText: {
-        fontSize: 13,
-        color: theme.colors.primary,
-        fontWeight: '500',
-        fontFamily: theme.typography.fontFamily,
-    },
-    freeBadgeProfessional: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-    },
-    freeBadgeTextProfessional: {
-        color: 'white',
-        fontSize: 10,
-        fontWeight: '600',
-        fontFamily: theme.typography.fontFamily,
-        letterSpacing: 0.5,
-    },
-
-    paymentMethods: {
-        flexDirection: 'row',
-        gap: 12,
-        flexWrap: 'wrap',
-    },
-    paymentChip: {
-        borderWidth: 2,
-        borderColor: theme.colors.border,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    paymentChipSelected: {
-        borderColor: theme.colors.primary,
-        backgroundColor: theme.colors.primaryLight + '10', // 10% opacity
-    },
-    paymentChipText: {
-        color: theme.colors.text,
-        fontWeight: '500',
-    },
-    paymentChipTextSelected: {
-        color: theme.colors.primary,
-        fontWeight: '600',
-    },
-
-    // Sticky Summary
-    totalsSection: {
-        backgroundColor: theme.colors.surface,
-        padding: theme.spacing.lg,
-        borderRadius: 16,
-        ...theme.shadows.sm,
-        marginTop: theme.spacing.md,
-    },
-    totalRow: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: 16,
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    summaryLabel: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.typography.fontFamily,
-    },
-    summaryValue: {
-        fontSize: 14,
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-        minWidth: 80,
-        textAlign: 'right',
-    },
-    totalLabel: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-        marginTop: 8,
-    },
-    totalAmount: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.primary,
-        fontFamily: theme.typography.fontFamily,
-        minWidth: 80,
-        textAlign: 'right',
-        marginTop: 8,
-    },
-    actionRow: {
-        alignItems: 'flex-end',
-        marginTop: 24,
-    },
-    placeOrderButton: {
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 12,
-        paddingHorizontal: 32,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...theme.shadows.md,
-        minWidth: 200, // Ensure it's not too small
-    },
-    placeOrderText: {
-        color: 'white',
-        fontWeight: '600',
-        fontSize: 16,
-        fontFamily: theme.typography.fontFamily
-    },
-    disabledButton: { opacity: 0.7 },
-
-    // Modal
+    // Modal (address modal)
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -939,12 +705,6 @@ const styles = StyleSheet.create({
         fontFamily: theme.typography.fontFamily,
     },
 
-
-    // Confirmation
-    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-    successIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: theme.colors.secondary, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-    successTitle: { fontSize: 24, fontWeight: '700', marginBottom: 8, fontFamily: theme.typography.fontFamily },
-
     errorToast: {
         position: 'absolute',
         bottom: 20,
@@ -955,96 +715,4 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     errorText: { color: 'white', textAlign: 'center' },
-    loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center', zIndex: 100 },
-    loadingText: { marginTop: 16, color: theme.colors.primary, fontWeight: '600' },
-
-    // Split Payment Styles
-    splitPaymentContainer: {
-        marginTop: 12,
-        padding: 12,
-        backgroundColor: theme.colors.primaryLight + '20',
-        borderRadius: 8,
-    },
-    splitRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 4,
-    },
-    splitLabel: {
-        fontSize: 14,
-        color: theme.colors.text,
-        fontWeight: '500',
-        fontFamily: theme.typography.fontFamily,
-    },
-    splitValue: {
-        fontSize: 14,
-        color: theme.colors.primary,
-        fontWeight: '700',
-        fontFamily: theme.typography.fontFamily,
-    },
-
-    // Session Expiration Dialog Styles
-    expirationOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-    },
-    expirationDialog: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 24,
-        padding: 32,
-        maxWidth: 400,
-        width: '100%',
-        alignItems: 'center',
-        ...theme.shadows.lg,
-    },
-    expirationIconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: theme.colors.error + '15',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    expirationTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    expirationMessage: {
-        fontSize: 15,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.typography.fontFamily,
-        textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: 8,
-    },
-    expirationSubtext: {
-        fontSize: 13,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.typography.fontFamily,
-        textAlign: 'center',
-        marginBottom: 24,
-    },
-    expirationButton: {
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 14,
-        paddingHorizontal: 32,
-        borderRadius: 12,
-        minWidth: 180,
-        alignItems: 'center',
-        ...theme.shadows.sm,
-    },
-    expirationButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-        fontFamily: theme.typography.fontFamily,
-    },
 });

@@ -367,3 +367,6 @@ export const useCheckout = (): CheckoutContextType => {
     }
     return context;
 };
+
+// Required by Expo Router — files in app/ directories need a default export
+export default CheckoutProvider;

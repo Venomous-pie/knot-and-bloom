@@ -72,9 +72,9 @@ export default function SellerProfile() {
     // Derived state
     // Derived state with seller info injection
     const activeProducts = seller?.products
-        .filter(p => !p.status || p.status === 'ACTIVE')
-        .map(p => ({ ...p, seller: p.seller || { name: seller.name, slug: seller.slug } }))
-        .filter(p => {
+        .filter((p: Product) => !p.status || p.status === 'ACTIVE')
+        .map((p: Product) => ({ ...p, seller: p.seller || { name: seller.name, slug: seller.slug } }))
+        .filter((p: any) => {
             // Search filter
             if (searchQuery.trim()) {
                 const query = searchQuery.toLowerCase();
@@ -89,7 +89,7 @@ export default function SellerProfile() {
             }
             return true;
         })
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
             const isAPinned = seller?.pinnedProductIds?.includes(a.uid);
             const isBPinned = seller?.pinnedProductIds?.includes(b.uid);
             if (isAPinned && !isBPinned) return -1;
@@ -105,8 +105,8 @@ export default function SellerProfile() {
         }) || [];
 
     const pendingProducts = seller?.products
-        .filter(p => p.status === 'PENDING')
-        .map(p => ({ ...p, seller: p.seller || { name: seller.name, slug: seller.slug } })) || [];
+        .filter((p: Product) => p.status === 'PENDING')
+        .map((p: Product) => ({ ...p, seller: p.seller || { name: seller.name, slug: seller.slug } })) || [];
 
     const isOwner = user?.sellerId === seller?.uid;
 
@@ -498,7 +498,7 @@ export default function SellerProfile() {
                         onPinPress={isOwner ? () => {
                             const currentPinned = seller.pinnedProductIds || [];
                             const newPinned = currentPinned.includes(item.uid)
-                                ? currentPinned.filter(id => id !== item.uid)
+                                ? currentPinned.filter((id: number) => id !== item.uid)
                                 : [...currentPinned, item.uid];
                             setSeller({ ...seller, pinnedProductIds: newPinned });
                         } : undefined}
@@ -527,7 +527,7 @@ export default function SellerProfile() {
 
             <Animated.FlatList
                 data={loadTabContent()}
-                keyExtractor={(item, index) => item.uid ? String(item.uid) : `item-${index}`}
+                keyExtractor={(item: any, index: number) => item.uid ? String(item.uid) : `item-${index}`}
                 renderItem={renderItem}
                 ListHeaderComponent={renderHeader}
                 numColumns={activeTab === 'products' ? (isDesktop ? 4 : 2) : 1}

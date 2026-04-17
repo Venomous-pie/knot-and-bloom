@@ -1,5 +1,6 @@
 import { categoryTitles } from '@/constants/categories';
 import { isMobile } from '@/constants/layout';
+import { theme } from '@/constants/theme';
 import { useAuth } from '@/app/auth';
 import { ArrowLeft, ArrowRight, Check, ChevronLeft, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -373,7 +374,7 @@ export default function ProductFormWizard({
                                 value={formData.name}
                                 onChangeText={(text: string) => handleChange('name', text)}
                                 placeholder="e.g. Handmade Crochet Bear"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.colors.textLight}
                                 onFocus={() => setFocusedField('name')}
                                 onBlur={() => {
                                     setFocusedField(null);
@@ -429,11 +430,11 @@ export default function ProductFormWizard({
                                     style={{ opacity: selectedCategories.length === 0 ? 0.5 : 1 }}
                                 >
                                     {generatingSku ? (
-                                        <ActivityIndicator size="small" color="#B36979" />
+                                        <ActivityIndicator size="small" color={theme.colors.primary} />
                                     ) : (
                                         <View style={styles.autoGenButton}>
-                                            <Sparkles size={14} color={selectedCategories.length === 0 ? '#ccc' : '#B36979'} />
-                                            <Text style={[styles.autoGenText, selectedCategories.length === 0 && { color: '#ccc' }]}>Auto Generate</Text>
+                                            <Sparkles size={14} color={selectedCategories.length === 0 ? theme.colors.border : theme.colors.primary} />
+                                            <Text style={[styles.autoGenText, selectedCategories.length === 0 && { color: theme.colors.border }]}>Auto Generate</Text>
                                         </View>
                                     )}
                                 </Pressable>
@@ -456,7 +457,7 @@ export default function ProductFormWizard({
                                 value={formData.sku}
                                 onChangeText={(text: string) => handleChange('sku', text)}
                                 placeholder="e.g. CB-001"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.colors.textLight}
                                 onFocus={() => setFocusedField('sku')}
                                 onBlur={() => setFocusedField(null)}
                             />
@@ -471,7 +472,7 @@ export default function ProductFormWizard({
                                     value={formData.basePrice}
                                     onChangeText={(text: string) => handleChange('basePrice', text)}
                                     placeholder="0.00"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
                                     onFocus={() => setFocusedField('basePrice')}
                                     onBlur={() => setFocusedField(null)}
@@ -484,7 +485,7 @@ export default function ProductFormWizard({
                                     value={formData.discountPercentage}
                                     onChangeText={(text: string) => handleChange('discountPercentage', text)}
                                     placeholder="0"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
                                     onFocus={() => setFocusedField('discount')}
                                     onBlur={() => setFocusedField(null)}
@@ -502,7 +503,7 @@ export default function ProductFormWizard({
                                     </Text>
                                 </View>
                                 <Switch
-                                    trackColor={{ false: "#767577", true: "#B36979" }}
+                                    trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
                                     thumbColor={formData.isCodAllowed ? "#f4f3f4" : "#f4f3f4"}
                                     onValueChange={() => setFormData(prev => ({ ...prev, isCodAllowed: !prev.isCodAllowed }))}
                                     value={formData.isCodAllowed}
@@ -519,7 +520,7 @@ export default function ProductFormWizard({
                                     value={formData.materials}
                                     onChangeText={(text: string) => handleChange('materials', text)}
                                     placeholder="Type or select materials..."
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.colors.textLight}
                                     onFocus={() => setFocusedField('materials')}
                                     onBlur={() => setTimeout(() => setFocusedField(null), 150)}
                                 />
@@ -566,7 +567,7 @@ export default function ProductFormWizard({
                                     value={formData.bundleQuantity}
                                     onChangeText={(text: string) => handleChange('bundleQuantity', text)}
                                     placeholder="1"
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
                                     onFocus={() => setFocusedField('bundleQty')}
                                     onBlur={() => setFocusedField(null)}
@@ -626,10 +627,10 @@ export default function ProductFormWizard({
                                 <Text style={styles.fieldLabel}>Description</Text>
                                 <Pressable onPress={handleGenerateDescription} disabled={generatingDescription}>
                                     {generatingDescription ? (
-                                        <ActivityIndicator size="small" color="#B36979" />
+                                        <ActivityIndicator size="small" color={theme.colors.primary} />
                                     ) : (
                                         <View style={styles.autoGenButton}>
-                                            <Sparkles size={14} color="#B36979" />
+                                            <Sparkles size={14} color={theme.colors.primary} />
                                             <Text style={styles.autoGenText}>AI Generate</Text>
                                         </View>
                                     )}
@@ -640,7 +641,7 @@ export default function ProductFormWizard({
                                 value={formData.description}
                                 onChangeText={(text: string) => handleChange('description', text)}
                                 placeholder="Describe your product..."
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.colors.textLight}
                                 multiline
                                 numberOfLines={5}
                                 onFocus={() => setFocusedField('description')}
@@ -694,7 +695,7 @@ export default function ProductFormWizard({
             {/* Header */}
             <View style={styles.header}>
                 <Pressable onPress={onBack} style={styles.backButton}>
-                    <ChevronLeft size={24} color="#333" />
+                    <ChevronLeft size={24} color={theme.colors.text} />
                 </Pressable>
                 <Text style={styles.headerTitle}>
                     {isEditing ? 'Edit Product' : 'New Product'}
@@ -778,7 +779,7 @@ export default function ProductFormWizard({
                         style={styles.secondaryButton}
                         onPress={() => setCurrentStep(currentStep - 1)}
                     >
-                        <ArrowLeft size={18} color="#B36979" />
+                        <ArrowLeft size={18} color={theme.colors.primary} />
                         <Text style={styles.secondaryButtonText}>Previous</Text>
                     </Pressable>
                 ) : (
@@ -852,7 +853,7 @@ export default function ProductFormWizard({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FCFAF9',
+        backgroundColor: theme.colors.background,
     },
     header: {
         flexDirection: 'row',
@@ -861,7 +862,7 @@ const styles = StyleSheet.create({
         padding: 16,
         backgroundColor: 'white',
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: theme.colors.border,
     },
     backButton: {
         width: 40,
@@ -872,7 +873,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     stepIndicator: {
@@ -882,7 +883,7 @@ const styles = StyleSheet.create({
         padding: 20,
         backgroundColor: 'white',
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: theme.colors.border,
     },
     stepItem: {
         alignItems: 'center',
@@ -892,44 +893,44 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
         borderColor: 'transparent',
     },
     stepCircleActive: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
     },
     stepCircleCurrent: {
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
         backgroundColor: 'white',
     },
     stepNumber: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#888',
+        color: theme.colors.textLight,
     },
     stepNumberActive: {
-        color: '#B36979',
+        color: theme.colors.primary,
     },
     stepLabel: {
         fontSize: 11,
-        color: '#888',
+        color: theme.colors.textLight,
         fontFamily: 'Quicksand',
     },
     stepLabelActive: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     stepLine: {
         width: 40,
         height: 2,
-        backgroundColor: '#e0e0e0',
+        backgroundColor: theme.colors.border,
         marginHorizontal: 8,
     },
     stepLineActive: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
     },
     mainContent: {
         flex: 1,
@@ -946,8 +947,8 @@ const styles = StyleSheet.create({
         width: 380,
         padding: 20,
         borderLeftWidth: 1,
-        borderLeftColor: '#eee',
-        backgroundColor: '#f9f9f9',
+        borderLeftColor: theme.colors.border,
+        backgroundColor: theme.colors.background,
     },
     stepContent: {
         gap: 20,
@@ -955,12 +956,12 @@ const styles = StyleSheet.create({
     stepTitle: {
         fontSize: 22,
         fontWeight: '700',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     stepDescription: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         lineHeight: 20,
         fontFamily: 'Quicksand',
     },
@@ -977,7 +978,7 @@ const styles = StyleSheet.create({
     fieldLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#555',
+        color: theme.colors.textSecondary,
         fontFamily: 'Quicksand',
     },
     fieldLabelRow: {
@@ -992,22 +993,22 @@ const styles = StyleSheet.create({
     },
     autoGenText: {
         fontSize: 12,
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     input: {
         borderWidth: 2,
-        borderColor: '#EEE',
+        borderColor: theme.colors.border,
         borderRadius: 12,
         padding: 14,
         fontSize: 15,
-        backgroundColor: '#FAFAFA',
-        color: '#333',
+        backgroundColor: theme.colors.backgroundAlt,
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
         outlineStyle: 'none' as any,
     },
     inputFocused: {
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
         backgroundColor: 'white',
     },
     textArea: {
@@ -1022,22 +1023,22 @@ const styles = StyleSheet.create({
     categoryChip: {
         paddingHorizontal: 14,
         paddingVertical: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         borderRadius: 20,
         borderWidth: 1,
         borderColor: 'transparent',
     },
     categoryChipSelected: {
-        backgroundColor: '#E8D5D9',
-        borderColor: '#B36979',
+        backgroundColor: theme.colors.primaryLight,
+        borderColor: theme.colors.primary,
     },
     categoryText: {
         fontSize: 13,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontFamily: 'Quicksand',
     },
     categoryTextSelected: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     summaryCard: {
@@ -1046,12 +1047,12 @@ const styles = StyleSheet.create({
         padding: 16,
         gap: 12,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
     },
     summaryTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
         marginBottom: 4,
     },
@@ -1061,11 +1062,11 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
     },
     summaryValue: {
         fontSize: 14,
-        color: '#333',
+        color: theme.colors.text,
         fontWeight: '500',
         textAlign: 'right',
         flex: 1,
@@ -1078,7 +1079,7 @@ const styles = StyleSheet.create({
         padding: 16,
         backgroundColor: 'white',
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: theme.colors.border,
     },
     footerLeft: {
         flexDirection: 'row',
@@ -1089,10 +1090,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 14,
         borderRadius: 12,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: theme.colors.backgroundAlt,
     },
     draftButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 14,
         fontWeight: '600',
     },
@@ -1100,7 +1101,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 24,
         paddingVertical: 14,
         borderRadius: 12,
@@ -1118,7 +1119,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
     },
     secondaryButtonText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontSize: 15,
         fontWeight: '600',
     },
@@ -1129,11 +1130,11 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 80,
         right: 16,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
@@ -1163,59 +1164,59 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     closePreviewText: {
-        color: '#333',
+        color: theme.colors.text,
         fontSize: 14,
         fontWeight: '600',
     },
     skuReqTextDone: {
-        color: '#4CAF50',
+        color: theme.colors.success,
     },
     // Switch Styles
     switchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#FFF5F7',
+        backgroundColor: theme.colors.primaryLight,
         padding: 12,
         borderRadius: 12,
         marginBottom: 24,
         borderWidth: 1,
-        borderColor: '#FCC2D7'
+        borderColor: theme.colors.primaryLight
     },
     switchLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#B36979',
+        color: theme.colors.primary,
         marginBottom: 2
     },
     switchSub: {
         fontSize: 12,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginRight: 16
     },
     materialSuggestions: {
         marginTop: 8,
-        backgroundColor: '#f9f9f9',
+        backgroundColor: theme.colors.background,
         borderRadius: 8,
         padding: 8,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
     },
     materialChipsRow: {
         flexDirection: 'row',
         gap: 6,
     },
     materialChip: {
-        backgroundColor: '#E8D5D9',
+        backgroundColor: theme.colors.primaryLight,
         borderRadius: 16,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderWidth: 1,
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
     },
     materialChipText: {
         fontSize: 13,
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '500',
     },
     skuRequirements: {
@@ -1228,13 +1229,13 @@ const styles = StyleSheet.create({
     },
     skuReqIcon: {
         fontSize: 12,
-        color: '#aaa',
+        color: theme.colors.textLight,
     },
     skuReqIconDone: {
-        color: '#4CAF50',
+        color: theme.colors.success,
     },
     skuReqText: {
         fontSize: 12,
-        color: '#888',
+        color: theme.colors.textLight,
     },
 });

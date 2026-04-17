@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme } from '@/constants/theme';
 
 import {
     Bell,
@@ -152,7 +153,7 @@ export default function NotificationsPage() {
             <ScrollView
                 contentContainerStyle={styles.contentContainer}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#C88EA7']} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primaryLight]} />
                 }
             >
                 {notifications.length === 0 ? (
@@ -227,7 +228,7 @@ export default function NotificationsPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -245,20 +246,20 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     markAllButton: {
         padding: 8,
     },
     markAllText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -283,14 +284,14 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
         marginTop: 16,
         fontFamily: 'Quicksand',
     },
     emptyText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         textAlign: 'center',
     },
     list: {
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
     unreadCard: {
         backgroundColor: 'white',
         borderLeftWidth: 3,
-        borderLeftColor: '#C88EA7', // Pink indicator only
+        borderLeftColor: theme.colors.primaryLight, // Pink indicator only
         borderColor: 'transparent',
     },
     iconContainer: {
@@ -335,22 +336,22 @@ const styles = StyleSheet.create({
     notificationTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         flex: 1,
         marginRight: 8,
         fontFamily: 'Quicksand',
     },
     unreadTitle: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '700',
     },
     time: {
         fontSize: 11,
-        color: '#999',
+        color: theme.colors.textLight,
     },
     message: {
         fontSize: 13,
-        color: '#666',
+        color: theme.colors.textSecondary,
         lineHeight: 18,
         marginBottom: 8,
         fontFamily: 'Quicksand',
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#C88EA7',
+        backgroundColor: theme.colors.primaryLight,
         position: 'absolute',
         top: 16,
         right: 16,
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
 });

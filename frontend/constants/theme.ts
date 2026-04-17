@@ -4,6 +4,7 @@ export const theme = {
         background: '#FCFAF9', // Warm Cream
         surface: '#FFFFFF',
         subtle: '#F3F4F6',
+        backgroundAlt: '#F5F5F5', // Image placeholders, alt sections
 
         // Primary / Brand (30%)
         primary: '#B36979', // Dusty Pink
@@ -20,11 +21,32 @@ export const theme = {
         textSecondary: '#4B5563', // Gray-600
         textLight: '#9CA3AF', // Gray-400
         border: '#E5E7EB',   // Gray-200
+        shadow: '#000000',   // Shadow color
 
         // Feedback
         error: '#EF4444',
+        errorLight: '#FEF2F2',
+        errorBorder: '#FECACA',
+        errorDark: '#991B1B',
         success: '#10B981',
         warning: '#F59E0B',
+
+        // Badges (Product Cards)
+        badgeTrending: '#FF6B6B',
+        badgePopular: '#FF8C42',
+        badgeLowStock: '#E0A800',
+        badgePending: '#FFA000',
+
+        // Ratings
+        starGold: '#FFB800',
+
+        // CTA
+        ctaDark: '#222222',
+
+        // Logo / Brand Marks (fixed, never themed)
+        logoRed: '#dd1537ff',
+        logoBlue: '#3785ebff',
+        logoCyan: '#00c3ffff',
     },
     typography: {
         fontFamily: 'Quicksand', // If available, otherwise system default

@@ -1,5 +1,6 @@
 import { useAuth } from "@/app/auth";
 import ProductCard from "@/components/ProductCard";
+import { theme } from "@/constants/theme";
 import { useProducts } from "@/hooks/useProducts";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -56,7 +57,7 @@ export default function Index() {
       <View style={styles.content}>
         <Text style={styles.sectionTitle}>Featured Products</Text>
         {loading ? (
-          <ActivityIndicator size="large" color="#B36979" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         ) : (
           <FlatList
             key={`grid-${numColumns}`}
@@ -82,12 +83,12 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.surface,
   },
   header: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.subtle,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#B36979',
+    color: theme.colors.primary,
     fontFamily: 'serif',
   },
   headerActions: {
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     gap: 15
   },
   adminBtn: {
-    backgroundColor: '#333',
+    backgroundColor: theme.colors.text,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
-    color: '#333',
+    color: theme.colors.text,
   },
   listContent: {
     paddingBottom: 20,

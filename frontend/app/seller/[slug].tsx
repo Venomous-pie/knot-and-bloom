@@ -23,6 +23,7 @@ import {
 import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck, Camera, Pin, PinOff, Edit2, Save, Search, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/app/auth";
+import { theme } from '@/constants/theme';
 
 interface SellerProfileData {
     uid: number;
@@ -270,12 +271,12 @@ export default function SellerProfile() {
                         <View style={styles.metaRow}>
                             {seller.location && (
                                 <View style={styles.metaItem}>
-                                    <MapPin size={14} color="#666" />
+                                    <MapPin size={14} color={theme.colors.textSecondary} />
                                     <Text style={styles.metaText}>{seller.location}</Text>
                                 </View>
                             )}
                             <View style={styles.metaItem}>
-                                <Calendar size={14} color="#666" />
+                                <Calendar size={14} color={theme.colors.textSecondary} />
                                 <Text style={styles.metaText}>Joined {memberSince}</Text>
                             </View>
                         </View>
@@ -286,7 +287,7 @@ export default function SellerProfile() {
                                 <Text style={styles.actionButtonTextPrimary}>Follow</Text>
                             </Pressable>
                             <Pressable style={styles.actionButtonSecondary}>
-                                <MessageCircle size={16} color="#B36979" />
+                                <MessageCircle size={16} color={theme.colors.primary} />
                                 <Text style={styles.actionButtonTextSecondary}>Contact</Text>
                             </Pressable>
                         </View>
@@ -324,7 +325,7 @@ export default function SellerProfile() {
 
                     <View style={styles.statCard}>
                         <View style={[styles.statIcon, { backgroundColor: '#FCE4EC' }]}>
-                            <TrendingUp size={20} color="#B36979" />
+                            <TrendingUp size={20} color={theme.colors.primary} />
                         </View>
                         <View>
                             <Text style={styles.statValue}>{seller.totalSales ? `${seller.totalSales}+` : 'New'}</Text>
@@ -365,17 +366,17 @@ export default function SellerProfile() {
                         {/* Search Bar - Prominent Position */}
                         <View style={styles.searchContainer}>
                             <View style={styles.searchBar}>
-                                <Search size={18} color="#999" />
+                                <Search size={18} color={theme.colors.textLight} />
                                 <TextInput
                                     style={styles.searchInput}
                                     placeholder="Search products..."
-                                    placeholderTextColor="#999"
+                                    placeholderTextColor={theme.colors.textLight}
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
                                 />
                                 {searchQuery.length > 0 && (
                                     <Pressable onPress={() => setSearchQuery('')} hitSlop={10}>
-                                        <X size={18} color="#999" />
+                                        <X size={18} color={theme.colors.textLight} />
                                     </Pressable>
                                 )}
                             </View>
@@ -423,7 +424,7 @@ export default function SellerProfile() {
                             }
                             setIsEditingAbout(!isEditingAbout);
                         }} style={styles.editAboutButton}>
-                            {isEditingAbout ? <Save size={18} color="#B36979" /> : <Edit2 size={18} color="#999" />}
+                            {isEditingAbout ? <Save size={18} color={theme.colors.primary} /> : <Edit2 size={18} color={theme.colors.textLight} />}
                         </Pressable>
                     )}
                 </View>
@@ -445,7 +446,7 @@ export default function SellerProfile() {
                 <Text style={styles.aboutTitle}>Store Policies</Text>
 
                 <View style={styles.policyItem}>
-                    <Truck size={20} color="#555" />
+                    <Truck size={20} color={theme.colors.textSecondary} />
                     <View style={styles.policyTextContainer}>
                         <Text style={styles.policyTitle}>Shipping</Text>
                         <Text style={styles.policyDesc}>Ships within 1-3 business days. Free shipping on orders over $50.</Text>
@@ -453,7 +454,7 @@ export default function SellerProfile() {
                 </View>
 
                 <View style={styles.policyItem}>
-                    <RefreshCw size={20} color="#555" />
+                    <RefreshCw size={20} color={theme.colors.textSecondary} />
                     <View style={styles.policyTextContainer}>
                         <Text style={styles.policyTitle}>Returns</Text>
                         <Text style={styles.policyDesc}>Accepted within 14 days of delivery. Buyer pays return shipping.</Text>
@@ -461,7 +462,7 @@ export default function SellerProfile() {
                 </View>
 
                 <View style={styles.policyItem}>
-                    <ShieldCheck size={20} color="#555" />
+                    <ShieldCheck size={20} color={theme.colors.textSecondary} />
                     <View style={styles.policyTextContainer}>
                         <Text style={styles.policyTitle}>Handcrafted Guarantee</Text>
                         <Text style={styles.policyDesc}>All items are handmade with care and attention to detail.</Text>
@@ -474,7 +475,7 @@ export default function SellerProfile() {
     const renderReviewsSection = () => (
         <View style={[styles.reviewsContainer, isDesktop && styles.reviewsContainerDesktop]}>
             <View style={styles.emptyState}>
-                <MessageCircle size={40} color="#DDD" />
+                <MessageCircle size={40} color={theme.colors.border} />
                 <Text style={styles.emptyStateText}>No reviews yet</Text>
                 <Text style={styles.emptyStateSubtext}>Be the first to leave a review for this seller!</Text>
             </View>
@@ -628,14 +629,14 @@ export default function SellerProfile() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FAFAFA',
+        backgroundColor: theme.colors.background,
     },
     centered: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#FAFAFA',
+        backgroundColor: theme.colors.background,
     },
     errorText: {
         fontSize: 16,
@@ -646,7 +647,7 @@ const styles = StyleSheet.create({
     backButtonSimple: {
         paddingVertical: 10,
         paddingHorizontal: 20,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         borderRadius: 8,
     },
     backButtonText: {
@@ -666,7 +667,7 @@ const styles = StyleSheet.create({
         height: '100%',
     },
     bannerPlaceholder: {
-        backgroundColor: '#EEEEEE',
+        backgroundColor: theme.colors.border,
         overflow: 'hidden',
     },
     abstractCircle: {
@@ -691,7 +692,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.9)',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -700,7 +701,7 @@ const styles = StyleSheet.create({
 
     // Main Content
     contentContainer: {
-        backgroundColor: '#FAFAFA',
+        backgroundColor: theme.colors.background,
         marginTop: -40, // Overlap banner
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
@@ -742,7 +743,7 @@ const styles = StyleSheet.create({
     logoPlaceholder: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
     },
     logoInitials: {
         fontSize: 36,
@@ -758,7 +759,7 @@ const styles = StyleSheet.create({
     storeName: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: '#2C2C2C',
+        color: theme.colors.text,
         marginBottom: 8,
         fontFamily: 'Quicksand',
     },
@@ -776,7 +777,7 @@ const styles = StyleSheet.create({
     },
     metaText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontFamily: 'Quicksand',
     },
 
@@ -789,11 +790,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 24,
-        shadowColor: "#B36979",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -814,10 +815,10 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 24,
         borderWidth: 1,
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
     },
     actionButtonTextSecondary: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
         fontFamily: 'Quicksand',
         fontSize: 14,
@@ -829,7 +830,7 @@ const styles = StyleSheet.create({
     },
     description: {
         fontSize: 15,
-        color: '#555',
+        color: theme.colors.textSecondary,
         lineHeight: 24,
         textAlign: 'center',
         fontFamily: 'Quicksand',
@@ -850,7 +851,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
@@ -866,12 +867,12 @@ const styles = StyleSheet.create({
     statValue: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     statLabel: {
         fontSize: 12,
-        color: '#888',
+        color: theme.colors.textLight,
         fontFamily: 'Quicksand',
     },
 
@@ -879,7 +880,7 @@ const styles = StyleSheet.create({
     tabContainer: {
         flexDirection: 'row',
         borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
+        borderBottomColor: theme.colors.border,
         marginBottom: 24,
     },
     tabButton: {
@@ -893,12 +894,12 @@ const styles = StyleSheet.create({
     },
     tabText: {
         fontSize: 15,
-        color: '#888',
+        color: theme.colors.textLight,
         fontWeight: '600',
         fontFamily: 'Quicksand',
     },
     tabTextActive: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: 'bold',
     },
     activeIndicator: {
@@ -906,7 +907,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: '60%',
         height: 3,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         borderTopLeftRadius: 3,
         borderTopRightRadius: 3,
     },
@@ -921,13 +922,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     sectionLine: {
         flex: 1,
         height: 2,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: theme.colors.subtle,
     },
 
     // Product List & Grid
@@ -958,7 +959,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
-        color: '#888',
+        color: theme.colors.textLight,
         fontFamily: 'Quicksand',
     },
 
@@ -975,7 +976,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 16,
         padding: 24,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
@@ -984,19 +985,19 @@ const styles = StyleSheet.create({
     aboutTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 12,
         fontFamily: 'Quicksand',
     },
     aboutText: {
         fontSize: 15,
-        color: '#555',
+        color: theme.colors.textSecondary,
         lineHeight: 24,
         fontFamily: 'Quicksand',
     },
     divider: {
         height: 1,
-        backgroundColor: '#EEE',
+        backgroundColor: theme.colors.border,
         marginVertical: 24,
     },
     policyItem: {
@@ -1010,13 +1011,13 @@ const styles = StyleSheet.create({
     policyTitle: {
         fontSize: 15,
         fontWeight: 'bold',
-        color: '#444',
+        color: theme.colors.text,
         marginBottom: 4,
         fontFamily: 'Quicksand',
     },
     policyDesc: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         lineHeight: 20,
         fontFamily: 'Quicksand',
     },
@@ -1038,12 +1039,12 @@ const styles = StyleSheet.create({
     emptyStateText: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#DDD',
+        color: theme.colors.border,
         fontFamily: 'Quicksand',
     },
     emptyStateSubtext: {
         fontSize: 14,
-        color: '#AAA',
+        color: theme.colors.textLight,
         fontFamily: 'Quicksand',
     },
     // Filter Row
@@ -1058,17 +1059,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#FFF',
+        backgroundColor: theme.colors.surface,
         borderWidth: 1,
-        borderColor: '#EEE',
+        borderColor: theme.colors.border,
     },
     filterChipActive: {
-        backgroundColor: '#B36979',
-        borderColor: '#B36979',
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
     },
     filterText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontWeight: '600',
         fontFamily: 'Quicksand',
     },
@@ -1101,7 +1102,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         width: 32,
         height: 32,
         borderRadius: 16,
@@ -1123,7 +1124,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,
@@ -1131,7 +1132,7 @@ const styles = StyleSheet.create({
         zIndex: 20,
     },
     pinButtonActive: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
     },
     pinnedBadge: {
         position: 'absolute',
@@ -1140,12 +1141,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
         zIndex: 20,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.2,
         shadowRadius: 2,
@@ -1183,16 +1184,16 @@ const styles = StyleSheet.create({
     },
     aboutInput: {
         fontSize: 15,
-        color: '#333',
+        color: theme.colors.text,
         lineHeight: 24,
         fontFamily: 'Quicksand',
         borderWidth: 1,
-        borderColor: '#DDD',
+        borderColor: theme.colors.border,
         borderRadius: 12,
         padding: 12,
         minHeight: 100,
         textAlignVertical: 'top',
-        backgroundColor: '#FAFAFA',
+        backgroundColor: theme.colors.background,
     },
     // Modal Styles
     modalOverlay: {
@@ -1209,7 +1210,7 @@ const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 400,
         alignItems: 'center',
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.25,
         shadowRadius: 10,
@@ -1224,18 +1225,18 @@ const styles = StyleSheet.create({
     },
     modalCloseText: {
         fontSize: 20,
-        color: '#999',
+        color: theme.colors.textLight,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 24,
         fontFamily: 'Quicksand',
     },
     modalImageWrapper: {
         marginBottom: 24,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         borderRadius: 50, // Squircle
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
@@ -1250,7 +1251,7 @@ const styles = StyleSheet.create({
         borderColor: 'white',
     },
     uploadButton: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
@@ -1274,7 +1275,7 @@ const styles = StyleSheet.create({
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         borderRadius: 8,
         paddingHorizontal: 12,
         height: 44,
@@ -1283,7 +1284,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 16,
-        color: '#333',
+        color: theme.colors.text,
         height: '100%',
         borderWidth: 0,
         outlineStyle: 'none' as any,

@@ -1,5 +1,6 @@
 import { accountAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
+import { theme } from '@/constants/theme';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -122,7 +123,7 @@ export default function DeleteAccountPage() {
     if (loading || authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -180,7 +181,7 @@ export default function DeleteAccountPage() {
                             disabled={submitting}
                         >
                             {submitting ? (
-                                <ActivityIndicator color="#4CAF50" />
+                                <ActivityIndicator color={theme.colors.success} />
                             ) : (
                                 <Text style={styles.cancelButtonText}>Cancel Deletion Request</Text>
                             )}
@@ -255,7 +256,7 @@ export default function DeleteAccountPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -278,14 +279,14 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     warningBanner: {
         backgroundColor: '#FFF3E0',
@@ -307,10 +308,10 @@ const styles = StyleSheet.create({
         color: '#E65100',
     },
     card: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 24,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -319,16 +320,16 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
     },
     cardDescription: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 16,
     },
     infoBox: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: theme.colors.backgroundAlt,
         borderRadius: 8,
         padding: 16,
         marginBottom: 20,
@@ -336,18 +337,18 @@ const styles = StyleSheet.create({
     infoTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
     },
     infoItem: {
         fontSize: 13,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 4,
     },
     formLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
     },
     reasonButtons: {
@@ -361,29 +362,29 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
     },
     reasonButtonActive: {
-        borderColor: '#E53935',
+        borderColor: theme.colors.error,
         backgroundColor: '#FFEBEE',
     },
     reasonButtonText: {
         fontSize: 13,
-        color: '#666',
+        color: theme.colors.textSecondary,
     },
     reasonButtonTextActive: {
-        color: '#E53935',
+        color: theme.colors.error,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
         marginBottom: 20,
     },
     deleteButton: {
-        backgroundColor: '#E53935',
+        backgroundColor: theme.colors.error,
         padding: 16,
         borderRadius: 12,
         alignItems: 'center',
@@ -397,11 +398,11 @@ const styles = StyleSheet.create({
         opacity: 0.7,
     },
     pendingCard: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 24,
         alignItems: 'center',
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -427,13 +428,13 @@ const styles = StyleSheet.create({
     },
     pendingText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         textAlign: 'center',
         marginBottom: 8,
     },
     pendingDate: {
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
     },
     pendingDays: {
         fontSize: 24,
@@ -444,14 +445,14 @@ const styles = StyleSheet.create({
     cancelButton: {
         backgroundColor: '#E8F5E9',
         borderWidth: 2,
-        borderColor: '#4CAF50',
+        borderColor: theme.colors.success,
         padding: 16,
         borderRadius: 12,
         alignItems: 'center',
         width: '100%',
     },
     cancelButtonText: {
-        color: '#4CAF50',
+        color: theme.colors.success,
         fontSize: 16,
         fontWeight: 'bold',
     },

@@ -15,6 +15,7 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { theme } from '@/constants/theme';
 
 export default function AdminDashboardPage() {
     const router = useRouter();
@@ -127,7 +128,7 @@ export default function AdminDashboardPage() {
     if (authLoading || (user?.role !== 'ADMIN')) {
         return (
             <View style={styles.centered}>
-                <ActivityIndicator size="large" color="#B36979" />
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
         );
     }
@@ -191,7 +192,7 @@ export default function AdminDashboardPage() {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#B36979" style={{ marginTop: 20 }} />
+                <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
             ) : (
                 <FlatList
                     data={products}
@@ -210,7 +211,7 @@ export default function AdminDashboardPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: theme.colors.background,
     },
     centered: {
         flex: 1,
@@ -222,16 +223,16 @@ const styles = StyleSheet.create({
         padding: 20,
         backgroundColor: 'white',
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: theme.colors.border,
         gap: 12
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
     },
     addBtn: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 8,
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
     },
     searchInput: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         padding: 12,
         borderRadius: 8,
         fontSize: 16,
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
         padding: 16,
         marginBottom: 12,
         borderRadius: 12,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
@@ -273,12 +274,12 @@ const styles = StyleSheet.create({
     productName: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 4,
     },
     productSku: {
         fontSize: 12,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 4,
     },
     productPrice: {
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     editBtnText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
         fontSize: 14,
     },
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
     emptyText: {
         textAlign: 'center',
         marginTop: 40,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     metricsContainer: {
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         padding: 16,
         borderRadius: 12,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
@@ -332,18 +333,18 @@ const styles = StyleSheet.create({
     },
     metricLabel: {
         fontSize: 12,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 4,
         fontWeight: '600',
     },
     metricValue: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333',
+        color: theme.colors.text,
     },
     metricSub: {
         fontSize: 10,
-        color: '#999',
+        color: theme.colors.textLight,
         marginTop: 2,
     },
 });

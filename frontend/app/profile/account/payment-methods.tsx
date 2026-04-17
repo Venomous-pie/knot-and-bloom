@@ -157,7 +157,7 @@ export default function PaymentMethodsPage() {
     if (loading || authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -266,7 +266,7 @@ export default function PaymentMethodsPage() {
                                 value={accountName}
                                 onChangeText={setAccountName}
                                 placeholder="Name on account"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.colors.textLight}
                                 onFocus={() => setFocusedField('accountName')}
                                 onBlur={() => setFocusedField(null)}
                             />
@@ -278,7 +278,7 @@ export default function PaymentMethodsPage() {
                                 onChangeText={setAccountNumber}
                                 placeholder={selectedType === 'BANK' ? 'Account number' : 'Mobile number'}
                                 keyboardType="numeric"
-                                placeholderTextColor="#999"
+                                placeholderTextColor={theme.colors.textLight}
                                 onFocus={() => setFocusedField('accountNumber')}
                                 onBlur={() => setFocusedField(null)}
                             />
@@ -291,7 +291,7 @@ export default function PaymentMethodsPage() {
                                         value={bankName}
                                         onChangeText={setBankName}
                                         placeholder="e.g., BDO, BPI, UnionBank"
-                                        placeholderTextColor="#999"
+                                        placeholderTextColor={theme.colors.textLight}
                                         onFocus={() => setFocusedField('bankName')}
                                         onBlur={() => setFocusedField(null)}
                                     />
@@ -334,7 +334,7 @@ export default function PaymentMethodsPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -357,14 +357,14 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     addButton: {
         flexDirection: 'row',
@@ -380,32 +380,32 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: '600',
         fontSize: 14,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     emptyState: {
         alignItems: 'center',
         padding: 40,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
     },
     emptyIcon: {
         fontSize: 48,
         marginBottom: 16,
-        color: '#ddd',
+        color: theme.colors.border,
     },
     emptyTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
     },
     emptyText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 20,
     },
     emptyButton: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 8,
@@ -418,12 +418,12 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     card: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 16,
         padding: 20,
         ...theme.shadows.sm,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
+        borderColor: theme.colors.subtle,
     },
     cardLeft: {
         flexDirection: 'row',
@@ -451,8 +451,8 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     defaultBadge: {
         backgroundColor: '#E8F5E9',
@@ -461,25 +461,25 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     defaultBadgeText: {
-        color: '#4CAF50',
+        color: theme.colors.success,
         fontSize: 10,
         fontWeight: '600',
     },
     cardSubtitle: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginTop: 2,
     },
     cardNumber: {
         fontSize: 14,
-        color: '#888',
+        color: theme.colors.textLight,
         marginTop: 2,
     },
     cardActions: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
         borderTopWidth: 1,
-        borderTopColor: '#f5f5f5',
+        borderTopColor: theme.colors.backgroundAlt,
         paddingTop: 12,
         gap: 16,
     },
@@ -488,12 +488,12 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
     },
     actionText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontSize: 14,
         fontWeight: '600',
     },
     deleteText: {
-        color: '#E53935',
+        color: theme.colors.error,
     },
     modalOverlay: {
         flex: 1,
@@ -503,15 +503,11 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 24,
         width: '100%',
         maxHeight: '90%',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 8,
+        ...theme.shadows.lg,
         overflow: 'hidden',
     },
     modalContentDesktop: {
@@ -523,17 +519,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 24,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: theme.colors.subtle,
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     modalClose: {
         fontSize: 24,
-        color: '#888',
+        color: theme.colors.textLight,
     },
     modalBody: {
         padding: 24,
@@ -541,10 +537,10 @@ const styles = StyleSheet.create({
     formLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
         marginTop: 16,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     typeButtons: {
         flexDirection: 'row',
@@ -555,12 +551,12 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
         alignItems: 'center',
-        backgroundColor: '#FAFAFA',
+        backgroundColor: theme.colors.background,
     },
     typeButtonActive: {
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
         backgroundColor: '#FDF2F5',
     },
     typeButtonIcon: {
@@ -569,26 +565,26 @@ const styles = StyleSheet.create({
     },
     typeButtonText: {
         fontSize: 12,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontWeight: '500',
     },
     typeButtonTextActive: {
-        color: '#C88EA7',
+        color: theme.colors.primaryLight,
         fontWeight: '600',
     },
     input: {
         borderWidth: 1,
-        borderColor: '#e0e0e0',
+        borderColor: theme.colors.border,
         borderRadius: 12,
         padding: 14,
         fontSize: 16,
-        backgroundColor: '#FAFAFA',
-        color: '#333',
+        backgroundColor: theme.colors.background,
+        color: theme.colors.text,
         outlineStyle: 'none' as any,
     },
     inputFocused: {
-        borderColor: '#C88EA7',
-        backgroundColor: '#fff',
+        borderColor: theme.colors.primaryLight,
+        backgroundColor: theme.colors.surface,
     },
     checkboxRow: {
         flexDirection: 'row',
@@ -601,14 +597,14 @@ const styles = StyleSheet.create({
         height: 24,
         borderRadius: 6,
         borderWidth: 2,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
         marginRight: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
     checkboxChecked: {
-        backgroundColor: '#B36979',
-        borderColor: '#B36979',
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
     },
     checkmark: {
         color: 'white',
@@ -622,11 +618,11 @@ const styles = StyleSheet.create({
     modalFooter: {
         padding: 24,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
-        backgroundColor: 'white',
+        borderTopColor: theme.colors.subtle,
+        backgroundColor: theme.colors.surface,
     },
     saveButton: {
-        backgroundColor: '#C88EA7',
+        backgroundColor: theme.colors.primaryLight,
         padding: 16,
         borderRadius: 12,
         alignItems: 'center',
@@ -639,6 +635,6 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
 });

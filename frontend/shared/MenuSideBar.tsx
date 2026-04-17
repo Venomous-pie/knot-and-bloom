@@ -1,5 +1,6 @@
 import { useAuth } from "@/app/auth";
 import { isMobile } from "@/constants/layout";
+import { theme } from "@/constants/theme";
 import { SidebarNavLinks } from "@/shared/SidebarNavLinks";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
 import { Clock, Facebook, Heart, Instagram, Moon, ShoppingBag, Sun, Sunrise, Sunset, UserRound, UserRoundPlus, X } from "lucide-react-native";
@@ -9,13 +10,13 @@ import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions,
 // Helper function to get time-based greeting
 const getGreeting = (hour: number): { message: string; icon: React.ReactNode } => {
     if (hour >= 0 && hour < 5) {
-        return { message: "Midnight Shopping?", icon: <Moon size={18} color="#B36979" /> };
+        return { message: "Midnight Shopping?", icon: <Moon size={18} color={theme.colors.primary} /> };
     } else if (hour >= 5 && hour < 12) {
-        return { message: "Good Morning", icon: <Sunrise size={18} color="#B36979" /> };
+        return { message: "Good Morning", icon: <Sunrise size={18} color={theme.colors.primary} /> };
     } else if (hour >= 12 && hour < 17) {
-        return { message: "Good Afternoon", icon: <Sun size={18} color="#B36979" /> };
+        return { message: "Good Afternoon", icon: <Sun size={18} color={theme.colors.primary} /> };
     } else {
-        return { message: "Good Evening", icon: <Sunset size={18} color="#B36979" /> };
+        return { message: "Good Evening", icon: <Sunset size={18} color={theme.colors.primary} /> };
     }
 };
 
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: 'white',
         zIndex: 1000,
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: -4, height: 0 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
@@ -48,7 +49,7 @@ const styles = StyleSheet.create({
         marginBottom: 2,
         paddingBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: theme.colors.subtle,
     },
     headerTop: {
         flexDirection: 'row',
@@ -57,25 +58,25 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         padding: 8,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: theme.colors.backgroundAlt,
         borderRadius: 20,
     },
     title: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     subtitle: {
         fontSize: 14,
-        color: '#888',
+        color: theme.colors.textLight,
         marginBottom: 2,
         fontFamily: 'Quicksand',
     },
     sectionTitle: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#999',
+        color: theme.colors.textLight,
         textTransform: 'uppercase',
         marginBottom: 8,
         marginTop: 16,
@@ -93,27 +94,27 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     menuItemActive: {
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
         // borderLeftWidth: 3,
         // borderLeftColor: '#B36979',
     },
     menuItemHovered: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: theme.colors.backgroundAlt,
     },
     menuItemText: {
         fontSize: 15,
-        color: '#444',
+        color: theme.colors.text,
         fontWeight: '500',
         fontFamily: 'Quicksand',
     },
     menuItemTextActive: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '700',
     },
     footer: {
         marginTop: 'auto',
         borderTopWidth: 1,
-        borderColor: '#f0f0f0',
+        borderColor: theme.colors.subtle,
         paddingTop: 24,
         gap: 16,
     },
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
     buttonItem: {
         flex: 1,
         backgroundColor: 'white',
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
         borderWidth: 1,
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -135,12 +136,12 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     buttonItemHovered: {
-        backgroundColor: '#B36979',
-        borderColor: '#B36979',
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
     },
     buttonText: {
         fontSize: 14,
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     buttonTextHovered: {
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
     thanksText: {
         fontFamily: 'Lovingly',
         fontSize: 18,
-        color: '#B36979',
+        color: theme.colors.primary,
     },
     socialIcons: {
         flexDirection: 'row',
@@ -161,7 +162,7 @@ const styles = StyleSheet.create({
     },
     versionText: {
         fontSize: 11,
-        color: '#ccc',
+        color: theme.colors.border,
         marginTop: 8,
     },
     pendingBadge: {
@@ -280,8 +281,8 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                     <Text style={styles.subtitle}>{greeting.message}</Text>
                                 </View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                    <Clock size={14} color="#999" />
-                                    <Text style={{ fontSize: 13, color: '#999', fontFamily: 'Quicksand', marginRight: 6 }}>{formattedTime}</Text>
+                                    <Clock size={14} color={theme.colors.textLight} />
+                                    <Text style={{ fontSize: 13, color: theme.colors.textLight, fontFamily: 'Quicksand', marginRight: 6 }}>{formattedTime}</Text>
                                 </View>
                             </View>
                             <Text style={styles.title} numberOfLines={1}>
@@ -289,7 +290,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                             </Text>
                         </View>
                         <Pressable onPress={onClose} style={styles.closeButton}>
-                            <X size={20} color="#555" />
+                            <X size={20} color={theme.colors.textSecondary} />
                         </Pressable>
                     </View>
                 </View>
@@ -310,7 +311,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                 <Pressable onPress={onClose} style={{ flex: 1 }}>
                                     {({ hovered }) => (
                                         <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                            <ShoppingBag size={18} color={hovered ? 'white' : '#555'} />
+                                            <ShoppingBag size={18} color={hovered ? 'white' : theme.colors.textSecondary} />
                                             <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Orders</Text>
                                         </View>
                                     )}
@@ -321,7 +322,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                 <Pressable onPress={onClose} style={{ flex: 1 }}>
                                     {({ hovered }) => (
                                         <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                            <Heart size={18} color={hovered ? 'white' : '#555'} />
+                                            <Heart size={18} color={hovered ? 'white' : theme.colors.textSecondary} />
                                             <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Wishlist</Text>
                                         </View>
                                     )}
@@ -338,7 +339,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                 }}>
                                 {({ hovered }) => (
                                     <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                        <UserRound size={18} color={hovered ? 'white' : '#555'} />
+                                        <UserRound size={18} color={hovered ? 'white' : theme.colors.textSecondary} />
                                         <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Sign In</Text>
                                     </View>
                                 )}
@@ -351,7 +352,7 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                                 }}>
                                 {({ hovered }) => (
                                     <View style={[styles.buttonItem, hovered && styles.buttonItemHovered]}>
-                                        <UserRoundPlus size={18} color={hovered ? 'white' : '#555'} />
+                                        <UserRoundPlus size={18} color={hovered ? 'white' : theme.colors.textSecondary} />
                                         <Text style={[styles.buttonText, hovered && styles.buttonTextHovered]}>Register</Text>
                                     </View>
                                 )}
@@ -363,10 +364,10 @@ export default function MenuSideBar({ isOpen, onClose }: MenuSideBarProps) {
                         <Text style={styles.thanksText}>Thanks for Shopping</Text>
                         <View style={styles.socialIcons}>
                             <Pressable onPress={() => { }}>
-                                <Instagram size={20} color="#999" />
+                                <Instagram size={20} color={theme.colors.textLight} />
                             </Pressable>
                             <Pressable onPress={() => { }}>
-                                <Facebook size={20} color="#999" />
+                                <Facebook size={20} color={theme.colors.textLight} />
                             </Pressable>
                         </View>
                         <Text style={styles.versionText}>Version 1.0.0</Text>

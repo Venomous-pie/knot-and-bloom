@@ -1,4 +1,5 @@
 import { navLinks, sidebarLinks } from "@/constants/categories";
+import { theme } from "@/constants/theme";
 import { Link, RelativePathString } from "expo-router";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -7,7 +8,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#999',
+        color: theme.colors.textLight,
         textTransform: 'uppercase',
         marginBottom: 8,
         marginTop: 16,
@@ -25,19 +26,19 @@ const styles = StyleSheet.create({
         marginBottom: 2,
     },
     menuItemActive: {
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     menuItemHovered: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: theme.colors.backgroundAlt,
     },
     menuItemText: {
         fontSize: 15,
-        color: '#444',
+        color: theme.colors.text,
         fontWeight: '500',
         fontFamily: 'Quicksand',
     },
     menuItemTextActive: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '700',
     },
     pendingBadge: {
@@ -208,7 +209,7 @@ export function SidebarNavLinks({ onClose, user, pathname }: SidebarNavLinksProp
                                     <Text style={[
                                         styles.menuItemText,
                                         pathname === '/seller/apply' && styles.menuItemTextActive,
-                                        { color: '#B36979', fontWeight: 'bold' }
+                                        { color: theme.colors.primary, fontWeight: 'bold' }
                                     ]}>Sell on Knot&Bloom</Text>
                                 </View>
                             )}

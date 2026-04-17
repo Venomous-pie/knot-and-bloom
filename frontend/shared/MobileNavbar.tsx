@@ -1,3 +1,4 @@
+import { theme } from "@/constants/theme";
 import { RelativePathString, router } from "expo-router";
 import { Search } from "lucide-react-native";
 import React from "react";
@@ -16,7 +17,7 @@ const styles = StyleSheet.create({
         maxWidth: 200,
         borderWidth: 1,
         borderColor: 'transparent',
-        backgroundColor: '#f0f0f0ff',
+        backgroundColor: theme.colors.subtle,
         borderRadius: 9999,
         flexDirection: 'row-reverse',
         alignItems: 'center',
@@ -46,7 +47,7 @@ export function MobileNavbar({ cartCount, setCartIconPosition, setIsMenuOpen }: 
                     {
                         flex: 1,
                         maxWidth: '100%',
-                        backgroundColor: '#f0f0f0',
+                        backgroundColor: theme.colors.subtle,
                         paddingHorizontal: 10,
                         height: 35,
                         justifyContent: 'flex-start',
@@ -57,8 +58,8 @@ export function MobileNavbar({ cartCount, setCartIconPosition, setIsMenuOpen }: 
                 ]}
             >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <Search size={16} color="#999" />
-                    <Text style={{ color: '#999', fontSize: 13 }} numberOfLines={1}>Search...</Text>
+                    <Search size={16} color={theme.colors.textLight} />
+                    <Text style={{ color: theme.colors.textLight, fontSize: 13 }} numberOfLines={1}>Search...</Text>
                 </View>
             </Pressable>
 
@@ -84,7 +85,7 @@ export function MobileNavbar({ cartCount, setCartIconPosition, setIsMenuOpen }: 
                                 position: 'absolute',
                                 top: 5,
                                 right: 5,
-                                backgroundColor: '#B36979',
+                                backgroundColor: theme.colors.primary,
                                 borderRadius: 10,
                                 minWidth: 16,
                                 height: 16,

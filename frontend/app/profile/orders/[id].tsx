@@ -17,6 +17,7 @@ import {
     TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme } from '@/constants/theme';
 
 interface OrderDetail {
     uid: number;
@@ -246,7 +247,7 @@ export default function OrderDetailsPage() {
     if (loading || authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -319,9 +320,9 @@ export default function OrderDetailsPage() {
                                             <Pressable
                                                 onPress={handleExtendGuarantee}
                                                 disabled={actionLoading}
-                                                style={[styles.actionButton, { backgroundColor: 'white', borderWidth: 1, borderColor: '#ccc', flex: 1 }]}
+                                                style={[styles.actionButton, { backgroundColor: 'white', borderWidth: 1, borderColor: theme.colors.border, flex: 1 }]}
                                             >
-                                                <Text style={[styles.actionButtonText, { color: '#444' }]}>Extend</Text>
+                                                <Text style={[styles.actionButtonText, { color: theme.colors.text }]}>Extend</Text>
                                             </Pressable>
                                         )}
                                     </View>
@@ -343,7 +344,7 @@ export default function OrderDetailsPage() {
                                     </View>
 
                                     <View style={{ marginTop: 8 }}>
-                                        <Text style={{ fontSize: 12, color: '#666' }}>
+                                        <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
                                             Extensions used: {order.extensionCount || 0} (Max: {order.status === 'SHIPPED' ? 2 : 1})
                                         </Text>
                                     </View>
@@ -384,7 +385,7 @@ export default function OrderDetailsPage() {
                                 </View>
                             ))
                         ) : (
-                            <Text style={{ color: '#666', fontStyle: 'italic' }}>No timeline updates yet.</Text>
+                            <Text style={{ color: theme.colors.textSecondary, fontStyle: 'italic' }}>No timeline updates yet.</Text>
                         )}
                     </View>
                 </View>
@@ -429,7 +430,7 @@ export default function OrderDetailsPage() {
                                             <Text style={styles.quantityText}>Qty: {item.quantity}</Text>
                                         </View>
                                         <Text style={styles.itemPrice}>
-                                            ₱{parseFloat(String(price)).toFixed(2)} <Text style={{ color: '#888' }}>x {item.quantity}</Text>
+                                            ₱{parseFloat(String(price)).toFixed(2)} <Text style={{ color: theme.colors.textLight }}>x {item.quantity}</Text>
                                         </Text>
                                     </View>
                                 </Pressable>
@@ -450,32 +451,32 @@ export default function OrderDetailsPage() {
                             {shippingFee === 0 ? 'Free' : `₱${shippingFee.toFixed(2)}`}
                         </Text>
                     </View>
-                    <View style={[styles.summaryRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                        <Text style={order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' ? [styles.totalLabel, { color: '#333' }] : styles.summaryLabel}>Order Total</Text>
-                        <Text style={order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' ? [styles.totalValue, { color: '#B36979' }] : styles.summaryValue}>₱{totalAmount.toFixed(2)}</Text>
+                    <View style={[styles.summaryRow, { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.colors.border }]}>
+                        <Text style={order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' ? [styles.totalLabel, { color: theme.colors.text }] : styles.summaryLabel}>Order Total</Text>
+                        <Text style={order.paymentMethod && order.paymentMethod.toUpperCase() !== 'COD' ? [styles.totalValue, { color: theme.colors.primary }] : styles.summaryValue}>₱{totalAmount.toFixed(2)}</Text>
                     </View>
                     {order.paymentStatus === 'PARTIALLY_PAID' && (
                         <>
                             <View style={styles.summaryRow}>
-                                <Text style={[styles.summaryLabel, { color: '#666' }]}>Less: Deposit Paid (20%)</Text>
+                                <Text style={[styles.summaryLabel, { color: theme.colors.textSecondary }]}>Less: Deposit Paid (20%)</Text>
                                 <Text style={[styles.summaryValue, { color: '#dd1537ff' }]}>-₱{(totalAmount * 0.20).toFixed(2)}</Text>
                             </View>
-                            <View style={[styles.summaryRow, { marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                                <Text style={[styles.totalLabel, { color: '#333' }]}>Balance Due</Text>
-                                <Text style={[styles.totalValue, { color: '#B36979' }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
+                            <View style={[styles.summaryRow, { marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: theme.colors.border }]}>
+                                <Text style={[styles.totalLabel, { color: theme.colors.text }]}>Balance Due</Text>
+                                <Text style={[styles.totalValue, { color: theme.colors.primary }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
                             </View>
                         </>
                     )}
 
                     {/* Payment Status Info */}
-                    <View style={{ marginTop: 12, backgroundColor: '#f9f9f9', padding: 12, borderRadius: 8 }}>
+                    <View style={{ marginTop: 12, backgroundColor: theme.colors.background, padding: 12, borderRadius: 8 }}>
                         <View style={[styles.summaryRow, { marginBottom: 4 }]}>
                             <Text style={styles.summaryLabel}>Payment Method:</Text>
                             <Text style={[styles.summaryValue, { fontWeight: '600' }]}>{order.paymentMethod || 'N/A'}</Text>
                         </View>
                         <View style={[styles.summaryRow, { marginBottom: 0 }]}>
                             <Text style={styles.summaryLabel}>Status:</Text>
-                            <Text style={[styles.summaryValue, { color: order.paymentStatus === 'PARTIALLY_PAID' ? '#B36979' : '#059669' }]}>
+                            <Text style={[styles.summaryValue, { color: order.paymentStatus === 'PARTIALLY_PAID' ? theme.colors.primary : '#059669' }]}>
                                 {order.paymentStatus?.replace(/_/g, ' ') || 'PENDING'}
                             </Text>
                         </View>
@@ -488,13 +489,13 @@ export default function OrderDetailsPage() {
                     <Text style={styles.sectionTitle}>Shipping Details</Text>
                     {shippingAddress ? (
                         <>
-                            <Text style={[styles.addressText, { fontWeight: '600', color: '#333' }]}>{shippingAddress.fullName}</Text>
+                            <Text style={[styles.addressText, { fontWeight: '600', color: theme.colors.text }]}>{shippingAddress.fullName}</Text>
                             <Text style={styles.addressText}>{shippingAddress.address}</Text>
                             <Text style={styles.addressText}>{shippingAddress.city}, {shippingAddress.postalCode}</Text>
                             <Text style={styles.addressText}>{shippingAddress.phone}</Text>
                             {shippingAddress.notes && (
-                                <View style={{ marginTop: 8, padding: 8, backgroundColor: '#f9f9f9', borderRadius: 6 }}>
-                                    <Text style={{ fontSize: 12, color: '#666', fontStyle: 'italic' }}>Note: {shippingAddress.notes}</Text>
+                                <View style={{ marginTop: 8, padding: 8, backgroundColor: theme.colors.background, borderRadius: 6 }}>
+                                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontStyle: 'italic' }}>Note: {shippingAddress.notes}</Text>
                                 </View>
                             )}
                         </>
@@ -504,7 +505,7 @@ export default function OrderDetailsPage() {
                             <Text style={styles.addressText}>{user?.address || 'Address not recorded'}</Text>
                             <Text style={styles.addressText}>{user?.phone}</Text>
                             <Text style={styles.addressText}>{user?.email}</Text>
-                            <Text style={{ fontSize: 12, color: '#999', marginTop: 4, fontStyle: 'italic' }}>
+                            <Text style={{ fontSize: 12, color: theme.colors.textLight, marginTop: 4, fontStyle: 'italic' }}>
                                 {user?.address ? '(Current Profile Address)' : '(Shipping address unavailable)'}
                             </Text>
                         </>
@@ -561,7 +562,7 @@ export default function OrderDetailsPage() {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Order Receipt</Text>
                             <Pressable onPress={() => setReceiptModalVisible(false)} hitSlop={10}>
-                                <Text style={{ fontSize: 24, color: '#666', lineHeight: 28 }}>×</Text>
+                                <Text style={{ fontSize: 24, color: theme.colors.textSecondary, lineHeight: 28 }}>×</Text>
                             </Pressable>
                         </View>
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
@@ -574,7 +575,7 @@ export default function OrderDetailsPage() {
                                         style={{ width: 50, height: 50, marginRight: -5 }}
                                         resizeMode='contain'
                                     />
-                                    <Text style={{ fontFamily: 'Lovingly', color: '#B36979', fontWeight: 'bold', marginTop: 12, fontSize: 32 }}>Knot</Text>
+                                    <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, fontWeight: 'bold', marginTop: 12, fontSize: 32 }}>Knot</Text>
                                     <Text style={{ fontFamily: 'Lovingly', color: '#567F4F', fontWeight: 'bold', marginTop: 12, fontSize: 32 }}>&Bloom</Text>
                                 </View>
                                 <Text style={styles.receiptSubHeader}>Thank you for your order!</Text>
@@ -621,7 +622,7 @@ export default function OrderDetailsPage() {
                                         <Text style={styles.receiptText}>{shippingAddress.country || 'Philippines'}</Text>
                                     </>
                                 ) : (
-                                    <Text style={[styles.receiptText, { color: '#999', fontStyle: 'italic' }]}>No shipping address recorded</Text>
+                                    <Text style={[styles.receiptText, { color: theme.colors.textLight, fontStyle: 'italic' }]}>No shipping address recorded</Text>
                                 )}
                             </View>
 
@@ -641,7 +642,7 @@ export default function OrderDetailsPage() {
                                                     <View style={{ flex: 1, paddingRight: 8 }}>
                                                         <Text style={styles.receiptItemName}>{item.product.name}</Text>
                                                         {item.product.seller?.name && (
-                                                            <Text style={{ fontSize: 11, color: '#888', fontStyle: 'italic', marginBottom: 2 }}>
+                                                            <Text style={{ fontSize: 11, color: theme.colors.textLight, fontStyle: 'italic', marginBottom: 2 }}>
                                                                 Sold by: {item.product.seller.name}
                                                             </Text>
                                                         )}
@@ -656,7 +657,7 @@ export default function OrderDetailsPage() {
                                                     <Text style={styles.receiptItemTotal}>₱{lineTotal.toFixed(2)}</Text>
                                                 </View>
                                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-                                                    <Text style={{ fontSize: 12, color: '#666' }}>₱{parseFloat(String(price)).toFixed(2)} x {item.quantity}</Text>
+                                                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>₱{parseFloat(String(price)).toFixed(2)} x {item.quantity}</Text>
                                                 </View>
                                             </View>
                                         );
@@ -683,9 +684,9 @@ export default function OrderDetailsPage() {
                                     <Text style={styles.receiptLabel}>Discount</Text>
                                     <Text style={[styles.receiptValue, { color: 'green' }]}>-₱0.00</Text>
                                 </View> */}
-                                <View style={[styles.receiptRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#eee' }]}>
-                                    <Text style={[styles.receiptLabel, { color: '#666' }]}>Total</Text>
-                                    <Text style={[styles.receiptValue, { color: '#333' }]}>₱{totalAmount.toFixed(2)}</Text>
+                                <View style={[styles.receiptRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }]}>
+                                    <Text style={[styles.receiptLabel, { color: theme.colors.textSecondary }]}>Total</Text>
+                                    <Text style={[styles.receiptValue, { color: theme.colors.text }]}>₱{totalAmount.toFixed(2)}</Text>
                                 </View>
                                 {order.paymentStatus === 'PARTIALLY_PAID' && (
                                     <>
@@ -693,9 +694,9 @@ export default function OrderDetailsPage() {
                                             <Text style={styles.receiptLabel}>Less: Deposit (20%)</Text>
                                             <Text style={[styles.receiptValue, { color: '#dd1537ff' }]}>-₱{(totalAmount * 0.20).toFixed(2)}</Text>
                                         </View>
-                                        <View style={[styles.receiptRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#eee', borderStyle: 'dashed' }]}>
-                                            <Text style={[styles.receiptLabel, { fontSize: 16, fontWeight: 'bold', color: '#333' }]}>BALANCE DUE</Text>
-                                            <Text style={[styles.receiptValue, { fontSize: 18, fontWeight: 'bold', color: '#B36979' }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
+                                        <View style={[styles.receiptRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border, borderStyle: 'dashed' }]}>
+                                            <Text style={[styles.receiptLabel, { fontSize: 16, fontWeight: 'bold', color: theme.colors.text }]}>BALANCE DUE</Text>
+                                            <Text style={[styles.receiptValue, { fontSize: 18, fontWeight: 'bold', color: theme.colors.primary }]}>₱{(totalAmount * 0.80).toFixed(2)}</Text>
                                         </View>
                                     </>
                                 )}
@@ -757,7 +758,7 @@ export default function OrderDetailsPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -777,7 +778,7 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     titleSection: {
@@ -789,12 +790,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: Platform.OS === 'web' ? 'serif' : 'System',
     },
     date: {
         fontSize: 14,
-        color: '#888',
+        color: theme.colors.textLight,
         marginBottom: 30,
     },
     statusBadge: {
@@ -809,11 +810,11 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     section: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 24,
         marginBottom: 20,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 5,
@@ -822,10 +823,10 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: theme.colors.border,
         paddingBottom: 10,
     },
     itemsList: {
@@ -840,7 +841,7 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
     },
     itemInfo: {
         flex: 1,
@@ -848,7 +849,7 @@ const styles = StyleSheet.create({
     itemName: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 4,
     },
     itemMeta: {
@@ -858,16 +859,16 @@ const styles = StyleSheet.create({
     },
     variantText: {
         fontSize: 12,
-        color: '#888',
+        color: theme.colors.textLight,
     },
     quantityText: {
         fontSize: 12,
-        color: '#888',
+        color: theme.colors.textLight,
     },
     itemPrice: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#B36979',
+        color: theme.colors.primary,
     },
     summaryRow: {
         flexDirection: 'row',
@@ -876,32 +877,32 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
     },
     summaryValue: {
         fontSize: 14,
-        color: '#333',
+        color: theme.colors.text,
         fontWeight: '500',
     },
     totalRow: {
         marginTop: 10,
         paddingTop: 10,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: theme.colors.border,
     },
     totalLabel: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
     },
     totalValue: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#B36979',
+        color: theme.colors.primary,
     },
     addressText: {
         fontSize: 14,
-        color: '#555',
+        color: theme.colors.textSecondary,
         marginBottom: 4,
     },
     infoRow: {
@@ -911,16 +912,16 @@ const styles = StyleSheet.create({
     infoLabel: {
         fontWeight: '600',
         width: 100,
-        color: '#444',
+        color: theme.colors.text,
     },
     infoValue: {
         flex: 1,
-        color: '#333',
+        color: theme.colors.text,
         fontWeight: '500',
     },
     helpText: {
         fontSize: 12,
-        color: '#888',
+        color: theme.colors.textLight,
         marginTop: 8,
         fontStyle: 'italic',
     },
@@ -928,12 +929,12 @@ const styles = StyleSheet.create({
     timelineContainer: { marginTop: 8 },
     timelineItem: { flexDirection: 'row', marginBottom: 20 },
     timelineLeft: { alignItems: 'center', marginRight: 16, width: 20 },
-    dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#ccc', marginTop: 6 },
-    line: { width: 2, flex: 1, backgroundColor: '#eee', marginTop: 4 },
+    dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.border, marginTop: 6 },
+    line: { width: 2, flex: 1, backgroundColor: theme.colors.border, marginTop: 4 },
     timelineContent: { flex: 1 },
-    timelineTitle: { fontSize: 16, fontWeight: '600', color: '#444', marginBottom: 2 },
-    timelineMessage: { fontSize: 14, color: '#666', marginBottom: 4 },
-    timelineDate: { fontSize: 12, color: '#999' },
+    timelineTitle: { fontSize: 16, fontWeight: '600', color: theme.colors.text, marginBottom: 2 },
+    timelineMessage: { fontSize: 14, color: theme.colors.textSecondary, marginBottom: 4 },
+    timelineDate: { fontSize: 12, color: theme.colors.textLight },
 
     infoBanner: { padding: 12, borderRadius: 8, borderWidth: 1, marginBottom: 16 },
     infoBannerText: { fontWeight: '600', fontSize: 14 },
@@ -941,35 +942,35 @@ const styles = StyleSheet.create({
 
     // Receipt Modal Styles
     receiptHeader: { alignItems: 'center', marginBottom: 20 },
-    receiptBrand: { fontSize: 24, fontWeight: 'bold', color: '#B36979', fontFamily: Platform.OS === 'web' ? 'serif' : 'System' },
-    receiptSubHeader: { fontSize: 14, color: '#666', marginTop: 4 },
-    receiptDivider: { height: 1, backgroundColor: '#eee', marginVertical: 12 },
+    receiptBrand: { fontSize: 24, fontWeight: 'bold', color: theme.colors.primary, fontFamily: Platform.OS === 'web' ? 'serif' : 'System' },
+    receiptSubHeader: { fontSize: 14, color: theme.colors.textSecondary, marginTop: 4 },
+    receiptDivider: { height: 1, backgroundColor: theme.colors.border, marginVertical: 12 },
     receiptSection: { marginBottom: 16 },
-    receiptSectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#888', textTransform: 'uppercase', marginBottom: 8, letterSpacing: 1 },
+    receiptSectionTitle: { fontSize: 12, fontWeight: 'bold', color: theme.colors.textLight, textTransform: 'uppercase', marginBottom: 8, letterSpacing: 1 },
     receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-    receiptLabel: { fontSize: 14, color: '#666' },
-    receiptValue: { fontSize: 14, color: '#333', fontWeight: '500', flex: 1, textAlign: 'right' },
-    receiptText: { fontSize: 14, color: '#333', marginBottom: 2 },
+    receiptLabel: { fontSize: 14, color: theme.colors.textSecondary },
+    receiptValue: { fontSize: 14, color: theme.colors.text, fontWeight: '500', flex: 1, textAlign: 'right' },
+    receiptText: { fontSize: 14, color: theme.colors.text, marginBottom: 2 },
 
-    receiptItemName: { fontSize: 14, fontWeight: '600', color: '#333' },
+    receiptItemName: { fontSize: 14, fontWeight: '600', color: theme.colors.text },
 
     proofPhoto: {
         width: 80,
         height: 80,
         borderRadius: 8,
         marginRight: 8,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: theme.colors.backgroundAlt,
         borderWidth: 1,
-        borderColor: '#eee'
+        borderColor: theme.colors.border
     },
-    receiptItemVariant: { fontSize: 12, color: '#888', marginTop: 2 },
-    receiptItemTotal: { fontSize: 14, fontWeight: '600', color: '#333' },
+    receiptItemVariant: { fontSize: 12, color: theme.colors.textLight, marginTop: 2 },
+    receiptItemTotal: { fontSize: 14, fontWeight: '600', color: theme.colors.text },
 
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' }, // Existing or update
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.colors.text }, // Existing or update
     qrContainer: { alignItems: 'center', justifyContent: 'center' },
     qrCode: { width: 100, height: 100 },
-    qrText: { fontSize: 12, color: '#888', marginTop: 4 },
+    qrText: { fontSize: 12, color: theme.colors.textLight, marginTop: 4 },
 
     // New Action Button Styles
     actionButton: {
@@ -989,14 +990,14 @@ const styles = StyleSheet.create({
     textBtn: { padding: 8 },
     textBtnText: { color: '#DC2626', fontSize: 14, fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { backgroundColor: 'white', width: '90%', maxWidth: 400, padding: 24, borderRadius: 16, elevation: 5 },
-    reportModalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
-    subTitle: { fontSize: 14, color: '#666', marginBottom: 20 },
-    input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 15, backgroundColor: '#fff' },
+    modalContent: { backgroundColor: theme.colors.surface, width: '90%', maxWidth: 400, padding: 24, borderRadius: 16, elevation: 5 },
+    reportModalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: theme.colors.text },
+    subTitle: { fontSize: 14, color: theme.colors.textSecondary, marginBottom: 20 },
+    input: { borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, marginBottom: 20, fontSize: 15, backgroundColor: theme.colors.surface },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
     cancelBtn: { padding: 12, borderRadius: 8 },
     confirmBtn: { backgroundColor: '#5A4A42', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-    btnText: { color: '#4b5563', fontWeight: '600' },
+    btnText: { color: theme.colors.textSecondary, fontWeight: '600' },
     confirmBtnText: { color: 'white', fontWeight: '600' },
 
 });

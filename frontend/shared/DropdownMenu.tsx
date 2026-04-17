@@ -1,4 +1,5 @@
 import { isMobile } from '@/constants/layout';
+import { theme } from '@/constants/theme';
 import { Link, RelativePathString, usePathname } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -11,7 +12,7 @@ const styles = StyleSheet.create({
     },
     underline: {
         height: 2,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         marginTop: 4,
         width: 0,
         // @ts-ignore
@@ -32,7 +33,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
         backgroundColor: 'white',
         borderRadius: 6,
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
         shadowRadius: 6,
@@ -46,11 +47,11 @@ const styles = StyleSheet.create({
         borderBottomWidth: 0,
     },
     dropdownText: {
-        color: '#444',
+        color: theme.colors.text,
         fontSize: 13,
     },
     dropdownTextHovered: {
-        color: '#B36979',
+        color: theme.colors.primary,
     },
     backdrop: {
         position: 'fixed' as any,
@@ -134,7 +135,7 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                                 <Text>More</Text>
                                 <Animated.View style={{ transform: [{ rotate }] }}>
-                                    <ChevronDown size={16} color="#333" />
+                                    <ChevronDown size={16} color={theme.colors.text} />
                                 </Animated.View>
                             </View>
                             <View style={[styles.underline, (hovered || isAnyLinkActive) && styles.underlineHovered]} />
@@ -148,7 +149,7 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                 <View style={styles.dropdown}>
                     {items.map((item, index) => {
                         if (item.type === 'separator') {
-                            return <View key={index} style={{ height: 1, backgroundColor: '#eee', marginVertical: 4, marginHorizontal: 10 }} />;
+                            return <View key={index} style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4, marginHorizontal: 10 }} />;
                         }
 
                         const isLinkActive = item.href ? pathname === item.href : false;

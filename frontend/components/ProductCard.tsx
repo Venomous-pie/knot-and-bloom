@@ -1,5 +1,6 @@
 import { Product } from "@/types/products";
 import { findLowestPrice } from "@/utils/pricing";
+import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, RelativePathString, router } from "expo-router";
 import { Pin, Star } from "lucide-react-native";
@@ -26,16 +27,7 @@ interface ProductCardProps {
     style?: StyleProp<ViewStyle>;
 }
 
-const COLORS = {
-    primary: "#B36979",
-    background: "#FFFFFF",
-    border: "#eee",
-    text: "#333",
-    muted: "#888",
-    backgroundAlt: "#f9f9f9",
-    success: "#4CAF50",
-    error: "#E53935",
-};
+// All colors now sourced from theme.colors (constants/theme.ts)
 
 // --- Proportional Scale System ---
 // All values are expressed as a ratio of the card's measured width.
@@ -156,14 +148,14 @@ export default function ProductCard({
                         />
                     ) : (
                         <View style={styles.imagePlaceholder}>
-                            <Text style={{ color: "#999", fontSize: s.ratingFont }}>No Image</Text>
+                            <Text style={{ color: theme.colors.textLight, fontSize: s.ratingFont }}>No Image</Text>
                         </View>
                     )}
 
                     {/* Pending Badge — top-left */}
                     {product.status === 'PENDING' && (
                         <View style={[styles.badge, {
-                            backgroundColor: '#FFA000',
+                            backgroundColor: theme.colors.badgePending,
                             top: s.actionRight,
                             left: s.actionRight,
                             paddingHorizontal: s.badgePadH,
@@ -178,7 +170,7 @@ export default function ProductCard({
                         if (product.soldCount > 20)
                             return (
                                 <View style={[styles.badge, styles.badgeStatus, {
-                                    backgroundColor: '#FF6B6B',
+                                    backgroundColor: theme.colors.badgeTrending,
                                     top: s.actionRight,
                                     left: s.actionRight,
                                     paddingHorizontal: s.badgePadH,
@@ -192,7 +184,7 @@ export default function ProductCard({
                         if (product.soldCount > 5)
                             return (
                                 <View style={[styles.badge, {
-                                    backgroundColor: '#FF8C42',
+                                    backgroundColor: theme.colors.badgePopular,
                                     top: s.actionRight,
                                     left: s.actionRight,
                                     paddingHorizontal: s.badgePadH,
@@ -206,7 +198,7 @@ export default function ProductCard({
                         if (isAvailable && selectedVariant?.stock && selectedVariant.stock < 5)
                             return (
                                 <View style={[styles.badge, {
-                                    backgroundColor: '#E0A800',
+                                    backgroundColor: theme.colors.badgeLowStock,
                                     top: s.actionRight,
                                     left: s.actionRight,
                                     paddingHorizontal: s.badgePadH,
@@ -220,7 +212,7 @@ export default function ProductCard({
                         if ((Date.now() - new Date(product.uploaded).getTime()) < 1000 * 60 * 60 * 24 * 7)
                             return (
                                 <View style={[styles.badge, {
-                                    backgroundColor: COLORS.primary,
+                                    backgroundColor: theme.colors.primary,
                                     top: s.actionRight,
                                     left: s.actionRight,
                                     paddingHorizontal: s.badgePadH,
@@ -237,7 +229,7 @@ export default function ProductCard({
                     {/* Discount Badge — bottom-left */}
                     {hasDiscount && product.status !== 'PENDING' && (
                         <View style={[styles.badge, {
-                            backgroundColor: COLORS.error,
+                            backgroundColor: theme.colors.error,
                             bottom: s.actionRight,
                             left: s.actionRight,
                             paddingHorizontal: s.badgePadH,
@@ -264,7 +256,7 @@ export default function ProductCard({
                             ]}
                             onPress={(e) => { e.preventDefault(); e.stopPropagation(); onPinPress(); }}
                         >
-                            <Pin size={s.iconSm} fill={isPinned ? "white" : "none"} color={isPinned ? "white" : "#666"} />
+                            <Pin size={s.iconSm} fill={isPinned ? "white" : "none"} color={isPinned ? "white" : theme.colors.textSecondary} />
                         </Pressable>
                     )}
 
@@ -286,7 +278,7 @@ export default function ProductCard({
                         <Ionicons
                             name={isWishlisted ? "heart" : "heart-outline"}
                             size={s.iconMd}
-                            color={isWishlisted ? COLORS.primary : "#999"}
+                            color={isWishlisted ? theme.colors.primary : theme.colors.textLight}
                         />
                     </Pressable>
                 </View>
@@ -298,7 +290,7 @@ export default function ProductCard({
                     {product.categories?.length > 0 && (
                         <Text style={{
                             fontSize: s.categoryFont,
-                            color: COLORS.muted,
+                            color: theme.colors.textLight,
                             textTransform: "uppercase",
                             letterSpacing: 0.5,
                         }} numberOfLines={1}>
@@ -310,7 +302,7 @@ export default function ProductCard({
                     <Text style={{
                         fontSize: s.nameFont,
                         fontWeight: "600",
-                        color: COLORS.text,
+                        color: theme.colors.text,
                         fontFamily: "Quicksand",
                         lineHeight: s.nameFont * 1.25,
                     }} numberOfLines={2}>
@@ -326,27 +318,27 @@ export default function ProductCard({
                                 router.push(`/seller/${product.seller?.slug}` as RelativePathString);
                             }}
                         >
-                            <Text style={{ fontSize: s.sellerFont, color: COLORS.muted }} numberOfLines={1}>
+                            <Text style={{ fontSize: s.sellerFont, color: theme.colors.textLight }} numberOfLines={1}>
                                 <Text style={
                                     product?.seller?.name === 'Knot & Bloom'
-                                        ? { fontWeight: '600', color: COLORS.primary }
+                                        ? { fontWeight: '600', color: theme.colors.primary }
                                         : { textDecorationLine: 'underline' }
                                 }>{product.seller.name}</Text>
                             </Text>
                         </Pressable>
                     ) : (
-                        <Text style={{ fontSize: s.sellerFont, fontWeight: '600', color: COLORS.primary }} numberOfLines={1}>
+                        <Text style={{ fontSize: s.sellerFont, fontWeight: '600', color: theme.colors.primary }} numberOfLines={1}>
                             Knot & Bloom
                         </Text>
                     )}
 
                     {/* Row 4: Price */}
                     <View style={{ flexDirection: "row", alignItems: "baseline", gap: s.gap }}>
-                        <Text style={{ fontSize: s.priceFont, fontWeight: "700", color: COLORS.primary }}>
+                        <Text style={{ fontSize: s.priceFont, fontWeight: "700", color: theme.colors.primary }}>
                             ₱{finalPrice.toFixed(2)}
                         </Text>
                         {hasDiscount && (
-                            <Text style={{ fontSize: s.origPriceFont, color: "#999", textDecorationLine: "line-through" }}>
+                            <Text style={{ fontSize: s.origPriceFont, color: theme.colors.textLight, textDecorationLine: "line-through" }}>
                                 ₱{variantPrice.toFixed(2)}
                             </Text>
                         )}
@@ -360,17 +352,17 @@ export default function ProductCard({
 
 const styles = StyleSheet.create({
     productCard: {
-        backgroundColor: "white",
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         overflow: "hidden",
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
         marginBottom: 16,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: theme.colors.border,
     },
     productCardHovered: {
         shadowOffset: { width: 0, height: 8 },
@@ -380,7 +372,7 @@ const styles = StyleSheet.create({
     },
     imageContainer: {
         aspectRatio: 1,
-        backgroundColor: "#f5f5f5",
+        backgroundColor: theme.colors.backgroundAlt,
         position: "relative",
     },
     productImage: {
@@ -409,7 +401,7 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         justifyContent: "center",
         alignItems: "center",
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -419,6 +411,6 @@ const styles = StyleSheet.create({
         opacity: 0.8,
     },
     actionButtonActive: {
-        backgroundColor: COLORS.primary,
+        backgroundColor: theme.colors.primary,
     },
 });

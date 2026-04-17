@@ -32,6 +32,7 @@ import {
     Truck
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme } from '@/constants/theme';
 
 /* Product item from JSON */
 interface ProductItem {
@@ -202,7 +203,7 @@ export default function OrderHistoryPage() {
     if (loading || authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -364,9 +365,9 @@ export default function OrderHistoryPage() {
                             style={[styles.actionButton, styles.trackAction]}
                             onPress={() => handleQuickAction(order, 'track')}
                         >
-                            <Truck size={14} color="#333" />
+                            <Truck size={14} color={theme.colors.text} />
                             <Text style={styles.trackActionText}>Track</Text>
-                            <ExternalLink size={12} color="#333" />
+                            <ExternalLink size={12} color={theme.colors.text} />
                         </Pressable>
                     </View>
                 );
@@ -388,10 +389,10 @@ export default function OrderHistoryPage() {
                         disabled={isLoading}
                     >
                         {isLoading ? (
-                            <ActivityIndicator size="small" color="#555" />
+                            <ActivityIndicator size="small" color={theme.colors.textSecondary} />
                         ) : (
                             <>
-                                <RefreshCw size={14} color="#555" />
+                                <RefreshCw size={14} color={theme.colors.textSecondary} />
                                 <Text style={styles.outlineActionText}>Buy Again</Text>
                             </>
                         )}
@@ -421,7 +422,7 @@ export default function OrderHistoryPage() {
                             <Image source={{ uri: product.image }} style={styles.thumbnail} />
                         ) : (
                             <View style={[styles.thumbnail, styles.placeholderThumbnail]}>
-                                <Package size={16} color="#C88EA7" />
+                                <Package size={16} color={theme.colors.primaryLight} />
                             </View>
                         )}
                     </View>
@@ -449,7 +450,7 @@ export default function OrderHistoryPage() {
                     }}
                     style={{ width: 40, alignItems: 'flex-end', justifyContent: 'center' }}
                 >
-                    <RotateCcw size={20} color="#333" />
+                    <RotateCcw size={20} color={theme.colors.text} />
                 </Pressable>
             </View>
 
@@ -489,7 +490,7 @@ export default function OrderHistoryPage() {
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 {filteredOrders.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Package size={64} color="#ddd" />
+                        <Package size={64} color={theme.colors.border} />
                         <Text style={styles.emptyTitle}>
                             {activeTab === 'all'
                                 ? "No orders found."
@@ -557,7 +558,7 @@ export default function OrderHistoryPage() {
                                                     <>
                                                         {products[0].name}
                                                         {products[0].quantity > 1 && (
-                                                            <Text style={{ color: '#888' }}> × {products[0].quantity}</Text>
+                                                            <Text style={{ color: theme.colors.textLight }}> × {products[0].quantity}</Text>
                                                         )}
                                                         {products.length > 1 && ` + ${products.length - 1} more`}
                                                     </>
@@ -569,12 +570,12 @@ export default function OrderHistoryPage() {
                                                 {totalItems} {totalItems === 1 ? 'item' : 'items'}
                                             </Text>
                                         </View>
-                                        <ChevronRight size={20} color="#ccc" />
+                                        <ChevronRight size={20} color={theme.colors.border} />
                                     </View>
 
                                     {order.status === 'SHIPPED' && order.trackingNumber && (
                                         <View style={styles.trackingRow}>
-                                            <Truck size={14} color="#B36979" />
+                                            <Truck size={14} color={theme.colors.primary} />
                                             <Text style={styles.trackingText}>
                                                 {order.courierName || 'Courier'}: {order.trackingNumber}
                                             </Text>
@@ -583,7 +584,7 @@ export default function OrderHistoryPage() {
                                                 style={{ position: 'relative' }}
                                                 hitSlop={8}
                                             >
-                                                <Copy size={14} color="#B36979" />
+                                                <Copy size={14} color={theme.colors.primary} />
                                                 {copiedTracking === order.trackingNumber && (
                                                     <View style={styles.tooltip}>
                                                         <Text style={styles.tooltipText}>Copied!</Text>
@@ -632,7 +633,7 @@ export default function OrderHistoryPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -650,21 +651,21 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     tabsWrapper: {
         width: '100%',
         maxWidth: 800,
         alignSelf: 'center',
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: theme.colors.border,
     },
     tabsContainer: {
         maxHeight: 50,
@@ -682,30 +683,30 @@ const styles = StyleSheet.create({
         borderBottomColor: 'transparent',
     },
     tabActive: {
-        borderBottomColor: '#C88EA7',
+        borderBottomColor: theme.colors.primaryLight,
     },
     tabText: {
         fontSize: 14,
-        color: '#666',
-        fontFamily: 'Quicksand',
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
     },
     tabTextActive: {
-        color: '#B36979',
-        fontFamily: 'Quicksand',
+        color: theme.colors.primary,
+        fontFamily: theme.typography.fontFamily,
     },
     tabBadge: {
-        backgroundColor: '#eee',
+        backgroundColor: theme.colors.border,
         borderRadius: 10,
         paddingHorizontal: 6,
         paddingVertical: 2,
         marginLeft: 6,
     },
     tabBadgeActive: {
-        backgroundColor: '#C88EA7',
+        backgroundColor: theme.colors.primaryLight,
     },
     tabBadgeText: {
         fontSize: 10,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontWeight: '600',
     },
     tabBadgeTextActive: {
@@ -723,22 +724,22 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: 40,
         marginTop: 20,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
     },
     emptyTitle: {
         marginVertical: 16,
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
     },
     viewAllLink: {
-        color: '#C88EA7',
+        color: theme.colors.primaryLight,
         fontSize: 14,
         fontWeight: '600',
     },
     shopButton: {
-        backgroundColor: '#C88EA7',
+        backgroundColor: theme.colors.primaryLight,
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 8,
@@ -751,10 +752,10 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     orderCard: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 16,
         padding: 16,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 8,
@@ -773,17 +774,17 @@ const styles = StyleSheet.create({
     orderId: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#555',
+        color: theme.colors.textSecondary,
         marginBottom: 4,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     orderDate: {
         fontSize: 13,
-        color: '#888',
+        color: theme.colors.textLight,
     },
     divider: {
         height: 1,
-        backgroundColor: '#eee',
+        backgroundColor: theme.colors.border,
         marginBottom: 12,
     },
     productRow: {
@@ -810,7 +811,7 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 6,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: theme.colors.backgroundAlt,
     },
     placeholderThumbnail: {
         justifyContent: 'center',
@@ -821,14 +822,14 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 6,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         justifyContent: 'center',
         alignItems: 'center',
     },
     moreText: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#666',
+        color: theme.colors.textSecondary,
     },
     productInfo: {
         flex: 1,
@@ -836,8 +837,8 @@ const styles = StyleSheet.create({
     },
     productText: {
         fontSize: 14,
-        color: '#444',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
         fontWeight: '600',
         lineHeight: 20,
     },
@@ -856,7 +857,7 @@ const styles = StyleSheet.create({
     trackingText: {
         flex: 1,
         fontSize: 12,
-        color: '#000000ff',
+        color: theme.colors.text,
         fontWeight: '500',
     },
     estimateRow: {
@@ -885,14 +886,14 @@ const styles = StyleSheet.create({
     },
     totalLabel: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginRight: 8,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     totalPrice: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#B36979',
+        color: theme.colors.primary,
     },
     statusRow: {
         flexDirection: 'row',
@@ -908,7 +909,7 @@ const styles = StyleSheet.create({
     paidBadgeText: {
         fontSize: 11,
         fontWeight: 'bold',
-        color: '#4CAF50',
+        color: theme.colors.success,
     },
     footerRight: {
         flexDirection: 'row',
@@ -923,7 +924,7 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: 12,
         fontWeight: '600',
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     actionRow: {
         flexDirection: 'row',
@@ -938,7 +939,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     payAction: {
-        backgroundColor: '#FF6B6B',
+        backgroundColor: theme.colors.badgeTrending,
     },
     payActionText: {
         color: 'white',
@@ -948,15 +949,15 @@ const styles = StyleSheet.create({
     trackAction: {
         backgroundColor: 'transparent',
         borderWidth: 1,
-        borderColor: '#333',
+        borderColor: theme.colors.text,
     },
     trackActionText: {
-        color: '#333',
+        color: theme.colors.text,
         fontSize: 13,
         fontWeight: '600',
     },
     confirmAction: {
-        backgroundColor: '#43A047',
+        backgroundColor: theme.colors.success,
     },
     confirmActionText: {
         color: 'white',
@@ -964,12 +965,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     outlineAction: {
-        backgroundColor: '#f5f5f5',
+        backgroundColor: theme.colors.backgroundAlt,
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
     },
     outlineActionText: {
-        color: '#555',
+        color: theme.colors.textSecondary,
         fontSize: 13,
         fontWeight: '600',
     },
@@ -977,7 +978,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 25,
         right: -10,
-        backgroundColor: '#333',
+        backgroundColor: theme.colors.text,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 4,

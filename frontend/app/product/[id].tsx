@@ -226,7 +226,7 @@ export default function ProductDetailPage() {
                 <View style={styles.sellerDetails}>
                     <Text style={styles.sellerName}>{product.seller?.name || 'Knot & Bloom'}</Text>
                     <View style={styles.sellerRatingRow}>
-                        <Ionicons name="star" size={12} color="#FFB800" />
+                        <Ionicons name="star" size={12} color={theme.colors.starGold} />
                         <Text style={styles.sellerRatingText}>4.9/5.0 (98% Positive)</Text>
                     </View>
                 </View>
@@ -373,7 +373,7 @@ export default function ProductDetailPage() {
                             <View style={styles.ratingSummary}>
                                 <View style={styles.starsRow}>
                                     {[1, 2, 3, 4, 5].map((i) => (
-                                        <Ionicons key={i} name={i <= 4 ? "star" : "star-half"} size={14} color="#FFB800" />
+                                        <Ionicons key={i} name={i <= 4 ? "star" : "star-half"} size={14} color={theme.colors.starGold} />
                                     ))}
                                 </View>
                                 <Text style={styles.ratingText}>4.8 (124 reviews) | {product.soldCount} Sold</Text>
@@ -509,7 +509,7 @@ export default function ProductDetailPage() {
                                         <Text style={styles.reviewerName}>{review.userName}</Text>
                                         <View style={styles.starsRow}>
                                             {[1, 2, 3, 4, 5].map((i) => (
-                                                <Ionicons key={i} name={i <= review.rating ? "star" : "star-outline"} size={12} color="#FFB800" />
+                                                <Ionicons key={i} name={i <= review.rating ? "star" : "star-outline"} size={12} color={theme.colors.starGold} />
                                             ))}
                                         </View>
                                     </View>
@@ -922,7 +922,7 @@ const styles = StyleSheet.create({
     },
     inlineAddToCartButton: {
         flex: 1,
-        backgroundColor: '#B36979', // Solid dark button
+        backgroundColor: theme.colors.primary, // Solid brand button
         height: 48,
         borderRadius: 8,
         justifyContent: 'center',

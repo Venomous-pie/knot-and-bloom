@@ -1,5 +1,6 @@
 import { customerAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
+import { theme } from '@/constants/theme';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -66,7 +67,7 @@ export default function PersonalInfoPage() {
     if (authLoading || !user) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -92,7 +93,7 @@ export default function PersonalInfoPage() {
                             </Pressable>
                         ) : (
                             <Pressable onPress={() => setIsEditing(false)} disabled={loading}>
-                                <Text style={[styles.editLink, { color: '#666' }]}>Cancel</Text>
+                                <Text style={[styles.editLink, { color: theme.colors.textSecondary }]}>Cancel</Text>
                             </Pressable>
                         )}
                     </View>
@@ -113,7 +114,7 @@ export default function PersonalInfoPage() {
 
                     <View style={styles.formGroup}>
                         <Text style={styles.label}>Email</Text>
-                        <Text style={[styles.value, { color: '#888' }]}>{user.email || 'Not provided'}</Text>
+                        <Text style={[styles.value, { color: theme.colors.textLight }]}>{user.email || 'Not provided'}</Text>
                         <Text style={styles.hint}>Email cannot be changed</Text>
                     </View>
 
@@ -155,7 +156,7 @@ export default function PersonalInfoPage() {
                                 <Text style={[styles.value, {
                                     color: user.sellerStatus === 'ACTIVE' ? 'green' :
                                         user.sellerStatus === 'PENDING' ? '#B8860B' :
-                                            user.sellerStatus === 'SUSPENDED' ? 'red' : '#333',
+                                            user.sellerStatus === 'SUSPENDED' ? 'red' : theme.colors.text,
                                     fontWeight: 'bold'
                                 }]}>
                                     {user.sellerStatus === 'PENDING' ? 'Pending Approval' : user.sellerStatus.charAt(0) + user.sellerStatus.slice(1).toLowerCase()}
@@ -183,7 +184,7 @@ export default function PersonalInfoPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -206,21 +207,21 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     card: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 24,
         marginBottom: 20,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -232,16 +233,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: theme.colors.border,
         paddingBottom: 15,
     },
     cardTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
     },
     editLink: {
-        color: '#C88EA7',
+        color: theme.colors.primaryLight,
         fontWeight: '600',
     },
     formGroup: {
@@ -249,33 +250,33 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        color: '#888',
+        color: theme.colors.textLight,
         marginBottom: 6,
     },
     value: {
         fontSize: 16,
-        color: '#333',
+        color: theme.colors.text,
         fontWeight: '500',
     },
     hint: {
         fontSize: 12,
-        color: '#aaa',
+        color: theme.colors.textLight,
         marginTop: 4,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.surface,
     },
     textArea: {
         minHeight: 80,
         textAlignVertical: 'top',
     },
     saveButton: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         padding: 14,
         borderRadius: 8,
         alignItems: 'center',

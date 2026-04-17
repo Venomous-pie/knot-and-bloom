@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme } from '@/constants/theme';
 import {
     Bell,
     Info,
@@ -50,8 +51,8 @@ const SettingItem: React.FC<SettingItemProps> = ({
             value={value}
             onValueChange={onChange}
             disabled={disabled}
-            trackColor={{ false: '#ddd', true: '#E8C4D0' }}
-            thumbColor={value ? '#C88EA7' : '#f4f3f4'}
+            trackColor={{ false: theme.colors.border, true: '#E8C4D0' }}
+            thumbColor={value ? theme.colors.primaryLight : '#f4f3f4'}
         />
     </View>
 );
@@ -107,7 +108,7 @@ export default function NotificationSettingsPage() {
     if (loading || authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -131,7 +132,7 @@ export default function NotificationSettingsPage() {
 
                     <View style={styles.settingsList}>
                         <SettingItem
-                            icon={<Package size={22} color="#555" />}
+                            icon={<Package size={22} color={theme.colors.textSecondary} />}
                             title="Order Updates"
                             description="Get notified about your order status, shipping, and delivery"
                             value={settings?.orderUpdates ?? true}
@@ -142,7 +143,7 @@ export default function NotificationSettingsPage() {
                         <View style={styles.divider} />
 
                         <SettingItem
-                            icon={<Tag size={22} color="#555" />}
+                            icon={<Tag size={22} color={theme.colors.textSecondary} />}
                             title="Promotions & Deals"
                             description="Receive exclusive offers, discounts, and sale announcements"
                             value={settings?.promotions ?? true}
@@ -153,7 +154,7 @@ export default function NotificationSettingsPage() {
                         <View style={styles.divider} />
 
                         <SettingItem
-                            icon={<Bell size={22} color="#555" />}
+                            icon={<Bell size={22} color={theme.colors.textSecondary} />}
                             title="System Messages"
                             description="Important updates about your account and app features"
                             value={settings?.systemMessages ?? true}
@@ -173,7 +174,7 @@ export default function NotificationSettingsPage() {
 
                 {saving && (
                     <View style={styles.savingIndicator}>
-                        <ActivityIndicator size="small" color="#C88EA7" />
+                        <ActivityIndicator size="small" color={theme.colors.primaryLight} />
                         <Text style={styles.savingText}>Saving...</Text>
                     </View>
                 )}
@@ -185,7 +186,7 @@ export default function NotificationSettingsPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -208,20 +209,20 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     card: {
         backgroundColor: 'white',
         borderRadius: 12,
         padding: 20,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -230,15 +231,15 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     cardDescription: {
         fontSize: 13,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 20,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     settingsList: {
         gap: 0,
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: theme.colors.backgroundAlt,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -264,18 +265,18 @@ const styles = StyleSheet.create({
     settingTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 4,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     settingDescription: {
         fontSize: 12,
-        color: '#888',
-        fontFamily: 'Quicksand',
+        color: theme.colors.textLight,
+        fontFamily: theme.typography.fontFamily,
     },
     divider: {
         height: 1,
-        backgroundColor: '#eee',
+        backgroundColor: theme.colors.border,
     },
     infoBox: {
         flexDirection: 'row',
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     savingText: {
-        color: '#888',
+        color: theme.colors.textLight,
         fontSize: 14,
     },
 });

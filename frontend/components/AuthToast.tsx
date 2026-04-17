@@ -1,4 +1,5 @@
 import { authEvents } from '@/utils/authEvents';
+import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -36,9 +37,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     toast: {
-        backgroundColor: '#FEF2F2',
+        backgroundColor: theme.colors.errorLight,
         borderWidth: 1,
-        borderColor: '#FECACA',
+        borderColor: theme.colors.errorBorder,
         borderRadius: 12,
         paddingVertical: 14,
         paddingHorizontal: 18,
@@ -47,14 +48,14 @@ const styles = StyleSheet.create({
         gap: 12,
         maxWidth: 450,
         width: '100%',
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 8,
     },
     iconContainer: {
-        backgroundColor: '#FEE2E2',
+        backgroundColor: theme.colors.errorLight,
         borderRadius: 20,
         padding: 8,
     },
@@ -64,13 +65,13 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#991B1B',
+        color: theme.colors.errorDark,
         fontFamily: 'Quicksand',
         marginBottom: 2,
     },
     message: {
         fontSize: 13,
-        color: '#B91C1C',
+        color: theme.colors.errorDark,
         fontFamily: 'Quicksand',
     },
     closeButton: {
@@ -149,14 +150,14 @@ export default function AuthToast() {
                 ]}
             >
                 <View style={styles.iconContainer}>
-                    <AlertCircle size={20} color="#DC2626" />
+                    <AlertCircle size={20} color={theme.colors.error} />
                 </View>
                 <View style={styles.content}>
                     <Text style={styles.title}>Session Error</Text>
                     <Text style={styles.message}>{message}</Text>
                 </View>
                 <Pressable onPress={dismiss} style={styles.closeButton}>
-                    <X size={18} color="#B91C1C" />
+                    <X size={18} color={theme.colors.errorDark} />
                 </Pressable>
             </Animated.View>
         </View>

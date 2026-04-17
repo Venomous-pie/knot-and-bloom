@@ -158,7 +158,7 @@ export default function AddressesPage() {
     if (loading || authLoading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -260,7 +260,7 @@ export default function AddressesPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -283,14 +283,14 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     backButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 16,
     },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
-        fontFamily: 'Quicksand',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     addButton: {
         flexDirection: 'row',
@@ -306,32 +306,32 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: '600',
         fontSize: 14,
-        fontFamily: 'Quicksand',
+        fontFamily: theme.typography.fontFamily,
     },
     emptyState: {
         alignItems: 'center',
         padding: 40,
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
     },
     emptyIcon: {
         fontSize: 48,
         marginBottom: 16,
-        color: '#ddd',
+        color: theme.colors.border,
     },
     emptyTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 8,
     },
     emptyText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 20,
     },
     emptyButton: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 20,
         paddingVertical: 12,
         borderRadius: 8,
@@ -351,16 +351,12 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 24,
         width: '100%',
         maxHeight: '90%',
         padding: 24,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 8,
+        ...theme.shadows.lg,
     },
     modalContentDesktop: {
         width: 600,
@@ -374,10 +370,10 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
     },
     modalClose: {
         fontSize: 24,
-        color: '#888',
+        color: theme.colors.textLight,
     },
 });

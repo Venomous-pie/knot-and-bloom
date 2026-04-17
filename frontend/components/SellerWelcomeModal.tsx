@@ -1,5 +1,6 @@
 import { sellerAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
+import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -235,7 +236,7 @@ export default function SellerWelcomeModal({ visible, onClose }: Props) {
                                 {stepData.features.map((feature, i) => (
                                     <View key={i} style={styles.gridItem}>
                                         <View style={styles.gridIconContainer}>
-                                            <Ionicons name={feature.icon as any} size={24} color="#8B4513" />
+                                            <Ionicons name={feature.icon as any} size={24} color={theme.colors.primaryDark} />
                                         </View>
                                         <Text style={styles.gridText}>{feature.label}</Text>
                                     </View>
@@ -275,10 +276,10 @@ const styles = StyleSheet.create({
     modalContainer: {
         width: 500,
         maxHeight: '90%',
-        backgroundColor: '#FFF',
+        backgroundColor: theme.colors.surface,
         borderRadius: 24,
         overflow: 'hidden',
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 15 },
         shadowOpacity: 0.2,
         shadowRadius: 30,
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
     },
     headerPattern: {
         height: 120,
-        backgroundColor: '#FFF8E1', // Light cream/yellow
+        backgroundColor: theme.colors.backgroundAlt, // Light cream/yellow
         position: 'relative',
         overflow: 'hidden',
     },
@@ -322,14 +323,14 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: theme.colors.border,
     },
     progressDotActive: {
-        backgroundColor: '#8B4513',
+        backgroundColor: theme.colors.primaryDark,
         width: 20,
     },
     progressDotCompleted: {
-        backgroundColor: '#10B981',
+        backgroundColor: theme.colors.success,
     },
     content: {
         paddingHorizontal: 32,
@@ -348,14 +349,14 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 26,
         fontWeight: 'bold',
-        color: '#2D1F16',
+        color: theme.colors.text,
         textAlign: 'center',
         marginBottom: 12,
         fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     },
     body: {
         fontSize: 16,
-        color: '#5D5D5D',
+        color: theme.colors.textSecondary,
         textAlign: 'center',
         lineHeight: 24,
         marginBottom: 24,
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
     },
     tipsContainer: {
         width: '100%',
-        backgroundColor: '#FAFAF9',
+        backgroundColor: theme.colors.background,
         padding: 20,
         borderRadius: 16,
         gap: 12,
@@ -377,13 +378,13 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderRadius: 10,
-        backgroundColor: '#10B981',
+        backgroundColor: theme.colors.success,
         justifyContent: 'center',
         alignItems: 'center',
     },
     tipText: {
         fontSize: 15,
-        color: '#444',
+        color: theme.colors.text,
         flex: 1,
     },
     gridContainer: {
@@ -395,9 +396,9 @@ const styles = StyleSheet.create({
     },
     gridItem: {
         width: '45%',
-        backgroundColor: '#FFF',
+        backgroundColor: theme.colors.surface,
         borderWidth: 1,
-        borderColor: '#EEE',
+        borderColor: theme.colors.border,
         padding: 16,
         borderRadius: 16,
         alignItems: 'center',
@@ -407,32 +408,32 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#FFF4E5',
+        backgroundColor: theme.colors.backgroundAlt,
         justifyContent: 'center',
         alignItems: 'center',
     },
     gridText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#555',
+        color: theme.colors.textSecondary,
         textAlign: 'center',
     },
     footer: {
         padding: 24,
         borderTopWidth: 1,
-        borderTopColor: '#F0F0F0',
+        borderTopColor: theme.colors.subtle,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
     primaryBtn: {
-        backgroundColor: '#8B4513',
+        backgroundColor: theme.colors.primaryDark,
         paddingVertical: 14,
         paddingHorizontal: 28,
         borderRadius: 30,
         flexDirection: 'row',
         alignItems: 'center',
-        shadowColor: "#8B4513",
+        shadowColor: theme.colors.primaryDark,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -448,7 +449,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     secondaryBtnText: {
-        color: '#888',
+        color: theme.colors.textLight,
         fontSize: 16,
         fontWeight: '500',
     },

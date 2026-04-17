@@ -1,5 +1,6 @@
 import { authAPI, customerAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
+import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -113,7 +114,7 @@ export default function ResetPasswordPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: theme.colors.backgroundAlt,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -122,10 +123,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     card: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         padding: 30,
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
@@ -136,11 +137,11 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 10,
-        color: '#333',
+        color: theme.colors.text,
     },
     subtitle: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
         textAlign: 'center',
         marginBottom: 20,
     },
@@ -148,24 +149,24 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         fontWeight: '600',
         marginBottom: 5,
-        color: '#555',
+        color: theme.colors.textSecondary,
     },
     input: {
         width: '100%',
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
         borderRadius: 8,
         padding: 12,
         marginBottom: 15,
-        backgroundColor: '#fafafa',
+        backgroundColor: theme.colors.background,
     },
     errorText: {
-        color: 'red',
+        color: theme.colors.error,
         marginBottom: 10,
     },
     button: {
         width: '100%',
-        backgroundColor: '#C88EA7',
+        backgroundColor: theme.colors.primaryLight,
         padding: 15,
         borderRadius: 8,
         alignItems: 'center',

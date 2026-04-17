@@ -22,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/admin/ImageCropperModal';
 import { Ionicons } from "@expo/vector-icons";
+import { theme } from '@/constants/theme';
 
 export default function SellerApplyPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
@@ -269,10 +270,10 @@ export default function SellerApplyPage() {
                         disabled={isUploading}
                     >
                         {isUploading ? (
-                            <ActivityIndicator color="#C88EA7" />
+                            <ActivityIndicator color={theme.colors.primaryLight} />
                         ) : (
                             <>
-                                <Ionicons name="cloud-upload-outline" size={32} color="#666" />
+                                <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.textSecondary} />
                                 <Text style={styles.uploadButtonText}>Upload {title}</Text>
                             </>
                         )}
@@ -294,7 +295,7 @@ export default function SellerApplyPage() {
                     value={shopName}
                     onChangeText={setShopName}
                     placeholder="e.g. My Crochet Corner"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.colors.textLight}
                     maxLength={50}
                 />
                 {errors.shopName && <Text style={styles.fieldError}>{errors.shopName}</Text>}
@@ -307,7 +308,7 @@ export default function SellerApplyPage() {
                     value={description}
                     onChangeText={setDescription}
                     placeholder="Tell us about what you make..."
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.colors.textLight}
                     multiline
                     numberOfLines={4}
                     maxLength={500}
@@ -347,7 +348,7 @@ export default function SellerApplyPage() {
                     value={email}
                     onChangeText={setEmail}
                     placeholder="e.g. yourname@example.com"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.colors.textLight}
                     keyboardType="email-address"
                     autoCapitalize="none"
                 />
@@ -365,7 +366,7 @@ export default function SellerApplyPage() {
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     placeholder="e.g. 0912 345 6789"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.colors.textLight}
                     keyboardType="phone-pad"
                 />
                 <Text style={styles.helperText}>Used for admin contact and logistics notifications.</Text>
@@ -379,7 +380,7 @@ export default function SellerApplyPage() {
                     value={socialLink}
                     onChangeText={setSocialLink}
                     placeholder="e.g. facebook.com/myshop"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={theme.colors.textLight}
                     autoCapitalize="none"
                 />
                 <Text style={styles.helperText}>Used to verify your existing presence.</Text>
@@ -456,7 +457,7 @@ export default function SellerApplyPage() {
     if (authLoading) {
         return (
             <SafeAreaView style={styles.container}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </SafeAreaView>
         );
     }
@@ -592,7 +593,7 @@ export default function SellerApplyPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: theme.colors.surface,
     },
     contentContainer: {
         flex: 1,
@@ -656,7 +657,7 @@ const styles = StyleSheet.create({
     },
     brandingHighlight: {
         fontSize: 14,
-        color: "#C88EA7",
+        color: theme.colors.primaryLight,
         fontWeight: "600",
         fontStyle: "italic",
     },
@@ -667,13 +668,13 @@ const styles = StyleSheet.create({
     brandTitle: {
         fontSize: 28,
         fontWeight: "bold",
-        color: "#333",
+        color: theme.colors.text,
         marginBottom: 5,
         fontFamily: Platform.OS === "web" ? "serif" : "System",
     },
     brandSubtitle: {
         fontSize: 16,
-        color: "#666",
+        color: theme.colors.textSecondary,
         textAlign: "center",
         maxWidth: 300,
         lineHeight: 24,
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
     },
     featureItem: {
         fontSize: 14,
-        color: "#888",
+        color: theme.colors.textLight,
         marginBottom: 8,
     },
     decorativeCircle1: {
@@ -745,24 +746,24 @@ const styles = StyleSheet.create({
     welcomeTitle: {
         fontSize: 28,
         fontWeight: "bold",
-        color: "#333",
+        color: theme.colors.text,
         marginBottom: 8,
     },
     welcomeSubtitle: {
         fontSize: 14,
-        color: "#888",
+        color: theme.colors.textLight,
         marginBottom: 30,
         textAlign: "center",
     },
     stepTitle: {
         fontSize: 24,
         fontWeight: "bold",
-        color: "#333",
+        color: theme.colors.text,
         marginBottom: 8,
     },
     stepSubtitle: {
         fontSize: 14,
-        color: "#666",
+        color: theme.colors.textSecondary,
         marginBottom: 24,
     },
     formGroup: {
@@ -772,26 +773,26 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
         marginBottom: 8,
-        color: "#555",
+        color: theme.colors.textSecondary,
     },
     sublabel: {
         fontSize: 12,
-        color: '#666',
+        color: theme.colors.textSecondary,
         marginBottom: 8,
     },
     helperText: {
         fontSize: 12,
-        color: "#888",
+        color: theme.colors.textLight,
         marginTop: 4,
     },
     input: {
         borderWidth: 1,
-        borderColor: "#ddd",
+        borderColor: theme.colors.border,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
-        backgroundColor: "#fff",
-        color: "#333",
+        backgroundColor: theme.colors.surface,
+        color: theme.colors.text,
     },
     inputError: {
         borderColor: "#e74c3c",
@@ -838,32 +839,32 @@ const styles = StyleSheet.create({
     imagePreview: {
         width: '100%',
         borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         marginBottom: 8,
     },
     changeImageButton: {
         padding: 10,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         borderRadius: 8,
         alignItems: 'center',
     },
     changeImageButtonText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     uploadButton: {
         borderWidth: 2,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
         borderStyle: 'dashed',
         borderRadius: 8,
         padding: 30,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#fafafa',
+        backgroundColor: theme.colors.background,
     },
     uploadButtonText: {
         marginTop: 8,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 14,
     },
     // Review Styles
@@ -872,22 +873,22 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         borderBottomWidth: 1,
-        borderBottomColor: "#eee",
+        borderBottomColor: theme.colors.border,
         paddingBottom: 8,
     },
     reviewLabel: {
         fontWeight: "600",
-        color: "#555",
+        color: theme.colors.textSecondary,
         width: "40%",
     },
     reviewValue: {
-        color: "#333",
+        color: theme.colors.text,
         flex: 1,
         textAlign: "right",
     },
     divider: {
         height: 1,
-        backgroundColor: "#ddd",
+        backgroundColor: theme.colors.border,
         marginVertical: 20,
     },
     // Navigation & Buttons
@@ -899,21 +900,21 @@ const styles = StyleSheet.create({
     backButton: {
         padding: 16,
         borderRadius: 8,
-        backgroundColor: "#f0f0f0",
+        backgroundColor: theme.colors.subtle,
         flex: 1,
         alignItems: "center",
     },
     backButtonText: {
-        color: "#666",
+        color: theme.colors.textSecondary,
         fontWeight: "600",
     },
     nextButton: {
-        backgroundColor: "#333", // Darker for high contrast
+        backgroundColor: theme.colors.text, // Darker for high contrast
         padding: 16,
         borderRadius: 8,
         alignItems: "center",
         flex: 1,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -926,12 +927,12 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     submitButton: {
-        backgroundColor: "#B36979",
+        backgroundColor: theme.colors.primary,
         padding: 16,
         borderRadius: 8,
         alignItems: "center",
         flex: 2, // Larger than back button
-        shadowColor: "#B36979",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 5,
@@ -951,14 +952,14 @@ const styles = StyleSheet.create({
     // Progress Bar
     progressContainer: {
         height: 4,
-        backgroundColor: "#eee",
+        backgroundColor: theme.colors.border,
         borderRadius: 2,
         marginBottom: 30,
         width: "100%",
     },
     progressBar: {
         height: "100%",
-        backgroundColor: "#B36979",
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
     },
     // Terms
@@ -972,15 +973,15 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         borderWidth: 2,
-        borderColor: "#ddd",
+        borderColor: theme.colors.border,
         borderRadius: 4,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#fff",
+        backgroundColor: theme.colors.surface,
     },
     checkboxChecked: {
-        backgroundColor: "#C88EA7",
-        borderColor: "#C88EA7",
+        backgroundColor: theme.colors.primaryLight,
+        borderColor: theme.colors.primaryLight,
     },
     checkmark: {
         color: "#fff",
@@ -989,11 +990,11 @@ const styles = StyleSheet.create({
     },
     termsText: {
         flex: 1,
-        color: "#555",
+        color: theme.colors.textSecondary,
         fontSize: 14,
     },
     termsLink: {
-        color: "#B36979",
+        color: theme.colors.primary,
         textDecorationLine: "underline",
     },
 });

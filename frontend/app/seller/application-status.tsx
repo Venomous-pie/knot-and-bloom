@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { theme } from '@/constants/theme';
 
 export default function ApplicationStatusPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
@@ -61,7 +62,7 @@ export default function ApplicationStatusPage() {
     if (authLoading || !user) {
         return (
             <SafeAreaView style={styles.container}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </SafeAreaView>
         );
     }
@@ -87,7 +88,7 @@ export default function ApplicationStatusPage() {
 
                         <View style={styles.buttonGroup}>
                             <Pressable style={styles.refreshButton} onPress={handleRefresh} disabled={refreshing}>
-                                {refreshing ? <ActivityIndicator color="#666" size="small" /> : <Ionicons name="refresh-outline" size={20} color="#666" />}
+                                {refreshing ? <ActivityIndicator color={theme.colors.textSecondary} size="small" /> : <Ionicons name="refresh-outline" size={20} color={theme.colors.textSecondary} />}
                                 <Text style={styles.refreshButtonText}>Check Status</Text>
                             </Pressable>
 
@@ -181,7 +182,7 @@ export default function ApplicationStatusPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#F9F9F9",
+        backgroundColor: theme.colors.background,
     },
     scrollContent: {
         flexGrow: 1,
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 24,
         fontWeight: "bold",
-        color: "#333",
+        color: theme.colors.text,
         fontFamily: Platform.OS === "web" ? "serif" : "System",
     },
     content: {
@@ -205,12 +206,12 @@ const styles = StyleSheet.create({
         alignSelf: "center",
     },
     statusCard: {
-        backgroundColor: "#fff",
+        backgroundColor: theme.colors.surface,
         borderRadius: 16,
         padding: 40,
         alignItems: "center",
         width: "100%",
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -227,20 +228,20 @@ const styles = StyleSheet.create({
     statusTitle: {
         fontSize: 28,
         fontWeight: "bold",
-        color: "#333",
+        color: theme.colors.text,
         marginBottom: 16,
         textAlign: "center",
     },
     statusMessage: {
         fontSize: 16,
-        color: "#666",
+        color: theme.colors.textSecondary,
         textAlign: "center",
         lineHeight: 24,
         marginBottom: 24,
     },
     noteText: {
         fontSize: 14,
-        color: "#999",
+        color: theme.colors.textLight,
         textAlign: "center",
         fontStyle: "italic",
     },
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
         width: "100%",
     },
     actionButton: {
-        backgroundColor: "#B36979",
+        backgroundColor: theme.colors.primary,
         paddingVertical: 14,
         paddingHorizontal: 32,
         borderRadius: 30,
@@ -271,10 +272,10 @@ const styles = StyleSheet.create({
     secondaryButton: {
         backgroundColor: "transparent",
         borderWidth: 2,
-        borderColor: "#B36979",
+        borderColor: theme.colors.primary,
     },
     secondaryButtonText: {
-        color: "#B36979",
+        color: theme.colors.primary,
     },
     buttonGroup: {
         marginTop: 20,
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     refreshButtonText: {
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     cancelLinkText: {
-        color: '#999',
+        color: theme.colors.textLight,
         textDecorationLine: 'underline',
         fontSize: 14,
     },
@@ -306,7 +307,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     backLinkText: {
-        color: "#888",
+        color: theme.colors.textLight,
         fontSize: 14,
     },
 });

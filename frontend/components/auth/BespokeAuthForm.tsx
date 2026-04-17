@@ -1,5 +1,6 @@
 import { useAuth } from "@/app/auth";
 import { authAPI } from "@/api/api";
+import { theme } from "@/constants/theme";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { RelativePathString, useRouter } from "expo-router";
 import {
@@ -287,7 +288,7 @@ export default function BespokeAuthForm({
                             {
                                 top: -80,
                                 left: -80,
-                                backgroundColor: "#567F4F20",
+                                backgroundColor: theme.colors.secondary + "20",
                                 width: 250,
                                 height: 250,
                             },
@@ -299,7 +300,7 @@ export default function BespokeAuthForm({
                             {
                                 bottom: -80,
                                 right: -80,
-                                backgroundColor: "#B3697920",
+                                backgroundColor: theme.colors.primary + "20",
                                 width: 300,
                                 height: 300,
                             },
@@ -311,7 +312,7 @@ export default function BespokeAuthForm({
                             {
                                 top: "40%",
                                 left: "20%",
-                                backgroundColor: "#E6C22915",
+                                backgroundColor: theme.colors.accent + "15",
                                 width: 150,
                                 height: 150,
                             },
@@ -328,7 +329,7 @@ export default function BespokeAuthForm({
                             transform: [{ rotate: "12deg" }],
                         }}
                     >
-                        <Rose size={180} color="#B36979" />
+                        <Rose size={180} color={theme.colors.primary} />
                     </View>
                     <View
                         style={{
@@ -338,12 +339,12 @@ export default function BespokeAuthForm({
                             opacity: 0.08,
                         }}
                     >
-                        <SquircleDashed size={120} color="#567F4F" />
+                        <SquircleDashed size={120} color={theme.colors.secondary} />
                     </View>
                     <View
                         style={{ position: "absolute", top: 150, right: 40, opacity: 0.06 }}
                     >
-                        <Snowflake size={90} color="#B36979" />
+                        <Snowflake size={90} color={theme.colors.primary} />
                     </View>
                     <View
                         style={{
@@ -353,7 +354,7 @@ export default function BespokeAuthForm({
                             opacity: 0.07,
                         }}
                     >
-                        <CloudSnow size={100} color="#567F4F" />
+                        <CloudSnow size={100} color={theme.colors.secondary} />
                     </View>
                 </View>
 
@@ -368,7 +369,7 @@ export default function BespokeAuthForm({
                     {isDesktop && (
                         <View style={styles.brandSection}>
                             <View style={styles.logoCornerDecoration}>
-                                <Flower size={100} color="#567F4F" opacity={0.2} />
+                                <Flower size={100} color={theme.colors.secondary} opacity={0.2} />
                             </View>
 
                             <View style={{ alignItems: "center", width: "100%" }}>
@@ -378,7 +379,7 @@ export default function BespokeAuthForm({
                                         style={[
                                             styles.logoText,
                                             {
-                                                color: "#B36979",
+                                                color: theme.colors.primary,
                                                 fontSize: 84,
                                                 transform: [{ translateX: -60 }],
                                                 lineHeight: 90,
@@ -393,7 +394,7 @@ export default function BespokeAuthForm({
                                         style={[
                                             styles.logoText,
                                             {
-                                                color: "#567F4F",
+                                                color: theme.colors.secondary,
                                                 fontSize: 56,
                                                 marginVertical: -15,
                                                 zIndex: 1
@@ -406,7 +407,7 @@ export default function BespokeAuthForm({
                                         style={[
                                             styles.logoText,
                                             {
-                                                color: "#567F4F",
+                                                color: theme.colors.secondary,
                                                 fontSize: 84,
                                                 transform: [{ translateX: 50 }],
                                                 lineHeight: 90,
@@ -431,7 +432,7 @@ export default function BespokeAuthForm({
                                     <View
                                         style={[
                                             styles.separatorLine,
-                                            { backgroundColor: "#567F4F" },
+                                            { backgroundColor: theme.colors.secondary },
                                         ]}
                                     />
                                 </View>
@@ -502,10 +503,10 @@ export default function BespokeAuthForm({
                                         style={{ width: 40, height: 40, marginRight: 8 }}
                                         resizeMode="contain"
                                     />
-                                    <Text style={[styles.logoTextMobile, { color: "#B36979" }]}>
+                                    <Text style={[styles.logoTextMobile, { color: theme.colors.primary }]}>
                                         Knot
                                     </Text>
-                                    <Text style={[styles.logoTextMobile, { color: "#567F4F" }]}>
+                                    <Text style={[styles.logoTextMobile, { color: theme.colors.secondary }]}>
                                         &Bloom
                                     </Text>
                                 </View>
@@ -616,14 +617,14 @@ export default function BespokeAuthForm({
                                                     focusedInput === "email" && styles.inputFocused,
                                                 ]}
                                                 placeholder="artisan@gmail.com"
-                                                placeholderTextColor="#999"
+                                                placeholderTextColor={theme.colors.textLight}
                                                 value={email}
                                                 onChangeText={setEmail}
                                                 keyboardType="email-address"
                                                 autoCapitalize="none"
                                                 onFocus={() => setFocusedInput("email")}
                                                 onBlur={() => setFocusedInput(null)}
-                                                selectionColor="#B36979"
+                                                selectionColor={theme.colors.primary}
                                                 returnKeyType="next"
                                                 onSubmitEditing={() => passwordInputRef.current?.focus()}
                                                 blurOnSubmit={false}
@@ -639,7 +640,7 @@ export default function BespokeAuthForm({
                                                             setAuthMethod('phone');
                                                             setFieldErrors({});
                                                         }}>
-                                                            <Text style={[styles.errorTextSmall, { color: '#B36979', textDecorationLine: 'underline' }]}>
+                                                            <Text style={[styles.errorTextSmall, { color: theme.colors.primary, textDecorationLine: 'underline' }]}>
                                                                 Looks like a phone number? Switch to Phone
                                                             </Text>
                                                         </TouchableOpacity>
@@ -656,13 +657,13 @@ export default function BespokeAuthForm({
                                                     focusedInput === "phone" && styles.inputFocused,
                                                 ]}
                                                 placeholder="+63 912 345 6789"
-                                                placeholderTextColor="#999"
+                                                placeholderTextColor={theme.colors.textLight}
                                                 value={phoneNumber}
                                                 onChangeText={setPhoneNumber}
                                                 keyboardType="phone-pad"
                                                 onFocus={() => setFocusedInput("phone")}
                                                 onBlur={() => setFocusedInput(null)}
-                                                selectionColor="#B36979"
+                                                selectionColor={theme.colors.primary}
                                                 returnKeyType="next"
                                                 onSubmitEditing={() => passwordInputRef.current?.focus()}
                                                 blurOnSubmit={false}
@@ -678,7 +679,7 @@ export default function BespokeAuthForm({
                                                             setAuthMethod('email');
                                                             setFieldErrors({});
                                                         }}>
-                                                            <Text style={[styles.errorTextSmall, { color: '#B36979', textDecorationLine: 'underline' }]}>
+                                                            <Text style={[styles.errorTextSmall, { color: theme.colors.primary, textDecorationLine: 'underline' }]}>
                                                                 Looks like an email? Switch to Email
                                                             </Text>
                                                         </TouchableOpacity>
@@ -716,13 +717,13 @@ export default function BespokeAuthForm({
                                                     { paddingRight: 50 },
                                                 ]}
                                                 placeholder="••••••••••"
-                                                placeholderTextColor="#999"
+                                                placeholderTextColor={theme.colors.textLight}
                                                 secureTextEntry={!showPassword}
                                                 value={password}
                                                 onChangeText={setPassword}
                                                 onFocus={() => setFocusedInput("password")}
                                                 onBlur={() => setFocusedInput(null)}
-                                                selectionColor="#B36979"
+                                                selectionColor={theme.colors.primary}
                                                 ref={passwordInputRef}
                                                 returnKeyType="go"
                                                 onSubmitEditing={handleAuth}
@@ -732,9 +733,9 @@ export default function BespokeAuthForm({
                                                 style={styles.eyeIcon}
                                             >
                                                 {showPassword ? (
-                                                    <EyeOff size={20} color="#999" />
+                                                    <EyeOff size={20} color={theme.colors.textLight} />
                                                 ) : (
-                                                    <Eye size={20} color="#999" />
+                                                    <Eye size={20} color={theme.colors.textLight} />
                                                 )}
                                             </Pressable>
                                         </View>
@@ -747,8 +748,8 @@ export default function BespokeAuthForm({
                                         <Switch
                                             value={agreeToTerms}
                                             onValueChange={setAgreeToTerms}
-                                            trackColor={{ false: "#e0e0e0", true: "#B36979" }}
-                                            thumbColor={"#fff"}
+                                            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                                            thumbColor={"white"}
                                         />
                                         <Text style={styles.checkboxLabel}>
                                             I agree to the{" "}
@@ -806,7 +807,7 @@ export default function BespokeAuthForm({
             >
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={{ flex: 1, backgroundColor: "#fff" }}
+                    style={{ flex: 1, backgroundColor: theme.colors.background }}
                 >
                     <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
                         {/* Close Button */}
@@ -814,15 +815,15 @@ export default function BespokeAuthForm({
                             onPress={() => setShowOtpModal(false)}
                             style={{ position: 'absolute', top: 50, left: 24, padding: 8 }}
                         >
-                            <Text style={{ fontSize: 16, color: '#666' }}>Cancel</Text>
+                            <Text style={{ fontSize: 16, color: theme.colors.textSecondary }}>Cancel</Text>
                         </TouchableOpacity>
 
-                        <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 12, color: "#333", textAlign: "center" }}>
+                        <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 12, color: theme.colors.text, textAlign: "center" }}>
                             Verification Code
                         </Text>
-                        <Text style={{ color: "#666", marginBottom: 32, textAlign: "center", fontSize: 16 }}>
+                        <Text style={{ color: theme.colors.textSecondary, marginBottom: 32, textAlign: "center", fontSize: 16 }}>
                             We have sent the verification code to{"\n"}
-                            <Text style={{ fontWeight: "bold", color: "#333" }}>{phoneNumber}</Text>
+                            <Text style={{ fontWeight: "bold", color: theme.colors.text }}>{phoneNumber}</Text>
                         </Text>
 
                         {/* Boxed Inputs */}
@@ -834,14 +835,14 @@ export default function BespokeAuthForm({
                                         width: 45,
                                         height: 55,
                                         borderWidth: 1,
-                                        borderColor: otpCode.length === index ? "#B36979" : "#e0e0e0",
+                                        borderColor: otpCode.length === index ? theme.colors.primary : theme.colors.border,
                                         borderRadius: 4,
                                         justifyContent: "center",
                                         alignItems: "center",
-                                        backgroundColor: "#f9f9f9",
+                                        backgroundColor: theme.colors.background,
                                     }}
                                 >
-                                    <Text style={{ fontSize: 24, fontWeight: "bold", color: "#333" }}>
+                                    <Text style={{ fontSize: 24, fontWeight: "bold", color: theme.colors.text }}>
                                         {otpCode[index] || ""}
                                     </Text>
                                 </View>
@@ -883,7 +884,7 @@ export default function BespokeAuthForm({
                             ]}
                         >
                             {otpLoading ? (
-                                <ActivityIndicator color="#fff" />
+                                <ActivityIndicator color="white" />
                             ) : (
                                 <Text style={styles.submitButtonText}>Verify</Text>
                             )}
@@ -892,12 +893,12 @@ export default function BespokeAuthForm({
                         {/* Resend Logic */}
                         <View style={{ marginTop: 24 }}>
                             {resendCooldown > 0 ? (
-                                <Text style={{ color: "#999", fontSize: 14 }}>
+                                <Text style={{ color: theme.colors.textLight, fontSize: 14 }}>
                                     Resend code in {resendCooldown}s
                                 </Text>
                             ) : (
                                 <TouchableOpacity onPress={handleResendOtp}>
-                                    <Text style={{ color: "#B36979", fontWeight: "bold", fontSize: 16 }}>
+                                    <Text style={{ color: theme.colors.primary, fontWeight: "bold", fontSize: 16 }}>
                                         Resend Code
                                     </Text>
                                 </TouchableOpacity>
@@ -913,7 +914,7 @@ export default function BespokeAuthForm({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#FCFAF9", // Warm off-white paper texture
+        backgroundColor: theme.colors.background, // Warm off-white paper texture
         minHeight: "100%",
     },
     blurCircle: {
@@ -966,12 +967,12 @@ const styles = StyleSheet.create({
     separatorLine: {
         height: 2,
         width: 60,
-        backgroundColor: "#B36979",
+        backgroundColor: theme.colors.primary,
         borderRadius: 2,
     },
     brandDescription: {
         fontSize: 18,
-        color: "#666",
+        color: theme.colors.textSecondary,
         lineHeight: 28,
         marginBottom: 32,
         fontFamily: Platform.OS === "web" ? "System" : undefined,
@@ -997,14 +998,14 @@ const styles = StyleSheet.create({
     featureTitle: {
         fontWeight: "bold",
         fontSize: 16,
-        color: "#333",
+        color: theme.colors.text,
     },
     featureSubtitle: {
         fontSize: 12,
-        color: "#888",
+        color: theme.colors.textLight,
     },
     errorTextSmall: {
-        color: "#EF4444",
+        color: theme.colors.error,
         fontSize: 12,
         marginTop: 4,
         marginLeft: 4,
@@ -1014,7 +1015,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     mobileTagline: {
-        color: "#888",
+        color: theme.colors.textLight,
         fontSize: 14,
         marginTop: 8,
     },
@@ -1024,7 +1025,7 @@ const styles = StyleSheet.create({
         padding: 24,
         borderWidth: 1,
         borderColor: "rgba(230, 230, 230, 0.6)",
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.05,
         shadowRadius: 20,
@@ -1039,7 +1040,7 @@ const styles = StyleSheet.create({
     },
     toggleContainer: {
         flexDirection: "row",
-        backgroundColor: "#F5F5F5",
+        backgroundColor: theme.colors.backgroundAlt,
         borderRadius: 4,
         padding: 4,
         marginBottom: 24,
@@ -1053,7 +1054,7 @@ const styles = StyleSheet.create({
     },
     toggleButtonActive: {
         backgroundColor: "white",
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -1061,15 +1062,15 @@ const styles = StyleSheet.create({
     },
     toggleText: {
         fontWeight: "500",
-        color: "#888",
+        color: theme.colors.textLight,
         fontSize: 15,
     },
     toggleTextActive: {
-        color: "#333",
+        color: theme.colors.text,
         fontWeight: "bold",
     },
     switchMethodText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -1083,13 +1084,13 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 4,
         borderWidth: 2,
-        borderColor: "#EEE",
+        borderColor: theme.colors.border,
         backgroundColor: "white",
         gap: 12,
     },
     socialButtonText: {
         fontWeight: "600",
-        color: "#444",
+        color: theme.colors.text,
         fontSize: 15,
         fontFamily: 'Quicksand'
     },
@@ -1101,17 +1102,17 @@ const styles = StyleSheet.create({
     dividerLine: {
         flex: 1,
         height: 1,
-        backgroundColor: "#EEEEEE",
+        backgroundColor: theme.colors.border,
     },
     dividerText: {
         marginHorizontal: 12,
-        color: "#AAA",
+        color: theme.colors.textLight,
         fontSize: 13,
     },
     label: {
         fontSize: 14,
         fontWeight: "600",
-        color: "#444",
+        color: theme.colors.text,
         marginBottom: 8,
     },
     typeButton: {
@@ -1119,37 +1120,37 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 16,
         borderWidth: 2,
-        borderColor: "#EEE",
-        backgroundColor: "#FAFAFA",
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.backgroundAlt,
         alignItems: "center",
     },
     typeButtonActive: {
-        borderColor: "#B36979",
-        backgroundColor: "#B369790D",
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.primary + "0D",
     },
     typeTitle: {
         fontWeight: "bold",
         fontSize: 16,
-        color: "#444",
+        color: theme.colors.text,
         marginBottom: 4,
     },
     typeSubtitle: {
         fontSize: 12,
-        color: "#888",
+        color: theme.colors.textLight,
     },
     input: {
         height: 52,
         borderWidth: 2,
-        borderColor: "#EEE",
+        borderColor: theme.colors.border,
         borderRadius: 4,
         paddingHorizontal: 16,
         fontSize: 16,
-        backgroundColor: "#FAFAFA",
-        color: "#333",
+        backgroundColor: theme.colors.backgroundAlt,
+        color: theme.colors.text,
         outlineStyle: 'none' as any
     },
     inputFocused: {
-        borderColor: "#B36979",
+        borderColor: theme.colors.primary,
         backgroundColor: "white",
     },
     eyeIcon: {
@@ -1159,7 +1160,7 @@ const styles = StyleSheet.create({
     },
     forgotPassword: {
         fontSize: 13,
-        color: "#B36979",
+        color: theme.colors.primary,
         fontWeight: "600",
     },
     checkboxContainer: {
@@ -1171,21 +1172,21 @@ const styles = StyleSheet.create({
     checkboxLabel: {
         flex: 1,
         fontSize: 13,
-        color: "#666",
+        color: theme.colors.textSecondary,
         lineHeight: 20,
     },
     linkText: {
-        color: "#B36979",
+        color: theme.colors.primary,
         fontWeight: "600",
     },
     submitButton: {
-        backgroundColor: "#B36979",
+        backgroundColor: theme.colors.primary,
         paddingVertical: 16,
         borderRadius: 4,
         alignItems: "center",
         justifyContent: "center",
         marginTop: 8,
-        shadowColor: "#B36979",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -1201,8 +1202,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     errorText: {
-        color: "#D32F2F",
-        backgroundColor: "#FFEBEE",
+        color: theme.colors.errorDark,
+        backgroundColor: theme.colors.errorLight,
         padding: 12,
         borderRadius: 8,
         fontSize: 14,

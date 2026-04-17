@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { router, Stack } from 'expo-router';
+import { theme } from '@/constants/theme';
 import { Search, ChevronLeft, History, X } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { productAPI } from '@/api/api';
@@ -84,16 +85,16 @@ export default function SearchPage() {
             {/* Header / Search Bar Area */}
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color="#333" />
+                    <ChevronLeft size={24} color={theme.colors.text} />
                 </Pressable>
 
                 <View style={styles.searchBar}>
-                    <Search size={18} color="#999" />
+                    <Search size={18} color={theme.colors.textLight} />
                     <TextInput
                         ref={inputRef}
                         style={styles.input}
                         placeholder="Search products..."
-                        placeholderTextColor="#999"
+                        placeholderTextColor={theme.colors.textLight}
                         value={searchQuery}
                         onChangeText={(text) => {
                             setSearchQuery(text);
@@ -104,7 +105,7 @@ export default function SearchPage() {
                     />
                     {searchQuery.length > 0 && (
                         <Pressable onPress={() => setSearchQuery('')}>
-                            <X size={18} color="#999" />
+                            <X size={18} color={theme.colors.textLight} />
                         </Pressable>
                     )}
                 </View>
@@ -127,11 +128,11 @@ export default function SearchPage() {
                                         submitSearch(term);
                                     }}
                                 >
-                                    <History size={16} color="#999" />
-                                    <Text style={{ fontSize: 14, color: '#333' }}>{term}</Text>
+                                    <History size={16} color={theme.colors.textLight} />
+                                    <Text style={{ fontSize: 14, color: theme.colors.text }}>{term}</Text>
                                 </Pressable>
                                 <Pressable onPress={(e) => removeFromHistory(e, term)} style={{ padding: 5 }}>
-                                    <X size={16} color="#ccc" />
+                                    <X size={16} color={theme.colors.border} />
                                 </Pressable>
                             </View>
                         ))}
@@ -140,7 +141,7 @@ export default function SearchPage() {
                                 style={{ marginTop: 10, alignItems: 'center', padding: 10 }}
                                 onPress={() => setHistoryLimit(prev => prev + 4)}
                             >
-                                <Text style={{ color: '#B36979', fontWeight: 'bold' }}>Load More</Text>
+                                <Text style={{ color: theme.colors.primary, fontWeight: 'bold' }}>Load More</Text>
                             </Pressable>
                         )}
                     </View>
@@ -155,8 +156,8 @@ export default function SearchPage() {
 
                         {(searchQuery && products.length === 0) ? (
                             <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
-                                <Search size={48} color="#f0f0f0" />
-                                <Text style={{ marginTop: 10, color: '#999' }}>No products found</Text>
+                                <Search size={48} color={theme.colors.subtle} />
+                                <Text style={{ marginTop: 10, color: theme.colors.textLight }}>No products found</Text>
                             </View>
                         ) : (
                             <SearchBarDropdown
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
         backgroundColor: 'white',
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: theme.colors.subtle,
         gap: 10,
     },
     backButton: {
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         borderRadius: 8,
         paddingHorizontal: 10,
         height: 40,
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: 16,
-        color: '#333',
+        color: theme.colors.text,
         height: '100%',
         borderWidth: 0,
         outlineStyle: 'none' as any,
@@ -212,7 +213,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 15,
     },
     historyItem: {
@@ -220,6 +221,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: theme.colors.subtle,
     },
 });

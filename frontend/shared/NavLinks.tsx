@@ -1,4 +1,5 @@
 import { navLinks } from "@/constants/categories";
+import { theme } from "@/constants/theme";
 import DropdownMenu, { DropdownItem } from "@/shared/DropdownMenu";
 import { Link, RelativePathString, usePathname } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
@@ -12,7 +13,7 @@ const styles = StyleSheet.create({
     },
     underline: {
         height: 2,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         marginTop: 4,
         width: 0,
         // @ts-ignore
@@ -77,7 +78,7 @@ export function NavLinks({ activeMenu, setActiveMenu }: { activeMenu: string | n
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                             <Text>Shop</Text>
                             <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
-                                <ChevronDown size={14} color="#333" />
+                                <ChevronDown size={14} color={theme.colors.text} />
                             </Animated.View>
                         </View>
                         <View style={[styles.underline, (hovered || isShopActive) && styles.underlineHovered]} />

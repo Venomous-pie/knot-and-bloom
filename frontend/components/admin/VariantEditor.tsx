@@ -1,4 +1,5 @@
 import { isMobile } from '@/constants/layout';
+import { theme } from '@/constants/theme';
 import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2, ImagePlus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
@@ -212,7 +213,7 @@ function VariantImagePicker({
     if (uploading) {
         return (
             <View style={variantImageStyles.container}>
-                <ActivityIndicator size="small" color="#B36979" />
+                <ActivityIndicator size="small" color={theme.colors.primary} />
                 <Text style={variantImageStyles.uploadingText}>Uploading...</Text>
             </View>
         );
@@ -223,7 +224,7 @@ function VariantImagePicker({
             <View style={variantImageStyles.previewContainer}>
                 <Image source={{ uri: imageUri }} style={variantImageStyles.preview} />
                 <Pressable style={variantImageStyles.removeButton} onPress={removeImage}>
-                    <Trash2 size={14} color="#fff" />
+                    <Trash2 size={14} color="white" />
                 </Pressable>
             </View>
         );
@@ -231,7 +232,7 @@ function VariantImagePicker({
 
     return (
         <Pressable style={variantImageStyles.addButton} onPress={pickImage}>
-            <ImagePlus size={20} color="#B36979" />
+            <ImagePlus size={20} color={theme.colors.primary} />
             <Text style={variantImageStyles.addText}>Add Image</Text>
         </Pressable>
     );
@@ -243,12 +244,12 @@ const variantImageStyles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         padding: 12,
-        backgroundColor: '#f9f9f9',
+        backgroundColor: theme.colors.background,
         borderRadius: 8,
     },
     uploadingText: {
         fontSize: 13,
-        color: '#888',
+        color: theme.colors.textLight,
     },
     previewContainer: {
         position: 'relative',
@@ -259,7 +260,7 @@ const variantImageStyles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
     },
     removeButton: {
         position: 'absolute',
@@ -268,7 +269,7 @@ const variantImageStyles = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 12,
-        backgroundColor: '#E53935',
+        backgroundColor: theme.colors.error,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -278,15 +279,15 @@ const variantImageStyles = StyleSheet.create({
         gap: 8,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        backgroundColor: '#FCF0F2',
+        backgroundColor: theme.colors.primaryLight,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#E8D5D9',
+        borderColor: theme.colors.primaryLight,
         borderStyle: 'dashed',
     },
     addText: {
         fontSize: 13,
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '500',
     },
 });
@@ -487,7 +488,7 @@ export default function VariantEditor({
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     <Pressable style={styles.outlineButton} onPress={() => setBulkModalVisible(true)}>
-                        <Layers size={16} color="#B36979" />
+                        <Layers size={16} color={theme.colors.primary} />
                         <Text style={styles.outlineButtonText}>Bulk Generate</Text>
                     </Pressable>
                     <Pressable style={styles.addButton} onPress={addVariant}>
@@ -535,13 +536,13 @@ export default function VariantEditor({
                                         style={styles.deleteButton}
                                         onPress={() => removeVariant(index)}
                                     >
-                                        <Trash2 size={16} color="#E53935" />
+                                        <Trash2 size={16} color={theme.colors.error} />
                                     </Pressable>
                                 )}
                                 {expandedIndex === index ? (
-                                    <ChevronUp size={20} color="#888" />
+                                    <ChevronUp size={20} color={theme.colors.textLight} />
                                 ) : (
-                                    <ChevronDown size={20} color="#888" />
+                                    <ChevronDown size={20} color={theme.colors.textLight} />
                                 )}
                             </View>
                         </Pressable>
@@ -558,7 +559,7 @@ export default function VariantEditor({
                                             value={variant.name}
                                             onChangeText={(text) => updateVariant(index, 'name', text)}
                                             placeholder="e.g. Small Red, Blue XL"
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={theme.colors.textLight}
                                             onFocus={() => setFocusedField(getFieldKey(index, 'name'))}
                                             onBlur={() => {
                                                 setFocusedField(null);
@@ -576,10 +577,10 @@ export default function VariantEditor({
                                                 disabled={generatingSkuIndex === index || !baseSku}
                                             >
                                                 {generatingSkuIndex === index ? (
-                                                    <ActivityIndicator size="small" color="#B36979" />
+                                                    <ActivityIndicator size="small" color={theme.colors.primary} />
                                                 ) : (
                                                     <View style={styles.autoGenButton}>
-                                                        <Sparkles size={12} color="#B36979" />
+                                                        <Sparkles size={12} color={theme.colors.primary} />
                                                         <Text style={styles.autoGenText}>Auto</Text>
                                                     </View>
                                                 )}
@@ -590,7 +591,7 @@ export default function VariantEditor({
                                             value={variant.sku}
                                             onChangeText={(text) => updateVariant(index, 'sku', text)}
                                             placeholder="Auto-generated"
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={theme.colors.textLight}
                                             onFocus={() => setFocusedField(getFieldKey(index, 'sku'))}
                                             onBlur={() => setFocusedField(null)}
                                         />
@@ -610,7 +611,7 @@ export default function VariantEditor({
                                             value={variant.stock}
                                             onChangeText={(text) => handleNumericInput(index, 'stock', text, false)}
                                             placeholder="0"
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={theme.colors.textLight}
                                             keyboardType="numeric"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'stock'))}
                                             onBlur={() => setFocusedField(null)}
@@ -630,7 +631,7 @@ export default function VariantEditor({
                                             value={variant.price}
                                             onChangeText={(text) => handleNumericInput(index, 'price', text, true)}
                                             placeholder={basePrice ? `Inherits ${basePrice}` : 'Optional'}
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={theme.colors.textLight}
                                             keyboardType="numeric"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'price'))}
                                             onBlur={() => setFocusedField(null)}
@@ -650,7 +651,7 @@ export default function VariantEditor({
                                             value={variant.discountPercentage}
                                             onChangeText={(text) => handleNumericInput(index, 'discountPercentage', text, false, 100)}
                                             placeholder={baseDiscount ? `Inherits ${baseDiscount}%` : '0'}
-                                            placeholderTextColor="#999"
+                                            placeholderTextColor={theme.colors.textLight}
                                             keyboardType="numeric"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'discount'))}
                                             onBlur={() => setFocusedField(null)}
@@ -721,7 +722,7 @@ export default function VariantEditor({
                                             ]}
                                             onPress={() => openColorPicker(index)}
                                         >
-                                            <Plus size={16} color="#666" />
+                                            <Plus size={16} color={theme.colors.textSecondary} />
                                         </Pressable>
                                     </ScrollView>
 
@@ -784,7 +785,7 @@ export default function VariantEditor({
                 onClose={() => setColorPickerVisible(false)}
                 onSelect={handleColorSelect}
                 onSaveToPalette={addToPalette}
-                initialColor={pickingVariantIndex !== null ? variants[pickingVariantIndex]?.color || '#B36979' : '#B36979'}
+                initialColor={pickingVariantIndex !== null ? variants[pickingVariantIndex]?.color || theme.colors.primary : theme.colors.primary}
             />
 
             <BulkGenerateModal
@@ -809,19 +810,19 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     subtitle: {
         fontSize: 13,
-        color: '#888',
+        color: theme.colors.textLight,
         fontFamily: 'Quicksand',
     },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
@@ -839,11 +840,11 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
         overflow: 'hidden',
     },
     variantCardExpanded: {
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
         borderWidth: 2,
         borderLeftWidth: 4,
     },
@@ -852,10 +853,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 14,
-        backgroundColor: '#fafafa',
+        backgroundColor: theme.colors.backgroundAlt,
     },
     cardHeaderExpanded: {
-        backgroundColor: '#FDF2F4',
+        backgroundColor: theme.colors.primaryLight,
     },
     cardHeaderLeft: {
         flexDirection: 'row',
@@ -866,16 +867,16 @@ const styles = StyleSheet.create({
         width: 12,
         height: 12,
         borderRadius: 6,
-        backgroundColor: '#ddd',
+        backgroundColor: theme.colors.border,
     },
     variantName: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
     },
     variantMeta: {
         fontSize: 12,
-        color: '#888',
+        color: theme.colors.textLight,
         marginTop: 2,
     },
     cardHeaderRight: {
@@ -890,7 +891,7 @@ const styles = StyleSheet.create({
         padding: 14,
         gap: 16,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: theme.colors.border,
     },
     fieldRow: {
         flexDirection: 'row',
@@ -905,7 +906,7 @@ const styles = StyleSheet.create({
     fieldLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#666',
+        color: theme.colors.textSecondary,
     },
     fieldLabelRow: {
         flexDirection: 'row',
@@ -919,30 +920,30 @@ const styles = StyleSheet.create({
     },
     autoGenText: {
         fontSize: 11,
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     input: {
         height: 44,
         borderWidth: 2,
-        borderColor: '#EEE',
+        borderColor: theme.colors.border,
         borderRadius: 12,
         paddingHorizontal: 14,
         fontSize: 14,
-        backgroundColor: '#FAFAFA',
-        color: '#333',
+        backgroundColor: theme.colors.backgroundAlt,
+        color: theme.colors.text,
         outlineStyle: 'none' as any,
     },
     inputFocused: {
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
         backgroundColor: 'white',
     },
     inputError: {
-        borderColor: '#EF4444',
+        borderColor: theme.colors.error,
     },
     errorText: {
         fontSize: 11,
-        color: '#EF4444',
+        color: theme.colors.error,
         marginTop: 2,
     },
     colorPicker: {
@@ -958,12 +959,12 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     colorSwatchSelected: {
-        borderColor: '#333',
+        borderColor: theme.colors.text,
         transform: [{ scale: 1.1 }],
     },
     colorSwatchLight: {
         borderWidth: 1,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
     },
     sizePicker: {
         flexDirection: 'row',
@@ -974,21 +975,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         borderWidth: 1,
         borderColor: 'transparent',
     },
     sizeChipSelected: {
-        backgroundColor: '#E8D5D9',
-        borderColor: '#B36979',
+        backgroundColor: theme.colors.primaryLight,
+        borderColor: theme.colors.primary,
     },
     sizeChipText: {
         fontSize: 12,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontWeight: '500',
     },
     sizeChipTextSelected: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     outlineButton: {
@@ -999,11 +1000,11 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
         backgroundColor: 'white',
     },
     outlineButtonText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontSize: 13,
         fontWeight: '600',
     },
@@ -1034,17 +1035,17 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 4,
-        color: '#111827',
+        color: theme.colors.text,
     },
     modalSubtitle: {
         fontSize: 14,
-        color: '#6B7280',
+        color: theme.colors.textSecondary,
         marginBottom: 16,
     },
     sectionLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#374151',
+        color: theme.colors.text,
         marginTop: 12,
         marginBottom: 8,
     },
@@ -1055,7 +1056,7 @@ const styles = StyleSheet.create({
     },
     helperLink: {
         fontSize: 12,
-        color: '#B36979',
+        color: theme.colors.primary,
         textDecorationLine: 'underline',
     },
     colorGrid: {
@@ -1071,29 +1072,29 @@ const styles = StyleSheet.create({
         paddingRight: 10,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: theme.colors.border,
         backgroundColor: '#fff',
     },
     colorOptionSelected: {
-        borderColor: '#B36979',
-        backgroundColor: '#FFF1F2',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.primaryLight,
     },
     colorCircle: {
         width: 16,
         height: 16,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
     },
     colorName: {
         fontSize: 12,
-        color: '#374151',
+        color: theme.colors.text,
     },
     checkMark: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
     },
     sizeGrid: {
         flexDirection: 'row',
@@ -1107,19 +1108,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: theme.colors.border,
         backgroundColor: '#fff',
     },
     sizeOptionSelected: {
-        borderColor: '#B36979',
-        backgroundColor: '#FFF1F2',
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.primaryLight,
     },
     sizeText: {
         fontSize: 13,
-        color: '#374151',
+        color: theme.colors.text,
     },
     sizeTextSelected: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: 'bold',
     },
     modalActions: {
@@ -1127,7 +1128,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginTop: 20,
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: theme.colors.border,
         paddingTop: 16,
     },
     modalCancel: {
@@ -1135,11 +1136,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     modalCancelText: {
-        color: '#6B7280',
+        color: theme.colors.textSecondary,
         fontWeight: '600',
     },
     modalGenerate: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
@@ -1152,24 +1153,24 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     disabledBtn: {
-        backgroundColor: '#E5E7EB',
+        backgroundColor: theme.colors.border,
     },
     helperText: {
         fontSize: 12,
-        color: '#888',
+        color: theme.colors.textLight,
         fontFamily: 'Quicksand',
     },
     customColorSwatch: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#ddd',
+        borderColor: theme.colors.border,
         borderStyle: 'dashed',
     },
     customColorText: {
         fontSize: 18,
-        color: '#666',
+        color: theme.colors.textSecondary,
         fontWeight: '300',
     },
     customColorInputRow: {
@@ -1178,7 +1179,7 @@ const styles = StyleSheet.create({
         gap: 12,
         marginTop: 8,
         padding: 8,
-        backgroundColor: '#f9f9f9',
+        backgroundColor: theme.colors.background,
         borderRadius: 8,
     },
     customColorInput: {
@@ -1190,7 +1191,7 @@ const styles = StyleSheet.create({
         height: 24,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
     },
     labelRow: {
         flexDirection: 'row',
@@ -1199,24 +1200,24 @@ const styles = StyleSheet.create({
     },
     paletteLabel: {
         fontSize: 11,
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     dividerVertical: {
         width: 1,
         height: 24,
-        backgroundColor: '#eee',
+        backgroundColor: theme.colors.border,
         marginHorizontal: 4,
     },
     selectedColorText: {
         flex: 1,
         fontSize: 14,
         fontFamily: 'monospace',
-        color: '#333',
+        color: theme.colors.text,
     },
     editColorText: {
         fontSize: 13,
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '500',
     },
 });

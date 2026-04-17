@@ -1,5 +1,6 @@
 import { accountAPI } from '@/api/api';
 import { useAuth } from '@/app/auth';
+import { theme } from '@/constants/theme';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -54,7 +55,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress, sho
                 {/* Clone element to override color if active, strictly optional but nice touch */}
                 {React.isValidElement(icon)
                     ? React.cloneElement(icon as React.ReactElement<any>, {
-                        color: isActive ? '#B36979' : (danger ? '#E53935' : '#555')
+                        color: isActive ? theme.colors.primary : (danger ? theme.colors.error : theme.colors.textSecondary)
                     })
                     : icon
                 }
@@ -74,7 +75,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress, sho
                     <Text style={styles.badgeText}>{badgeText}</Text>
                 </View>
             )}
-            <ChevronRight size={20} color={isActive ? "#B36979" : "#ccc"} />
+            <ChevronRight size={20} color={isActive ? theme.colors.primary : theme.colors.border} />
         </View>
     </Pressable>
 );
@@ -101,7 +102,7 @@ const StoreHealthItem: React.FC<StoreHealthProps> = ({ rating, sales, orders }) 
     <View style={styles.healthContainer}>
         <View style={styles.healthItem}>
             <View style={[styles.healthIcon, { backgroundColor: '#FFF3E0' }]}>
-                <Star size={16} color="#FF9800" fill="#FF9800" />
+                <Star size={16} color={theme.colors.warning} fill={theme.colors.warning} />
             </View>
             <View>
                 <Text style={styles.healthValue}>{Number(rating || 0).toFixed(1)}</Text>
@@ -111,7 +112,7 @@ const StoreHealthItem: React.FC<StoreHealthProps> = ({ rating, sales, orders }) 
         <View style={styles.healthDivider} />
         <View style={styles.healthItem}>
             <View style={[styles.healthIcon, { backgroundColor: '#E8F5E9' }]}>
-                <DollarSign size={16} color="#4CAF50" />
+                <DollarSign size={16} color={theme.colors.success} />
             </View>
             <View>
                 <Text style={styles.healthValue}>₱{Number(sales || 0).toLocaleString()}</Text>
@@ -170,7 +171,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
     if (authLoading || !user) {
         return (
             <View style={[styles.loadingContainer, style]}>
-                <ActivityIndicator size="large" color="#C88EA7" />
+                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
             </View>
         );
     }
@@ -203,7 +204,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         <Text style={styles.userEmail}>{user.email || user.phone}</Text>
                         {user.sellerStatus && (
                             <View style={[styles.statusBadge, { backgroundColor: user.sellerStatus === 'ACTIVE' ? '#E8F5E9' : '#FFF3E0' }]}>
-                                <Text style={[styles.statusText, { color: user.sellerStatus === 'ACTIVE' ? '#4CAF50' : '#FF9800' }]}>
+                                <Text style={[styles.statusText, { color: user.sellerStatus === 'ACTIVE' ? theme.colors.success : theme.colors.warning }]}>
                                     {user.sellerStatus === 'ACTIVE' ? '✓ Seller' : '⏳ Pending Seller'}
                                 </Text>
                             </View>
@@ -299,7 +300,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         onPress={() => router.push('/profile/notifications/settings' as RelativePathString)}
                     />
                     <MenuItem
-                        icon={<Trash2 size={20} color="#E53935" />}
+                        icon={<Trash2 size={20} color={theme.colors.error} />}
                         title="Request Account Deletion"
                         isActive={pathname === '/profile/account/delete-account'}
                         onPress={() => router.push('/profile/account/delete-account' as RelativePathString)}
@@ -339,7 +340,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
     },
     loadingContainer: {
         flex: 1,
@@ -361,14 +362,14 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         fontFamily: Platform.OS === 'web' ? 'Quicksand' : 'System',
     },
     logoutButton: {
         padding: 8,
     },
     logoutText: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     userCard: {
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 24,
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 10,
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: '#C88EA7',
+        backgroundColor: theme.colors.primaryLight,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
@@ -409,12 +410,12 @@ const styles = StyleSheet.create({
     userName: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 4,
     },
     userEmail: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.textSecondary,
     },
     statusBadge: {
         alignSelf: 'flex-start',
@@ -446,12 +447,12 @@ const styles = StyleSheet.create({
     warningTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#E65100',
+        color: theme.colors.warning,
         marginBottom: 2,
     },
     warningText: {
         fontSize: 12,
-        color: '#F57C00',
+        color: theme.colors.warning,
     },
     section: {
         marginBottom: 24,
@@ -459,7 +460,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#888',
+        color: theme.colors.textLight,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: 12,
@@ -469,7 +470,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 12,
         overflow: 'hidden',
-        shadowColor: "#000",
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 5,
@@ -481,15 +482,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: theme.colors.subtle,
     },
     menuItemActive: {
-        backgroundColor: '#F9F9F9', // Subtle gray instead of pink
+        backgroundColor: theme.colors.background, // Subtle gray instead of pink
         borderLeftWidth: 3,
-        borderLeftColor: '#B36979',
+        borderLeftColor: theme.colors.primary,
     },
     menuItemTextActive: {
-        color: '#B36979',
+        color: theme.colors.primary,
         fontWeight: '700',
     },
     menuItemLeft: {
@@ -504,22 +505,22 @@ const styles = StyleSheet.create({
     menuItemText: {
         fontSize: 14,
         fontWeight: '500',
-        color: '#333',
+        color: theme.colors.text,
     },
     menuSubtitle: {
         fontSize: 11,
-        color: '#888',
+        color: theme.colors.textLight,
         marginTop: 2,
     },
     dangerText: {
-        color: '#E53935',
+        color: theme.colors.error,
     },
     menuItemRight: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     badge: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         borderRadius: 10,
         paddingHorizontal: 8,
         paddingVertical: 2,
@@ -534,13 +535,13 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 8,
         borderBottomWidth: 1,
-        borderBottomColor: '#f0f0f0',
+        borderBottomColor: theme.colors.subtle,
     },
     healthContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
         borderRadius: 12,
         padding: 12,
     },
@@ -561,17 +562,17 @@ const styles = StyleSheet.create({
     healthValue: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#333',
+        color: theme.colors.text,
     },
     healthLabel: {
         fontSize: 10,
-        color: '#888',
+        color: theme.colors.textLight,
         fontWeight: '500',
     },
     healthDivider: {
         width: 1,
         height: 24,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: theme.colors.border,
         marginHorizontal: 4,
     },
 });

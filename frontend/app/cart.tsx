@@ -219,7 +219,7 @@ export default function CartPage() {
         return (
             <SafeAreaView style={styles.centerContainer}>
                 <Stack.Screen options={{ title: 'Shopping Cart', headerTitleAlign: 'center' }} />
-                <ActivityIndicator size="large" color="#B36979" />
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </SafeAreaView>
         );
     }

@@ -2,6 +2,7 @@ import { productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
 import { getNavbarMargin, isMobile } from "@/constants/layout";
+import { theme } from "@/constants/theme";
 import '@/global.css';
 import DropdownMenu from "@/shared/DropdownMenu";
 import MenuSideBar from "@/shared/MenuSideBar";
@@ -19,7 +20,7 @@ import MobileTabBar from "./MobileTabBar";
 
 const styles = StyleSheet.create({
     iconHovered: {
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         borderRadius: 5,
         padding: 5,
         color: 'white',
@@ -32,7 +33,7 @@ const styles = StyleSheet.create({
 
     underline: {
         height: 2,
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
         marginTop: 4,
         width: 0,
         // @ts-ignore
@@ -66,7 +67,7 @@ const styles = StyleSheet.create({
         maxWidth: 200,
         borderWidth: 1,
         borderColor: 'transparent',
-        backgroundColor: '#f0f0f0ff',
+        backgroundColor: theme.colors.subtle,
 
         borderRadius: 9999,
         flexDirection: 'row-reverse',
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     searchModalTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         flex: 1,
     },
 
@@ -124,12 +125,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 20,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.colors.subtle,
     },
 
     isFocused: {
         borderWidth: 1,
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
         borderStyle: 'solid'
     },
 
@@ -265,18 +266,18 @@ export default function NavBar() {
                     header: mobile ? () => {
                         if (isBespokePage) {
                             return (
-                                <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, justifyContent: 'space-between', backgroundColor: 'white' }}>
+                                <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.subtle, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, justifyContent: 'space-between', backgroundColor: theme.colors.surface }}>
                                     <Pressable onPress={() => router.back()} style={{ padding: 5 }}>
-                                        <ChevronLeft size={24} color="#333" />
+                                        <ChevronLeft size={24} color={theme.colors.text} />
                                     </Pressable>
                                     <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
-                                        <Text style={{ color: '#B36979', fontSize: 14 }}>Need Assistance?</Text>
+                                        <Text style={{ color: theme.colors.primary, fontSize: 14 }}>Need Assistance?</Text>
                                     </Pressable>
                                 </View>
                             );
                         }
                         return (
-                            <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+                            <View style={{ height: 60, width: '100%', borderBottomWidth: 1, borderBottomColor: theme.colors.subtle }}>
                                 <MobileNavbar
                                     cartCount={cartCount}
                                     setCartIconPosition={setCartIconPosition}
@@ -300,7 +301,7 @@ export default function NavBar() {
                                         />
                                         <Text style={{
                                             fontFamily: 'Lovingly',
-                                            color: '#B36979',
+                                            color: theme.colors.primary,
                                             marginTop: 10,
                                             fontWeight: 'bold',
                                             fontSize: 14
@@ -309,7 +310,7 @@ export default function NavBar() {
                                         </Text>
                                         <Text style={{
                                             fontFamily: 'Lovingly',
-                                            color: '#567F4F',
+                                            color: theme.colors.secondary,
                                             marginTop: 10,
                                             fontWeight: 'bold',
                                             fontSize: 14
@@ -333,7 +334,7 @@ export default function NavBar() {
                             return (
                                 <View style={{ marginRight: width * navMargin }}>
                                     <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
-                                        <Text style={{ color: '#B36979', fontSize: 14, textDecorationLine: 'none' }}>Need Assistance?</Text>
+                                        <Text style={{ color: theme.colors.primary, fontSize: 14, textDecorationLine: 'none' }}>Need Assistance?</Text>
                                     </Pressable>
                                 </View>
                             );
@@ -350,7 +351,7 @@ export default function NavBar() {
                                     ]}
                                     >
                                         <Pressable onPress={toggleDesktopSearch} style={{ padding: 10 }}>
-                                            <Search size={18} color={isFocused ? '#b4b4b4ff' : '#000000'} />
+                                            <Search size={18} color={isFocused ? theme.colors.textLight : theme.colors.shadow} />
                                         </Pressable>
 
                                         <Animated.View style={{ flex: 1, opacity: inputOpacity }}>
@@ -358,7 +359,7 @@ export default function NavBar() {
                                                 ref={desktopInputRef}
                                                 style={[styles.searchInput, { width: '100%', height: '100%', paddingLeft: 10 }]}
                                                 placeholder="Search for products..."
-                                                placeholderTextColor='#adadadff'
+                                                placeholderTextColor={theme.colors.textLight}
                                                 onFocus={() => setIsFocused(true)}
                                                 onBlur={() => {
                                                     setIsFocused(false);
@@ -395,12 +396,12 @@ export default function NavBar() {
                                 {(user) ? (
                                     <DropdownMenu
                                         items={[
-                                            ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString, icon: <LayoutDashboard size={16} color="#666" /> }] : []),
-                                            ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString, icon: <Store size={16} color="#666" /> }] : []),
-                                            { title: 'Edit Profile', href: '/profile' as RelativePathString, icon: <User size={16} color="#666" /> },
-                                            { title: 'My Orders', href: '/profile/orders' as RelativePathString, icon: <Package size={16} color="#666" /> },
+                                            ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString, icon: <LayoutDashboard size={16} color={theme.colors.textSecondary} /> }] : []),
+                                            ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString, icon: <Store size={16} color={theme.colors.textSecondary} /> }] : []),
+                                            { title: 'Edit Profile', href: '/profile' as RelativePathString, icon: <User size={16} color={theme.colors.textSecondary} /> },
+                                            { title: 'My Orders', href: '/profile/orders' as RelativePathString, icon: <Package size={16} color={theme.colors.textSecondary} /> },
                                             { type: 'separator' },
-                                            { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color="#666" /> },
+                                            { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color={theme.colors.textSecondary} /> },
                                         ]}
                                         style={({ hovered }) => [
                                             styles.iconButton,
@@ -420,7 +421,7 @@ export default function NavBar() {
                                         onPress={() => router.push("/auth/login" as RelativePathString)}
                                     >
                                         {({ hovered }) => (
-                                            <Text style={{ color: hovered ? 'white' : '#B36979' }}>Sign In</Text>
+                                            <Text style={{ color: hovered ? 'white' : theme.colors.primary }}>Sign In</Text>
                                         )}
                                     </Pressable>
                                 )}
@@ -449,7 +450,7 @@ export default function NavBar() {
                                                 position: 'absolute',
                                                 top: -5,
                                                 right: -5,
-                                                backgroundColor: '#B36979',
+                                                backgroundColor: theme.colors.primary,
                                                 borderRadius: 10,
                                                 minWidth: 16,
                                                 height: 16,

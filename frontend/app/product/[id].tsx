@@ -1,6 +1,7 @@
 import { cartAPI, productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
+import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/types/products";
 import { calculatePrice } from "@/utils/pricing";
 import { router, useLocalSearchParams, Stack } from "expo-router";
@@ -59,6 +60,7 @@ export default function ProductDetailPage() {
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [skuCopied, setSkuCopied] = useState(false);
+    const [recommendations, setRecommendations] = useState<Product[]>([]);
     
     const { user } = useAuth();
     const { refreshCart, triggerCartAnimation } = useCart();
@@ -93,6 +95,35 @@ export default function ProductDetailPage() {
 
         fetchProduct();
     }, [id]);
+
+    // --- Heuristic Recommendation Algorithm ---
+    // After the main product is loaded, fetch same-category products,
+    // filter out the current product, sort by bestselling, and cap at 10.
+    useEffect(() => {
+        if (!product) return;
+
+        const fetchRecommendations = async () => {
+            try {
+                const primaryCategory = product.categories?.[0];
+                const response = await productAPI.getProducts({
+                    category: primaryCategory,
+                    sort: 'bestselling',
+                    limit: 11, // Fetch 11 so we can filter out the current one and still have 10
+                });
+
+                const filtered = response.data.products
+                    .filter((p) => p.uid !== product.uid)
+                    .slice(0, 10);
+
+                setRecommendations(filtered);
+            } catch (e) {
+                // Silently fail — recommendations are non-critical
+                console.warn('Could not load recommendations', e);
+            }
+        };
+
+        fetchRecommendations();
+    }, [product?.uid]);
 
     const handleAddToCart = async () => {
         if (!product) return;
@@ -496,6 +527,33 @@ export default function ProductDetailPage() {
                     </View>
                 </View>
 
+                {/* ================= YOU MIGHT ALSO LIKE ================= */}
+                {recommendations.length > 0 && (
+                    <View style={styles.fullWidthSection}>
+                        <View style={styles.recommendationsHeader}>
+                            <View style={styles.recommendationsTitleRow}>
+                                <Text style={styles.recommendationsTitle}>You Might Also Like</Text>
+                                <Text style={styles.recommendationsSubtitle}>
+                                    {product.categories?.[0] ? `More from ${product.categories[0]}` : 'More picks for you'}
+                                </Text>
+                            </View>
+                        </View>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.recommendationsScrollContent}
+                        >
+                            {recommendations.map((rec) => (
+                                <ProductCard
+                                    key={rec.uid}
+                                    product={rec}
+                                    style={styles.recommendationCard}
+                                />
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
             </ScrollView>
         </SafeAreaView>
     );
@@ -535,6 +593,39 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: 60,
+    },
+    recommendationsHeader: {
+        paddingHorizontal: 16,
+        paddingTop: 24,
+        paddingBottom: 12,
+        maxWidth: 1200,
+        alignSelf: 'center',
+        width: '100%',
+    },
+    recommendationsTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 10,
+    },
+    recommendationsTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+    },
+    recommendationsSubtitle: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    recommendationsScrollContent: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        gap: 12,
+    },
+    recommendationCard: {
+        width: 180,
+        marginBottom: 0,
     },
     breadcrumbContainer: {
         paddingHorizontal: 16,

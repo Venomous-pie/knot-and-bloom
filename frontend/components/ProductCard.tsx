@@ -5,7 +5,7 @@ import { Link, RelativePathString, router } from "expo-router";
 import { Pin, Star } from "lucide-react-native";
 import React, { useState } from "react";
 import {
-    Image,
+    LayoutChangeEvent,
     Platform,
     Pressable,
     StyleProp,
@@ -13,7 +13,7 @@ import {
     Text,
     View,
     ViewStyle,
-    useWindowDimensions,
+    Image,
 } from "react-native";
 
 interface ProductCardProps {
@@ -26,7 +26,6 @@ interface ProductCardProps {
     style?: StyleProp<ViewStyle>;
 }
 
-// Theme colors from ProductPreview
 const COLORS = {
     primary: "#B36979",
     background: "#FFFFFF",
@@ -38,6 +37,42 @@ const COLORS = {
     error: "#E53935",
 };
 
+// --- Proportional Scale System ---
+// All values are expressed as a ratio of the card's measured width.
+// This guarantees consistent proportions no matter where the card is rendered.
+const SCALE = {
+    // Padding & spacing
+    padding: 0.07,       // 200px → 14px
+    gap: 0.030,          // 200px → 6px
+    gapSm: 0.015,        // 200px → 3px
+    // Font sizes
+    categoryFont: 0.050, // 200px → 10px
+    nameFont: 0.075,     // 200px → 15px
+    ratingFont: 0.055,   // 200px → 11px
+    sellerFont: 0.050,   // 200px → 10px
+    priceFont: 0.100,    // 200px → 20px
+    origPriceFont: 0.065,// 200px → 13px
+    // Icon sizes
+    iconSm: 0.060,       // 200px → 12px
+    iconMd: 0.075,       // 200px → 15px
+    // Badge
+    badgeFont: 0.055,    // 200px → 11px
+    badgePadH: 0.035,    // 200px → 7px
+    badgePadV: 0.018,    // 200px → 3.6px
+    // Action button
+    actionBtn: 0.145,    // 200px → 29px
+    actionRight: 0.055,  // 200px → 11px
+} as const;
+
+// Clamp a value to avoid extremes on very small or very large cards
+function clamp(value: number, min: number, max: number) {
+    return Math.min(Math.max(value, min), max);
+}
+
+function scale(width: number, ratio: number, min: number, max: number) {
+    return clamp(width * ratio, min, max);
+}
+
 export default function ProductCard({
     product,
     onPress,
@@ -47,29 +82,44 @@ export default function ProductCard({
     isPinned,
     style,
 }: ProductCardProps) {
-    const { width } = useWindowDimensions();
-    const isSmallScreen = width < 768;
-
-    const [internalWishlisted, setInternalWishlisted] = useState(false);
+    const [cardWidth, setCardWidth] = useState(200); // Default 200px until measured
     const [isHovered, setIsHovered] = useState(false);
+    const [internalWishlisted, setInternalWishlisted] = useState(false);
     const isWishlisted = externalWishlisted ?? internalWishlisted;
+
+    const handleLayout = (e: LayoutChangeEvent) => {
+        const w = e.nativeEvent.layout.width;
+        if (w > 0) setCardWidth(w);
+    };
+
+    const s = {
+        padding:       scale(cardWidth, SCALE.padding,     7,  20),
+        gap:           scale(cardWidth, SCALE.gap,         3,  10),
+        gapSm:         scale(cardWidth, SCALE.gapSm,       2,  5),
+        categoryFont:  scale(cardWidth, SCALE.categoryFont, 7, 12),
+        nameFont:      scale(cardWidth, SCALE.nameFont,    10,  18),
+        ratingFont:    scale(cardWidth, SCALE.ratingFont,   8,  13),
+        sellerFont:    scale(cardWidth, SCALE.sellerFont,   7,  12),
+        priceFont:     scale(cardWidth, SCALE.priceFont,   12,  24),
+        origPriceFont: scale(cardWidth, SCALE.origPriceFont, 9, 15),
+        iconSm:        scale(cardWidth, SCALE.iconSm,       9,  16),
+        iconMd:        scale(cardWidth, SCALE.iconMd,      11,  19),
+        badgeFont:     scale(cardWidth, SCALE.badgeFont,    8,  12),
+        badgePadH:     scale(cardWidth, SCALE.badgePadH,    4,  9),
+        badgePadV:     scale(cardWidth, SCALE.badgePadV,    2,  5),
+        actionBtn:     scale(cardWidth, SCALE.actionBtn,   20,  36),
+        actionRight:   scale(cardWidth, SCALE.actionRight,  7,  14),
+    };
 
     // Pricing logic
     const { lowestPriceVariant } = findLowestPrice(product);
-    // Default to lowest price variant for display
     const selectedVariant = lowestPriceVariant;
-
-    // Calculate display price based on simple logic similar to Preview
     const basePrice = parseFloat(product.basePrice);
     const variantPrice = selectedVariant?.price ? parseFloat(selectedVariant.price.toString()) : basePrice;
     const discountPct = selectedVariant?.discountPercentage || product.discountPercentage || 0;
-
     const finalPrice = variantPrice * (1 - discountPct / 100);
     const hasDiscount = discountPct > 0;
-
     const isAvailable = selectedVariant ? selectedVariant.stock > 0 : true;
-
-    // Images: specific variant image or default product image
     const displayImage = selectedVariant?.image || product.image;
 
     const handleWishlistPress = () => {
@@ -82,15 +132,13 @@ export default function ProductCard({
     };
 
     return (
-        <Link
-            href={`/product/${product.uid}` as RelativePathString}
-            asChild
-        >
+        <Link href={`/product/${product.uid}` as RelativePathString} asChild>
             <Pressable
+                onLayout={handleLayout}
                 style={StyleSheet.flatten([
                     styles.productCard,
                     style,
-                    (isHovered) && styles.productCardHovered,
+                    isHovered && styles.productCardHovered,
                 ])}
                 {...(Platform.OS === 'web' ? {
                     onMouseEnter: () => setIsHovered(true),
@@ -98,7 +146,7 @@ export default function ProductCard({
                 } : {})}
                 onPress={onPress}
             >
-                {/* Image Container */}
+                {/* Image */}
                 <View style={styles.imageContainer}>
                     {displayImage ? (
                         <Image
@@ -108,120 +156,178 @@ export default function ProductCard({
                         />
                     ) : (
                         <View style={styles.imagePlaceholder}>
-                            <Text style={styles.placeholderText}>No Image</Text>
+                            <Text style={{ color: "#999", fontSize: s.ratingFont }}>No Image</Text>
                         </View>
                     )}
 
-                    {/* Pending Badge */}
+                    {/* Pending Badge — top-left */}
                     {product.status === 'PENDING' && (
-                        <View style={[styles.discountBadge, { backgroundColor: '#FFA000', zIndex: 10 }]}>
-                            <Text style={styles.discountBadgeText}>Pending</Text>
+                        <View style={[styles.badge, {
+                            backgroundColor: '#FFA000',
+                            top: s.actionRight,
+                            left: s.actionRight,
+                            paddingHorizontal: s.badgePadH,
+                            paddingVertical: s.badgePadV,
+                        }]}>
+                            <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>Pending</Text>
                         </View>
                     )}
 
-                    {/* Discount Badge - Only if not pending, or stack? Let's hide discount if pending to avoid clutter, or show below */}
+                    {/* Status Badge — top-left, same level as heart */}
+                    {product.status !== 'PENDING' && (() => {
+                        if (product.soldCount > 20)
+                            return (
+                                <View style={[styles.badge, styles.badgeStatus, {
+                                    backgroundColor: '#FF6B6B',
+                                    top: s.actionRight,
+                                    left: s.actionRight,
+                                    paddingHorizontal: s.badgePadH,
+                                    paddingVertical: s.badgePadV,
+                                    flexDirection: 'row', alignItems: 'center', gap: 3,
+                                }]}>
+                                    <Ionicons name="flame" size={s.badgeFont} color="white" />
+                                    <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>Trending</Text>
+                                </View>
+                            );
+                        if (product.soldCount > 5)
+                            return (
+                                <View style={[styles.badge, {
+                                    backgroundColor: '#FF8C42',
+                                    top: s.actionRight,
+                                    left: s.actionRight,
+                                    paddingHorizontal: s.badgePadH,
+                                    paddingVertical: s.badgePadV,
+                                    flexDirection: 'row', alignItems: 'center', gap: 3,
+                                }]}>
+                                    <Ionicons name="flame" size={s.badgeFont} color="white" />
+                                    <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>Popular</Text>
+                                </View>
+                            );
+                        if (isAvailable && selectedVariant?.stock && selectedVariant.stock < 5)
+                            return (
+                                <View style={[styles.badge, {
+                                    backgroundColor: '#E0A800',
+                                    top: s.actionRight,
+                                    left: s.actionRight,
+                                    paddingHorizontal: s.badgePadH,
+                                    paddingVertical: s.badgePadV,
+                                    flexDirection: 'row', alignItems: 'center', gap: 3,
+                                }]}>
+                                    <Ionicons name="flash" size={s.badgeFont} color="white" />
+                                    <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>Last {selectedVariant.stock}</Text>
+                                </View>
+                            );
+                        if ((Date.now() - new Date(product.uploaded).getTime()) < 1000 * 60 * 60 * 24 * 7)
+                            return (
+                                <View style={[styles.badge, {
+                                    backgroundColor: COLORS.primary,
+                                    top: s.actionRight,
+                                    left: s.actionRight,
+                                    paddingHorizontal: s.badgePadH,
+                                    paddingVertical: s.badgePadV,
+                                    flexDirection: 'row', alignItems: 'center', gap: 3,
+                                }]}>
+                                    <Ionicons name="sparkles" size={s.badgeFont} color="white" />
+                                    <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>New</Text>
+                                </View>
+                            );
+                        return null;
+                    })()}
+
+                    {/* Discount Badge — bottom-left */}
                     {hasDiscount && product.status !== 'PENDING' && (
-                        <View style={styles.discountBadge}>
-                            <Text style={styles.discountBadgeText}>-{Math.round(discountPct)}%</Text>
+                        <View style={[styles.badge, {
+                            backgroundColor: COLORS.error,
+                            bottom: s.actionRight,
+                            left: s.actionRight,
+                            paddingHorizontal: s.badgePadH,
+                            paddingVertical: s.badgePadV,
+                        }]}>
+                            <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>-{Math.round(discountPct)}%</Text>
                         </View>
                     )}
 
-                    {/* Pin Button (Custom Action) */}
+                    {/* Pin Button */}
                     {onPinPress && (
                         <Pressable
                             style={({ pressed }) => [
                                 styles.actionButton,
-                                { right: 50 }, // Position to the left of wishlist
+                                {
+                                    right: s.actionRight + s.actionBtn + s.gapSm,
+                                    top: s.actionRight,
+                                    width: s.actionBtn,
+                                    height: s.actionBtn,
+                                    borderRadius: s.actionBtn / 2,
+                                },
                                 pressed && styles.actionButtonPressed,
-                                isPinned && styles.actionButtonActive
+                                isPinned && styles.actionButtonActive,
                             ]}
-                            onPress={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onPinPress();
-                            }}
+                            onPress={(e) => { e.preventDefault(); e.stopPropagation(); onPinPress(); }}
                         >
-                            <Pin size={16} fill={isPinned ? "white" : "none"} color={isPinned ? "white" : "#666"} />
+                            <Pin size={s.iconSm} fill={isPinned ? "white" : "none"} color={isPinned ? "white" : "#666"} />
                         </Pressable>
                     )}
 
-                    {/* Wishlist Button (Presaved from old card) */}
+                    {/* Wishlist Button — top-right */}
                     <Pressable
                         style={({ pressed }) => [
                             styles.actionButton,
-                            styles.wishlistButtonPosition, // right: 12
+                            {
+                                right: s.actionRight,
+                                top: s.actionRight,
+                                width: s.actionBtn,
+                                height: s.actionBtn,
+                                borderRadius: s.actionBtn / 2,
+                            },
                             pressed && styles.actionButtonPressed,
                         ]}
-                        onPress={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleWishlistPress();
-                        }}
+                        onPress={(e) => { e.preventDefault(); e.stopPropagation(); handleWishlistPress(); }}
                     >
                         <Ionicons
                             name={isWishlisted ? "heart" : "heart-outline"}
-                            size={18}
+                            size={s.iconMd}
                             color={isWishlisted ? COLORS.primary : "#999"}
                         />
                     </Pressable>
                 </View>
 
-                {/* Product Info */}
-                <View style={[styles.productInfo, isSmallScreen && styles.productInfoMobile]}>
-                    {/* Categories */}
+                {/* Product Info — compact, max 4 rows */}
+                <View style={{ padding: s.padding, gap: s.gap }}>
+
+                    {/* Row 1: Category */}
                     {product.categories?.length > 0 && (
-                        <Text style={[styles.categoryText, isSmallScreen && styles.categoryTextMobile]} numberOfLines={1}>
+                        <Text style={{
+                            fontSize: s.categoryFont,
+                            color: COLORS.muted,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                        }} numberOfLines={1}>
                             {product.categories.slice(0, 2).join(' • ')}
                         </Text>
                     )}
 
-                    {/* Name */}
-                    <Text style={[styles.productName, isSmallScreen && styles.productNameMobile]} numberOfLines={2}>
+                    {/* Row 2: Name */}
+                    <Text style={{
+                        fontSize: s.nameFont,
+                        fontWeight: "600",
+                        color: COLORS.text,
+                        fontFamily: "Quicksand",
+                        lineHeight: s.nameFont * 1.25,
+                    }} numberOfLines={2}>
                         {product.name}
                     </Text>
 
-                    {/* Marketing / Rating Row */}
-                    <View style={[styles.ratingRow, isSmallScreen && styles.ratingRowMobile]}>
-                        {product.soldCount > 5 ? (
-                            <>
-                                <Ionicons name="flame" size={isSmallScreen ? 12 : 14} color="#FF6B6B" />
-                                <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { color: "#FF6B6B", fontWeight: "600" }]}>
-                                    {product.soldCount > 20 ? "Trending" : `${product.soldCount} bought recently`}
-                                </Text>
-                            </>
-                        ) : isAvailable && selectedVariant?.stock && selectedVariant.stock < 5 ? (
-                            <>
-                                <Ionicons name="flash" size={isSmallScreen ? 12 : 14} color="#FFB800" />
-                                <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { color: "#E0A800", fontWeight: "600" }]}>
-                                    Only {selectedVariant.stock} left
-                                </Text>
-                            </>
-                        ) : (Date.now() - new Date(product.uploaded).getTime()) < 1000 * 60 * 60 * 24 * 7 ? (
-                            <>
-                                <Ionicons name="sparkles" size={isSmallScreen ? 12 : 14} color={COLORS.primary} />
-                                <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { color: COLORS.primary, fontWeight: "600" }]}>
-                                    New Arrival
-                                </Text>
-                            </>
-                        ) : (
-                            <Text style={[styles.ratingText, isSmallScreen && styles.ratingTextMobile, { marginLeft: 0, fontStyle: 'italic' }]}>
-                                {product.categories?.[0] || "Fresh Find"}
-                            </Text>
-                        )}
-                    </View>
-
-                    {/* Seller Attribution */}
+                    {/* Row 3: Seller only */}
                     {product.seller ? (
                         <Pressable
-                            style={styles.sellerContainer}
                             onPress={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 router.push(`/seller/${product.seller?.slug}` as RelativePathString);
                             }}
                         >
-                            <Text style={[styles.sellerText, isSmallScreen && styles.sellerTextMobile]}>
-                                Sold by <Text style={
+                            <Text style={{ fontSize: s.sellerFont, color: COLORS.muted }} numberOfLines={1}>
+                                <Text style={
                                     product?.seller?.name === 'Knot & Bloom'
                                         ? { fontWeight: '600', color: COLORS.primary }
                                         : { textDecorationLine: 'underline' }
@@ -229,36 +335,23 @@ export default function ProductCard({
                             </Text>
                         </Pressable>
                     ) : (
-                        <View style={styles.sellerContainer}>
-                            <Text style={[styles.sellerText, isSmallScreen && styles.sellerTextMobile]}>
-                                Sold by <Text style={{ fontWeight: '600', color: COLORS.primary }}>Knot & Bloom</Text>
-                            </Text>
-                        </View>
+                        <Text style={{ fontSize: s.sellerFont, fontWeight: '600', color: COLORS.primary }} numberOfLines={1}>
+                            Knot & Bloom
+                        </Text>
                     )}
 
-                    {/* Price */}
-                    <View style={[styles.priceRow, isSmallScreen && styles.priceRowMobile]}>
-                        <Text style={[styles.finalPrice, isSmallScreen && styles.finalPriceMobile]}>
+                    {/* Row 4: Price */}
+                    <View style={{ flexDirection: "row", alignItems: "baseline", gap: s.gap }}>
+                        <Text style={{ fontSize: s.priceFont, fontWeight: "700", color: COLORS.primary }}>
                             ₱{finalPrice.toFixed(2)}
                         </Text>
                         {hasDiscount && (
-                            <Text style={[styles.originalPrice, isSmallScreen && styles.originalPriceMobile]}>
+                            <Text style={{ fontSize: s.origPriceFont, color: "#999", textDecorationLine: "line-through" }}>
                                 ₱{variantPrice.toFixed(2)}
                             </Text>
                         )}
                     </View>
 
-                    {/* Stock Status */}
-                    <View style={[styles.stockRow, isSmallScreen && styles.stockRowMobile]}>
-                        <View style={[
-                            styles.stockIndicator,
-                            isSmallScreen && styles.stockIndicatorMobile,
-                            isAvailable ? styles.stockInStock : styles.stockOutOfStock
-                        ]} />
-                        <Text style={[styles.stockText, isSmallScreen && styles.stockTextMobile]}>
-                            {isAvailable ? 'In stock' : 'Out of stock'}
-                        </Text>
-                    </View>
                 </View>
             </Pressable>
         </Link>
@@ -299,30 +392,20 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    placeholderText: {
-        color: "#999",
-        fontSize: 14,
-    },
-    discountBadge: {
+    badge: {
         position: "absolute",
-        top: 12,
-        left: 12,
-        backgroundColor: COLORS.error,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
         borderRadius: 6,
     },
-    discountBadgeText: {
+    badgeText: {
         color: "white",
-        fontSize: 12,
         fontWeight: "700",
+    },
+    badgeStatus: {
+        // Status badges (Trending, New, etc.) have slightly rounded pill shape
+        borderRadius: 20,
     },
     actionButton: {
         position: "absolute",
-        top: 12,
-        width: 30,
-        height: 30,
-        borderRadius: 15,
         backgroundColor: "rgba(255, 255, 255, 0.9)",
         justifyContent: "center",
         alignItems: "center",
@@ -332,126 +415,10 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
     },
-    wishlistButtonPosition: {
-        right: 12,
-    },
     actionButtonPressed: {
         opacity: 0.8,
     },
     actionButtonActive: {
         backgroundColor: COLORS.primary,
-    },
-    productInfo: {
-        padding: 16,
-        gap: 8,
-    },
-    categoryText: {
-        fontSize: 11,
-        color: COLORS.muted,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-    },
-    productName: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: COLORS.text,
-        fontFamily: "Quicksand", // Assuming font is available per request
-        lineHeight: 22,
-    },
-    ratingRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-    },
-    ratingText: {
-        fontSize: 12,
-        color: COLORS.muted,
-        marginLeft: 4,
-    },
-    priceRow: {
-        flexDirection: "row",
-        alignItems: "baseline",
-        gap: 8,
-    },
-    finalPrice: {
-        fontSize: 20,
-        fontWeight: "700",
-        color: COLORS.primary,
-    },
-    originalPrice: {
-        fontSize: 14,
-        color: "#999",
-        textDecorationLine: "line-through",
-    },
-    stockRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        marginTop: 4,
-    },
-    stockIndicator: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    stockInStock: {
-        backgroundColor: COLORS.success,
-    },
-    stockOutOfStock: {
-        backgroundColor: COLORS.error,
-    },
-    stockText: {
-        fontSize: 12,
-        color: "#666",
-    },
-    sellerContainer: {
-        // Optional additional styling if needed
-    },
-    sellerText: {
-        fontSize: 11,
-        color: COLORS.muted,
-    },
-    // Mobile-specific styles
-    productInfoMobile: {
-        padding: 10,
-        gap: 4,
-    },
-    categoryTextMobile: {
-        fontSize: 9,
-    },
-    productNameMobile: {
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    ratingRowMobile: {
-        gap: 2,
-    },
-    ratingTextMobile: {
-        fontSize: 10,
-        marginLeft: 2,
-    },
-    sellerTextMobile: {
-        fontSize: 9,
-    },
-    priceRowMobile: {
-        gap: 6,
-    },
-    finalPriceMobile: {
-        fontSize: 16,
-    },
-    originalPriceMobile: {
-        fontSize: 11,
-    },
-    stockRowMobile: {
-        gap: 4,
-        marginTop: 2,
-    },
-    stockIndicatorMobile: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    stockTextMobile: {
-        fontSize: 10,
     },
 });

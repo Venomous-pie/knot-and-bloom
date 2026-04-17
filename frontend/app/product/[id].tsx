@@ -922,7 +922,7 @@ const styles = StyleSheet.create({
     },
     inlineAddToCartButton: {
         flex: 1,
-        backgroundColor: '#222222', // Solid dark button
+        backgroundColor: '#B36979', // Solid dark button
         height: 48,
         borderRadius: 8,
         justifyContent: 'center',

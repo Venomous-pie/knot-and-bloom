@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { SellerStatus } from '@prisma/client';
+import { SellerStatus } from '../../generated/prisma/client.js';
 import { Role } from '../types/authTypes.js';
 import type { AuthPayload } from '../types/authTypes.js';
 import prisma from '../utils/prismaUtils.js';

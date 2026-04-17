@@ -142,9 +142,11 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
     const [deletionStatus, setDeletionStatus] = useState<{ hasPendingDeletion: boolean; deletionScheduledFor?: string | null }>({ hasPendingDeletion: false });
 
     useEffect(() => {
-        refreshUser();
-        fetchDeletionStatus();
-    }, []);
+        if (user) {
+            refreshUser();
+            fetchDeletionStatus();
+        }
+    }, [user?.uid]);
 
     useEffect(() => {
         if (!user && !authLoading) {

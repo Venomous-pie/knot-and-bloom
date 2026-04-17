@@ -111,6 +111,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const refreshUser = async () => {
         try {
+            const currentToken = await AsyncStorage.getItem('authToken');
+            if (!currentToken) return;
+
             const response = await api.get('/customers/profile');
             const userData = response.data;
             if (userData) {

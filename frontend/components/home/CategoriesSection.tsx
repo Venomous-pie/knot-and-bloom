@@ -5,10 +5,10 @@ import { useRouter } from 'expo-router';
 import { Flower, Key, Gift, Panda } from 'lucide-react-native';
 
 const CATEGORIES = [
-  { id: 'stuffed-toys', title: 'STUFFED TOYS', count: '24 items', icon: Panda, bgColor: theme.colors.primaryLight, color: theme.colors.primaryDark },
-  { id: 'wire-flowers', title: 'WIRE FLOWERS', count: '18 items', icon: Flower, bgColor: theme.colors.secondaryLight, color: theme.colors.secondary },
-  { id: 'keychains', title: 'KEYCHAINS', count: '31 items', icon: Key, bgColor: theme.colors.backgroundAlt, color: theme.colors.textSecondary },
-  { id: 'gift-sets', title: 'GIFT SETS', count: '12 items', icon: Gift, bgColor: theme.colors.surface, color: theme.colors.textSecondary },
+  { id: 'mini-stuffed-toy', title: 'STUFFED TOYS', count: '24 items', icon: Panda, bgColor: theme.colors.primaryLight, color: theme.colors.primaryDark },
+  { id: 'fuzzy-wire-bouquet', title: 'WIRE FLOWERS', count: '18 items', icon: Flower, bgColor: theme.colors.secondaryLight, color: theme.colors.secondary },
+  { id: 'crochet-key-chains', title: 'KEYCHAINS', count: '31 items', icon: Key, bgColor: theme.colors.backgroundAlt, color: theme.colors.textSecondary },
+  { id: 'accessories', title: 'GIFT SETS', count: '12 items', icon: Gift, bgColor: theme.colors.surface, color: theme.colors.textSecondary },
 ];
 
 export default function CategoriesSection() {

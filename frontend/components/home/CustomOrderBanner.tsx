@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, useWindowDimensions, Image } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { Scissors } from 'lucide-react-native';
@@ -11,12 +11,12 @@ export default function CustomOrderBanner() {
   
   return (
     <View style={[styles.container, isMobile ? styles.containerMobile : styles.containerDesktop]}>
-      {/* Left Column: Image Placeholder */}
+      {/* Left Column: Image */}
       <View style={[styles.imageSection, isMobile ? styles.imageMobile : styles.imageDesktop]}>
-        <View style={styles.imagePlaceholder}>
-          <Scissors size={48} color={theme.colors.textLight} strokeWidth={1.5} />
-          <Text style={styles.imageText}>CRAFTING IMAGE</Text>
-        </View>
+        <Image 
+          source={require('@/assets/banner.jpeg')} 
+          style={styles.image} 
+        />
       </View>
 
       {/* Right Column: Editorial Text Block */}
@@ -57,8 +57,6 @@ const styles = StyleSheet.create({
   // Left Column Styles
   imageSection: {
     backgroundColor: theme.colors.backgroundAlt,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   imageMobile: {
     width: '100%',
@@ -67,16 +65,10 @@ const styles = StyleSheet.create({
   imageDesktop: {
     flex: 1,
   },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-  },
-  imageText: {
-    color: theme.colors.textLight,
-    fontWeight: theme.typography.weights.bold as any,
-    letterSpacing: 2,
-    fontSize: theme.typography.sizes.sm,
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   // Right Column Styles
   textSection: {

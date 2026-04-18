@@ -15,9 +15,9 @@ export const CheckoutAddressSection: React.FC<CheckoutAddressSectionProps> = ({
 }) => {
     return (
         <View style={styles.container}>
-            {/* Bespoke "Candy Cane" Border Top - Alternating Pink/Green */}
+            {/* Bespoke "Candy Cane" Border Top - Alternating Pink/Green with wavy/soft edges */}
             <View style={styles.topBorder}>
-                {[...Array(20)].map((_, i) => (
+                {[...Array(40)].map((_, i) => (
                     <View
                         key={i}
                         style={[
@@ -84,12 +84,16 @@ const styles = StyleSheet.create({
     },
     topBorder: {
         flexDirection: 'row',
-        height: 4,
+        height: 6,
         width: '100%',
+        gap: 6,
+        paddingHorizontal: 12,
+        marginTop: -1, // Pull slightly up so it looks attached
     },
     stripe: {
         flex: 1,
-        transform: [{ skewX: '-20deg' }],
+        borderRadius: 4,
+        transform: [{ skewX: '-30deg' }],
     },
     content: {
         padding: theme.spacing.lg,

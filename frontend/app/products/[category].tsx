@@ -2,7 +2,7 @@ import ProductCard from "@/components/ProductCard";
 import { categoryTitles } from "@/constants/categories";
 import { useProducts } from "@/hooks/useProducts";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, ChevronDown, SlidersHorizontal } from "lucide-react-native";
+import { ArrowLeft, ChevronDown, SlidersHorizontal, Check } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -12,6 +12,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     View,
     useWindowDimensions
 } from "react-native";
@@ -31,6 +32,11 @@ export default function ProductCategoryPage() {
     const router = useRouter();
     const [sortBy, setSortBy] = useState<SortOption>('newest');
     const [showSortMenu, setShowSortMenu] = useState(false);
+
+    // Sidebar Filters State
+    const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
     // Determine filter parameters based on category slug
     const filterParams = useMemo(() => {
@@ -56,9 +62,9 @@ export default function ProductCategoryPage() {
 
     const categoryTitle = category === 'all-products' ? 'All Products'
         : category === 'popular' ? 'Popular Products'
-        : category === 'new-arrival' ? 'New Arrivals'
-        : categoryTitles[category as string]
-        || category?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || "Products";
+            : category === 'new-arrival' ? 'New Arrivals'
+                : categoryTitles[category as string]
+                || category?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || "Products";
 
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
@@ -143,32 +149,34 @@ export default function ProductCategoryPage() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.pageWrapper}>
-                {/* Top Header Bar */}
+                {/* Breadcrumb & Controls Bar */}
                 <View style={styles.headerBar}>
                     <View style={styles.headerLeft}>
-                        <Pressable onPress={() => router.back()} style={styles.backButton}>
-                            <ArrowLeft size={20} color={theme.colors.textSecondary} />
-                        </Pressable>
-                        <View>
-                            <Text style={styles.title}>{categoryTitle}</Text>
+                        <Text style={styles.breadcrumbText}>
+                            <Text style={styles.breadcrumbLink} onPress={() => router.push('/' as any)}>Shop</Text>
+                            <Text style={styles.breadcrumbSeparator}> › </Text>
+                            <Text style={styles.breadcrumbCurrent}>{categoryTitle}</Text>
                             {!loading && (
-                                <Text style={styles.productCount}>
-                                    Showing {products.length} of {total} products
+                                <Text style={styles.breadcrumbCount}>
+                                    {' '}· {total} {total === 1 ? 'product' : 'products'}
                                 </Text>
                             )}
-                        </View>
+                        </Text>
                     </View>
 
-                    {/* Filter / Sort Controls */}
                     <View style={styles.headerRight}>
+                        <Pressable style={styles.filterButton}>
+                            <SlidersHorizontal size={14} color={theme.colors.text} />
+                            <Text style={styles.filterButtonText}>Filter</Text>
+                        </Pressable>
+                        
                         <View style={styles.sortWrapper}>
                             <Pressable
                                 style={styles.sortButton}
                                 onPress={() => setShowSortMenu(prev => !prev)}
                             >
-                                <SlidersHorizontal size={14} color={theme.colors.textSecondary} />
                                 <Text style={styles.sortButtonText}>{currentSortLabel}</Text>
-                                <ChevronDown size={14} color={theme.colors.textSecondary} />
+                                <ChevronDown size={14} color={theme.colors.text} />
                             </Pressable>
 
                             {showSortMenu && (
@@ -193,9 +201,91 @@ export default function ProductCategoryPage() {
                     </View>
                 </View>
 
-                {/* Main Grid */}
-                <View style={styles.mainContent}>
-                    {renderContent()}
+                {/* Main Content Layout */}
+                <View style={styles.mainLayout}>
+                    {/* Left Sidebar Filter (Desktop/Tablet) */}
+                    {width >= 768 && (
+                        <View style={styles.sidebar}>
+                            {/* Price Range */}
+                            <View style={styles.filterSection}>
+                                <Text style={styles.filterTitle}>PRICE RANGE</Text>
+                                <View style={styles.priceRow}>
+                                    <View style={styles.priceInputWrapper}>
+                                        <Text style={styles.currencySymbol}>₱</Text>
+                                        <TextInput 
+                                            style={styles.priceInput} 
+                                            keyboardType="numeric" 
+                                            placeholder="0"
+                                            placeholderTextColor={theme.colors.textLight}
+                                            value={priceRange.min}
+                                            onChangeText={v => setPriceRange(p => ({...p, min: v}))}
+                                        />
+                                    </View>
+                                    <Text style={styles.priceDivider}>-</Text>
+                                    <View style={styles.priceInputWrapper}>
+                                        <Text style={styles.currencySymbol}>₱</Text>
+                                        <TextInput 
+                                            style={styles.priceInput} 
+                                            keyboardType="numeric" 
+                                            placeholder="500"
+                                            placeholderTextColor={theme.colors.textLight}
+                                            value={priceRange.max}
+                                            onChangeText={v => setPriceRange(p => ({...p, max: v}))}
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* Category */}
+                            <View style={styles.filterSection}>
+                                <Text style={styles.filterTitle}>CATEGORY</Text>
+                                {['Crochet', 'Fuzzy Wire Art', 'Accessories', 'Hair Ties', 'Stuffed Toys'].map(cat => {
+                                    const isSelected = selectedCategories.includes(cat);
+                                    return (
+                                        <Pressable 
+                                            key={cat} 
+                                            style={styles.checkboxRow}
+                                            onPress={() => setSelectedCategories(prev => 
+                                                isSelected ? prev.filter(c => c !== cat) : [...prev, cat]
+                                            )}
+                                        >
+                                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                                {isSelected && <Check size={12} color="#fff" />}
+                                            </View>
+                                            <Text style={styles.checkboxLabel}>{cat}</Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+
+                            {/* Tags */}
+                            <View style={styles.filterSection}>
+                                <Text style={styles.filterTitle}>TAGS</Text>
+                                {['Trending', 'New arrival', 'Custom order'].map(tag => {
+                                    const isSelected = selectedTags.includes(tag);
+                                    return (
+                                        <Pressable 
+                                            key={tag} 
+                                            style={styles.checkboxRow}
+                                            onPress={() => setSelectedTags(prev => 
+                                                isSelected ? prev.filter(t => t !== tag) : [...prev, tag]
+                                            )}
+                                        >
+                                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                                {isSelected && <Check size={12} color="#fff" />}
+                                            </View>
+                                            <Text style={styles.checkboxLabel}>{tag}</Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Main Grid */}
+                    <View style={styles.mainContent}>
+                        {renderContent()}
+                    </View>
                 </View>
             </View>
         </SafeAreaView>
@@ -218,38 +308,53 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: theme.spacing.xl,
-        paddingVertical: theme.spacing.lg,
+        paddingVertical: theme.spacing.md,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
+        backgroundColor: theme.colors.background,
     },
     headerLeft: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    breadcrumbText: {
+        fontSize: theme.typography.sizes.sm,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing.md,
-        flex: 1,
     },
-    backButton: {
-        padding: theme.spacing.xs,
-        borderRadius: theme.borderRadius.full,
-        backgroundColor: theme.colors.backgroundAlt,
+    breadcrumbLink: {
+        color: theme.colors.textSecondary,
     },
-    title: {
-        fontSize: theme.typography.sizes['2xl'],
-        fontWeight: theme.typography.weights.bold as any,
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-        letterSpacing: -0.5,
-    },
-    productCount: {
-        fontSize: theme.typography.sizes.sm,
+    breadcrumbSeparator: {
         color: theme.colors.textLight,
-        marginTop: 2,
+    },
+    breadcrumbCurrent: {
+        color: theme.colors.text,
+        fontWeight: theme.typography.weights.medium as any,
+    },
+    breadcrumbCount: {
+        color: theme.colors.textLight,
     },
     headerRight: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.sm,
+    },
+    filterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.xs,
+        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+    },
+    filterButtonText: {
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.text,
+        fontWeight: theme.typography.weights.medium as any,
     },
     sortWrapper: {
         position: 'relative',
@@ -260,14 +365,14 @@ const styles = StyleSheet.create({
         gap: theme.spacing.xs,
         paddingVertical: theme.spacing.sm,
         paddingHorizontal: theme.spacing.md,
-        borderRadius: theme.borderRadius.full,
+        borderRadius: theme.borderRadius.md,
         borderWidth: 1,
         borderColor: theme.colors.border,
         backgroundColor: theme.colors.surface,
     },
     sortButtonText: {
         fontSize: theme.typography.sizes.sm,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text,
         fontWeight: theme.typography.weights.medium as any,
     },
     sortDropdown: {
@@ -297,6 +402,87 @@ const styles = StyleSheet.create({
     sortOptionTextActive: {
         color: theme.colors.primaryDark,
         fontWeight: theme.typography.weights.semibold as any,
+    },
+    mainLayout: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    sidebar: {
+        width: 280,
+        paddingTop: theme.spacing.xl,
+        paddingLeft: theme.spacing.xl,
+        paddingRight: theme.spacing.md,
+        gap: theme.spacing.md,
+    },
+    filterSection: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    filterTitle: {
+        fontSize: theme.typography.sizes.xs,
+        fontWeight: theme.typography.weights.bold as any,
+        color: theme.colors.textSecondary,
+        letterSpacing: 1,
+        marginBottom: theme.spacing.md,
+    },
+    priceRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+    },
+    priceInputWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: theme.borderRadius.sm,
+        paddingHorizontal: theme.spacing.sm,
+        backgroundColor: theme.colors.backgroundAlt,
+    },
+    currencySymbol: {
+        color: theme.colors.textLight,
+        fontSize: theme.typography.sizes.sm,
+        marginRight: theme.spacing.xs,
+    },
+    priceInput: {
+        flex: 1,
+        paddingVertical: theme.spacing.sm,
+        color: theme.colors.text,
+        fontSize: theme.typography.sizes.sm,
+        outlineStyle: 'none' as any,
+    },
+    priceDivider: {
+        color: theme.colors.textLight,
+        fontSize: theme.typography.sizes.sm,
+    },
+    checkboxRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        marginBottom: theme.spacing.md,
+    },
+    checkbox: {
+        width: 18,
+        height: 18,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.backgroundAlt,
+    },
+    checkboxSelected: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    checkboxLabel: {
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.text,
     },
     mainContent: {
         flex: 1,

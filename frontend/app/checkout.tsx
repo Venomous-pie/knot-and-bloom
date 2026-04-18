@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
-    LayoutAnimation,
+    Animated,
+    Easing,
     Modal,
     Pressable,
     ScrollView,
@@ -109,10 +110,83 @@ function CheckoutContent() {
     // UI Mode: 'checkout' | 'address_selection' | 'address_form'
     const [viewMode, setViewMode] = useState<'checkout' | 'address_selection' | 'address_form' | 'map_picker'>('checkout');
     // Address Form Mode
-    // Address Form Mode
     const [addrFormMode, setAddrFormMode] = useState<'create' | 'edit'>('create');
     const [editingAddr, setEditingAddr] = useState<Address | null>(null);
     const [isSavingAddr, setIsSavingAddr] = useState(false);
+
+    // Modal animation
+    const modalVisible = viewMode !== 'checkout';
+    const [modalMounted, setModalMounted] = useState(false);
+    const backdropAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(60)).current;
+    const scaleAnim = useRef(new Animated.Value(0.96)).current;
+
+    // Freeze the view mode while animating out
+    const lastViewModeRef = useRef(viewMode !== 'checkout' ? viewMode : 'address_selection');
+    if (viewMode !== 'checkout') {
+        lastViewModeRef.current = viewMode;
+    }
+    const displayMode = viewMode === 'checkout' ? lastViewModeRef.current : viewMode;
+
+    useEffect(() => {
+        if (modalVisible) {
+            // Reset values to initial state before mounting so reopening always
+            // starts from scratch (fixes stale-value bug on second open)
+            backdropAnim.setValue(0);
+            slideAnim.setValue(60);
+            scaleAnim.setValue(0.96);
+            setModalMounted(true);
+
+            // Defer animation by one tick so the Modal has committed to the DOM
+            // before we start animating (fixes race-condition flicker)
+            const id = setTimeout(() => {
+                Animated.parallel([
+                    Animated.timing(backdropAnim, {
+                        toValue: 1,
+                        duration: 220,
+                        easing: Easing.out(Easing.ease),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(slideAnim, {
+                        toValue: 0,
+                        duration: 280,
+                        easing: Easing.out(Easing.cubic),
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(scaleAnim, {
+                        toValue: 1,
+                        duration: 280,
+                        easing: Easing.out(Easing.cubic),
+                        useNativeDriver: true,
+                    }),
+                ]).start();
+            }, 0);
+            return () => clearTimeout(id);
+        } else {
+            // Guard: only animate out if the modal is actually mounted
+            if (!modalMounted) return;
+            Animated.parallel([
+                Animated.timing(backdropAnim, {
+                    toValue: 0,
+                    duration: 180,
+                    easing: Easing.in(Easing.ease),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 40,
+                    duration: 200,
+                    easing: Easing.in(Easing.ease),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scaleAnim, {
+                    toValue: 0.97,
+                    duration: 180,
+                    easing: Easing.in(Easing.ease),
+                    useNativeDriver: true,
+                }),
+            ]).start(() => setModalMounted(false));
+        }
+    }, [modalVisible]);
 
     // Payment method
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'card'>('cod');
@@ -316,123 +390,145 @@ function CheckoutContent() {
         else setViewMode('checkout');
     };
 
-    const renderAddressModal = () => (
-        <Modal
-            visible={viewMode !== 'checkout'}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={closeModal}
-        >
-            <Pressable style={styles.modalOverlay} onPress={closeModal}>
-                <Pressable
-                    style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}
-                    onPress={(e) => e.stopPropagation()}
+    const renderAddressModal = () => {
+        if (!modalMounted) return null;
+        return (
+            <Modal
+                visible={modalMounted}
+                animationType="none"
+                transparent={true}
+                onRequestClose={closeModal}
+            >
+                {/* Animated backdrop */}
+                <Animated.View
+                    style={[
+                        styles.modalOverlay,
+                        { opacity: backdropAnim },
+                    ]}
                 >
-                    {viewMode === 'address_selection' ? (
-                        <>
-                            <View style={styles.modalHeader}>
-                                <Text style={styles.modalTitle}>Select Address</Text>
-                                <Pressable onPress={() => setViewMode('checkout')}>
-                                    <Ionicons name="close" size={24} color={theme.colors.text} />
-                                </Pressable>
-                            </View>
-                            <ScrollView style={{ maxHeight: '100%' }} showsVerticalScrollIndicator={false}>
-                                <AddressSelector
-                                    addresses={addresses}
-                                    selectedId={selectedAddress?.uid ?? null}
-                                    onSelect={(id) => {
-                                        handleAddressSelect(id);
-                                        setViewMode('checkout');
-                                    }}
-                                    onEdit={(addr) => {
-                                        setEditingAddr(addr);
-                                        setAddrFormMode('edit');
-                                        setViewMode('address_form');
-                                    }}
-                                    onDelete={async (id) => {
-                                        await addressAPI.deleteAddress(id);
-                                        const newAddresses = await fetchAddresses();
+                    <Pressable style={StyleSheet.absoluteFill} onPress={closeModal} />
 
-                                        // If we deleted the currently selected address, pick a new one
-                                        if (selectedAddress?.uid === id) {
-                                            if (newAddresses && newAddresses.length > 0) {
-                                                const def = newAddresses.find((a: Address) => a.isDefault);
-                                                setSelectedAddress(def || newAddresses[0]);
-                                            } else {
-                                                setSelectedAddress(null);
+                    {/* Animated modal panel */}
+                    <Animated.View
+                        style={[
+                            styles.modalContent,
+                            isDesktop && styles.modalContentDesktop,
+                            {
+                                transform: [
+                                    { translateY: slideAnim },
+                                    { scale: scaleAnim },
+                                ],
+                            },
+                        ]}
+                    >
+                        {displayMode === 'address_selection' ? (
+                            <>
+                                <View style={styles.modalHeader}>
+                                    <Text style={styles.modalTitle}>Select Address</Text>
+                                    <Pressable onPress={() => setViewMode('checkout')} style={styles.modalCloseBtn}>
+                                        <Ionicons name="close" size={20} color={theme.colors.text} />
+                                    </Pressable>
+                                </View>
+                                <ScrollView style={{ maxHeight: '100%' }} showsVerticalScrollIndicator={false}>
+                                    <AddressSelector
+                                        addresses={addresses}
+                                        selectedId={selectedAddress?.uid ?? null}
+                                        onSelect={(id) => {
+                                            handleAddressSelect(id);
+                                            setViewMode('checkout');
+                                        }}
+                                        onEdit={(addr) => {
+                                            setEditingAddr(addr);
+                                            setAddrFormMode('edit');
+                                            setViewMode('address_form');
+                                        }}
+                                        onDelete={async (id) => {
+                                            await addressAPI.deleteAddress(id);
+                                            const newAddresses = await fetchAddresses();
+                                            if (selectedAddress?.uid === id) {
+                                                if (newAddresses && newAddresses.length > 0) {
+                                                    const def = newAddresses.find((a: Address) => a.isDefault);
+                                                    setSelectedAddress(def || newAddresses[0]);
+                                                } else {
+                                                    setSelectedAddress(null);
+                                                }
                                             }
-                                        }
-                                    }}
-                                    onSetDefault={async (id) => {
-                                        await addressAPI.setDefaultAddress(id);
-                                        fetchAddresses();
-                                    }}
-                                    onAddNew={() => {
-                                        setEditingAddr(null);
-                                        setAddrFormMode('create');
-                                        setViewMode('address_form');
-                                    }}
-                                    isLoading={loadingAddr}
+                                        }}
+                                        onSetDefault={async (id) => {
+                                            await addressAPI.setDefaultAddress(id);
+                                            fetchAddresses();
+                                        }}
+                                        onAddNew={() => {
+                                            setEditingAddr(null);
+                                            setAddrFormMode('create');
+                                            setViewMode('address_form');
+                                        }}
+                                        isLoading={loadingAddr}
+                                    />
+                                </ScrollView>
+                            </>
+                        ) : displayMode === 'address_form' ? (
+                            <>
+                                <View style={styles.modalHeader}>
+                                    <Pressable
+                                        onPress={() => setViewMode('address_selection')}
+                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                                    >
+                                        <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
+                                        <Text style={styles.modalTitle}>
+                                            {addrFormMode === 'create' ? 'Add Address' : 'Edit Address'}
+                                        </Text>
+                                    </Pressable>
+                                </View>
+                                <ScrollView showsVerticalScrollIndicator={false}>
+                                    <AddressForm
+                                        mode={addrFormMode}
+                                        initialData={editingAddr ? {
+                                            label: editingAddr.label ?? undefined,
+                                            fullName: editingAddr.fullName,
+                                            phone: editingAddr.phone,
+                                            streetAddress: editingAddr.streetAddress,
+                                            aptSuite: editingAddr.aptSuite ?? undefined,
+                                            region: editingAddr.region ?? undefined,
+                                            province: editingAddr.province ?? editingAddr.stateProvince ?? undefined,
+                                            city: editingAddr.city,
+                                            barangay: editingAddr.barangay ?? undefined,
+                                            postalCode: editingAddr.postalCode,
+                                            country: editingAddr.country,
+                                            isDefault: editingAddr.isDefault,
+                                        } : undefined}
+                                        onSave={async (data) => {
+                                            if (isSavingAddr) return;
+                                            setIsSavingAddr(true);
+                                            try {
+                                                if (addrFormMode === 'create') await addressAPI.createAddress(data);
+                                                else await addressAPI.updateAddress(editingAddr!.uid, data);
+                                                await fetchAddresses();
+                                                setViewMode('address_selection');
+                                            } catch (e) { Alert.alert('Error', 'Failed to save address.'); }
+                                            finally { setIsSavingAddr(false); }
+                                        }}
+                                        onCancel={() => setViewMode('address_selection')}
+                                        onOpenMap={() => setViewMode('map_picker')}
+                                        showSaveCheckbox
+                                        isSaving={isSavingAddr}
+                                        isFirstAddress={addresses.length === 0}
+                                    />
+                                </ScrollView>
+                            </>
+                        ) : (
+                            <View style={{ flex: 1 }}>
+                                <AddressMapPicker
+                                    onClose={() => setViewMode('address_form')}
+                                    onLocationSelect={handleMapLocationSelect}
                                 />
-                            </ScrollView>
-                        </>
-                    ) : viewMode === 'address_form' ? (
-                        <>
-                            <View style={styles.modalHeader}>
-                                <Pressable onPress={() => setViewMode('address_selection')} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-                                    <Text style={[styles.modalTitle, { marginLeft: 8 }]}>{addrFormMode === 'create' ? 'Add Address' : 'Edit Address'}</Text>
-                                </Pressable>
                             </View>
-                            <ScrollView showsVerticalScrollIndicator={false}>
-                                <AddressForm
-                                    mode={addrFormMode}
-                                    initialData={editingAddr ? {
-                                        label: editingAddr.label ?? undefined,
-                                        fullName: editingAddr.fullName,
-                                        phone: editingAddr.phone,
-                                        streetAddress: editingAddr.streetAddress,
-                                        aptSuite: editingAddr.aptSuite ?? undefined,
-                                        region: editingAddr.region ?? undefined,
-                                        province: editingAddr.province ?? editingAddr.stateProvince ?? undefined,
-                                        city: editingAddr.city,
-                                        barangay: editingAddr.barangay ?? undefined,
-                                        postalCode: editingAddr.postalCode,
-                                        country: editingAddr.country,
-                                        isDefault: editingAddr.isDefault,
-                                    } : undefined}
-                                    onSave={async (data) => {
-                                        if (isSavingAddr) return; // Prevent duplicate submissions
-                                        setIsSavingAddr(true);
-                                        try {
-                                            if (addrFormMode === 'create') await addressAPI.createAddress(data);
-                                            else await addressAPI.updateAddress(editingAddr!.uid, data);
-                                            await fetchAddresses();
-                                            setViewMode('address_selection');
-                                        } catch (e) { Alert.alert('Error', 'Failed to save'); }
-                                        finally { setIsSavingAddr(false); }
-                                    }}
-                                    onCancel={() => setViewMode('address_selection')}
-                                    onOpenMap={() => setViewMode('map_picker')}
-                                    showSaveCheckbox
-                                    isSaving={isSavingAddr}
-                                    isFirstAddress={addresses.length === 0}
-                                />
-                            </ScrollView>
-                        </>
-                    ) : (
-                        /* Map Picker View */
-                        <View style={{ flex: 1 }}>
-                            <AddressMapPicker
-                                onClose={() => setViewMode('address_form')}
-                                onLocationSelect={handleMapLocationSelect}
-                            />
-                        </View>
-                    )}
-                </Pressable>
-            </Pressable>
-        </Modal>
-    );
+                        )}
+                    </Animated.View>
+                </Animated.View>
+            </Modal>
+        );
+    };
 
     // Main Single Page Checkout View
     return (
@@ -442,7 +538,17 @@ function CheckoutContent() {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.headerContent}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable
+                        onPress={async () => {
+                            await cancelCheckout();
+                            if (router.canGoBack()) {
+                                router.back();
+                            } else {
+                                router.replace('/cart');
+                            }
+                        }}
+                        style={styles.backButton}
+                    >
                         <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
                         <Text style={styles.headerTitle}>Checkout</Text>
                     </Pressable>
@@ -672,11 +778,10 @@ const styles = StyleSheet.create({
         borderBottomColor: theme.colors.primary, // Explicitly override base style
     },
 
-    // Professional Free Shipping Styles
     // Modal (address modal)
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+        backgroundColor: 'rgba(0,0,0,0.55)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
@@ -685,24 +790,39 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.surface,
         borderRadius: 24,
         width: '100%',
+        maxWidth: 560,
         maxHeight: '90%',
-        padding: 24,
+        paddingHorizontal: 24,
+        paddingTop: 20,
+        paddingBottom: 28,
         ...theme.shadows.lg,
     },
     modalContentDesktop: {
-        width: 600,
+        width: 620,
+        maxWidth: 620,
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
     },
     modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 18,
+        fontWeight: '700',
         color: theme.colors.text,
         fontFamily: theme.typography.fontFamily,
+    },
+    modalCloseBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: theme.colors.subtle,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     errorToast: {

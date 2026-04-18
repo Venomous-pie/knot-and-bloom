@@ -153,7 +153,7 @@ export default function ProductCategoryPage() {
                 <View style={styles.headerBar}>
                     <View style={styles.headerLeft}>
                         <Text style={styles.breadcrumbText}>
-                            <Text style={styles.breadcrumbLink} onPress={() => router.push('/' as any)}>Shop</Text>
+                            <Text style={styles.breadcrumbLink} onPress={() => router.push('/' as any)}>Home</Text>
                             <Text style={styles.breadcrumbSeparator}> › </Text>
                             <Text style={styles.breadcrumbCurrent}>{categoryTitle}</Text>
                             {!loading && (
@@ -169,7 +169,7 @@ export default function ProductCategoryPage() {
                             <SlidersHorizontal size={14} color={theme.colors.text} />
                             <Text style={styles.filterButtonText}>Filter</Text>
                         </Pressable>
-                        
+
                         <View style={styles.sortWrapper}>
                             <Pressable
                                 style={styles.sortButton}
@@ -212,25 +212,25 @@ export default function ProductCategoryPage() {
                                 <View style={styles.priceRow}>
                                     <View style={styles.priceInputWrapper}>
                                         <Text style={styles.currencySymbol}>₱</Text>
-                                        <TextInput 
-                                            style={styles.priceInput} 
-                                            keyboardType="numeric" 
+                                        <TextInput
+                                            style={styles.priceInput}
+                                            keyboardType="numeric"
                                             placeholder="0"
                                             placeholderTextColor={theme.colors.textLight}
                                             value={priceRange.min}
-                                            onChangeText={v => setPriceRange(p => ({...p, min: v}))}
+                                            onChangeText={v => setPriceRange(p => ({ ...p, min: v }))}
                                         />
                                     </View>
                                     <Text style={styles.priceDivider}>-</Text>
                                     <View style={styles.priceInputWrapper}>
                                         <Text style={styles.currencySymbol}>₱</Text>
-                                        <TextInput 
-                                            style={styles.priceInput} 
-                                            keyboardType="numeric" 
+                                        <TextInput
+                                            style={styles.priceInput}
+                                            keyboardType="numeric"
                                             placeholder="500"
                                             placeholderTextColor={theme.colors.textLight}
                                             value={priceRange.max}
-                                            onChangeText={v => setPriceRange(p => ({...p, max: v}))}
+                                            onChangeText={v => setPriceRange(p => ({ ...p, max: v }))}
                                         />
                                     </View>
                                 </View>
@@ -242,10 +242,10 @@ export default function ProductCategoryPage() {
                                 {['Crochet', 'Fuzzy Wire Art', 'Accessories', 'Hair Ties', 'Stuffed Toys'].map(cat => {
                                     const isSelected = selectedCategories.includes(cat);
                                     return (
-                                        <Pressable 
-                                            key={cat} 
+                                        <Pressable
+                                            key={cat}
                                             style={styles.checkboxRow}
-                                            onPress={() => setSelectedCategories(prev => 
+                                            onPress={() => setSelectedCategories(prev =>
                                                 isSelected ? prev.filter(c => c !== cat) : [...prev, cat]
                                             )}
                                         >
@@ -264,10 +264,10 @@ export default function ProductCategoryPage() {
                                 {['Trending', 'New arrival', 'Custom order'].map(tag => {
                                     const isSelected = selectedTags.includes(tag);
                                     return (
-                                        <Pressable 
-                                            key={tag} 
+                                        <Pressable
+                                            key={tag}
                                             style={styles.checkboxRow}
-                                            onPress={() => setSelectedTags(prev => 
+                                            onPress={() => setSelectedTags(prev =>
                                                 isSelected ? prev.filter(t => t !== tag) : [...prev, tag]
                                             )}
                                         >

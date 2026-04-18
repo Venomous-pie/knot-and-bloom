@@ -35,7 +35,7 @@ export default function Footer() {
         {/* INFO LINKS */}
         <View style={styles.column}>
           <Text style={styles.title}>INFO LINKS</Text>
-          <Pressable onPress={() => router.push('/about')}>
+          <Pressable onPress={() => router.push('/about' as any)}>
             <Text style={styles.link}>About</Text>
           </Pressable>
           <Pressable onPress={() => router.push('/customer-service')}>

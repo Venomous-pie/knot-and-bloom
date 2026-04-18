@@ -2,70 +2,121 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
+import { Scissors } from 'lucide-react-native';
 
 export default function CustomOrderBanner() {
   const { width } = useWindowDimensions();
   const router = useRouter();
   const isMobile = width < 768;
-
+  
   return (
     <View style={[styles.container, isMobile ? styles.containerMobile : styles.containerDesktop]}>
-      <View style={styles.textContainer}>
-        <Text style={styles.title}>WANT SOMETHING MADE JUST FOR YOU?</Text>
-        <Text style={styles.subtitle}>CTA — request a custom order from our makers</Text>
+      {/* Left Column: Image Placeholder */}
+      <View style={[styles.imageSection, isMobile ? styles.imageMobile : styles.imageDesktop]}>
+        <View style={styles.imagePlaceholder}>
+          <Scissors size={48} color={theme.colors.textLight} strokeWidth={1.5} />
+          <Text style={styles.imageText}>CRAFTING IMAGE</Text>
+        </View>
       </View>
-      <Pressable
-        style={styles.button}
-        onPress={() => router.push('/customer-service')}
-      >
-        <Text style={styles.buttonText}>REQUEST CUSTOM</Text>
-      </Pressable>
+
+      {/* Right Column: Editorial Text Block */}
+      <View style={[styles.textSection, isMobile ? styles.textMobile : styles.textDesktop]}>
+        <View style={styles.textContent}>
+          <Text style={styles.title}>WANT SOMETHING MADE JUST FOR YOU?</Text>
+          <Text style={styles.subtitle}>
+            Work directly with our student makers to bring your unique ideas to life. From custom plushies to personalized floral arrangements.
+          </Text>
+          
+          <Pressable 
+            style={styles.button}
+            onPress={() => router.push('/customer-service')}
+          >
+            <Text style={styles.buttonText}>REQUEST CUSTOM ORDER</Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.primaryLight,
-    padding: theme.spacing.xl,
-    marginHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: theme.spacing.lg,
+    marginVertical: theme.spacing['2xl'],
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surface,
+    ...theme.shadows.md,
   },
   containerMobile: {
     flexDirection: 'column',
-    gap: theme.spacing.lg,
-    textAlign: 'center',
   },
   containerDesktop: {
     flexDirection: 'row',
+    minHeight: 400,
   },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold as any,
-    color: theme.colors.primaryDark,
-    marginBottom: theme.spacing.xs,
-  },
-  subtitle: {
-    fontSize: theme.typography.sizes.base,
-    color: theme.colors.primaryDark,
-  },
-  button: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.sm,
+  // Left Column Styles
+  imageSection: {
+    backgroundColor: theme.colors.backgroundAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  buttonText: {
+  imageMobile: {
+    width: '100%',
+    height: 250,
+  },
+  imageDesktop: {
+    flex: 1,
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  imageText: {
+    color: theme.colors.textLight,
+    fontWeight: theme.typography.weights.bold as any,
+    letterSpacing: 2,
+    fontSize: theme.typography.sizes.sm,
+  },
+  // Right Column Styles
+  textSection: {
+    backgroundColor: theme.colors.primaryDark,
+    justifyContent: 'center',
+  },
+  textMobile: {
+    padding: theme.spacing.xl,
+  },
+  textDesktop: {
+    flex: 1,
+    padding: theme.spacing['2xl'],
+  },
+  textContent: {
+    maxWidth: 400,
+  },
+  title: {
+    fontSize: theme.typography.sizes['2xl'],
+    fontWeight: theme.typography.weights.bold as any,
     color: theme.colors.surface,
+    marginBottom: theme.spacing.md,
+    lineHeight: 32,
+  },
+  subtitle: {
+    fontSize: theme.typography.sizes.base,
+    color: theme.colors.primaryLight,
+    marginBottom: theme.spacing.xl,
+    lineHeight: 24,
+  },
+  button: {
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    borderRadius: theme.borderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  buttonText: {
+    color: theme.colors.primaryDark,
     fontWeight: theme.typography.weights.bold as any,
     letterSpacing: 1,
+    fontSize: theme.typography.sizes.sm,
   }
 });

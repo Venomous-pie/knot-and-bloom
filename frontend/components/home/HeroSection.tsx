@@ -24,7 +24,7 @@ export default function HeroSection() {
           </Pressable>
           <Pressable
             style={[styles.button, styles.secondaryButton]}
-            onPress={() => router.push('/customer-service')} // Or a specific custom order route
+            onPress={() => router.push('/customer-service')}
           >
             <Text style={[styles.buttonText, styles.secondaryButtonText]}>CUSTOM ORDER</Text>
           </Pressable>

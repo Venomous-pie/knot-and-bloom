@@ -2,10 +2,11 @@ import { Product } from "@/types/products";
 import { findLowestPrice } from "@/utils/pricing";
 import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { Link, RelativePathString, router } from "expo-router";
-import { Pin, Star } from "lucide-react-native";
-import React, { useState } from "react";
+import { RelativePathString, router } from "expo-router";
+import { Pin, ShoppingCart } from "lucide-react-native";
+import React, { useRef, useState } from "react";
 import {
+    Animated,
     LayoutChangeEvent,
     Platform,
     Pressable,
@@ -78,6 +79,24 @@ export default function ProductCard({
     const [isHovered, setIsHovered] = useState(false);
     const [internalWishlisted, setInternalWishlisted] = useState(false);
     const isWishlisted = externalWishlisted ?? internalWishlisted;
+    const liftAnim = useRef(new Animated.Value(0)).current;
+    const quickViewAnim = useRef(new Animated.Value(0)).current;
+
+    const handleHoverIn = () => {
+        setIsHovered(true);
+        Animated.parallel([
+            Animated.spring(liftAnim, { toValue: -6, useNativeDriver: true, friction: 6 }),
+            Animated.timing(quickViewAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+        ]).start();
+    };
+
+    const handleHoverOut = () => {
+        setIsHovered(false);
+        Animated.parallel([
+            Animated.spring(liftAnim, { toValue: 0, useNativeDriver: true, friction: 6 }),
+            Animated.timing(quickViewAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+        ]).start();
+    };
 
     const handleLayout = (e: LayoutChangeEvent) => {
         const w = e.nativeEvent.layout.width;
@@ -123,8 +142,19 @@ export default function ProductCard({
         }
     };
 
+    const quickViewTranslateY = quickViewAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [12, 0],
+    });
+
     return (
-        <Link href={`/product/${product.uid}` as RelativePathString} asChild>
+        <Animated.View
+            style={{ transform: [{ translateY: liftAnim }] }}
+            {...(Platform.OS === 'web' ? {
+                onMouseEnter: handleHoverIn,
+                onMouseLeave: handleHoverOut,
+            } : {})}
+        >
             <Pressable
                 onLayout={handleLayout}
                 style={StyleSheet.flatten([
@@ -132,11 +162,7 @@ export default function ProductCard({
                     style,
                     isHovered && styles.productCardHovered,
                 ])}
-                {...(Platform.OS === 'web' ? {
-                    onMouseEnter: () => setIsHovered(true),
-                    onMouseLeave: () => setIsHovered(false),
-                } : {})}
-                onPress={onPress}
+                onPress={() => router.push(`/product/${product.uid}` as RelativePathString)}
             >
                 {/* Image */}
                 <View style={styles.imageContainer}>
@@ -281,6 +307,18 @@ export default function ProductCard({
                             color={isWishlisted ? theme.colors.primary : theme.colors.textLight}
                         />
                     </Pressable>
+                    {/* Quick View Overlay — slides up on hover */}
+                    {Platform.OS === 'web' && (
+                        <Animated.View style={[
+                            styles.quickViewOverlay,
+                            { opacity: quickViewAnim, transform: [{ translateY: quickViewTranslateY }] }
+                        ]}>
+                            <View style={styles.quickViewButton}>
+                                <ShoppingCart size={s.iconSm} color={theme.colors.surface} />
+                                <Text style={[styles.quickViewText, { fontSize: s.categoryFont + 1 }]}>Peek</Text>
+                            </View>
+                        </Animated.View>
+                    )}
                 </View>
 
                 {/* Product Info — compact, max 4 rows */}
@@ -291,10 +329,11 @@ export default function ProductCard({
                         <Text style={{
                             fontSize: s.categoryFont,
                             color: theme.colors.textLight,
-                            textTransform: "uppercase",
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.3,
                         }} numberOfLines={1}>
-                            {product.categories.slice(0, 2).join(' • ')}
+                            {product.categories.slice(0, 2).map(c =>
+                                c.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+                            ).join(' • ')}
                         </Text>
                     )}
 
@@ -346,7 +385,7 @@ export default function ProductCard({
 
                 </View>
             </Pressable>
-        </Link>
+        </Animated.View>
     );
 }
 
@@ -412,5 +451,28 @@ const styles = StyleSheet.create({
     },
     actionButtonActive: {
         backgroundColor: theme.colors.primary,
+    },
+    quickViewOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 10,
+        alignItems: 'center',
+    },
+    quickViewButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: theme.colors.primaryDark,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: theme.borderRadius.full,
+        ...theme.shadows.sm,
+    },
+    quickViewText: {
+        color: theme.colors.surface,
+        fontWeight: theme.typography.weights.semibold as any,
+        letterSpacing: 0.5,
     },
 });

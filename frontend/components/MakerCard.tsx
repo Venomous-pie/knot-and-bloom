@@ -12,10 +12,13 @@ interface MakerCardProps {
 export default function MakerCard({ maker }: MakerCardProps) {
     const router = useRouter();
 
-    const displayName = maker.sellerStoreName || maker.name || 'Anonymous Maker';
-    const slug = maker.sellerSlug || maker.uid?.toString();
-    const rating = maker.sellerRating ? parseFloat(maker.sellerRating.toString()).toFixed(1) : 'New';
-    const totalSales = maker.sellerTotalSales || 0;
+    // Support both User-joined seller fields and direct Seller model fields
+    const sellerObj: any = maker;
+    const displayName = sellerObj.name || sellerObj.sellerStoreName || 'Anonymous Maker';
+    const slug = sellerObj.slug || sellerObj.sellerSlug || sellerObj.uid?.toString();
+    const avatar = sellerObj.logo || sellerObj.avatar;
+    const rating = sellerObj.rating || sellerObj.sellerRating ? parseFloat((sellerObj.rating || sellerObj.sellerRating).toString()).toFixed(1) : 'New';
+    const totalSales = sellerObj.totalSales || sellerObj.sellerTotalSales || 0;
 
     const handlePress = () => {
         if (slug) {
@@ -38,8 +41,8 @@ export default function MakerCard({ maker }: MakerCardProps) {
             <View style={styles.content}>
                 <View style={styles.headerRow}>
                     <View style={styles.avatarContainer}>
-                        {maker.avatar ? (
-                            <Image source={{ uri: maker.avatar }} style={styles.avatar} />
+                        {avatar ? (
+                            <Image source={{ uri: avatar }} style={styles.avatar} />
                         ) : (
                             <UserIcon size={32} color={theme.colors.textLight} />
                         )}

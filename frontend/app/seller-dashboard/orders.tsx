@@ -88,8 +88,7 @@ export default function SellerOrders() {
             }
             const isAuthorized = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
             if (!isAuthorized) {
-                Alert.alert("Unauthorized", "You must be an approved seller to access this dashboard.");
-                router.replace('/profile');
+                router.replace('/');
             }
         }
     }, [user, authLoading]);

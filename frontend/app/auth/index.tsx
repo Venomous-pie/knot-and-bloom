@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const loginWithGoogle = async (data: { token?: string, accessToken?: string }) => {
         try {
             const response = await authAPI.loginWithGoogle(data);
-            const { token: authToken, customer, data: legacyUser } = response.data;
+            const { token: authToken, customer, data: legacyUser, isNewUser } = response.data;
             const user = customer || legacyUser;
 
             if (authToken && user) {

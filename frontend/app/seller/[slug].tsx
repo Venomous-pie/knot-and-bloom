@@ -1332,6 +1332,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         height: 44,
         gap: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.primary,
     },
     searchInput: {
         flex: 1,

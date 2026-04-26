@@ -1,4 +1,4 @@
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RelativePathString, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -23,6 +23,68 @@ import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/admin/ImageCropperModal';
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from '@/constants/theme';
+
+const ImageUploadSection = ({
+    type,
+    imageUrl,
+    onPress,
+    isUploading,
+}: {
+    type: 'logo' | 'banner';
+    imageUrl: string;
+    onPress: () => void;
+    isUploading: boolean;
+}) => {
+    const aspectRatio = type === 'logo' ? 1 : 16 / 9;
+    const title = type === 'logo' ? 'Shop Logo' : 'Shop Banner';
+    const subtitle = type === 'logo'
+        ? 'Square image, recommended 400x400px'
+        : 'Wide image, recommended 1600x900px';
+
+    return (
+        <View style={styles.imageUploadSection}>
+            <Text style={styles.label}>{title}</Text>
+            <Text style={styles.sublabel}>{subtitle} (Optional)</Text>
+
+            {imageUrl ? (
+                <View style={styles.imagePreviewContainer}>
+                    <Image
+                        source={{ uri: imageUrl }}
+                        style={[
+                            styles.imagePreview,
+                            { aspectRatio }
+                        ]}
+                        resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                        style={styles.changeImageButton}
+                        onPress={onPress}
+                        disabled={isUploading}
+                    >
+                        <Text style={styles.changeImageButtonText}>
+                            {isUploading ? 'Uploading...' : 'Change Image'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <TouchableOpacity
+                    style={styles.uploadButton}
+                    onPress={onPress}
+                    disabled={isUploading}
+                >
+                    {isUploading ? (
+                        <ActivityIndicator color={theme.colors.primaryLight} />
+                    ) : (
+                        <>
+                            <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.textSecondary} />
+                            <Text style={styles.uploadButtonText}>Upload {title}</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+};
 
 export default function SellerApplyPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
@@ -222,66 +284,7 @@ export default function SellerApplyPage() {
         }
     };
 
-    const ImageUploadSection = ({
-        type,
-        imageUrl,
-        onPress
-    }: {
-        type: 'logo' | 'banner';
-        imageUrl: string;
-        onPress: () => void;
-    }) => {
-        const isUploading = uploadingImage === type;
-        const aspectRatio = type === 'logo' ? 1 : 16 / 9;
-        const title = type === 'logo' ? 'Shop Logo' : 'Shop Banner';
-        const subtitle = type === 'logo'
-            ? 'Square image, recommended 400x400px'
-            : 'Wide image, recommended 1600x900px';
 
-        return (
-            <View style={styles.imageUploadSection}>
-                <Text style={styles.label}>{title}</Text>
-                <Text style={styles.sublabel}>{subtitle} (Optional)</Text>
-
-                {imageUrl ? (
-                    <View style={styles.imagePreviewContainer}>
-                        <Image
-                            source={{ uri: imageUrl }}
-                            style={[
-                                styles.imagePreview,
-                                { aspectRatio }
-                            ]}
-                            resizeMode="cover"
-                        />
-                        <TouchableOpacity
-                            style={styles.changeImageButton}
-                            onPress={onPress}
-                            disabled={isUploading}
-                        >
-                            <Text style={styles.changeImageButtonText}>
-                                {isUploading ? 'Uploading...' : 'Change Image'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <TouchableOpacity
-                        style={styles.uploadButton}
-                        onPress={onPress}
-                        disabled={isUploading}
-                    >
-                        {isUploading ? (
-                            <ActivityIndicator color={theme.colors.primaryLight} />
-                        ) : (
-                            <>
-                                <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.textSecondary} />
-                                <Text style={styles.uploadButtonText}>Upload {title}</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                )}
-            </View>
-        );
-    };
 
     const renderStep1 = () => (
         <View>
@@ -320,12 +323,14 @@ export default function SellerApplyPage() {
                 type="logo"
                 imageUrl={logoUrl}
                 onPress={() => handlePickImage('logo')}
+                isUploading={uploadingImage === 'logo'}
             />
 
             <ImageUploadSection
                 type="banner"
                 imageUrl={bannerUrl}
                 onPress={() => handlePickImage('banner')}
+                isUploading={uploadingImage === 'banner'}
             />
         </View>
     );
@@ -909,15 +914,15 @@ const styles = StyleSheet.create({
         fontWeight: "600",
     },
     nextButton: {
-        backgroundColor: theme.colors.text, // Darker for high contrast
+        backgroundColor: theme.colors.primaryDark,
         padding: 16,
         borderRadius: 8,
         alignItems: "center",
-        flex: 1,
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        flex: 2,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
     },
     fullWidthButton: {
         flex: 1,
@@ -927,7 +932,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     submitButton: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: theme.colors.primaryDark,
         padding: 16,
         borderRadius: 8,
         alignItems: "center",
@@ -942,7 +947,9 @@ const styles = StyleSheet.create({
         transform: [{ scale: 0.99 }],
     },
     submitButtonDisabled: {
-        opacity: 0.7,
+        opacity: 0.5,
+        backgroundColor: theme.colors.border, // More grayed out
+        shadowOpacity: 0,
     },
     submitButtonText: {
         color: "white",
@@ -980,7 +987,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.surface,
     },
     checkboxChecked: {
-        backgroundColor: theme.colors.primaryLight,
+        backgroundColor: theme.colors.primaryDark,
         borderColor: theme.colors.primaryLight,
     },
     checkmark: {

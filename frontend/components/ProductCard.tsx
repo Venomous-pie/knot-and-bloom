@@ -1,5 +1,5 @@
 import { Product } from "@/types/products";
-import { useWishlist } from "@/app/context/WishlistContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { findLowestPrice } from "@/utils/pricing";
 import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";

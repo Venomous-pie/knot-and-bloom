@@ -1,4 +1,4 @@
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/shared/Navbar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';

@@ -1,5 +1,5 @@
 import { orderAPI } from '@/api/api';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';
 import { RelativePathString, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';

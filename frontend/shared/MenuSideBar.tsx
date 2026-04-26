@@ -1,4 +1,4 @@
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { isMobile } from "@/constants/layout";
 import { theme } from "@/constants/theme";
 import { SidebarNavLinks } from "@/shared/SidebarNavLinks";

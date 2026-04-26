@@ -1,7 +1,7 @@
 import { categoryTitles } from '@/constants/categories';
 import { isMobile } from '@/constants/layout';
 import { theme } from '@/constants/theme';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, ArrowRight, Check, ChevronLeft, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {

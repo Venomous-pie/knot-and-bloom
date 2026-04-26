@@ -1,7 +1,7 @@
 import { productAPI } from "@/api/api";
-import { useAuth } from "@/app/auth";
-import { useCart } from "@/app/context/CartContext";
-import { useWishlist } from "@/app/context/WishlistContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import { getNavbarMargin, isMobile } from "@/constants/layout";
 import { theme } from "@/constants/theme";
 import '@/global.css';

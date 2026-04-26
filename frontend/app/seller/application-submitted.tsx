@@ -1,4 +1,4 @@
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { RelativePathString, useRouter } from "expo-router";
 import React from "react";
 import {

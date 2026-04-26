@@ -1,6 +1,6 @@
 import { addressAPI, Address, AddressInput } from '@/api/api';
 import { AddressCard } from '@/components/checkout/AddressCard';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {

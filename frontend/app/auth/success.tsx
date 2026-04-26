@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AuthSuccess() {
     const { token, error } = useLocalSearchParams<{ token: string, error: string }>();

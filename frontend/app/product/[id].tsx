@@ -1,6 +1,6 @@
 import { cartAPI, productAPI } from "@/api/api";
-import { useAuth } from "@/app/auth";
-import { useCart } from "@/app/context/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/types/products";
 import { calculatePrice } from "@/utils/pricing";

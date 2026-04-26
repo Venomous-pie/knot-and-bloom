@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck, Camera, Pin, PinOff, Edit2, Save, Search, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { theme } from '@/constants/theme';
 
 import MenuSideBar from "@/shared/MenuSideBar";

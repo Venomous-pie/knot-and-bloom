@@ -1,4 +1,4 @@
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { authAPI } from "@/api/api";
 import { theme } from "@/constants/theme";
 import GoogleAuthButton from "@/components/GoogleAuthButton";

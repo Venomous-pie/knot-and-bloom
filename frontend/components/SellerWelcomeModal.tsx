@@ -1,5 +1,5 @@
 import { sellerAPI } from "@/api/api";
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";

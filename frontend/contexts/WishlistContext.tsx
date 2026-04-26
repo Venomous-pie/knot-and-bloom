@@ -1,5 +1,5 @@
 import { wishlistAPI } from '@/api/api';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface WishlistContextType {
@@ -17,8 +17,6 @@ const WishlistContext = createContext<WishlistContextType>({
 });
 
 export const useWishlist = () => useContext(WishlistContext);
-
-export default function WishlistProviderScreen() { return null; }
 
 export const WishlistProvider = ({ children }: { children: React.ReactNode }) => {
     const { user } = useAuth();

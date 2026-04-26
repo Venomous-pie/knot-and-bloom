@@ -1,4 +1,4 @@
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, Slot, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';

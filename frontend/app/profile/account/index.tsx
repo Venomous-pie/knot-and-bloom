@@ -1,5 +1,5 @@
 import { customerAPI } from '@/api/api';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';

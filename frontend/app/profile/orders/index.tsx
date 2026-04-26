@@ -1,6 +1,6 @@
 import { orderAPI, cartAPI } from '@/api/api';
-import { useCart } from '@/app/context/CartContext';
-import { useAuth } from '@/app/auth';
+import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';
 import * as Clipboard from 'expo-clipboard';
 import { RelativePathString, useRouter } from 'expo-router';

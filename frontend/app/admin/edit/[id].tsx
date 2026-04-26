@@ -1,5 +1,5 @@
 import { productAPI } from "@/api/api";
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import ProductFormWizard, { ProductFormData } from "@/components/admin/ProductFormWizard";
 import { VariantData } from "@/components/admin/VariantEditor";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";

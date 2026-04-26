@@ -1,5 +1,5 @@
 import { notificationAPI, NotificationSettings } from '@/api/api';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {

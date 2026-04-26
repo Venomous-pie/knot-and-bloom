@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert, Modal, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard } from 'lucide-react-native';
 import Navbar from '@/shared/Navbar';
 

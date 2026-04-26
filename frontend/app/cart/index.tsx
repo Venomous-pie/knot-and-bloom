@@ -1,6 +1,6 @@
 import { cartAPI } from "@/api/api";
-import { useAuth } from "@/app/auth";
-import { useCart } from "@/app/context/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { CartItem as CartItemType } from "@/types/cart";
 import { router, Stack } from "expo-router";
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";

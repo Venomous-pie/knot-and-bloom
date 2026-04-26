@@ -1,5 +1,5 @@
 import { productAPI } from "@/api/api";
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useProducts } from "@/hooks/useProducts";
 import { Product } from "@/types/products";
 import { useFocusEffect, useRouter } from "expo-router";

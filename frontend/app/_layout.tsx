@@ -1,6 +1,6 @@
-import { AuthProvider } from "@/app/auth";
-import { CartProvider } from "@/app/context/CartContext";
-import { WishlistProvider } from "@/app/context/WishlistContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
+import { WishlistProvider } from "@/contexts/WishlistContext";
 import AuthToast from "@/components/AuthToast";
 import CartAnimationOverlay from "@/components/CartAnimationOverlay";
 import OnboardingManager from "@/components/OnboardingManager";

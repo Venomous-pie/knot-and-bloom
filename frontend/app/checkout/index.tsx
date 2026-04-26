@@ -17,14 +17,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Truck } from 'lucide-react-native';
 
-import { CheckoutProvider, useCheckout } from '@/app/context/_CheckoutContext';
-import { useAuth } from '@/app/auth';
+import { CheckoutProvider, useCheckout } from '@/contexts/CheckoutContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { addressAPI } from '@/api/api';
 import AddressSelector from '@/components/checkout/AddressSelector';
 import AddressForm from '@/components/checkout/AddressForm';
 import { Address } from '@/components/checkout/AddressCard';
 import { theme } from '@/constants/theme';
-import { FREE_SHIPPING_THRESHOLD } from './cart';
+import { FREE_SHIPPING_THRESHOLD } from '../cart';
 
 import { CheckoutAddressSection } from '@/components/checkout/CheckoutAddressSection';
 import { CheckoutProductList } from '@/components/checkout/CheckoutProductList';

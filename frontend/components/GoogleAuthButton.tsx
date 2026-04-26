@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-nat
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Svg, Path } from 'react-native-svg';
-import { useAuth } from '../app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 WebBrowser.maybeCompleteAuthSession();
 

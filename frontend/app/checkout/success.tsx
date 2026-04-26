@@ -7,7 +7,7 @@ import { isMobile } from '@/constants/layout';
 import { useEffect, useState } from 'react';
 import { productAPI } from '@/api/api';
 import { Product } from '@/types/products';
-import { useCart } from '@/app/context/CartContext';
+import { useCart } from '@/contexts/CartContext';
 
 export default function CheckoutSuccessPage() {
     const router = useRouter();

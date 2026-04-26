@@ -1,5 +1,5 @@
 
-import { useAuth } from "@/app/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import SellerWelcomeModal from "@/components/SellerWelcomeModal";
 import React, { useEffect, useState } from "react";
 

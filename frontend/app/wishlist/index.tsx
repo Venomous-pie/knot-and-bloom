@@ -1,6 +1,6 @@
 import { wishlistAPI } from '@/api/api';
-import { useAuth } from '@/app/auth';
-import { useWishlist } from '@/app/context/WishlistContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useWishlist } from '@/contexts/WishlistContext';
 import ProductCard from '@/components/ProductCard';
 import { theme } from '@/constants/theme';
 import { Product } from '@/types/products';

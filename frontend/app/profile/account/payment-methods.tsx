@@ -1,5 +1,5 @@
 import { paymentMethodAPI, PaymentMethod, PaymentMethodType, PaymentMethodInput } from '@/api/api';
-import { useAuth } from '@/app/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, useRouter } from 'expo-router';
 import { CreditCard, Plus } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';

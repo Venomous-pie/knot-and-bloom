@@ -382,8 +382,7 @@ export default function BespokeAuthForm({
                                                 color: theme.colors.primary,
                                                 fontSize: 84,
                                                 transform: [{ translateX: -60 }],
-                                                lineHeight: 90,
-                                                marginBottom: -25,
+                                                lineHeight: 130,
                                                 zIndex: 2
                                             },
                                         ]}
@@ -396,7 +395,7 @@ export default function BespokeAuthForm({
                                             {
                                                 color: theme.colors.secondary,
                                                 fontSize: 56,
-                                                marginVertical: -15,
+                                                lineHeight: 60,
                                                 zIndex: 1
                                             },
                                         ]}
@@ -409,9 +408,8 @@ export default function BespokeAuthForm({
                                             {
                                                 color: theme.colors.secondary,
                                                 fontSize: 84,
-                                                transform: [{ translateX: 50 }],
-                                                lineHeight: 90,
-                                                marginTop: -25
+                                                transform: [{ translateX: 60 }],
+                                                lineHeight: 200,
                                             },
                                         ]}
                                     >

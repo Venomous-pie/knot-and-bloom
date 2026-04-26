@@ -25,8 +25,14 @@ export default function CategoriesSection() {
     return (
       <Pressable 
         key={cat.id} 
-        style={[styles.card, { backgroundColor: cat.bgColor }, style]}
-        onPress={() => router.push(`/search?category=${cat.id}`)}
+        style={({ pressed, hovered }: any) => [
+          styles.card, 
+          { backgroundColor: cat.bgColor }, 
+          style,
+          hovered && { transform: [{ scale: 1.02 }], shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
+          pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+        ]}
+        onPress={() => router.push(`/search?category=${cat.id}` as any)}
       >
         {/* Background Pattern */}
         <View style={StyleSheet.absoluteFill}>

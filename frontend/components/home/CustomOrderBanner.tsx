@@ -28,7 +28,11 @@ export default function CustomOrderBanner() {
           </Text>
           
           <Pressable 
-            style={styles.button}
+            style={({ pressed, hovered }: any) => [
+              styles.button,
+              hovered && { backgroundColor: theme.colors.subtle, transform: [{ scale: 1.02 }] },
+              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
+            ]}
             onPress={() => router.push('/customer-service')}
           >
             <Text style={styles.buttonText}>REQUEST CUSTOM ORDER</Text>

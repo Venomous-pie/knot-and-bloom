@@ -103,14 +103,24 @@ export default function HeroSection() {
 
         <View style={styles.buttonContainer}>
           <Pressable
-            style={[styles.button, styles.primaryButton]}
+            style={({ pressed, hovered }: any) => [
+              styles.button,
+              styles.primaryButton,
+              hovered && { backgroundColor: theme.colors.primaryDark, transform: [{ scale: 1.02 }] },
+              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
+            ]}
             onPress={() => router.push('/products/all-products' as any)}
           >
             <ShoppingBag size={18} color={theme.colors.surface} style={{ marginRight: theme.spacing.sm }} />
             <Text style={[styles.buttonText, styles.primaryButtonText]}>SHOP NOW</Text>
           </Pressable>
           <Pressable
-            style={[styles.button, styles.secondaryButton]}
+            style={({ pressed, hovered }: any) => [
+              styles.button,
+              styles.secondaryButton,
+              hovered && { backgroundColor: theme.colors.subtle, transform: [{ scale: 1.02 }] },
+              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
+            ]}
             onPress={() => router.push('/customer-service')}
           >
             <Text style={[styles.buttonText, styles.secondaryButtonText]}>CUSTOM ORDER</Text>

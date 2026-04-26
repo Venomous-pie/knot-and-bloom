@@ -19,7 +19,8 @@ export default function MakersDirectory() {
                 // Fetch all active sellers from the public API
                 const response = await sellerAPI.getActiveSellers();
                 // We expect response.data to be an array of sellers
-                const sellersList = Array.isArray(response.data) ? response.data : (response.data?.sellers || []);
+                const data = response.data as any;
+                const sellersList = Array.isArray(data) ? data : (data?.sellers || []);
                 
                 setMakers(sellersList);
             } catch (error) {

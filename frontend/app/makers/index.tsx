@@ -55,7 +55,7 @@ export default function MakersDirectory() {
                     </View>
                     <Text style={styles.title}>Commission a Maker</Text>
                     <Text style={styles.subtitle}>
-                        Find the perfect student artisan to bring your custom ideas to life.
+                        Find the perfect Maker to bring your custom ideas to life.
                         Browse their portfolios and request a bespoke creation directly.
                     </Text>
                 </View>

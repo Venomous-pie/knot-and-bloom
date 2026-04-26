@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   grid: {
     flexDirection: 'row',
-    gap: theme.spacing.lg,
+    gap: theme.spacing.md,
     justifyContent: 'flex-start',
   },
   gridMobile: {

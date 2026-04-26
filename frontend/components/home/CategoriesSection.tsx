@@ -104,7 +104,7 @@ export default function CategoriesSection() {
           hovered && { transform: [{ scale: 1.02 }], shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
           pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
         ]}
-        onPress={() => router.push(`/search?category=${cat.id}` as any)}
+        onPress={() => router.push(`/products/${cat.id}` as any)}
       >
         <Image 
           source={{ uri: patternUri }} 

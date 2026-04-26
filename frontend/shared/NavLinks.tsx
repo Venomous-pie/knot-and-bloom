@@ -97,12 +97,12 @@ export function NavLinks({ activeMenu, setActiveMenu }: { activeMenu: string | n
                 </Pressable>
             </Link>
 
-            <Link href={"/custom-order" as RelativePathString} asChild>
+            <Link href={"/makers" as RelativePathString} asChild>
                 <Pressable style={styles.navlinkContainer}>
                     {({ hovered }) => (
                         <>
                             <Text>Custom Order</Text>
-                            <View style={[styles.underline, (hovered || pathname === '/custom-order') && styles.underlineHovered]} />
+                            <View style={[styles.underline, (hovered || pathname === '/makers') && styles.underlineHovered]} />
                         </>
                     )}
                 </Pressable>

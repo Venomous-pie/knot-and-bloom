@@ -6,7 +6,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/admin/ImageCropperModal';
 import { apiClient } from "@/api/api";
-import Animated, { LinearTransition } from "react-native-reanimated";
+import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, interpolate, Extrapolation } from "react-native-reanimated";
+import GlobalHeaderUI from "@/shared/GlobalHeaderUI";
 import {
     ActivityIndicator,
     Image,
@@ -24,6 +25,8 @@ import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, He
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/app/auth";
 import { theme } from '@/constants/theme';
+
+import MenuSideBar from "@/shared/MenuSideBar";
 
 interface SellerProfileData {
     uid: number;
@@ -69,6 +72,40 @@ export default function SellerProfile() {
 
     // Search State
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Menu state for floating header
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [activeMenu, setActiveMenu] = useState<string | null>(null);
+
+    // Scroll Animation for Header
+    const scrollY = useSharedValue(0);
+    const lastScrollY = useSharedValue(0);
+    const isScrollingUp = useSharedValue(true);
+
+    const onScroll = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            const currentY = event.contentOffset.y;
+            if (currentY > lastScrollY.value && currentY > 50) {
+                isScrollingUp.value = false;
+            } else if (currentY < lastScrollY.value) {
+                isScrollingUp.value = true;
+            }
+            lastScrollY.value = currentY;
+            scrollY.value = currentY;
+        }
+    });
+
+    const headerAnimatedStyle = useAnimatedStyle(() => {
+        const translateY = withTiming(isScrollingUp.value || scrollY.value < 50 ? 0 : -100, { duration: 300 });
+        return {
+            transform: [{ translateY }],
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 100,
+        };
+    });
 
     // Derived state
     // Derived state with seller info injection
@@ -217,7 +254,7 @@ export default function SellerProfile() {
     const renderHeader = () => (
         <>
             {/* Banner Section */}
-            <View style={styles.bannerContainer}>
+            <View style={[styles.bannerContainer, isDesktop && styles.bannerContainerDesktop]}>
                 {seller.banner ? (
                     <Pressable onPress={() => setShowBannerFullScreen(true)} style={{ flex: 1 }}>
                         <Image source={{ uri: seller.banner }} style={styles.banner} resizeMode="cover" />
@@ -295,7 +332,7 @@ export default function SellerProfile() {
                 </View>
 
                 {/* Description (Short) */}
-                {seller.description && activeTab === 'products' && (
+                {seller.description && (
                     <View style={styles.section}>
                         <Text style={styles.description} numberOfLines={3}>{seller.description}</Text>
                     </View>
@@ -526,7 +563,18 @@ export default function SellerProfile() {
         <View style={styles.container}>
             <Stack.Screen options={{ headerShown: false }} />
 
+            <Animated.View style={headerAnimatedStyle}>
+                <GlobalHeaderUI 
+                    setIsMenuOpen={setIsMenuOpen}
+                    activeMenu={activeMenu}
+                    setActiveMenu={setActiveMenu}
+                />
+            </Animated.View>
+            <MenuSideBar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+
             <Animated.FlatList
+                onScroll={onScroll}
+                scrollEventThrottle={16}
                 data={loadTabContent()}
                 keyExtractor={(item: any, index: number) => item.uid ? String(item.uid) : `item-${index}`}
                 renderItem={renderItem}
@@ -537,7 +585,7 @@ export default function SellerProfile() {
                     styles.productList,
                     isDesktop && styles.productListDesktop
                 ] : undefined}
-                contentContainerStyle={{ paddingBottom: 40 }}
+                contentContainerStyle={{ paddingBottom: 40, paddingTop: 60 }}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     activeTab === 'products' ? (
@@ -661,6 +709,10 @@ const styles = StyleSheet.create({
         height: 220,
         width: '100%',
         position: 'relative',
+    },
+    bannerContainerDesktop: {
+        maxWidth: 1024,
+        alignSelf: 'center',
     },
     banner: {
         width: '100%',

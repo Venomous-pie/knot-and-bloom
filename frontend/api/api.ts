@@ -372,6 +372,7 @@ export const addressAPI = {
 
 export const sellerAPI = {
     getSellers: () => apiClient.get<any[]>('/sellers'),
+    getActiveSellers: () => apiClient.get<any[]>('/sellers/active'),
     updateSellerStatus: (id: number, status: string, rejectionReason?: string) => apiClient.put(`/sellers/${id}`, { status, rejectionReason }),
     markWelcomeSeen: () => apiClient.patch('/sellers/me/welcome-seen', {}),
     cancelApplication: () => apiClient.delete('/sellers/me/application'),

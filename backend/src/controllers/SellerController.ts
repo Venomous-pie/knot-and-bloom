@@ -285,6 +285,23 @@ export const sellerController = {
         }
     },
 
+    // Public: List Active Sellers
+    async listActiveSellers(req: Request, res: Response) {
+        try {
+            const sellers = await prisma.seller.findMany({
+                where: { 
+                    deletedAt: null,
+                    status: SellerStatus.ACTIVE
+                },
+                orderBy: { approvedAt: 'desc' },
+                take: 50
+            });
+            res.json(sellers);
+        } catch (error) {
+            res.status(500).json({ error: 'Failed to list active sellers' });
+        }
+    },
+
     // Seller Dashboard: Get Orders (with authorization)
     async getSellerOrders(req: Request, res: Response) {
         try {

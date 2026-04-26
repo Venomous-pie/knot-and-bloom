@@ -121,7 +121,7 @@ export default function HeroSection() {
               hovered && { backgroundColor: theme.colors.subtle, transform: [{ scale: 1.02 }] },
               pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
             ]}
-            onPress={() => router.push('/customer-service')}
+            onPress={() => router.push('/makers' as any)}
           >
             <Text style={[styles.buttonText, styles.secondaryButtonText]}>CUSTOM ORDER</Text>
           </Pressable>

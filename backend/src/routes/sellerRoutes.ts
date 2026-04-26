@@ -9,6 +9,7 @@ const router = express.Router();
 router.post('/', sellerController.registerSeller); // Direct Register
 router.post('/onboard', authenticate, sellerController.onboardSeller); // Upgrade User
 router.delete('/me/application', authenticate, sellerController.cancelApplication); // Cancel Pending Application
+router.get('/active', sellerController.listActiveSellers); // Public active sellers list
 router.get('/:slug', sellerController.getSellerBySlug); // Public Profile
 
 // Protected Routes

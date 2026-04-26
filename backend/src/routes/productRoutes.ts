@@ -1,5 +1,5 @@
 import Router from 'express';
-import { getProductById, getProducts, postProduct, searchProducts } from '../controllers/ProductController.js';
+import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../error/errorHandler.js';
 import { generateProductDescription, generateProductSKU, generateVariantSKU } from '../services/GenerateService.js';
 import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
@@ -261,6 +261,22 @@ router.get('/search-product', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to search products',
+        });
+    }
+});
+
+router.get('/category-counts', async (req, res) => {
+    try {
+        const counts = await getCategoryCounts();
+        return res.status(200).json({
+            success: true,
+            counts
+        });
+    } catch (error) {
+        console.error('Get category counts error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch category counts',
         });
     }
 });

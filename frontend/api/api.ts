@@ -107,6 +107,9 @@ export const productAPI = {
     getProducts: (params?: GetProductsParams) =>
         apiClient.get<GetProductsResponse>('/products/get-product', { params }),
 
+    getCategoryCounts: () =>
+        apiClient.get<{ success: boolean; counts: Record<string, number> }>('/products/category-counts'),
+
     createProduct: (data: CreateProductData) =>
         apiClient.post<Product>('/products/post-product', data),
 

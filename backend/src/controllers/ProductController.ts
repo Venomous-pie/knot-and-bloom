@@ -294,6 +294,42 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
     };
 };
 
+export const getCategoryCounts = async () => {
+    const baseFilter: any = {
+        deletedAt: null,
+        status: ProductStatus.ACTIVE,
+        AND: [
+            {
+                OR: [
+                    { sellerId: null },
+                    {
+                        seller: {
+                            status: SellerStatus.ACTIVE,
+                            deletedAt: null
+                        }
+                    }
+                ]
+            }
+        ]
+    };
+
+    const products = await prisma.product.findMany({
+        where: baseFilter,
+        select: { categories: true }
+    });
+
+    const counts: Record<string, number> = {};
+    products.forEach(p => {
+        if (p.categories) {
+            p.categories.forEach(c => {
+                counts[c] = (counts[c] || 0) + 1;
+            });
+        }
+    });
+
+    return counts;
+};
+
 // Admin-only: Get all products including PENDING (for approval workflow)
 export const getAdminProducts = async (options: { status?: string; limit?: number; offset?: number }) => {
     const { status, limit = 50, offset = 0 } = options;

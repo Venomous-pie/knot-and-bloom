@@ -48,7 +48,7 @@ export function NavLinks({ activeMenu, setActiveMenu }: { activeMenu: string | n
         { type: 'separator' },
         { title: 'Crochet', href: '/products/crochet' as RelativePathString },
         { title: 'Fuzzy Wire Art', href: '/products/fuzzy-wire-art' as RelativePathString },
-        { title: 'Accessories', href: '/products/accessories' as RelativePathString },
+        { title: 'Gift Boxes/Sets', href: '/products/gift-boxes-sets' as RelativePathString },
         { type: 'separator' },
         { title: 'See All Categories →', href: '/products/categories' as RelativePathString },
     ];

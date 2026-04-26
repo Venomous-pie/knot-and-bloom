@@ -1,6 +1,7 @@
 import { productAPI } from "@/api/api";
 import { useAuth } from "@/app/auth";
 import { useCart } from "@/app/context/CartContext";
+import { useWishlist } from "@/app/context/WishlistContext";
 import { getNavbarMargin, isMobile } from "@/constants/layout";
 import { theme } from "@/constants/theme";
 import '@/global.css';
@@ -108,6 +109,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const { cartCount, setCartIconPosition } = useCart();
+    const { wishlistCount } = useWishlist();
     const [isFocused, setIsFocused] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const cartIconRef = React.useRef<View>(null);
@@ -287,10 +289,20 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                     </View>
 
                     <Pressable
-                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
+                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}
                         onPress={() => router.push("/wishlist" as RelativePathString)}
                     >
                         <Heart size={18} />
+                        {wishlistCount > 0 && (
+                            <View style={{
+                                position: 'absolute', top: -5, right: -5,
+                                backgroundColor: theme.colors.primary, borderRadius: 10,
+                                minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                                paddingHorizontal: 4, borderWidth: 1, borderColor: 'white'
+                            }}>
+                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{wishlistCount}</Text>
+                            </View>
+                        )}
                     </Pressable>
 
                     {(user) ? (

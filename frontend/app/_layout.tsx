@@ -1,5 +1,6 @@
 import { AuthProvider } from "@/app/auth";
 import { CartProvider } from "@/app/context/CartContext";
+import { WishlistProvider } from "@/app/context/WishlistContext";
 import AuthToast from "@/components/AuthToast";
 import CartAnimationOverlay from "@/components/CartAnimationOverlay";
 import OnboardingManager from "@/components/OnboardingManager";
@@ -78,12 +79,14 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <CartProvider>
-        <View style={styles.container} onLayout={onLayoutRootView}>
-          <NavBar />
-          <CartAnimationOverlay />
-          <OnboardingManager />
-          <AuthToast />
-        </View>
+        <WishlistProvider>
+          <View style={styles.container} onLayout={onLayoutRootView}>
+            <NavBar />
+            <CartAnimationOverlay />
+            <OnboardingManager />
+            <AuthToast />
+          </View>
+        </WishlistProvider>
       </CartProvider>
     </AuthProvider>
   );

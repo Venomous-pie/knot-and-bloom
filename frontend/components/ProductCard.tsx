@@ -1,4 +1,5 @@
 import { Product } from "@/types/products";
+import { useWishlist } from "@/app/context/WishlistContext";
 import { findLowestPrice } from "@/utils/pricing";
 import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -75,10 +76,12 @@ export default function ProductCard({
     isPinned,
     style,
 }: ProductCardProps) {
+    const { wishlistedProductIds, toggleWishlist } = useWishlist();
     const [cardWidth, setCardWidth] = useState(200); // Default 200px until measured
     const [isHovered, setIsHovered] = useState(false);
-    const [internalWishlisted, setInternalWishlisted] = useState(false);
-    const isWishlisted = externalWishlisted ?? internalWishlisted;
+    
+    // External prop overrides context if provided
+    const isWishlisted = externalWishlisted ?? wishlistedProductIds.has(product.uid);
     const liftAnim = useRef(new Animated.Value(0)).current;
     const quickViewAnim = useRef(new Animated.Value(0)).current;
 
@@ -134,11 +137,10 @@ export default function ProductCard({
     const displayImage = selectedVariant?.image || product.image;
 
     const handleWishlistPress = () => {
-        const newWishlistState = !isWishlisted;
         if (onWishlistToggle) {
-            onWishlistToggle(product.uid, newWishlistState);
+            onWishlistToggle(product.uid, !isWishlisted);
         } else {
-            setInternalWishlisted(newWishlistState);
+            toggleWishlist(product.uid);
         }
     };
 

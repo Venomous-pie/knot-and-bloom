@@ -164,6 +164,16 @@ export const cartAPI = {
     }
 };
 
+export const wishlistAPI = {
+    getWishlist: (customerId: number) => {
+        return apiClient.get(`/wishlist/${customerId}`);
+    },
+
+    toggleWishlistItem: (customerId: number, productId: number) => {
+        return apiClient.post(`/wishlist/${customerId}/toggle`, { productId });
+    }
+};
+
 export const customerAPI = {
     getProfile: () => apiClient.get<import('../types/user').User>('/customers/profile'),
     updateProfile: (data: any) => apiClient.put('/customers/profile', data),

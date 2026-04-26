@@ -241,8 +241,10 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                 </Link>
 
                 {/* Center: Nav Links */}
-                <View style={{ flex: 1, alignItems: 'center' }}>
-                    <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
+                <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', pointerEvents: 'box-none' }}>
+                    <View pointerEvents="auto">
+                        <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
+                    </View>
                 </View>
 
                 {/* Right: Icons */}

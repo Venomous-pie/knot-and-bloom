@@ -7,9 +7,12 @@ import {
     StyleSheet,
     Text,
     useWindowDimensions,
-    View
+    View,
+    Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { theme } from "@/constants/theme";
+import { ClipboardCheck, CheckCircle, Store, Clock } from "lucide-react-native";
 
 export default function ApplicationSubmittedPage() {
     const { user } = useAuth();
@@ -26,7 +29,11 @@ export default function ApplicationSubmittedPage() {
                     <View style={styles.decorativeCircle2} />
 
                     <View style={styles.brandingContent}>
-                        <Text style={{ fontSize: 60, marginBottom: 20 }}>🎉</Text>
+                        <Image
+                            source={require('@/assets/yarn.png')}
+                            style={styles.heroImage}
+                            resizeMode="contain"
+                        />
                         <Text style={styles.brandTitle}>Application Submitted!</Text>
                         <Text style={styles.brandSubtitle}>
                             Welcome to the Knot & Bloom seller community
@@ -42,7 +49,9 @@ export default function ApplicationSubmittedPage() {
 
                         <View style={styles.stepContainer}>
                             <View style={styles.step}>
-                                <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
+                                <View style={styles.stepIconContainer}>
+                                    <ClipboardCheck size={20} color={theme.colors.primaryText} />
+                                </View>
                                 <View style={styles.stepContent}>
                                     <Text style={styles.stepTitle}>Review in Progress</Text>
                                     <Text style={styles.stepDescription}>
@@ -52,7 +61,9 @@ export default function ApplicationSubmittedPage() {
                             </View>
 
                             <View style={styles.step}>
-                                <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
+                                <View style={styles.stepIconContainer}>
+                                    <CheckCircle size={20} color={theme.colors.primaryText} />
+                                </View>
                                 <View style={styles.stepContent}>
                                     <Text style={styles.stepTitle}>Get Approved</Text>
                                     <Text style={styles.stepDescription}>
@@ -62,7 +73,9 @@ export default function ApplicationSubmittedPage() {
                             </View>
 
                             <View style={styles.step}>
-                                <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
+                                <View style={styles.stepIconContainer}>
+                                    <Store size={20} color={theme.colors.primaryText} />
+                                </View>
                                 <View style={styles.stepContent}>
                                     <Text style={styles.stepTitle}>Start Selling</Text>
                                     <Text style={styles.stepDescription}>
@@ -75,7 +88,8 @@ export default function ApplicationSubmittedPage() {
                         <View style={styles.statusBox}>
                             <Text style={styles.statusTitle}>Application Status</Text>
                             <View style={styles.statusBadge}>
-                                <Text style={styles.statusBadgeText}>⏳ PENDING REVIEW</Text>
+                                <Clock size={16} color={theme.colors.badgePending} style={{ marginRight: 6 }} />
+                                <Text style={styles.statusBadgeText}>PENDING REVIEW</Text>
                             </View>
                             <Text style={styles.statusHint}>
                                 Logged in as: {user?.email}
@@ -84,14 +98,20 @@ export default function ApplicationSubmittedPage() {
 
                         <View style={styles.buttonContainer}>
                             <Pressable
-                                style={styles.primaryButton}
+                                style={({ pressed }) => [
+                                    styles.primaryButton,
+                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                                ]}
                                 onPress={() => router.push("/seller/application-status" as RelativePathString)}
                             >
                                 <Text style={styles.primaryButtonText}>View Application Status</Text>
                             </Pressable>
 
                             <Pressable
-                                style={styles.secondaryButton}
+                                style={({ pressed }) => [
+                                    styles.secondaryButton,
+                                    pressed && { backgroundColor: theme.colors.subtle }
+                                ]}
                                 onPress={() => router.push("/" as RelativePathString)}
                             >
                                 <Text style={styles.secondaryButtonText}>Return to Home</Text>
@@ -107,7 +127,7 @@ export default function ApplicationSubmittedPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: theme.colors.background,
     },
     contentContainer: {
         flex: 1,
@@ -119,29 +139,34 @@ const styles = StyleSheet.create({
         flexDirection: "column",
     },
     brandingSection: {
-        backgroundColor: "#F9F5F3",
+        backgroundColor: theme.colors.backgroundAlt,
         justifyContent: "center",
         alignItems: "center",
         position: "relative",
         overflow: "hidden",
-        padding: 40,
+        padding: theme.spacing['2xl'],
         minHeight: 300,
     },
     brandingContent: {
         zIndex: 2,
         alignItems: "center",
     },
+    heroImage: {
+        width: 120,
+        height: 120,
+        marginBottom: theme.spacing.lg,
+    },
     brandTitle: {
-        fontSize: 28,
+        fontSize: theme.typography.sizes['3xl'],
         fontWeight: "bold",
-        color: "#333",
-        marginBottom: 10,
+        color: theme.colors.text,
+        marginBottom: theme.spacing.sm,
         fontFamily: Platform.OS === "web" ? "serif" : "System",
         textAlign: "center",
     },
     brandSubtitle: {
-        fontSize: 16,
-        color: "#666",
+        fontSize: theme.typography.sizes.base,
+        color: theme.colors.textSecondary,
         textAlign: "center",
         maxWidth: 300,
         lineHeight: 24,
@@ -154,7 +179,7 @@ const styles = StyleSheet.create({
         height: 100,
         borderRadius: 50,
         borderWidth: 2,
-        borderColor: "#F0E6E6",
+        borderColor: theme.colors.primaryLight,
     },
     decorativeCircle2: {
         position: "absolute",
@@ -164,7 +189,8 @@ const styles = StyleSheet.create({
         height: 60,
         borderRadius: 30,
         borderWidth: 1,
-        borderColor: "#E8D5D9",
+        borderColor: theme.colors.primaryLight,
+        opacity: 0.7,
     },
     decorativeCircleBig: {
         position: "absolute",
@@ -173,121 +199,129 @@ const styles = StyleSheet.create({
         width: 200,
         height: 200,
         borderRadius: 100,
-        backgroundColor: "#D4EDDA",
-        opacity: 0.5,
+        backgroundColor: theme.colors.secondaryLight,
         zIndex: 1,
     },
     formSection: {
         justifyContent: "center",
         alignItems: "center",
-        padding: 40,
-        backgroundColor: "#FFFCF9",
+        padding: theme.spacing['2xl'],
+        backgroundColor: theme.colors.surface,
     },
     formContent: {
         width: "100%",
         maxWidth: 450,
     },
     welcomeTitle: {
-        fontSize: 24,
+        fontSize: theme.typography.sizes['2xl'],
         fontWeight: "bold",
-        color: "#333",
-        marginBottom: 24,
+        color: theme.colors.text,
+        marginBottom: theme.spacing.lg,
         fontFamily: Platform.OS === "web" ? "serif" : "System",
     },
     stepContainer: {
-        gap: 20,
-        marginBottom: 30,
+        gap: theme.spacing.lg,
+        marginBottom: theme.spacing.xl,
     },
     step: {
         flexDirection: "row",
-        gap: 16,
+        gap: theme.spacing.md,
     },
-    stepNumber: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: "#C88EA7",
+    stepIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: theme.colors.primary,
         justifyContent: "center",
         alignItems: "center",
-    },
-    stepNumberText: {
-        color: "white",
-        fontWeight: "bold",
-        fontSize: 14,
+        shadowColor: theme.shadows.sm.shadowColor,
+        shadowOffset: theme.shadows.sm.shadowOffset,
+        shadowOpacity: theme.shadows.sm.shadowOpacity,
+        shadowRadius: theme.shadows.sm.shadowRadius,
+        elevation: theme.shadows.sm.elevation,
     },
     stepContent: {
         flex: 1,
+        paddingTop: 2,
     },
     stepTitle: {
-        fontSize: 16,
+        fontSize: theme.typography.sizes.base,
         fontWeight: "600",
-        color: "#333",
+        color: theme.colors.text,
         marginBottom: 4,
     },
     stepDescription: {
-        fontSize: 14,
-        color: "#666",
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.textSecondary,
         lineHeight: 20,
     },
     statusBox: {
-        backgroundColor: "#FFF9E6",
-        padding: 20,
-        borderRadius: 12,
+        backgroundColor: theme.colors.backgroundAlt,
+        padding: theme.spacing.lg,
+        borderRadius: theme.borderRadius.md,
         alignItems: "center",
-        marginBottom: 24,
+        marginBottom: theme.spacing.lg,
         borderWidth: 1,
-        borderColor: "#FFE599",
+        borderColor: theme.colors.border,
     },
     statusTitle: {
-        fontSize: 12,
-        color: "#666",
+        fontSize: theme.typography.sizes.xs,
+        color: theme.colors.textSecondary,
         textTransform: "uppercase",
-        marginBottom: 8,
+        letterSpacing: 0.5,
+        marginBottom: theme.spacing.sm,
+        fontWeight: "600",
     },
     statusBadge: {
-        backgroundColor: "#FFC107",
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.colors.warning + '20', // Add some transparency
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        borderRadius: theme.borderRadius.full,
+        marginBottom: theme.spacing.sm,
+        borderWidth: 1,
+        borderColor: theme.colors.badgePending + '40',
     },
     statusBadgeText: {
-        color: "#333",
+        color: theme.colors.badgePending,
         fontWeight: "bold",
-        fontSize: 14,
+        fontSize: theme.typography.sizes.sm,
     },
     statusHint: {
-        fontSize: 12,
-        color: "#888",
+        fontSize: theme.typography.sizes.xs,
+        color: theme.colors.textLight,
     },
     buttonContainer: {
-        gap: 12,
+        gap: theme.spacing.md,
     },
     primaryButton: {
-        backgroundColor: "#C88EA7",
-        padding: 16,
-        borderRadius: 8,
+        backgroundColor: theme.colors.primary,
+        padding: theme.spacing.md,
+        borderRadius: theme.borderRadius.sm,
         alignItems: "center",
-        shadowColor: "#C88EA7",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.2,
         shadowRadius: 5,
+        elevation: 4,
     },
     primaryButtonText: {
-        color: "white",
-        fontSize: 16,
+        color: theme.colors.primaryText,
+        fontSize: theme.typography.sizes.base,
         fontWeight: "bold",
     },
     secondaryButton: {
         borderWidth: 1,
-        borderColor: "#ddd",
-        padding: 16,
-        borderRadius: 8,
+        borderColor: theme.colors.border,
+        padding: theme.spacing.md,
+        borderRadius: theme.borderRadius.sm,
         alignItems: "center",
-        backgroundColor: "#fff",
+        backgroundColor: theme.colors.surface,
     },
     secondaryButtonText: {
-        color: "#555",
-        fontSize: 16,
+        color: theme.colors.textSecondary,
+        fontSize: theme.typography.sizes.base,
+        fontWeight: "500",
     },
 });

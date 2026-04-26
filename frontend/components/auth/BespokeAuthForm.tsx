@@ -312,7 +312,7 @@ export default function BespokeAuthForm({
                             {
                                 top: "40%",
                                 left: "20%",
-                                backgroundColor: theme.colors.accent + "15",
+                                backgroundColor: theme.colors.subtle + "15",
                                 width: 150,
                                 height: 150,
                             },

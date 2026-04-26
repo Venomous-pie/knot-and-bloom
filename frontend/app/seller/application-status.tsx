@@ -61,8 +61,8 @@ export default function ApplicationStatusPage() {
 
     if (authLoading || !user) {
         return (
-            <SafeAreaView style={styles.container}>
-                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
+            <SafeAreaView style={styles.centerContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
             </SafeAreaView>
         );
     }
@@ -74,8 +74,8 @@ export default function ApplicationStatusPage() {
             case "PENDING":
                 return (
                     <View style={styles.statusCard}>
-                        <View style={[styles.iconContainer, { backgroundColor: "#FFF4E5" }]}>
-                            <Ionicons name="time-outline" size={64} color="#FF9800" />
+                        <View style={[styles.iconWrapper, { backgroundColor: '#FFF4E5' }]}>
+                            <Ionicons name="time" size={48} color="#FF9800" />
                         </View>
                         <Text style={styles.statusTitle}>Under Review</Text>
                         <Text style={styles.statusMessage}>
@@ -87,9 +87,16 @@ export default function ApplicationStatusPage() {
                         </Text>
 
                         <View style={styles.buttonGroup}>
-                            <Pressable style={styles.refreshButton} onPress={handleRefresh} disabled={refreshing}>
-                                {refreshing ? <ActivityIndicator color={theme.colors.textSecondary} size="small" /> : <Ionicons name="refresh-outline" size={20} color={theme.colors.textSecondary} />}
-                                <Text style={styles.refreshButtonText}>Check Status</Text>
+                            <Pressable 
+                                style={[styles.actionButton, styles.primaryButton]} 
+                                onPress={handleRefresh} 
+                                disabled={refreshing}
+                            >
+                                {refreshing ? (
+                                    <ActivityIndicator color="white" size="small" />
+                                ) : (
+                                    <Text style={styles.actionButtonText}>Refresh Status</Text>
+                                )}
                             </Pressable>
 
                             <Pressable style={styles.cancelLink} onPress={handleCancel}>
@@ -99,61 +106,72 @@ export default function ApplicationStatusPage() {
                     </View>
                 );
             case "APPROVED":
-            case "ACTIVE": // Assuming ACTIVE is the approved state
+            case "ACTIVE":
                 return (
                     <View style={styles.statusCard}>
-                        <View style={[styles.iconContainer, { backgroundColor: "#E6F4EA" }]}>
-                            <Ionicons name="checkmark-circle-outline" size={64} color="#34A853" />
+                        <View style={[styles.iconWrapper, { backgroundColor: theme.colors.success + '20' }]}>
+                            <Ionicons name="checkmark-circle" size={48} color={theme.colors.success} />
                         </View>
                         <Text style={styles.statusTitle}>Application Approved!</Text>
                         <Text style={styles.statusMessage}>
-                            Congratulations! Your shop is ready to go.
+                            Congratulations! Your shop is ready to go. Welcome to our curated marketplace of local makers.
                         </Text>
                         <Pressable
-                            style={styles.actionButton}
+                            style={[styles.actionButton, styles.primaryButton, { marginTop: theme.spacing.lg }]}
                             onPress={() => router.push("/seller-dashboard/" as RelativePathString)}
                         >
                             <Text style={styles.actionButtonText}>Go to Seller Dashboard</Text>
+                            <Ionicons name="arrow-forward" size={18} color="white" style={{ marginLeft: 8 }} />
                         </Pressable>
                     </View>
                 );
             case "REJECTED":
                 return (
                     <View style={styles.statusCard}>
-                        <View style={[styles.iconContainer, { backgroundColor: "#FDECEA" }]}>
-                            <Ionicons name="alert-circle-outline" size={64} color="#D93025" />
+                        <View style={[styles.iconWrapper, { backgroundColor: theme.colors.errorLight }]}>
+                            <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
                         </View>
                         <Text style={styles.statusTitle}>Application Update</Text>
                         <Text style={styles.statusMessage}>
                             Unfortunately, we couldn't approve your application at this time.
                         </Text>
-                        <Text style={styles.rejectionReason}>
-                            Reason: {(user as any).sellerRejectionReason || "Information provided was incomplete."}
-                        </Text>
-                        <Pressable
-                            style={[styles.actionButton, styles.secondaryButton]}
-                            onPress={() => router.push("/seller/apply" as RelativePathString)}
-                        >
-                            <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Update Application</Text>
-                        </Pressable>
+                        <View style={styles.rejectionBox}>
+                            <Ionicons name="information-circle-outline" size={20} color={theme.colors.errorDark} />
+                            <Text style={styles.rejectionReasonText}>
+                                {(user as any).sellerRejectionReason || "Information provided was incomplete. Please update your details and try again."}
+                            </Text>
+                        </View>
+                        
+                        <View style={styles.buttonGroup}>
+                            <Pressable
+                                style={[styles.actionButton, styles.primaryButton]}
+                                onPress={() => router.push("/seller/apply" as RelativePathString)}
+                            >
+                                <Text style={styles.actionButtonText}>Update Application</Text>
+                            </Pressable>
 
-                        <Pressable style={styles.cancelLink} onPress={handleCancel}>
-                            <Text style={styles.cancelLinkText}>Cancel Application</Text>
-                        </Pressable>
+                            <Pressable style={styles.cancelLink} onPress={handleCancel}>
+                                <Text style={styles.cancelLinkText}>Cancel Application</Text>
+                            </Pressable>
+                        </View>
                     </View >
                 );
             default:
                 return (
                     <View style={styles.statusCard}>
+                        <View style={[styles.iconWrapper, { backgroundColor: theme.colors.subtle }]}>
+                            <Ionicons name="document-text" size={48} color={theme.colors.textSecondary} />
+                        </View>
                         <Text style={styles.statusTitle}>No Application Found</Text>
                         <Text style={styles.statusMessage}>
-                            You haven't submitted a seller application yet.
+                            You haven't submitted a seller application yet. Join our community of makers!
                         </Text>
                         <Pressable
-                            style={styles.actionButton}
+                            style={[styles.actionButton, styles.primaryButton, { marginTop: theme.spacing.lg }]}
                             onPress={() => router.push("/seller/apply" as RelativePathString)}
                         >
                             <Text style={styles.actionButtonText}>Apply Now</Text>
+                            <Ionicons name="arrow-forward" size={18} color="white" style={{ marginLeft: 8 }} />
                         </Pressable>
                     </View>
                 );
@@ -163,17 +181,18 @@ export default function ApplicationStatusPage() {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Application Status</Text>
-                </View>
+                <View style={styles.contentWrapper}>
+                    <View style={styles.header}>
+                        <Text style={styles.headerTitle}>Seller Application</Text>
+                    </View>
 
-                <View style={styles.content}>
                     {renderStatusContent()}
-                </View>
 
-                <Pressable style={styles.backLink} onPress={() => router.push("/")}>
-                    <Text style={styles.backLinkText}>← Back to Home</Text>
-                </Pressable>
+                    <Pressable style={styles.backLink} onPress={() => router.push("/")}>
+                        <Ionicons name="arrow-back" size={16} color={theme.colors.textSecondary} />
+                        <Text style={styles.backLinkText}>Return to Storefront</Text>
+                    </Pressable>
+                </View>
             </ScrollView>
         </SafeAreaView>
     );
@@ -184,130 +203,132 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.colors.background,
     },
+    centerContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: theme.colors.background,
+    },
     scrollContent: {
         flexGrow: 1,
-        padding: 20,
+        padding: theme.spacing.lg,
+        justifyContent: 'center',
+    },
+    contentWrapper: {
+        width: '100%',
+        maxWidth: 520,
+        alignSelf: 'center',
     },
     header: {
-        marginBottom: 40,
         alignItems: "center",
-        marginTop: 20,
+        marginBottom: theme.spacing.xl,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: theme.typography.sizes['2xl'],
         fontWeight: "bold",
         color: theme.colors.text,
-        fontFamily: Platform.OS === "web" ? "serif" : "System",
-    },
-    content: {
-        alignItems: "center",
-        maxWidth: 600,
-        width: "100%",
-        alignSelf: "center",
+        fontFamily: theme.typography.fontFamily,
     },
     statusCard: {
         backgroundColor: theme.colors.surface,
-        borderRadius: 16,
-        padding: 40,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing['2xl'],
         alignItems: "center",
         width: "100%",
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 3,
+        ...theme.shadows.md,
     },
-    iconContainer: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+    iconWrapper: {
+        width: 96,
+        height: 96,
+        borderRadius: 48,
         justifyContent: "center",
         alignItems: "center",
-        marginBottom: 24,
+        marginBottom: theme.spacing.xl,
     },
     statusTitle: {
-        fontSize: 28,
+        fontSize: theme.typography.sizes.xl,
         fontWeight: "bold",
         color: theme.colors.text,
-        marginBottom: 16,
+        marginBottom: theme.spacing.sm,
         textAlign: "center",
+        fontFamily: theme.typography.fontFamily,
     },
     statusMessage: {
-        fontSize: 16,
+        fontSize: theme.typography.sizes.base,
         color: theme.colors.textSecondary,
         textAlign: "center",
         lineHeight: 24,
-        marginBottom: 24,
+        marginBottom: theme.spacing.md,
+        fontFamily: theme.typography.fontFamily,
     },
     noteText: {
-        fontSize: 14,
+        fontSize: theme.typography.sizes.sm,
         color: theme.colors.textLight,
         textAlign: "center",
-        fontStyle: "italic",
+        fontFamily: theme.typography.fontFamily,
     },
-    rejectionReason: {
-        fontSize: 15,
-        color: "#D93025",
-        backgroundColor: "#FDECEA",
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 24,
-        textAlign: "center",
+    rejectionBox: {
+        flexDirection: 'row',
+        backgroundColor: theme.colors.errorLight,
+        padding: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        marginBottom: theme.spacing.xl,
         width: "100%",
+        gap: theme.spacing.sm,
+        alignItems: 'flex-start',
+    },
+    rejectionReasonText: {
+        fontSize: theme.typography.sizes.sm,
+        color: theme.colors.errorDark,
+        flex: 1,
+        lineHeight: 20,
+        fontFamily: theme.typography.fontFamily,
+    },
+    buttonGroup: {
+        marginTop: theme.spacing.lg,
+        width: '100%',
+        alignItems: 'center',
+        gap: theme.spacing.md,
     },
     actionButton: {
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 14,
-        paddingHorizontal: 32,
-        borderRadius: 30,
-        marginTop: 10,
-        minWidth: 200,
+        flexDirection: 'row',
+        paddingVertical: theme.spacing.md,
+        paddingHorizontal: theme.spacing.xl,
+        borderRadius: theme.borderRadius.md,
+        width: '100%',
+        justifyContent: 'center',
         alignItems: "center",
+    },
+    primaryButton: {
+        backgroundColor: theme.colors.primary,
+        ...theme.shadows.sm,
     },
     actionButtonText: {
         color: "white",
-        fontSize: 16,
-        fontWeight: "bold",
-    },
-    secondaryButton: {
-        backgroundColor: "transparent",
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-    },
-    secondaryButtonText: {
-        color: theme.colors.primary,
-    },
-    buttonGroup: {
-        marginTop: 20,
-        gap: 16,
-        alignItems: 'center',
-    },
-    refreshButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 10,
-        gap: 8,
-    },
-    refreshButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: theme.typography.sizes.base,
+        fontWeight: "600",
+        fontFamily: theme.typography.fontFamily,
     },
     cancelLink: {
-        padding: 10,
-        marginTop: 10,
+        padding: theme.spacing.sm,
     },
     cancelLinkText: {
         color: theme.colors.textLight,
-        textDecorationLine: 'underline',
-        fontSize: 14,
+        fontSize: theme.typography.sizes.sm,
+        fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
     },
     backLink: {
-        marginTop: 40,
+        marginTop: theme.spacing.xl,
+        flexDirection: 'row',
         alignItems: "center",
+        justifyContent: 'center',
+        gap: theme.spacing.sm,
     },
     backLinkText: {
-        color: theme.colors.textLight,
-        fontSize: 14,
+        color: theme.colors.textSecondary,
+        fontSize: theme.typography.sizes.sm,
+        fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
     },
 });

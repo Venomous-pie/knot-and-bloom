@@ -13,8 +13,12 @@ router.get('/profile', authenticate, async (req, res) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const customer = await customerController.getCustomerProfile(userId);
-        res.json(customer);
+        const result = await customerController.getCustomerProfile(userId);
+        res.json({
+            success: true,
+            data: result.customer,
+            token: result.token
+        });
     } catch (error) {
         if (error instanceof NotFoundError) {
             return res.status(error.statusCode).json({ error: error.message });

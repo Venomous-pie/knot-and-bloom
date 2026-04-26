@@ -193,16 +193,30 @@ const getCustomerProfile = async (userId: number) => {
 
     const { password, ...customerData } = customer;
 
+    const payload: AuthPayload = {
+        id: customer.uid,
+        ...(customer.email ? { email: customer.email } : {}),
+        role: customer.role as any,
+        ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
+        ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),
+        ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+
     return {
-        ...customerData,
-        sellerId: customer.sellerProfile?.uid,
-        sellerStatus: customer.sellerProfile?.status,
-        sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
-        sellerStoreName: customer.sellerProfile?.name,
-        sellerSlug: customer.sellerProfile?.slug,
-        sellerRating: customer.sellerProfile?.rating,
-        sellerTotalSales: customer.sellerProfile?.totalSales,
-        sellerTotalOrders: customer.sellerProfile?.totalOrders
+        customer: {
+            ...customerData,
+            sellerId: customer.sellerProfile?.uid,
+            sellerStatus: customer.sellerProfile?.status,
+            sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
+            sellerStoreName: customer.sellerProfile?.name,
+            sellerSlug: customer.sellerProfile?.slug,
+            sellerRating: customer.sellerProfile?.rating,
+            sellerTotalSales: customer.sellerProfile?.totalSales,
+            sellerTotalOrders: customer.sellerProfile?.totalOrders
+        },
+        token
     };
 };
 

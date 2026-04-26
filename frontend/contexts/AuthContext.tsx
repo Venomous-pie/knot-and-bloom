@@ -115,10 +115,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (!currentToken) return;
 
             const response = await api.get('/customers/profile');
-            const userData = response.data;
+            const userData = response.data.data || response.data;
+            const newToken = response.data.token;
+
             if (userData) {
                 await AsyncStorage.setItem('authUser', JSON.stringify(userData));
                 setUser(userData);
+            }
+            if (newToken) {
+                await AsyncStorage.setItem('authToken', newToken);
+                setToken(newToken);
             }
         } catch (error) {
             console.error("Failed to refresh user", error);
@@ -163,9 +169,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 const response = await api.get('/customers/profile', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const userData = response.data;
+                const userData = response.data.data || response.data;
+                const newToken = response.data.token || token;
 
                 if (userData) {
+                    await AsyncStorage.setItem('authToken', newToken);
+                    setToken(newToken);
                     await AsyncStorage.setItem('authUser', JSON.stringify(userData));
                     setUser(userData);
                     router.replace('/');

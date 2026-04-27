@@ -1,10 +1,10 @@
-import { cartAPI, productAPI } from "@/api/api";
+import { cartAPI, productAPI, sellerAPI } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/types/products";
 import { calculatePrice } from "@/utils/pricing";
-import { router, useLocalSearchParams, Stack } from "expo-router";
+import { router, useLocalSearchParams, Stack, Link } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import {
     ActivityIndicator,
@@ -21,6 +21,8 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from 'expo-clipboard';
 import { theme } from "@/constants/theme";
+import { User } from "@/types/user";
+import MakerCard from "@/components/MakerCard";
 
 const MOCK_REVIEWS = [
     {
@@ -61,7 +63,8 @@ export default function ProductDetailPage() {
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [skuCopied, setSkuCopied] = useState(false);
     const [recommendations, setRecommendations] = useState<Product[]>([]);
-    
+    const [makers, setMakers] = useState<User[]>([]);
+
     const { user } = useAuth();
     const { refreshCart, triggerCartAnimation } = useCart();
     const buttonRef = useRef<View>(null);
@@ -124,6 +127,20 @@ export default function ProductDetailPage() {
 
         fetchRecommendations();
     }, [product?.uid]);
+
+    // --- Meet the Maker Fetch ---
+    useEffect(() => {
+        const fetchMakers = async () => {
+            try {
+                const response = await sellerAPI.getActiveSellers();
+                setMakers(response.data.slice(0, 5));
+            } catch (err) {
+                console.warn('Could not load makers', err);
+            }
+        };
+
+        fetchMakers();
+    }, []);
 
     const handleAddToCart = async () => {
         if (!product) return;
@@ -527,6 +544,38 @@ export default function ProductDetailPage() {
                     </View>
                 </View>
 
+                {/* ================= MEET THE MAKER ================= */}
+                {makers.length > 0 && (
+                    <View style={styles.fullWidthSection}>
+                        <View style={styles.recommendationsHeader}>
+                            <View style={styles.recommendationsTitleRow}>
+                                <Text style={styles.recommendationsTitle}>Meet the Maker</Text>
+                                <Text style={styles.recommendationsSubtitle}>
+                                    {product.categories?.[0] ? `More from ${product.categories[0]}` : 'More picks for you'}
+                                </Text>
+                            </View>
+                            <Link href="/makers" asChild>
+                                <Pressable style={styles.seeAllButton}>
+                                    <Text style={styles.seeAllText}>See All</Text>
+                                </Pressable>
+                            </Link>
+                        </View>
+
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.recommendationsContent}
+                            style={styles.recommendationsScroll}
+                        >
+                            {makers.slice(0, 5).map((maker) => (
+                                <View key={maker.uid} style={styles.recommendationCardContainer}>
+                                    <MakerCard maker={maker} />
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
                 {/* ================= YOU MIGHT ALSO LIKE ================= */}
                 {recommendations.length > 0 && (
                     <View style={styles.fullWidthSection}>
@@ -595,6 +644,9 @@ const styles = StyleSheet.create({
         paddingBottom: 60,
     },
     recommendationsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 16,
         paddingTop: 24,
         paddingBottom: 12,
@@ -624,8 +676,29 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     recommendationCard: {
-        width: 180,
+        width: 220,
         marginBottom: 0,
+    },
+    seeAllButton: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    seeAllText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.primary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    recommendationsContent: {
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        gap: 16,
+    },
+    recommendationsScroll: {
+        flexGrow: 0,
+    },
+    recommendationCardContainer: {
+        width: 220, // slightly wider for maker cards
     },
     breadcrumbContainer: {
         paddingHorizontal: 16,
@@ -701,7 +774,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.subtle,
     },
     thumbnailStrip: {
-        marginTop: 12,
+        margin: 12,
         flexDirection: 'row',
         paddingHorizontal: 16, // Only applies effectively on mobile unless overwritten
     },

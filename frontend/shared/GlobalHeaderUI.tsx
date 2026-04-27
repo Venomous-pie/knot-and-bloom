@@ -10,7 +10,7 @@ import { NavLinks } from "@/shared/NavLinks";
 import { MobileNavbar } from "@/shared/MobileNavbar";
 import { Product } from "@/types/products";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
-import { ChevronLeft, Handbag, Heart, Menu, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut } from "lucide-react-native";
+import { ChevronLeft, Handbag, Heart, Menu, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import SearchBarDropdown from "./SearchResults";
@@ -288,6 +288,15 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         )}
                     </View>
 
+                    <View style={{ width: 1, height: 18, backgroundColor: theme.colors.border }} />
+
+                    <Pressable
+                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
+                        onPress={() => router.push("/profile/notifications" as RelativePathString)}
+                    >
+                        <Bell size={18} />
+                    </Pressable>
+
                     <Pressable
                         style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}
                         onPress={() => router.push("/wishlist" as RelativePathString)}
@@ -360,12 +369,14 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         </Pressable>
                     </View>
 
-                    <Pressable
-                        onPress={() => setIsMenuOpen(true)}
-                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
-                    >
-                        <Menu size={18} />
-                    </Pressable>
+                    {mobile && (
+                        <Pressable
+                            onPress={() => setIsMenuOpen(true)}
+                            style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
+                        >
+                            <Menu size={18} />
+                        </Pressable>
+                    )}
                 </View>
             </View>
         </View>

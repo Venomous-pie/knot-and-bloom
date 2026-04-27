@@ -35,10 +35,6 @@ export const navLinks: { title: string, href: RelativePathString }[] = [
 ];
 
 export const sidebarLinks: { title: string, href: RelativePathString }[] = [
-    { title: 'Custom Order~', href: "/makers" as RelativePathString },
-    { title: 'Contact Us', href: "/contact-us" as RelativePathString },
-    { title: 'About Shop', href: "/about-shop" as RelativePathString },
-
     { title: 'Tops', href: "/products/tops" as RelativePathString },
     { title: 'Hair Tie', href: "/products/hair-tie" as RelativePathString },
     { title: 'Fuzzy Wire Bouquet', href: "/products/fuzzy-wire-bouquet" as RelativePathString },

@@ -85,32 +85,7 @@ export function SidebarNavLinks({ onClose, user, pathname }: SidebarNavLinksProp
                 );
             })}
 
-            <View style={{ height: 15 }} />
-
             <View style={styles.menuItems}>
-                <Text style={styles.sectionTitle}>Pages</Text>
-                {sidebarLinks.slice(0, 3).map((link) => {
-                    const isActive = pathname === link.href;
-                    return (
-                        <Link key={link.title} href={link.href} asChild>
-                            <Pressable onPress={onClose}>
-                                {({ hovered }) => (
-                                    <View style={[
-                                        styles.menuItem,
-                                        isActive && styles.menuItemActive,
-                                        (hovered && !isActive) && styles.menuItemHovered
-                                    ]}>
-                                        <Text style={[styles.menuItemText, isActive && styles.menuItemTextActive]}>
-                                            {link.title}
-                                        </Text>
-                                    </View>
-                                )}
-                            </Pressable>
-                        </Link>
-                    );
-                })}
-
-                <View style={{ height: 10 }} />
 
                 {/* Dashboard Links (For Sellers/Admins) */}
                 {(() => {
@@ -173,7 +148,7 @@ export function SidebarNavLinks({ onClose, user, pathname }: SidebarNavLinksProp
                 })()}
 
                 <Text style={styles.sectionTitle}>Categories</Text>
-                {sidebarLinks.slice(3).map((link) => {
+                {sidebarLinks.map((link) => {
                     const isActive = pathname === link.href;
                     return (
                         <Link key={link.title} href={link.href} asChild>
@@ -195,27 +170,6 @@ export function SidebarNavLinks({ onClose, user, pathname }: SidebarNavLinksProp
                 })}
 
                 <View style={{ height: 15 }} />
-
-                {/* Only show "Sell on Knot&Bloom" if user is NOT a seller or admin */}
-                {!((user?.sellerId && (user.sellerStatus === 'ACTIVE' || user.sellerStatus === 'PENDING')) || user?.role === 'ADMIN') && (
-                    <Link href={'/seller/apply' as RelativePathString} asChild>
-                        <Pressable onPress={onClose}>
-                            {({ hovered }) => (
-                                <View style={[
-                                    styles.menuItem,
-                                    pathname === '/seller/apply' && styles.menuItemActive,
-                                    hovered && styles.menuItemHovered
-                                ]}>
-                                    <Text style={[
-                                        styles.menuItemText,
-                                        pathname === '/seller/apply' && styles.menuItemTextActive,
-                                        { color: theme.colors.primary, fontWeight: 'bold' }
-                                    ]}>Sell on Knot&Bloom</Text>
-                                </View>
-                            )}
-                        </Pressable>
-                    </Link>
-                )}
             </View>
         </View>
     );

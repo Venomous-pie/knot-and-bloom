@@ -29,7 +29,8 @@ import {
     DollarSign,
     Trash2,
     User,
-    Wallet
+    Wallet,
+    Store
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePathname } from 'expo-router';
@@ -272,6 +273,15 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
 
                 {/* My Account Section */}
                 <MenuSection title="My Account">
+                    {!((user?.sellerId && (user.sellerStatus === 'ACTIVE' || user.sellerStatus === 'PENDING')) || user?.role === 'ADMIN') && (
+                        <MenuItem
+                            icon={<Store size={20} />}
+                            title="Be a Seller"
+                            subtitle="Start your own store"
+                            isActive={pathname === '/seller/apply'}
+                            onPress={() => router.push('/seller/apply' as RelativePathString)}
+                        />
+                    )}
                     <MenuItem
                         icon={<User size={20} />}
                         title="Profile"

@@ -35,14 +35,17 @@ export default function Footer() {
         {/* INFO LINKS */}
         <View style={styles.column}>
           <Text style={styles.title}>INFO LINKS</Text>
-          <Pressable onPress={() => router.push('/about' as any)}>
-            <Text style={styles.link}>About</Text>
+          <Pressable onPress={() => router.push('/about-shop' as any)}>
+            <Text style={styles.link}>About Shop</Text>
           </Pressable>
-          <Pressable onPress={() => router.push('/customer-service')}>
-            <Text style={styles.link}>FAQs</Text>
+          <Pressable onPress={() => router.push('/makers' as any)}>
+            <Text style={styles.link}>Custom Order~</Text>
           </Pressable>
-          <Pressable onPress={() => router.push('/customer-service')}>
-            <Text style={styles.link}>Shipping</Text>
+          <Pressable onPress={() => router.push('/contact-us' as any)}>
+            <Text style={styles.link}>Contact Us</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/customer-service' as any)}>
+            <Text style={styles.link}>FAQs & Shipping</Text>
           </Pressable>
         </View>
 

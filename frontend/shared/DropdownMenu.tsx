@@ -3,7 +3,7 @@ import { theme } from '@/constants/theme';
 import { Link, RelativePathString, usePathname } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, PressableProps, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Platform, Pressable, PressableProps, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 const styles = StyleSheet.create({
     navlinkContainer: {
@@ -39,6 +39,8 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 4,
         minWidth: 160,
+        // @ts-ignore
+        width: Platform.OS === 'web' ? 'max-content' : undefined,
         zIndex: 1000,
     },
     dropdownItem: {
@@ -49,6 +51,8 @@ const styles = StyleSheet.create({
     dropdownText: {
         color: theme.colors.text,
         fontSize: 13,
+        // @ts-ignore
+        whiteSpace: Platform.OS === 'web' ? 'nowrap' : undefined,
     },
     dropdownTextHovered: {
         color: theme.colors.primary,

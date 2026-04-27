@@ -49,8 +49,6 @@ export function NavLinks({ activeMenu, setActiveMenu }: { activeMenu: string | n
         { title: 'Crochet', href: '/products/crochet' as RelativePathString },
         { title: 'Fuzzy Wire Art', href: '/products/fuzzy-wire-art' as RelativePathString },
         { title: 'Gift Boxes/Sets', href: '/products/gift-boxes-sets' as RelativePathString },
-        { type: 'separator' },
-        { title: 'See All Categories →', href: '/products/categories' as RelativePathString },
     ];
 
     const isShopActive = shopItems.some(item => item.href && pathname === item.href);

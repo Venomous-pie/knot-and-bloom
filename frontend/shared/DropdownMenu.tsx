@@ -3,7 +3,7 @@ import { theme } from '@/constants/theme';
 import { Link, RelativePathString, usePathname } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, PressableProps, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Platform, Pressable, PressableProps, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
 
 const styles = StyleSheet.create({
     navlinkContainer: {
@@ -32,6 +32,10 @@ const styles = StyleSheet.create({
         transform: [{ translateX: '-50%' }],
         marginTop: 4,
         backgroundColor: 'white',
+        borderTopWidth: 2,
+        borderBottomWidth: 2,
+        borderTopColor: theme.colors.primaryLight,
+        borderBottomColor: theme.colors.primaryLight,
         borderRadius: 6,
         shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
@@ -65,7 +69,17 @@ const styles = StyleSheet.create({
         bottom: 0,
         zIndex: 999,
     },
-});
+}) as unknown as {
+    navlinkContainer: ViewStyle;
+    underline: ViewStyle;
+    underlineHovered: ViewStyle;
+    dropdownContainer: ViewStyle;
+    dropdown: ViewStyle;
+    dropdownItem: ViewStyle;
+    dropdownText: TextStyle;
+    dropdownTextHovered: TextStyle;
+    backdrop: ViewStyle;
+};
 
 export interface DropdownItem {
     title?: string;
@@ -86,6 +100,7 @@ interface DropdownMenuProps {
 export default function DropdownMenu({ items, children, style, isOpen: controlledIsOpen, onOpenChange }: DropdownMenuProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const rotateAnim = useRef(new Animated.Value(0)).current;
+    const containerRef = useRef<View>(null);
     const pathname = usePathname();
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
@@ -120,13 +135,27 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
         }).start();
     }, [isOpen]);
 
+    // On web, use a document-level mousedown listener to close on outside click.
+    // This avoids blocking scroll (which a full-screen Pressable backdrop would do).
+    useEffect(() => {
+        if (Platform.OS !== 'web' || !isOpen) return;
+        const onMouseDown = (e: MouseEvent) => {
+            const node = containerRef.current as unknown as Element | null;
+            if (node && !node.contains(e.target as Node)) {
+                handleClose();
+            }
+        };
+        document.addEventListener('mousedown', onMouseDown);
+        return () => document.removeEventListener('mousedown', onMouseDown);
+    }, [isOpen]);
+
     const rotate = rotateAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ['0deg', '180deg'],
     });
 
     return (
-        <View style={styles.dropdownContainer}>
+        <View ref={containerRef} style={styles.dropdownContainer}>
             <Pressable
                 onPress={handleToggle}
                 style={style || (children ? styles.navlinkContainer : styles.navlinkContainer)}
@@ -201,7 +230,10 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                 </View>
             )}
 
-            {isOpen && (
+            {/* Native only: backdrop Pressable to close on outside tap.
+                On web this is handled by the document mousedown listener above,
+                so we don't render an overlay that would block scrolling. */}
+            {isOpen && Platform.OS !== 'web' && (
                 <Pressable
                     style={styles.backdrop}
                     onPress={handleClose}

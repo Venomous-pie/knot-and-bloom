@@ -174,7 +174,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
     gap: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',
   },
   containerMobile: {

@@ -95,9 +95,12 @@ interface DropdownMenuProps {
     style?: PressableProps['style'];
     isOpen?: boolean;
     onOpenChange?: (isOpen: boolean) => void;
+    footer?: React.ReactNode;
+    /** Custom content rendered inside the panel above the items list */
+    body?: React.ReactNode;
 }
 
-export default function DropdownMenu({ items, children, style, isOpen: controlledIsOpen, onOpenChange }: DropdownMenuProps) {
+export default function DropdownMenu({ items, children, style, isOpen: controlledIsOpen, onOpenChange, footer, body }: DropdownMenuProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const containerRef = useRef<View>(null);
@@ -180,6 +183,8 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
 
             {isOpen && (
                 <View style={styles.dropdown}>
+                    {body && <View>{body}</View>}
+                    {body && items.length > 0 && <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />}
                     {items.map((item, index) => {
                         if (item.type === 'separator') {
                             return <View key={index} style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4, marginHorizontal: 10 }} />;
@@ -187,8 +192,40 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
 
                         const isLinkActive = item.href ? pathname === item.href : false;
 
-                        const content = (
+                        if (item.href) {
+                            // For link items: defer close so expo-router Link can navigate first
+                            return (
+                                <Link key={item.title || index} href={item.href!} asChild>
+                                    <Pressable
+                                        onPress={() => {
+                                            setTimeout(() => handleClose(), 0);
+                                            if (item.onPress) item.onPress();
+                                        }}
+                                        style={styles.dropdownItem}
+                                    >
+                                        {({ hovered }) => (
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                {item.icon && (
+                                                    <View style={{ width: 18, alignItems: 'center' }}>
+                                                        {item.icon}
+                                                    </View>
+                                                )}
+                                                <Text style={[
+                                                    styles.dropdownText,
+                                                    (hovered || isLinkActive) && styles.dropdownTextHovered,
+                                                ]}>
+                                                    {item.title}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                </Link>
+                            );
+                        }
+
+                        return (
                             <Pressable
+                                key={item.title || index}
                                 onPress={() => {
                                     handleClose();
                                     if (item.onPress) item.onPress();
@@ -204,7 +241,7 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                                         )}
                                         <Text style={[
                                             styles.dropdownText,
-                                            (hovered || isLinkActive) && styles.dropdownTextHovered,
+                                            hovered && styles.dropdownTextHovered,
                                         ]}>
                                             {item.title}
                                         </Text>
@@ -212,21 +249,12 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                                 )}
                             </Pressable>
                         );
-
-                        if (item.href) {
-                            return (
-                                <Link key={item.title || index} href={item.href!} asChild>
-                                    {content}
-                                </Link>
-                            );
-                        }
-
-                        return (
-                            <React.Fragment key={item.title || index}>
-                                {content}
-                            </React.Fragment>
-                        );
                     })}
+                    {footer && (
+                        <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, marginTop: 4 }}>
+                            {footer}
+                        </View>
+                    )}
                 </View>
             )}
 

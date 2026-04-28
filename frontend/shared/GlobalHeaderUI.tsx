@@ -1,4 +1,4 @@
-import { productAPI } from "@/api/api";
+import { productAPI, notificationAPI, Notification } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -121,6 +121,26 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
     const [desktopSearchExpanded, setDesktopSearchExpanded] = useState(false);
     const desktopInputRef = useRef<TextInput>(null);
     const isCollapsing = useRef(false);
+
+    // Notifications state
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [notifLoading, setNotifLoading] = useState(false);
+
+    const fetchNotifications = async () => {
+        if (!user) return;
+        setNotifLoading(true);
+        try {
+            const res = await notificationAPI.getNotifications({ limit: 5 });
+            setNotifications(res.data.notifications);
+            setUnreadCount(res.data.unreadCount);
+        } catch (e) {
+            console.error('Failed to fetch notifications', e);
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
 
     const expandedAnim = useRef(new Animated.Value(0)).current;
 
@@ -290,12 +310,103 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
 
                     <View style={{ width: 1, height: 18, backgroundColor: theme.colors.border }} />
 
-                    <Pressable
-                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
-                        onPress={() => router.push("/profile/notifications" as RelativePathString)}
+                    <DropdownMenu
+                        items={[]}
+                        isOpen={activeMenu === 'notifications'}
+                        onOpenChange={(open) => {
+                            setActiveMenu(open ? 'notifications' : null);
+                            if (open) fetchNotifications();
+                        }}
+                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}
+                        body={
+                            <View style={{ minWidth: 280, maxWidth: 320, paddingVertical: 8 }}>
+                                {/* Header */}
+                                <View style={{ paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text, fontFamily: 'Quicksand' }}>Notifications</Text>
+                                </View>
+
+                                {notifLoading ? (
+                                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 12, color: theme.colors.textLight }}>Loading…</Text>
+                                    </View>
+                                ) : notifications.length === 0 ? (
+                                    <View style={{ paddingVertical: 24, paddingHorizontal: 16, alignItems: 'center', gap: 6 }}>
+                                        <Bell size={28} color={theme.colors.border} />
+                                        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary, fontFamily: 'Quicksand' }}>You're all caught up!</Text>
+                                        <Text style={{ fontSize: 12, color: theme.colors.textLight, textAlign: 'center' }}>No new notifications right now.</Text>
+                                    </View>
+                                ) : (
+                                    notifications.map((n) => (
+                                        <Link key={n.uid} href={'/profile/notifications' as RelativePathString} asChild>
+                                            <Pressable
+                                                onPress={() => setTimeout(() => setActiveMenu(null), 0)}
+                                                style={({ hovered }) => ([
+                                                    {
+                                                        flexDirection: 'row',
+                                                        alignItems: 'flex-start',
+                                                        paddingVertical: 10,
+                                                        paddingHorizontal: 14,
+                                                        gap: 10,
+                                                        borderLeftWidth: !n.isRead ? 3 : 0,
+                                                        borderLeftColor: theme.colors.primaryLight,
+                                                    },
+                                                    hovered && { backgroundColor: theme.colors.subtle }
+                                                ])}
+                                            >
+                                                {!n.isRead && (
+                                                    <View style={{
+                                                        width: 7, height: 7, borderRadius: 4,
+                                                        backgroundColor: theme.colors.primary,
+                                                        marginTop: 5, flexShrink: 0
+                                                    }} />
+                                                )}
+                                                {n.isRead && <View style={{ width: 7 }} />}
+                                                <View style={{ flex: 1 }}>
+                                                    <Text
+                                                        numberOfLines={1}
+                                                        style={{ fontSize: 12, fontWeight: n.isRead ? '500' : '700', color: theme.colors.text, fontFamily: 'Quicksand' }}
+                                                    >
+                                                        {n.title}
+                                                    </Text>
+                                                    <Text numberOfLines={2} style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 16 }}>
+                                                        {n.message}
+                                                    </Text>
+                                                </View>
+                                            </Pressable>
+                                        </Link>
+                                    ))
+                                )}
+                            </View>
+                        }
+                        footer={
+                            <Link href={'/profile/notifications' as RelativePathString} asChild>
+                                <Pressable
+                                    onPress={() => setTimeout(() => setActiveMenu(null), 0)}
+                                    style={{ paddingVertical: 10, alignItems: 'center' }}
+                                >
+                                    {({ hovered }) => (
+                                        <Text style={{ fontSize: 12, fontWeight: '600', color: hovered ? theme.colors.primary : theme.colors.textSecondary }}>
+                                            View all notifications →
+                                        </Text>
+                                    )}
+                                </Pressable>
+                            </Link>
+                        }
                     >
-                        <Bell size={18} />
-                    </Pressable>
+                        <View style={{ position: 'relative' }}>
+                            <Bell size={18} />
+                            {unreadCount > 0 && (
+                                <View style={{
+                                    position: 'absolute', top: -5, right: -5,
+                                    backgroundColor: theme.colors.primary, borderRadius: 10,
+                                    minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+                                    paddingHorizontal: 4, borderWidth: 1, borderColor: 'white'
+                                }}>
+                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                                </View>
+                            )}
+                        </View>
+                    </DropdownMenu>
 
                     <Pressable
                         style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}

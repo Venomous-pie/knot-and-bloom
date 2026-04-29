@@ -47,6 +47,7 @@ export default function SellerProductForm() {
                         materials: p.materials || '',
                         bundleQuantity: p.bundleQuantity ? String(p.bundleQuantity) : '1',
                         isCodAllowed: p.isCodAllowed ?? true,
+                        isBundle: p.isBundle ?? false,
                     },
                     selectedCategories: Array.isArray(p.categories) ? p.categories : [],
                     variants: p.variants && p.variants.length > 0

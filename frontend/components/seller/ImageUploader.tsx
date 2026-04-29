@@ -1,6 +1,6 @@
 import { isMobile } from '@/constants/layout';
 import * as ImagePicker from 'expo-image-picker';
-import { ImagePlus, Trash2, Link as LinkIcon, X } from 'lucide-react-native';
+import { ImagePlus, Trash2, Crop } from 'lucide-react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import {
     ActivityIndicator,
@@ -9,7 +9,6 @@ import {
     Pressable,
     StyleSheet,
     Text,
-    TextInput,
     useWindowDimensions,
     View,
 } from 'react-native';
@@ -63,9 +62,14 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
                     const file = item.getAsFile();
                     if (file) {
                         const uri = URL.createObjectURL(file);
-                        setPendingImages([{ uri, name: file.name }]);
-                        setCurrentCropIndex(0);
-                        setShowCropModal(true);
+                        setUploading(true);
+                        setUploadProgress('Uploading pasted image...');
+                        const uploaded = await uploadSingleImage(uri, file.name);
+                        if (uploaded) {
+                            onImagesChange([...images, uploaded]);
+                        }
+                        setUploading(false);
+                        setUploadProgress('');
                     }
                     break;
                 }
@@ -87,44 +91,44 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
         });
 
         if (!result.canceled && result.assets) {
-            const picked = result.assets.map(asset => ({
-                uri: asset.uri,
-                name: asset.fileName || `image_${Date.now()}.jpg`,
-            }));
-            setPendingImages(picked);
-            setCurrentCropIndex(0);
-            setShowCropModal(true);
+            setUploading(true);
+            setUploadProgress('Uploading...');
+            
+            const newImages: ImageItem[] = [];
+            for (const asset of result.assets) {
+                const uploaded = await uploadSingleImage(asset.uri, asset.fileName || `image_${Date.now()}.jpg`);
+                if (uploaded) newImages.push(uploaded);
+            }
+            
+            onImagesChange([...images, ...newImages]);
+            setUploading(false);
+            setUploadProgress('');
         }
     };
 
     const handleCropComplete = async (croppedUri: string) => {
-        const current = pendingImages[currentCropIndex];
-        await processAndUploadImage(croppedUri, current?.name);
-
-        // Move to next image or close
-        if (currentCropIndex < pendingImages.length - 1) {
-            setCurrentCropIndex(currentCropIndex + 1);
-        } else {
-            setShowCropModal(false);
-            setPendingImages([]);
-            setCurrentCropIndex(0);
+        const current = pendingImages[0];
+        setShowCropModal(false);
+        setUploading(true);
+        setUploadProgress('Applying crop...');
+        
+        const uploaded = await uploadSingleImage(croppedUri, current?.name);
+        if (uploaded) {
+            const newImages = [...images];
+            newImages[currentCropIndex] = uploaded;
+            onImagesChange(newImages);
         }
+        
+        setPendingImages([]);
+        setCurrentCropIndex(0);
+        setUploading(false);
+        setUploadProgress('');
     };
 
-    const handleCropSkip = async () => {
-        const current = pendingImages[currentCropIndex];
-        if (current) {
-            await processAndUploadImage(current.uri, current.name);
-        }
-
-        // Move to next image or close
-        if (currentCropIndex < pendingImages.length - 1) {
-            setCurrentCropIndex(currentCropIndex + 1);
-        } else {
-            setShowCropModal(false);
-            setPendingImages([]);
-            setCurrentCropIndex(0);
-        }
+    const handleCropSkip = () => {
+        setShowCropModal(false);
+        setPendingImages([]);
+        setCurrentCropIndex(0);
     };
 
     const handleCropCancel = () => {
@@ -132,31 +136,24 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
         setPendingImages([]);
         setCurrentCropIndex(0);
     };
+    
+    const openCropper = (index: number) => {
+        setPendingImages([{ uri: images[index].uri }]);
+        setCurrentCropIndex(index);
+        setShowCropModal(true);
+    };
 
-    const processAndUploadImage = async (uri: string, name?: string) => {
-        setUploading(true);
-        setUploadProgress('Compressing...');
-
+    const uploadSingleImage = async (uri: string, name?: string): Promise<ImageItem | null> => {
         try {
-            // Compress if needed
             const compressedUri = await compressImage(uri);
-
-            setUploadProgress('Uploading...');
-
-            // Upload to ImageKit
             const result = await uploadToImageKit({
                 uri: compressedUri,
                 name: name || `image_${Date.now()}.jpg`,
             });
-
-            onImagesChange([...images, { uri: result.url, isUrl: true }]);
+            return { uri: result.url, isUrl: true };
         } catch (error) {
             console.error('Upload failed:', error);
-            // Fallback to local URI if upload fails
-            onImagesChange([...images, { uri, isUrl: false }]);
-        } finally {
-            setUploading(false);
-            setUploadProgress('');
+            return { uri, isUrl: false };
         }
     };
 
@@ -238,6 +235,9 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
                                                 <Text style={styles.actionText}>←</Text>
                                             </Pressable>
                                         )}
+                                        <Pressable style={styles.actionButton} onPress={() => openCropper(index)}>
+                                            <Crop size={14} color="#333" />
+                                        </Pressable>
                                         <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={() => removeImage(index)}>
                                             <Trash2 size={14} color={theme.colors.primary} />
                                         </Pressable>

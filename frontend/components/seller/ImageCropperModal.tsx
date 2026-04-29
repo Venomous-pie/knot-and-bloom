@@ -7,6 +7,7 @@ import {
     Pressable,
     StyleSheet,
     ActivityIndicator,
+    PanResponder,
     useWindowDimensions,
     Platform,
 } from 'react-native';
@@ -51,6 +52,41 @@ export default function ImageCropperModal({
     // Calculate max preview size
     const maxPreviewWidth = Math.min(screenWidth - 48, 600);
     const maxPreviewHeight = screenHeight * 0.5;
+
+    // Calculate display dimensions
+    const displayScale = imageSize.width && imageSize.height ? Math.min(
+        maxPreviewWidth / imageSize.width,
+        maxPreviewHeight / imageSize.height,
+        1
+    ) : 1;
+    const displayWidth = imageSize.width * displayScale;
+    const displayHeight = imageSize.height * displayScale;
+
+    // PanResponder for dragging
+    const panResponder = React.useMemo(
+        () =>
+            PanResponder.create({
+                onStartShouldSetPanResponder: () => true,
+                onPanResponderMove: (evt, gestureState) => {
+                    setCropArea((prev) => {
+                        const newX = prev.x + gestureState.dx / displayScale;
+                        const newY = prev.y + gestureState.dy / displayScale;
+                        
+                        // Bounds checking
+                        const boundedX = Math.max(0, Math.min(newX, imageSize.width - prev.width));
+                        const boundedY = Math.max(0, Math.min(newY, imageSize.height - prev.height));
+
+                        return { ...prev, x: boundedX, y: boundedY };
+                    });
+                },
+                onPanResponderRelease: () => {
+                    // Snap or final bounds check if needed
+                },
+            }),
+        [displayScale, imageSize]
+    );
+
+
 
     useEffect(() => {
         if (imageUri) {
@@ -119,14 +155,7 @@ export default function ImageCropperModal({
         }
     };
 
-    // Calculate display dimensions
-    const displayScale = Math.min(
-        maxPreviewWidth / imageSize.width,
-        maxPreviewHeight / imageSize.height,
-        1
-    );
-    const displayWidth = imageSize.width * displayScale;
-    const displayHeight = imageSize.height * displayScale;
+
 
     // Crop overlay dimensions
     const cropDisplayX = cropArea.x * displayScale;
@@ -151,10 +180,7 @@ export default function ImageCropperModal({
                             <X size={20} color="#666" />
                         </Pressable>
                         <Text style={styles.title}>Crop Image</Text>
-                        <Pressable style={styles.skipButton} onPress={onSkip}>
-                            <SkipForward size={16} color="#B36979" />
-                            <Text style={styles.skipText}>Skip</Text>
-                        </Pressable>
+
                     </View>
 
                     {/* Image Preview with Crop Overlay */}
@@ -172,7 +198,9 @@ export default function ImageCropperModal({
                                 <View style={[styles.cropOverlay, { top: cropDisplayY, left: 0, width: cropDisplayX, height: cropDisplayHeight }]} />
                                 <View style={[styles.cropOverlay, { top: cropDisplayY, right: 0, width: displayWidth - cropDisplayX - cropDisplayWidth, height: cropDisplayHeight }]} />
                                 {/* Crop border */}
-                                <View style={[styles.cropBorder, {
+                                <View 
+                                    {...panResponder.panHandlers}
+                                    style={[styles.cropBorder, {
                                     left: cropDisplayX,
                                     top: cropDisplayY,
                                     width: cropDisplayWidth,

@@ -42,6 +42,7 @@ export interface ProductFormData {
     materials: string;
     bundleQuantity: string;
     isCodAllowed: boolean;
+    isBundle: boolean;
     description: string;
 }
 
@@ -104,6 +105,7 @@ export default function ProductFormWizard({
         materials: '',
         bundleQuantity: '1',
         isCodAllowed: true,
+        isBundle: false,
     });
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [variants, setVariants] = useState<VariantData[]>([
@@ -514,100 +516,7 @@ export default function ProductFormWizard({
                             </View>
                         )}
 
-                        {/* Materials & Bundle Row */}
-                        <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
-                            <View style={[styles.field, !mobile && { flex: 2 }]}>
-                                <Text style={styles.fieldLabel}>Materials</Text>
-                                <TextInput
-                                    style={[styles.input, focusedField === 'materials' && styles.inputFocused]}
-                                    value={formData.materials}
-                                    onChangeText={(text: string) => handleChange('materials', text)}
-                                    placeholder="Type or select materials..."
-                                    placeholderTextColor={theme.colors.textLight}
-                                    onFocus={() => setFocusedField('materials')}
-                                    onBlur={() => setTimeout(() => setFocusedField(null), 150)}
-                                />
-                                {/* Smart Suggestions */}
-                                {focusedField === 'materials' && (
-                                    <View style={styles.materialSuggestions}>
-                                        <ScrollView
-                                            horizontal
-                                            showsHorizontalScrollIndicator={false}
-                                            contentContainerStyle={styles.materialChipsRow}
-                                        >
-                                            {PRESET_MATERIALS
-                                                .filter(m => {
-                                                    const currentMaterials = formData.materials.toLowerCase().split(',').map(s => s.trim());
-                                                    const lastInput = currentMaterials[currentMaterials.length - 1] || '';
-                                                    const alreadyAdded = currentMaterials.slice(0, -1).includes(m.toLowerCase());
-                                                    return !alreadyAdded && (lastInput === '' || m.toLowerCase().includes(lastInput));
-                                                })
-                                                .slice(0, 10)
-                                                .map((material) => (
-                                                    <Pressable
-                                                        key={material}
-                                                        style={styles.materialChip}
-                                                        onPress={() => {
-                                                            const parts = formData.materials.split(',').map(s => s.trim()).filter(s => s);
-                                                            if (parts.length > 0 && !PRESET_MATERIALS.map(m => m.toLowerCase()).includes(parts[parts.length - 1].toLowerCase())) {
-                                                                parts.pop();
-                                                            }
-                                                            parts.push(material);
-                                                            handleChange('materials', parts.join(', '));
-                                                        }}
-                                                    >
-                                                        <Text style={styles.materialChipText}>{material}</Text>
-                                                    </Pressable>
-                                                ))}
-                                        </ScrollView>
-                                    </View>
-                                )}
-                            </View>
-                            <View style={[styles.field, !mobile && { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Bundle Qty</Text>
-                                <TextInput
-                                    style={[styles.input, focusedField === 'bundleQty' && styles.inputFocused]}
-                                    value={formData.bundleQuantity}
-                                    onChangeText={(text: string) => handleChange('bundleQuantity', text)}
-                                    placeholder="1"
-                                    placeholderTextColor={theme.colors.textLight}
-                                    keyboardType="numeric"
-                                    onFocus={() => setFocusedField('bundleQty')}
-                                    onBlur={() => setFocusedField(null)}
-                                />
-                            </View>
-                        </View>
-                    </View>
-                );
-
-            case 3:
-                return (
-                    <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Variants & Stock</Text>
-                        <Text style={styles.stepDescription}>
-                            Configure your product variants, stock levels, and pricing options.
-                        </Text>
-
-                        <VariantEditor
-                            variants={variants}
-                            onVariantsChange={setVariants}
-                            baseSku={formData.sku}
-                            basePrice={formData.basePrice}
-                            baseDiscount={formData.discountPercentage}
-                            onGenerateVariantSku={handleGenerateVariantSku}
-                            onExpandedChange={setActiveVariantIndex}
-                        />
-                    </View>
-                );
-
-            case 4:
-                return (
-                    <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Review & Submit</Text>
-                        <Text style={styles.stepDescription}>
-                            Add a description and review your product before submitting.
-                        </Text>
-
+                        {/* Description field moved here */}
                         {/* Description */}
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
@@ -640,6 +549,121 @@ export default function ProductFormWizard({
                                 }}
                             />
                         </View>
+
+
+                        {/* Materials */}
+                        <View style={styles.field}>
+                            <Text style={styles.fieldLabel}>Materials & Inclusions</Text>
+                            <TextInput
+                                style={[styles.input, focusedField === 'materials' && styles.inputFocused]}
+                                value={formData.materials}
+                                onChangeText={(text: string) => handleChange('materials', text)}
+                                placeholder="e.g. Cotton yarn, aesthetic box, personalized letter..."
+                                placeholderTextColor={theme.colors.textLight}
+                                onFocus={() => setFocusedField('materials')}
+                                onBlur={() => setTimeout(() => setFocusedField(null), 150)}
+                            />
+                            {/* Smart Suggestions */}
+                            {focusedField === 'materials' && (
+                                <View style={styles.materialSuggestions}>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.materialChipsRow}
+                                    >
+                                        {PRESET_MATERIALS
+                                            .filter(m => {
+                                                const currentMaterials = formData.materials.toLowerCase().split(',').map(s => s.trim());
+                                                const lastInput = currentMaterials[currentMaterials.length - 1] || '';
+                                                const alreadyAdded = currentMaterials.slice(0, -1).includes(m.toLowerCase());
+                                                return !alreadyAdded && (lastInput === '' || m.toLowerCase().includes(lastInput));
+                                            })
+                                            .slice(0, 10)
+                                            .map((material) => (
+                                                <Pressable
+                                                    key={material}
+                                                    style={styles.materialChip}
+                                                    onPress={() => {
+                                                        const parts = formData.materials.split(',').map(s => s.trim()).filter(s => s);
+                                                        if (parts.length > 0 && !PRESET_MATERIALS.map(m => m.toLowerCase()).includes(parts[parts.length - 1].toLowerCase())) {
+                                                            parts.pop();
+                                                        }
+                                                        parts.push(material);
+                                                        handleChange('materials', parts.join(', '));
+                                                    }}
+                                                >
+                                                    <Text style={styles.materialChipText}>{material}</Text>
+                                                </Pressable>
+                                            ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+                        </View>
+                        
+                        {/* Bundle / Giftbox Toggle */}
+                        <View style={styles.switchContainer}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.switchLabel}>Is this a Bundle or Giftbox?</Text>
+                                <Text style={styles.switchSub}>
+                                    Check this if the product contains multiple items sold together.
+                                </Text>
+                            </View>
+                            <Switch
+                                trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
+                                thumbColor={formData.isBundle ? "#f4f3f4" : "#f4f3f4"}
+                                onValueChange={() => setFormData(prev => ({ ...prev, isBundle: !prev.isBundle }))}
+                                value={formData.isBundle}
+                            />
+                        </View>
+                        
+                        {/* Bundle Quantity - Conditional */}
+                        {formData.isBundle && (
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Bundle Quantity</Text>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'bundleQty' && styles.inputFocused]}
+                                    value={formData.bundleQuantity}
+                                    onChangeText={(text: string) => handleChange('bundleQuantity', text)}
+                                    placeholder="Total number of items in the bundle (e.g. 3)"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    keyboardType="numeric"
+                                    onFocus={() => setFocusedField('bundleQty')}
+                                    onBlur={() => setFocusedField(null)}
+                                />
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 3:
+                return (
+                    <View style={styles.stepContent}>
+                        <Text style={styles.stepTitle}>Variants & Stock</Text>
+                        <Text style={styles.stepDescription}>
+                            Configure your product variants, stock levels, and pricing options.
+                        </Text>
+
+                        <VariantEditor
+                            variants={variants}
+                            onVariantsChange={setVariants}
+                            baseSku={formData.sku}
+                            basePrice={formData.basePrice}
+                            baseDiscount={formData.discountPercentage}
+                            onGenerateVariantSku={handleGenerateVariantSku}
+                            onExpandedChange={setActiveVariantIndex}
+                        />
+                    </View>
+                );
+
+            case 4:
+                return (
+                    <View style={styles.stepContent}>
+                        <Text style={styles.stepTitle}>Review & Submit</Text>
+                        <Text style={styles.stepDescription}>
+                            Add a description and review your product before submitting.
+                        </Text>
+
+
 
                         {/* Summary */}
                         <View style={styles.summaryCard}>

@@ -10,7 +10,7 @@ import { NavLinks } from "@/shared/NavLinks";
 import { MobileNavbar } from "@/shared/MobileNavbar";
 import { Product } from "@/types/products";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
-import { ChevronLeft, Handbag, Heart, Menu, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell } from "lucide-react-native";
+import { ChevronLeft, Handbag, Heart, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import SearchBarDropdown from "./SearchResults";
@@ -103,6 +103,23 @@ interface GlobalHeaderUIProps {
     setIsMenuOpen: (isOpen: boolean) => void;
     activeMenu: string | null;
     setActiveMenu: (menu: string | null) => void;
+}
+
+/** Small circular badge shown on icon buttons (cart, wishlist, notifications). */
+function BadgeDot({ count }: { count: number }) {
+    if (count <= 0) return null;
+    return (
+        <View style={{
+            position: 'absolute', top: -5, right: -5,
+            backgroundColor: theme.colors.primary, borderRadius: 10,
+            minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+            paddingHorizontal: 4, borderWidth: 1, borderColor: 'white',
+        }}>
+            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+                {count > 9 ? '9+' : count}
+            </Text>
+        </View>
+    );
 }
 
 export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMenu }: GlobalHeaderUIProps) {
@@ -204,9 +221,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
         }).start();
     };
 
-    const handleLogout = async () => {
-        await logout();
-    };
+    const handleLogout = logout;
 
     if (mobile) {
         if (isBespokePage) {
@@ -308,7 +323,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         )}
                     </View>
 
-                    <View style={{ width: 1, height: 18, backgroundColor: theme.colors.border }} />
+                    <View style={{ width: 1, height: 18, backgroundColor: theme.colors.border, marginRight: 6 }} />
 
                     <DropdownMenu
                         items={[]}
@@ -320,13 +335,8 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}
                         body={
                             <View style={{ minWidth: 280, maxWidth: 320, paddingVertical: 8 }}>
-                                {/* Header */}
-                                <View style={{ paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-                                    <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text, fontFamily: 'Quicksand' }}>Notifications</Text>
-                                </View>
-
                                 {notifLoading ? (
-                                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                                    <View style={{ paddingVertical: 52, alignItems: 'center' }}>
                                         <Text style={{ fontSize: 12, color: theme.colors.textLight }}>Loading…</Text>
                                     </View>
                                 ) : notifications.length === 0 ? (
@@ -337,51 +347,55 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                                     </View>
                                 ) : (
                                     notifications.map((n) => (
-                                        <Link key={n.uid} href={'/profile/notifications' as RelativePathString} asChild>
+                                        <Link href="/profile/notifications" asChild key={n.uid}>
                                             <Pressable
-                                                onPress={() => setTimeout(() => setActiveMenu(null), 0)}
-                                                style={({ hovered }) => ([
-                                                    {
-                                                        flexDirection: 'row',
-                                                        alignItems: 'flex-start',
-                                                        paddingVertical: 10,
-                                                        paddingHorizontal: 14,
-                                                        gap: 10,
-                                                        borderLeftWidth: !n.isRead ? 3 : 0,
-                                                        borderLeftColor: theme.colors.primaryLight,
-                                                    },
-                                                    hovered && { backgroundColor: theme.colors.subtle }
-                                                ])}
-                                            >
-                                                {!n.isRead && (
-                                                    <View style={{
-                                                        width: 7, height: 7, borderRadius: 4,
-                                                        backgroundColor: theme.colors.primary,
-                                                        marginTop: 5, flexShrink: 0
-                                                    }} />
-                                                )}
-                                                {n.isRead && <View style={{ width: 7 }} />}
-                                                <View style={{ flex: 1 }}>
-                                                    <Text
-                                                        numberOfLines={1}
-                                                        style={{ fontSize: 12, fontWeight: n.isRead ? '500' : '700', color: theme.colors.text, fontFamily: 'Quicksand' }}
-                                                    >
-                                                        {n.title}
-                                                    </Text>
-                                                    <Text numberOfLines={2} style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 16 }}>
-                                                        {n.message}
-                                                    </Text>
-                                                </View>
-                                            </Pressable>
+                                                onPress={() => {
+                                                    setActiveMenu(null);
+                                                }}
+                                            style={({ hovered }) => ([
+                                                {
+                                                    flexDirection: 'row',
+                                                    alignItems: 'flex-start',
+                                                    paddingVertical: 10,
+                                                    paddingHorizontal: 14,
+                                                    gap: 10,
+                                                    borderLeftWidth: !n.isRead ? 3 : 0,
+                                                    borderLeftColor: theme.colors.primaryLight,
+                                                },
+                                                hovered && { backgroundColor: theme.colors.subtle }
+                                            ])}
+                                        >
+                                            {!n.isRead && (
+                                                <View style={{
+                                                    width: 7, height: 7, borderRadius: 4,
+                                                    backgroundColor: theme.colors.primary,
+                                                    marginTop: 5, flexShrink: 0
+                                                }} />
+                                            )}
+                                            {n.isRead && <View style={{ width: 7 }} />}
+                                            <View style={{ flex: 1 }}>
+                                                <Text
+                                                    numberOfLines={1}
+                                                    style={{ fontSize: 12, fontWeight: n.isRead ? '500' : '700', color: theme.colors.text, fontFamily: 'Quicksand' }}
+                                                >
+                                                    {n.title}
+                                                </Text>
+                                                <Text numberOfLines={2} style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 16 }}>
+                                                    {n.message}
+                                                </Text>
+                                            </View>
+                                        </Pressable>
                                         </Link>
                                     ))
                                 )}
                             </View>
                         }
                         footer={
-                            <Link href={'/profile/notifications' as RelativePathString} asChild>
+                            <Link href="/profile/notifications" asChild>
                                 <Pressable
-                                    onPress={() => setTimeout(() => setActiveMenu(null), 0)}
+                                    onPress={() => {
+                                        setActiveMenu(null);
+                                    }}
                                     style={{ paddingVertical: 10, alignItems: 'center' }}
                                 >
                                     {({ hovered }) => (
@@ -395,16 +409,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                     >
                         <View style={{ position: 'relative' }}>
                             <Bell size={18} />
-                            {unreadCount > 0 && (
-                                <View style={{
-                                    position: 'absolute', top: -5, right: -5,
-                                    backgroundColor: theme.colors.primary, borderRadius: 10,
-                                    minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
-                                    paddingHorizontal: 4, borderWidth: 1, borderColor: 'white'
-                                }}>
-                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                                </View>
-                            )}
+                        {unreadCount > 0 && <BadgeDot count={unreadCount} />}
                         </View>
                     </DropdownMenu>
 
@@ -413,16 +418,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         onPress={() => router.push("/wishlist" as RelativePathString)}
                     >
                         <Heart size={18} />
-                        {wishlistCount > 0 && (
-                            <View style={{
-                                position: 'absolute', top: -5, right: -5,
-                                backgroundColor: theme.colors.primary, borderRadius: 10,
-                                minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
-                                paddingHorizontal: 4, borderWidth: 1, borderColor: 'white'
-                            }}>
-                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{wishlistCount}</Text>
-                            </View>
-                        )}
+                        <BadgeDot count={wishlistCount} />
                     </Pressable>
 
                     {(user) ? (
@@ -467,27 +463,10 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                             onPress={() => router.push("/cart" as RelativePathString)}
                         >
                             <Handbag size={18} />
-                            {cartCount > 0 && (
-                                <View style={{
-                                    position: 'absolute', top: -5, right: -5,
-                                    backgroundColor: theme.colors.primary, borderRadius: 10,
-                                    minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
-                                    paddingHorizontal: 4, borderWidth: 1, borderColor: 'white'
-                                }}>
-                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{cartCount}</Text>
-                                </View>
-                            )}
+                            <BadgeDot count={cartCount} />
                         </Pressable>
                     </View>
 
-                    {mobile && (
-                        <Pressable
-                            onPress={() => setIsMenuOpen(true)}
-                            style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
-                        >
-                            <Menu size={18} />
-                        </Pressable>
-                    )}
                 </View>
             </View>
         </View>

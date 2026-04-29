@@ -1,9 +1,10 @@
-import { isMobile } from '@/constants/layout';
 import { theme } from '@/constants/theme';
-import { Link, RelativePathString, usePathname } from 'expo-router';
+import { Link, RelativePathString, router, usePathname } from 'expo-router';
 import { ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, PressableProps, StyleSheet, Text, TextStyle, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { Animated, Platform, Pressable, PressableProps, StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
     navlinkContainer: {
@@ -50,7 +51,6 @@ const styles = StyleSheet.create({
     dropdownItem: {
         paddingVertical: 8,
         paddingHorizontal: 14,
-        borderBottomWidth: 0,
     },
     dropdownText: {
         color: theme.colors.text,
@@ -61,12 +61,10 @@ const styles = StyleSheet.create({
     dropdownTextHovered: {
         color: theme.colors.primary,
     },
-    backdrop: {
+    // Native-only backdrop (web uses a plain <div onClick> to avoid the RN responder chain)
+    nativeBackdrop: {
         position: 'fixed' as any,
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        top: 0, left: 0, right: 0, bottom: 0,
         zIndex: 999,
     },
 }) as unknown as {
@@ -78,8 +76,10 @@ const styles = StyleSheet.create({
     dropdownItem: ViewStyle;
     dropdownText: TextStyle;
     dropdownTextHovered: TextStyle;
-    backdrop: ViewStyle;
+    nativeBackdrop: ViewStyle;
 };
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface DropdownItem {
     title?: string;
@@ -100,32 +100,36 @@ interface DropdownMenuProps {
     body?: React.ReactNode;
 }
 
+// ─── Shared item content (icon + label row) ──────────────────────────────────
+
+function ItemContent({ icon, title, hovered, active }: { icon?: React.ReactNode; title?: string; hovered: boolean; active: boolean }) {
+    return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {icon && <View style={{ width: 18, alignItems: 'center' }}>{icon}</View>}
+            <Text style={[styles.dropdownText, (hovered || active) && styles.dropdownTextHovered]}>
+                {title}
+            </Text>
+        </View>
+    );
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export default function DropdownMenu({ items, children, style, isOpen: controlledIsOpen, onOpenChange, footer, body }: DropdownMenuProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const rotateAnim = useRef(new Animated.Value(0)).current;
-    const containerRef = useRef<View>(null);
     const pathname = usePathname();
-    const { width } = useWindowDimensions();
-    const mobile = isMobile(width);
 
     const isControlled = controlledIsOpen !== undefined;
     const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
 
     const handleToggle = () => {
-        const newState = !isOpen;
-        if (isControlled && onOpenChange) {
-            onOpenChange(newState);
-        } else {
-            setInternalIsOpen(newState);
-        }
+        const next = !isOpen;
+        isControlled ? onOpenChange?.(next) : setInternalIsOpen(next);
     };
 
     const handleClose = () => {
-        if (isControlled && onOpenChange) {
-            onOpenChange(false);
-        } else {
-            setInternalIsOpen(false);
-        }
+        isControlled ? onOpenChange?.(false) : setInternalIsOpen(false);
     };
 
     const isAnyLinkActive = items.some(item => item.href && pathname === item.href);
@@ -138,86 +142,66 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
         }).start();
     }, [isOpen]);
 
-    // On web, use a document-level mousedown listener to close on outside click.
-    // This avoids blocking scroll (which a full-screen Pressable backdrop would do).
-    useEffect(() => {
-        if (Platform.OS !== 'web' || !isOpen) return;
-        const onMouseDown = (e: MouseEvent) => {
-            const node = containerRef.current as unknown as Element | null;
-            if (node && !node.contains(e.target as Node)) {
-                handleClose();
-            }
-        };
-        document.addEventListener('mousedown', onMouseDown);
-        return () => document.removeEventListener('mousedown', onMouseDown);
-    }, [isOpen]);
-
-    const rotate = rotateAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '180deg'],
-    });
+    const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
 
     return (
-        <View ref={containerRef} style={styles.dropdownContainer}>
-            <Pressable
-                onPress={handleToggle}
-                style={style || (children ? styles.navlinkContainer : styles.navlinkContainer)}
-            >
-                {({ hovered, pressed }) => (
-                    children ? (
-                        typeof children === 'function' ? children({ hovered }) : children
-                    ) : (
-                        <>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                                <Text>More</Text>
-                                <Animated.View style={{ transform: [{ rotate }] }}>
-                                    <ChevronDown size={16} color={theme.colors.text} />
-                                </Animated.View>
-                            </View>
-                            <View style={[styles.underline, (hovered || isAnyLinkActive) && styles.underlineHovered]} />
-                        </>
-                    )
+        <View style={styles.dropdownContainer}>
+            {/* Backdrop — web: native <div> bypasses RN responder chain (no press latency).
+                          native: Pressable with fixed positioning. */}
+            {isOpen && (
+                Platform.OS === 'web'
+                    ? <div onClick={handleClose} style={{ position: 'fixed', inset: 0, zIndex: 999 }} /> // @ts-ignore
+                    : <Pressable style={styles.nativeBackdrop} onPress={handleClose} />
+            )}
 
+            <Pressable onPress={handleToggle} style={style || styles.navlinkContainer}>
+                {({ hovered }) => (
+                    children
+                        ? (typeof children === 'function' ? children({ hovered }) : children)
+                        : (
+                            <>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                    <Text>More</Text>
+                                    <Animated.View style={{ transform: [{ rotate }] }}>
+                                        <ChevronDown size={16} color={theme.colors.text} />
+                                    </Animated.View>
+                                </View>
+                                <View style={[styles.underline, (hovered || isAnyLinkActive) && styles.underlineHovered]} />
+                            </>
+                        )
                 )}
             </Pressable>
 
             {isOpen && (
                 <View style={styles.dropdown}>
                     {body && <View>{body}</View>}
-                    {body && items.length > 0 && <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />}
+                    {body && items.length > 0 && (
+                        <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />
+                    )}
+
                     {items.map((item, index) => {
                         if (item.type === 'separator') {
-                            return <View key={index} style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4, marginHorizontal: 10 }} />;
+                            return (
+                                <View
+                                    key={index}
+                                    style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4, marginHorizontal: 10 }}
+                                />
+                            );
                         }
 
-                        const isLinkActive = item.href ? pathname === item.href : false;
+                        const isActive = item.href ? pathname === item.href : false;
 
                         if (item.href) {
-                            // For link items: defer close so expo-router Link can navigate first
                             return (
-                                <Link key={item.title || index} href={item.href!} asChild>
+                                <Link key={item.title || index} href={item.href} asChild>
                                     <Pressable
                                         onPress={() => {
-                                            setTimeout(() => handleClose(), 0);
-                                            if (item.onPress) item.onPress();
+                                            handleClose();
+                                            item.onPress?.();
                                         }}
                                         style={styles.dropdownItem}
                                     >
-                                        {({ hovered }) => (
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                                {item.icon && (
-                                                    <View style={{ width: 18, alignItems: 'center' }}>
-                                                        {item.icon}
-                                                    </View>
-                                                )}
-                                                <Text style={[
-                                                    styles.dropdownText,
-                                                    (hovered || isLinkActive) && styles.dropdownTextHovered,
-                                                ]}>
-                                                    {item.title}
-                                                </Text>
-                                            </View>
-                                        )}
+                                        {({ hovered }) => <ItemContent icon={item.icon} title={item.title} hovered={hovered} active={isActive} />}
                                     </Pressable>
                                 </Link>
                             );
@@ -226,46 +210,20 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
                         return (
                             <Pressable
                                 key={item.title || index}
-                                onPress={() => {
-                                    handleClose();
-                                    if (item.onPress) item.onPress();
-                                }}
+                                onPress={() => { handleClose(); item.onPress?.(); }}
                                 style={styles.dropdownItem}
                             >
-                                {({ hovered }) => (
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                        {item.icon && (
-                                            <View style={{ width: 18, alignItems: 'center' }}>
-                                                {item.icon}
-                                            </View>
-                                        )}
-                                        <Text style={[
-                                            styles.dropdownText,
-                                            hovered && styles.dropdownTextHovered,
-                                        ]}>
-                                            {item.title}
-                                        </Text>
-                                    </View>
-                                )}
+                                {({ hovered }) => <ItemContent icon={item.icon} title={item.title} hovered={hovered} active={false} />}
                             </Pressable>
                         );
                     })}
+
                     {footer && (
                         <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, marginTop: 4 }}>
                             {footer}
                         </View>
                     )}
                 </View>
-            )}
-
-            {/* Native only: backdrop Pressable to close on outside tap.
-                On web this is handled by the document mousedown listener above,
-                so we don't render an overlay that would block scrolling. */}
-            {isOpen && Platform.OS !== 'web' && (
-                <Pressable
-                    style={styles.backdrop}
-                    onPress={handleClose}
-                />
             )}
         </View>
     );

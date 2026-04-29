@@ -387,7 +387,7 @@ export const sellerAPI = {
     getSellers: () => apiClient.get<any[]>('/sellers'),
     getActiveSellers: () => apiClient.get<any[]>('/sellers/active'),
     updateSellerStatus: (id: number, status: string, rejectionReason?: string) => apiClient.put(`/sellers/${id}`, { status, rejectionReason }),
-    markWelcomeSeen: () => apiClient.patch('/sellers/me/welcome-seen', {}),
+    markWelcomeSeen: () => apiClient.patch<{ success: boolean; token: string; customer: any }>('/sellers/me/welcome-seen', {}),
     cancelApplication: () => apiClient.delete('/sellers/me/application'),
     getDashboardStats: () => apiClient.get<any>('/sellers/me/dashboard-stats').then(res => res.data),
 };

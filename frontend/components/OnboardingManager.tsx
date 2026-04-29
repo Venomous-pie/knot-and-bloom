@@ -12,7 +12,7 @@ export default function OnboardingManager() {
             // Check if user is an ACTIVE seller and hasn't seen the welcome modal
             // Note: sellerHasSeenWelcomeModal might be undefined if false, so we check strictly !== true
             if (
-                user.sellerStatus === 'ACTIVE' &&
+                user.sellerStatus === 'APPROVED' &&
                 user.sellerHasSeenWelcomeModal !== true
             ) {
                 setShowWelcome(true);

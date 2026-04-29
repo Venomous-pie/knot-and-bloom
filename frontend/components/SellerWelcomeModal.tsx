@@ -60,7 +60,7 @@ interface Props {
 }
 
 export default function SellerWelcomeModal({ visible, onClose }: Props) {
-    const { user, refreshUser } = useAuth();
+    const { user, refreshUser, loginWithToken } = useAuth();
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -68,8 +68,14 @@ export default function SellerWelcomeModal({ visible, onClose }: Props) {
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            await sellerAPI.markWelcomeSeen();
-            await refreshUser();
+            const res = await sellerAPI.markWelcomeSeen();
+            // Backend returns a fresh JWT with role=SELLER and status=ACTIVE.
+            // Store it via loginWithToken so the auth context updates immediately.
+            if (res.data?.token) {
+                await loginWithToken(res.data.token);
+            } else {
+                await refreshUser();
+            }
             onClose();
         } catch (error) {
             console.error(error);

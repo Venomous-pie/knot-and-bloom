@@ -229,7 +229,8 @@ enum Role {
 
 enum SellerStatus {
   PENDING
-  ACTIVE
+  APPROVED  // Admin approved — awaiting user onboarding completion
+  ACTIVE    // Officially a seller (onboarding completed)
   SUSPENDED
   BANNED
   REJECTED

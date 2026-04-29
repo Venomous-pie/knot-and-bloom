@@ -7,7 +7,7 @@ interface User {
     address?: string | null;
     avatar?: string | null;
     sellerId?: number;
-    sellerStatus?: string; // 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED'
+    sellerStatus?: string; // 'PENDING' | 'APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'REJECTED'
     sellerHasSeenWelcomeModal?: boolean;
     sellerStoreName?: string;
     sellerSlug?: string;

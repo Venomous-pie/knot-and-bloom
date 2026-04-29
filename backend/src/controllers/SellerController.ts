@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
 import { SellerStatus } from '../../generated/prisma/client.js';
@@ -225,17 +226,22 @@ export const sellerController = {
                 return res.status(404).json({ error: "Seller not found" });
             }
 
-            // Admin approving seller: upgrade customer role to SELLER
+            // Admin approving seller: set to APPROVED (not ACTIVE yet) and send notification
             if (user.role === Role.ADMIN && updates.status === SellerStatus.ACTIVE && currentSeller.status !== SellerStatus.ACTIVE) {
-                await prisma.$transaction(async (tx) => {
-                    await tx.seller.update({
-                        where: { uid: targetSellerId },
-                        data: { ...updates, approvedAt: new Date() }
-                    });
-                    await tx.customer.update({
-                        where: { uid: currentSeller.customerId },
-                        data: { role: Role.SELLER }
-                    });
+                // Set status to APPROVED — role upgrade happens only after user completes onboarding
+                await prisma.seller.update({
+                    where: { uid: targetSellerId },
+                    data: { status: SellerStatus.APPROVED, approvedAt: new Date() }
+                });
+
+                // Send in-app notification to the seller's customer
+                await prisma.notification.create({
+                    data: {
+                        customerId: currentSeller.customerId,
+                        title: '🎉 Your application has been approved!',
+                        message: 'Congratulations! Your seller application has been approved. Complete your onboarding to start selling on Knot & Bloom.',
+                        type: 'system',
+                    }
                 });
 
                 const updatedSeller = await prisma.seller.findUnique({ where: { uid: targetSellerId } });
@@ -430,7 +436,10 @@ export const sellerController = {
         }
     },
 
-    // Mark Welcome Modal as Seen (Protected)
+    // Complete Onboarding (formerly markWelcomeSeen)
+    // Called when user finishes the welcome modal — officially activates the seller account.
+    // Sets hasSeenWelcomeModal=true, upgrades status to ACTIVE, upgrades customer role to SELLER,
+    // and returns a fresh JWT token so the frontend reflects the new role immediately.
     async markWelcomeSeen(req: Request, res: Response) {
         try {
             if (!req.user) return res.status(401).json({ error: "Unauthorized" });
@@ -443,9 +452,7 @@ export const sellerController = {
                 const seller = await prisma.seller.findUnique({
                     where: { customerId: user.id }
                 });
-                if (seller) {
-                    sellerId = seller.uid;
-                }
+                if (seller) sellerId = seller.uid;
             }
 
             // Admin Auto-Creation Logic
@@ -455,15 +462,64 @@ export const sellerController = {
 
             if (!sellerId) return res.status(401).json({ error: "Unauthorized - Seller profile not found" });
 
-            await prisma.seller.update({
-                where: { uid: sellerId },
-                data: { hasSeenWelcomeModal: true }
+            // Atomically: mark modal seen + set ACTIVE + upgrade customer role to SELLER
+            await prisma.$transaction(async (tx) => {
+                await tx.seller.update({
+                    where: { uid: sellerId! },
+                    data: {
+                        hasSeenWelcomeModal: true,
+                        status: SellerStatus.ACTIVE,
+                    }
+                });
+                await tx.customer.update({
+                    where: { uid: user.id },
+                    data: { role: Role.SELLER }
+                });
             });
 
-            res.json({ success: true });
+            // Fetch updated profile to build a fresh token
+            const updatedCustomer = await prisma.customer.findUnique({
+                where: { uid: user.id },
+                include: { sellerProfile: true }
+            });
+
+            if (!updatedCustomer) return res.status(404).json({ error: 'Customer not found' });
+
+            const payload: AuthPayload = {
+                id: updatedCustomer.uid,
+                ...(updatedCustomer.email ? { email: updatedCustomer.email } : {}),
+                role: updatedCustomer.role as any,
+                sellerId: updatedCustomer.sellerProfile?.uid,
+                sellerStatus: updatedCustomer.sellerProfile?.status as any,
+            };
+
+            const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+
+            res.json({
+                success: true,
+                token,
+                customer: {
+                    uid: updatedCustomer.uid,
+                    name: updatedCustomer.name,
+                    email: updatedCustomer.email,
+                    phone: updatedCustomer.phone,
+                    address: updatedCustomer.address,
+                    role: updatedCustomer.role,
+                    avatar: updatedCustomer.avatar,
+                    passwordResetRequired: updatedCustomer.passwordResetRequired,
+                    sellerId: updatedCustomer.sellerProfile?.uid,
+                    sellerStatus: updatedCustomer.sellerProfile?.status,
+                    sellerHasSeenWelcomeModal: updatedCustomer.sellerProfile?.hasSeenWelcomeModal,
+                    sellerStoreName: updatedCustomer.sellerProfile?.name,
+                    sellerSlug: updatedCustomer.sellerProfile?.slug,
+                    sellerRating: updatedCustomer.sellerProfile?.rating,
+                    sellerTotalSales: updatedCustomer.sellerProfile?.totalSales,
+                    sellerTotalOrders: updatedCustomer.sellerProfile?.totalOrders,
+                }
+            });
         } catch (error) {
             console.error(error);
-            res.status(500).json({ error: "Failed to update status" });
+            res.status(500).json({ error: "Failed to complete onboarding" });
         }
     },
 

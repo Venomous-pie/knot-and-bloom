@@ -20,7 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
-import ImageCropperModal from '@/components/admin/ImageCropperModal';
+import ImageCropperModal from '@/components/seller/ImageCropperModal';
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from '@/constants/theme';
 

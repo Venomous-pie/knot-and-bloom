@@ -1,7 +1,7 @@
 import { productAPI } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
-import ProductFormWizard, { ProductFormData } from "@/components/admin/ProductFormWizard";
-import { VariantData } from "@/components/admin/VariantEditor";
+import ProductFormWizard, { ProductFormData } from "@/components/seller/ProductFormWizard";
+import { VariantData } from "@/components/seller/VariantEditor";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";

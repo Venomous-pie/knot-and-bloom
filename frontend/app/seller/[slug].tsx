@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
-import ImageCropperModal from '@/components/admin/ImageCropperModal';
+import ImageCropperModal from '@/components/seller/ImageCropperModal';
 import { apiClient } from "@/api/api";
 import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, interpolate, Extrapolation } from "react-native-reanimated";
 import GlobalHeaderUI from "@/shared/GlobalHeaderUI";
@@ -564,7 +564,7 @@ export default function SellerProfile() {
             <Stack.Screen options={{ headerShown: false }} />
 
             <Animated.View style={headerAnimatedStyle}>
-                <GlobalHeaderUI 
+                <GlobalHeaderUI
                     setIsMenuOpen={setIsMenuOpen}
                     activeMenu={activeMenu}
                     setActiveMenu={setActiveMenu}

@@ -74,7 +74,7 @@ interface ProductFormWizardProps {
 
 const STEPS = [
     { id: 1, title: 'Basic Info', shortTitle: 'Info' },
-    { id: 2, title: 'Media', shortTitle: 'Media' },
+    { id: 2, title: 'Details', shortTitle: 'Details' },
     { id: 3, title: 'Variants', shortTitle: 'Variants' },
     { id: 4, title: 'Review', shortTitle: 'Review' },
 ];
@@ -193,6 +193,8 @@ export default function ProductFormWizard({
     useEffect(() => {
         if (images.length > 0) {
             setFormData(prev => ({ ...prev, image: images[0].uri }));
+        } else {
+            setFormData(prev => ({ ...prev, image: '' }));
         }
     }, [images]);
 
@@ -316,13 +318,13 @@ export default function ProductFormWizard({
                     Alert.alert('Required', 'Please select at least one category.');
                     return false;
                 }
+                return true;
+            case 2:
                 if (!formData.basePrice.trim()) {
                     Alert.alert('Required', 'Please enter a base price.');
                     return false;
                 }
-                return true;
-            case 2:
-                return true; // Images are optional
+                return true; // Images are optional for step 1 now
             case 3:
                 const hasValidVariant = variants.some(v => v.name.trim() && v.stock.trim());
                 if (!hasValidVariant) {
@@ -362,11 +364,19 @@ export default function ProductFormWizard({
             case 1:
                 return (
                     <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Basic Information</Text>
-                        <Text style={styles.stepDescription}>
-                            Let's start with the essentials about your product.
-                        </Text>
-
+                        <Text style={styles.stepTitle}>Basic Information & Media</Text>
+                        {/* Product Images */}
+                        <View style={styles.field}>
+                            <Text style={styles.fieldLabel}>Product Images</Text>
+                            <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
+                                Add photos to showcase your product. The first image will be the primary photo.
+                            </Text>
+                            <ImageUploader
+                                images={images}
+                                onImagesChange={setImages}
+                                maxImages={5}
+                            />
+                        </View>
                         {/* Product Name */}
                         <View style={styles.field}>
                             <Text style={styles.fieldLabel}>Product Name *</Text>
@@ -417,6 +427,13 @@ export default function ProductFormWizard({
                             </View>
                         </View>
 
+                    </View>
+                );
+
+            case 2:
+                return (
+                    <View style={styles.stepContent}>
+                        <Text style={styles.stepTitle}>Product Details</Text>
                         {/* SKU */}
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
@@ -560,22 +577,6 @@ export default function ProductFormWizard({
                                 />
                             </View>
                         </View>
-                    </View>
-                );
-
-            case 2:
-                return (
-                    <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Product Images</Text>
-                        <Text style={styles.stepDescription}>
-                            Add photos to showcase your product. The first image will be the primary photo.
-                        </Text>
-
-                        <ImageUploader
-                            images={images}
-                            onImagesChange={setImages}
-                            maxImages={5}
-                        />
                     </View>
                 );
 
@@ -946,7 +947,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
     stepDescription: {
-        fontSize: 14,
+        fontSize: 12,
         color: theme.colors.textSecondary,
         lineHeight: 20,
         fontFamily: 'Quicksand',

@@ -3,8 +3,8 @@ import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-rout
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { sellerProductsAPI } from '../../../api/api';
-import ProductFormWizard, { ProductFormData } from '../../../components/admin/ProductFormWizard';
-import { VariantData } from '../../../components/admin/VariantEditor';
+import ProductFormWizard, { ProductFormData } from '../../../components/seller/ProductFormWizard';
+import { VariantData } from '../../../components/seller/VariantEditor';
 import InfoBox from '../../../shared/InfoBox';
 
 export default function SellerProductForm() {
@@ -126,10 +126,10 @@ export default function SellerProductForm() {
 
             {/* Pending Approval Notice */}
             {!isEditing && (
-                <InfoBox 
-                    message="New products require admin approval before they appear in the shop." 
-                    type="info" 
-                    style={{ marginHorizontal: 16, marginTop: 12 }} 
+                <InfoBox
+                    message="New products require admin approval before they appear in the shop."
+                    type="info"
+                    style={{ marginHorizontal: 16, marginTop: 12 }}
                 />
             )}
 

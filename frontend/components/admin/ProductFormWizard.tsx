@@ -200,41 +200,42 @@ export default function ProductFormWizard({
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleGenerateSku = async () => {
-        if (selectedCategories.length === 0) {
-            Alert.alert('Missing Info', 'Please select at least one category to generate SKU.');
-            return;
-        }
+    // Auto-generate SKU
+    useEffect(() => {
+        if (selectedCategories.length > 0) {
+            const timer = setTimeout(() => {
+                const autoGenerateSku = async () => {
+                    setGeneratingSku(true);
+                    try {
+                        const response = await fetch(`${API_URL}/api/products/generate-sku`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                category: selectedCategories[0],
+                                variants: variants.map(v => v.name).filter(Boolean)
+                            })
+                        });
 
-        setGeneratingSku(true);
-        try {
-            const response = await fetch(`${API_URL}/api/products/generate-sku`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    category: selectedCategories[0],
-                    variants: variants.map(v => v.name).filter(Boolean)
-                })
-            });
+                        const data = await response.json();
+                        if (data.success && data.sku) {
+                            setFormData(prev => ({ ...prev, sku: data.sku }));
+                            setVariants(prevVariants => prevVariants.map(v => ({
+                                ...v,
+                                sku: v.name ? `${data.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}` : ''
+                            })));
+                        }
+                    } catch (error) {
+                        // Silent fail for auto-gen
+                    } finally {
+                        setGeneratingSku(false);
+                    }
+                };
+                autoGenerateSku();
+            }, 800); // 800ms debounce
 
-            const data = await response.json();
-            if (data.success && data.sku) {
-                setFormData(prev => ({ ...prev, sku: data.sku }));
-                // Auto-generate variant SKUs
-                const updatedVariants = variants.map(v => ({
-                    ...v,
-                    sku: v.name ? `${data.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}` : ''
-                }));
-                setVariants(updatedVariants);
-            } else {
-                Alert.alert('Error', data.message || 'Failed to generate SKU');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Failed to connect to server.');
-        } finally {
-            setGeneratingSku(false);
+            return () => clearTimeout(timer);
         }
-    };
+    }, [selectedCategories[0], JSON.stringify(variants.map(v => v.name))]);
 
     const handleGenerateDescription = async () => {
         if (!formData.name.trim()) {
@@ -388,11 +389,7 @@ export default function ProductFormWizard({
                         {/* Categories */}
                         <View style={styles.field}>
                             <Text style={styles.fieldLabel}>Categories *</Text>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.categoryList}
-                            >
+                            <View style={styles.categoryList}>
                                 {categories.map((cat) => {
                                     const isSelected = selectedCategories.includes(cat);
                                     return (
@@ -417,27 +414,16 @@ export default function ProductFormWizard({
                                         </Pressable>
                                     );
                                 })}
-                            </ScrollView>
+                            </View>
                         </View>
 
                         {/* SKU */}
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
                                 <Text style={styles.fieldLabel}>SKU</Text>
-                                <Pressable
-                                    onPress={handleGenerateSku}
-                                    disabled={generatingSku || selectedCategories.length === 0}
-                                    style={{ opacity: selectedCategories.length === 0 ? 0.5 : 1 }}
-                                >
-                                    {generatingSku ? (
-                                        <ActivityIndicator size="small" color={theme.colors.primary} />
-                                    ) : (
-                                        <View style={styles.autoGenButton}>
-                                            <Sparkles size={14} color={selectedCategories.length === 0 ? theme.colors.border : theme.colors.primary} />
-                                            <Text style={[styles.autoGenText, selectedCategories.length === 0 && { color: theme.colors.border }]}>Auto Generate</Text>
-                                        </View>
-                                    )}
-                                </Pressable>
+                                {generatingSku && (
+                                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                                )}
                             </View>
                             {/* SKU Requirements Hint */}
                             {!formData.sku && (
@@ -1017,6 +1003,7 @@ const styles = StyleSheet.create({
     },
     categoryList: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 8,
         paddingVertical: 4,
     },

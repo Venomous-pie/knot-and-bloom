@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { sellerProductsAPI } from '../../../api/api';
 import ProductFormWizard, { ProductFormData } from '../../../components/admin/ProductFormWizard';
 import { VariantData } from '../../../components/admin/VariantEditor';
+import InfoBox from '../../../shared/InfoBox';
 
 export default function SellerProductForm() {
     const router = useRouter();
@@ -21,32 +22,11 @@ export default function SellerProductForm() {
     } | undefined>(undefined);
     const [productStatus, setProductStatus] = useState<string | null>(null);
 
-    // Optimization Score State
-    const [optScore, setOptScore] = useState(0);
-    const [optChecklist, setOptChecklist] = useState<{ label: string; done: boolean; points: number }[]>([]);
-    const [showOptDetails, setShowOptDetails] = useState(false);
-
     useEffect(() => {
         if (isEditing) {
             loadProduct();
         }
     }, [id]);
-
-    const calculateOptimization = (data: { formData: ProductFormData; selectedCategories: string[]; variants: VariantData[] }) => {
-        // Optimization Logic (Matches List View Logic)
-        const checklist = [
-            { label: 'Has at least 1 image', done: !!data.formData.image, points: 20 },
-            { label: 'Product Name >= 20 chars', done: (data.formData.name?.length || 0) >= 20, points: 20 },
-            { label: 'Description >= 50 chars', done: (data.formData.description?.length || 0) >= 50, points: 20 },
-            { label: 'Has at least 1 variant in stock', done: data.variants.some(v => parseInt(v.stock) > 0), points: 20 },
-            { label: 'Category Selected', done: data.selectedCategories.length > 0, points: 10 },
-            { label: 'SKU Generated', done: !!data.formData.sku, points: 10 },
-        ];
-
-        const totalScore = checklist.reduce((acc, item) => acc + (item.done ? item.points : 0), 0);
-        setOptScore(totalScore);
-        setOptChecklist(checklist);
-    };
 
     const loadProduct = async () => {
         try {
@@ -146,10 +126,11 @@ export default function SellerProductForm() {
 
             {/* Pending Approval Notice */}
             {!isEditing && (
-                <View style={styles.infoBox}>
-                    <Ionicons name="information-circle" size={20} color="#0284C7" />
-                    <Text style={styles.infoText}>New products require admin approval before they appear in the shop.</Text>
-                </View>
+                <InfoBox 
+                    message="New products require admin approval before they appear in the shop." 
+                    type="info" 
+                    style={{ marginHorizontal: 16, marginTop: 12 }} 
+                />
             )}
 
             {/* Status Badge for Editing */}
@@ -161,43 +142,6 @@ export default function SellerProductForm() {
                 </View>
             )}
 
-            {/* Optimization Score Card */}
-            <View style={styles.scoreCard}>
-                <TouchableOpacity
-                    style={styles.scoreHeader}
-                    onPress={() => setShowOptDetails(!showOptDetails)}
-                >
-                    <View style={styles.scoreTitleRow}>
-                        <Ionicons name="stats-chart" size={20} color="#B36979" />
-                        <Text style={styles.scoreTitle}>Optimization Score</Text>
-                    </View>
-                    <View style={styles.scoreValueRow}>
-                        <Text style={[styles.scoreValue, {
-                            color: optScore >= 80 ? '#10B981' : optScore >= 50 ? '#F59E0B' : '#EF4444'
-                        }]}>{optScore}/100</Text>
-                        <Ionicons name={showOptDetails ? "chevron-up" : "chevron-down"} size={20} color="#6B7280" />
-                    </View>
-                </TouchableOpacity>
-
-                {showOptDetails && (
-                    <View style={styles.checklist}>
-                        {optChecklist.map((item, index) => (
-                            <View key={index} style={styles.checklistItem}>
-                                <Ionicons
-                                    name={item.done ? "checkmark-circle" : "ellipse-outline"}
-                                    size={18}
-                                    color={item.done ? "#10B981" : "#D1D5DB"}
-                                />
-                                <Text style={[styles.checklistText, item.done && styles.checklistTextDone]}>
-                                    {item.label} (+{item.points})
-                                </Text>
-                            </View>
-                        ))}
-                    </View>
-                )}
-            </View>
-
-            {/* Reuse the Admin ProductForm Component */}
             {/* Reuse the Admin ProductForm Component */}
             <ProductFormWizard
                 initialData={initialData}
@@ -213,7 +157,6 @@ export default function SellerProductForm() {
                     }
                 }}
                 isEditing={isEditing}
-                onDataChange={calculateOptimization}
             />
         </View>
     );
@@ -235,16 +178,6 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
     backBtn: { marginRight: 16 },
     title: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
-    infoBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#E0F2FE',
-        padding: 12,
-        marginHorizontal: 16,
-        marginTop: 12,
-        borderRadius: 8,
-    },
-    infoText: { marginLeft: 8, color: '#0369A1', flex: 1, fontSize: 14 },
     statusBadge: {
         alignSelf: 'flex-start',
         paddingHorizontal: 12,

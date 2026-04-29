@@ -240,7 +240,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                 <View style={[styles.formGroup, { flex: 1 }]}>
                     <Text style={styles.label}>Categories *</Text>
                     <View style={styles.categoryContainer}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryList}>
+                        <View style={styles.categoryList}>
                             {categories.map((cat) => {
                                 const isSelected = selectedCategories.includes(cat);
                                 return (
@@ -265,7 +265,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                                     </Pressable>
                                 );
                             })}
-                        </ScrollView>
+                        </View>
                     </View>
                 </View>
             </View>
@@ -509,18 +509,18 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     categoryContainer: {
-        height: 50,
-        justifyContent: 'center',
+        marginTop: 4,
     },
     categoryList: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
     categoryChip: {
         paddingHorizontal: 12,
         paddingVertical: 6,
         backgroundColor: '#f0f0f0',
         borderRadius: 16,
-        marginRight: 8,
         borderWidth: 1,
         borderColor: 'transparent',
     },

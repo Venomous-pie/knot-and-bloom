@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { sellerProductsAPI } from '../../../api/api';
+import InfoBox from '../../../shared/InfoBox';
 
 type Product = {
     uid: number;
@@ -252,12 +253,11 @@ export default function SellerProducts() {
 
             {/* Info Banner for Pending Products */}
             {hasPendingProducts && statusFilter !== 'ACTIVE' && (
-                <View style={styles.infoBanner}>
-                    <Ionicons name="information-circle" size={18} color="#0284C7" />
-                    <Text style={styles.infoBannerText}>
-                        Products with "Pending" status are awaiting admin approval and won't appear in the public shop yet.
-                    </Text>
-                </View>
+                <InfoBox 
+                    message='Products with "Pending" status are awaiting admin approval and won&apos;t appear in the public shop yet.' 
+                    type="info" 
+                    style={{ marginBottom: 16 }} 
+                />
             )}
 
             {loading ? (
@@ -459,20 +459,6 @@ const styles = StyleSheet.create({
     },
     tabTextActive: {
         color: '#FFF',
-    },
-    infoBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#E0F2FE',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 16,
-    },
-    infoBannerText: {
-        marginLeft: 8,
-        color: '#0369A1',
-        flex: 1,
-        fontSize: 13,
     },
     statusInfo: {
         fontSize: 11,

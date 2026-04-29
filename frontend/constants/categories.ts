@@ -11,6 +11,15 @@ export const categoryTitles: Record<string, string> = {
     "fuzzy-wire-bouquet": "Fuzzy Wire Bouquets",
     "crochet-flower-bouquet": "Crochet Flower Bouquets",
     "crochet-key-chains": "Crochet Key Chains",
+    "amigurumi-plushies": "Amigurumi Plushies",
+    "beaded-jewelry": "Beaded Jewelry",
+    "phone-charms": "Phone Charms",
+    "scrunchies": "Scrunchies",
+    "resin-crafts": "Resin Crafts",
+    "bookmarks": "Bookmarks",
+    "tote-bags": "Tote Bags",
+    "stickers-prints": "Stickers & Prints",
+    "clay-accessories": "Clay Accessories",
 };
 
 // Navigation-only categories (includes backend-computed ones)
@@ -40,4 +49,11 @@ export const sidebarLinks: { title: string, href: RelativePathString }[] = [
     { title: 'Fuzzy Wire Bouquet', href: "/products/fuzzy-wire-bouquet" as RelativePathString },
     { title: 'Crochet Flower Bouquet', href: "/products/crochet-flower-bouquet" as RelativePathString },
     { title: 'Crochet Key Chains', href: "/products/crochet-key-chains" as RelativePathString },
+    { title: 'Amigurumi Plushies', href: "/products/amigurumi-plushies" as RelativePathString },
+    { title: 'Beaded Jewelry', href: "/products/beaded-jewelry" as RelativePathString },
+    { title: 'Phone Charms', href: "/products/phone-charms" as RelativePathString },
+    { title: 'Scrunchies', href: "/products/scrunchies" as RelativePathString },
+    { title: 'Bookmarks', href: "/products/bookmarks" as RelativePathString },
+    { title: 'Tote Bags', href: "/products/tote-bags" as RelativePathString },
+    { title: 'Stickers & Prints', href: "/products/stickers-prints" as RelativePathString },
 ]

@@ -50,7 +50,7 @@ router.post('/generate-description', async (req, res) => {
 
 router.post('/generate-sku', async (req, res) => {
     try {
-        const { category, variants } = req.body;
+        const { name, category, variants } = req.body;
 
         if (!category) {
             return res.status(400).json({
@@ -59,7 +59,7 @@ router.post('/generate-sku', async (req, res) => {
             });
         }
 
-        const sku = await generateProductSKU({ category, variants });
+        const sku = await generateProductSKU({ name, category, variants });
 
         return res.status(200).json({
             success: true,

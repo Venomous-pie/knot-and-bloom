@@ -4,6 +4,7 @@ import { ImagePlus, Trash2, Crop } from 'lucide-react-native';
 import React, { useState, useEffect, useRef } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Image,
     Platform,
     Pressable,
@@ -36,7 +37,6 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
     const [uploadProgress, setUploadProgress] = useState('');
     const [showUrlInput, setShowUrlInput] = useState(false);
     const [urlInput, setUrlInput] = useState('');
-    const [urlInputFocused, setUrlInputFocused] = useState(false);
 
     // Crop modal state
     const [showCropModal, setShowCropModal] = useState(false);
@@ -61,6 +61,10 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
                     e.preventDefault();
                     const file = item.getAsFile();
                     if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                            Alert.alert("File Too Large", `${file.name} exceeds the 5MB limit.`);
+                            continue;
+                        }
                         const uri = URL.createObjectURL(file);
                         setUploading(true);
                         setUploadProgress('Uploading pasted image...');
@@ -96,6 +100,10 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
             
             const newImages: ImageItem[] = [];
             for (const asset of result.assets) {
+                if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+                    Alert.alert("File Too Large", `${asset.fileName || 'An image'} exceeds the 5MB limit.`);
+                    continue;
+                }
                 const uploaded = await uploadSingleImage(asset.uri, asset.fileName || `image_${Date.now()}.jpg`);
                 if (uploaded) newImages.push(uploaded);
             }
@@ -186,7 +194,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
     return (
         <View style={styles.container} ref={containerRef}>
             {/* Header info is moved to parent or kept minimal */}
-            {isEmpty ? (
+            {isEmpty && !uploading ? (
                 <Pressable
                     style={styles.emptyDropzone}
                     onPress={pickImages}
@@ -198,8 +206,13 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
                     <Text style={styles.dropzoneSubtitle}>
                         {Platform.OS === 'web' ? 'Click to browse, drag & drop, or paste (Ctrl+V)' : 'Tap to browse your photos'}
                     </Text>
-                    <Text style={styles.dropzoneLimit}>Up to {maxImages} images • PNG, JPG</Text>
+                    <Text style={styles.dropzoneLimit}>Up to {maxImages} images • PNG, JPG (Max 5MB)</Text>
                 </Pressable>
+            ) : isEmpty && uploading ? (
+                <View style={[styles.emptyDropzone, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="large" color="#B36979" />
+                    <Text style={[styles.dropzoneTitle, { marginTop: 16 }]}>{uploadProgress || 'Uploading...'}</Text>
+                </View>
             ) : (
                 <View style={styles.populatedContainer}>
                     <View style={styles.header}>
@@ -274,7 +287,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
             {/* Crop Modal */}
             <ImageCropperModal
                 visible={showCropModal}
-                imageUri={pendingImages[currentCropIndex]?.uri || null}
+                imageUri={pendingImages[0]?.uri || null}
                 onCrop={handleCropComplete}
                 onSkip={handleCropSkip}
                 onCancel={handleCropCancel}

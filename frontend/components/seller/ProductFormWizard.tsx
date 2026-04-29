@@ -2,8 +2,8 @@ import { categoryTitles } from '@/constants/categories';
 import { isMobile } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, Sparkles } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles } from 'lucide-react-native';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -20,8 +20,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';
+import InfoBox from '@/shared/InfoBox';
 import VariantEditor, { VariantData } from './VariantEditor';
 import { toTitleCase, toSentenceCase, capitalizeMaterials } from '@/utils/textUtils';
+import { Platform } from 'react-native';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 
@@ -94,6 +96,7 @@ export default function ProductFormWizard({
     const mobile = isMobile(width);
     const { user } = useAuth();
 
+    const initializedRef = useRef(false);
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<ProductFormData>({
         name: '',
@@ -124,11 +127,14 @@ export default function ProductFormWizard({
     const DRAFT_KEY = 'product_form_draft';
 
     // Load draft on mount if not editing
+    const draftInitializedRef = useRef(false);
+
     useEffect(() => {
-        if (!isEditing && !initialData) {
+        if (!isEditing && !draftInitializedRef.current) {
             loadDraft();
+            draftInitializedRef.current = true;
         }
-    }, [isEditing, initialData]);
+    }, [isEditing]);
 
     // Save draft on change
     useEffect(() => {
@@ -151,7 +157,9 @@ export default function ProductFormWizard({
                 setFormData(parsed.formData);
                 setSelectedCategories(parsed.selectedCategories);
                 setVariants(parsed.variants);
-                if (parsed.formData.image) {
+                if (parsed.images && parsed.images.length > 0) {
+                    setImages(parsed.images);
+                } else if (parsed.formData.image) {
                     setImages([{ uri: parsed.formData.image, isUrl: true }]);
                 }
             }
@@ -162,7 +170,7 @@ export default function ProductFormWizard({
 
     const saveDraft = async () => {
         try {
-            const data = { formData, selectedCategories, variants };
+            const data = { formData, selectedCategories, variants, images };
             await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(data));
         } catch (error) {
             console.error('Failed to save draft', error);
@@ -178,7 +186,8 @@ export default function ProductFormWizard({
     };
 
     useEffect(() => {
-        if (initialData) {
+        if (initialData && !initializedRef.current) {
+            initializedRef.current = true;
             setFormData(initialData.formData);
             setSelectedCategories(initialData.selectedCategories);
             setVariants(initialData.variants.length > 0
@@ -240,6 +249,34 @@ export default function ProductFormWizard({
             return () => clearTimeout(timer);
         }
     }, [selectedCategories[0], JSON.stringify(variants.map(v => v.name))]);
+
+    const executeReset = () => {
+        setFormData({
+            name: '', sku: '', basePrice: '', discountPercentage: '', image: '',
+            description: '', materials: '', bundleQuantity: '1', isCodAllowed: true, isBundle: false,
+        });
+        setSelectedCategories([]);
+        setVariants([{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', image: '' }]);
+        setImages([]);
+        setCurrentStep(1);
+    };
+
+    const handleReset = () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm("Are you sure you want to discard all changes and start fresh?")) {
+                executeReset();
+            }
+        } else {
+            Alert.alert(
+                "Start Over?",
+                "Are you sure you want to discard all changes and start fresh?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Start Over", style: "destructive", onPress: executeReset }
+                ]
+            );
+        }
+    };
 
     const handleGenerateDescription = async () => {
         if (!formData.name.trim()) {
@@ -660,10 +697,16 @@ export default function ProductFormWizard({
                     <View style={styles.stepContent}>
                         <Text style={styles.stepTitle}>Review & Submit</Text>
                         <Text style={styles.stepDescription}>
-                            Add a description and review your product before submitting.
+                            Review your product details before submitting.
                         </Text>
-
-
+                        
+                        {!isEditing && (
+                            <InfoBox
+                                message="New products require admin approval before they appear in the shop."
+                                type="info"
+                                style={{ marginBottom: 16 }}
+                            />
+                        )}
 
                         {/* Summary */}
                         <View style={styles.summaryCard}>
@@ -716,41 +759,54 @@ export default function ProductFormWizard({
 
             {/* Step Indicator */}
             <View style={styles.stepIndicator}>
-                {STEPS.map((step, index) => (
-                    <React.Fragment key={step.id}>
-                        <Pressable
-                            style={styles.stepItem}
-                            onPress={() => goToStep(step.id)}
-                        >
-                            <View style={[
-                                styles.stepCircle,
-                                currentStep >= step.id && styles.stepCircleActive,
-                                currentStep === step.id && styles.stepCircleCurrent,
-                            ]}>
-                                {currentStep > step.id ? (
-                                    <Check size={14} color="white" />
-                                ) : (
-                                    <Text style={[
-                                        styles.stepNumber,
-                                        currentStep >= step.id && styles.stepNumberActive
-                                    ]}>{step.id}</Text>
-                                )}
-                            </View>
-                            <Text style={[
-                                styles.stepLabel,
-                                currentStep === step.id && styles.stepLabelActive
-                            ]}>
-                                {mobile ? step.shortTitle : step.title}
-                            </Text>
-                        </Pressable>
-                        {index < STEPS.length - 1 && (
-                            <View style={[
-                                styles.stepLine,
-                                currentStep > step.id && styles.stepLineActive
-                            ]} />
-                        )}
-                    </React.Fragment>
-                ))}
+                {/* Spacer to balance the right button */}
+                <View style={{ width: mobile ? 40 : 100 }} />
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                    {STEPS.map((step, index) => (
+                        <React.Fragment key={step.id}>
+                            <Pressable
+                                style={styles.stepItem}
+                                onPress={() => goToStep(step.id)}
+                            >
+                                <View style={[
+                                    styles.stepCircle,
+                                    currentStep >= step.id && styles.stepCircleActive,
+                                    currentStep === step.id && styles.stepCircleCurrent,
+                                ]}>
+                                    {currentStep > step.id ? (
+                                        <Check size={14} color="white" />
+                                    ) : (
+                                        <Text style={[
+                                            styles.stepNumber,
+                                            currentStep >= step.id && styles.stepNumberActive
+                                        ]}>{step.id}</Text>
+                                    )}
+                                </View>
+                                <Text style={[
+                                    styles.stepLabel,
+                                    currentStep === step.id && styles.stepLabelActive
+                                ]}>
+                                    {mobile ? step.shortTitle : step.title}
+                                </Text>
+                            </Pressable>
+                            {index < STEPS.length - 1 && (
+                                <View style={[
+                                    styles.stepLine,
+                                    currentStep > step.id && styles.stepLineActive
+                                ]} />
+                            )}
+                        </React.Fragment>
+                    ))}
+                </View>
+
+                <Pressable
+                    style={styles.resetButtonIcon}
+                    onPress={handleReset}
+                >
+                    <RefreshCcw size={16} color={theme.colors.textSecondary} />
+                    {!mobile && <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600' }}>Start Over</Text>}
+                </Pressable>
             </View>
 
             {/* Main Content Area */}
@@ -890,11 +946,25 @@ const styles = StyleSheet.create({
     stepIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
+    },
+    resetButtonIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: '#FCFAFA',
+        borderWidth: 1,
+        borderColor: '#E8D5D9',
+        width: 120,
+        justifyContent: 'center',
     },
     stepItem: {
         alignItems: 'center',

@@ -74,25 +74,31 @@ export async function generateProductDescription(product: ProductDescriptionInpu
     }
 }
 
-function buildSKU(category: string, variants?: Array<{ name: string }>): string {
+function buildSKU(category: string, variants?: Array<{ name: string }>, name?: string): string {
     // Get category code or default to first 3 letters
     const categoryCode = CategoryCodes[category] || category.substring(0, 3).toUpperCase();
 
-    // Generate unique identifier (timestamp + random)
-    const timestamp = Date.now().toString().slice(-6); // Last 6 digits
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const uniqueId = `${timestamp}${random}`;
-
     const parts = [categoryCode];
+    
+    // Add product name prefix (first 3 consonants or letters)
+    if (name) {
+        const cleanName = name.replace(/[^A-Za-z]/g, '').toUpperCase();
+        // Try to get consonants first
+        const consonants = cleanName.replace(/[AEIOU]/g, '');
+        const prefix = (consonants.length >= 3 ? consonants : cleanName).substring(0, 3);
+        if (prefix) parts.push(prefix);
+    }
 
-    // If variants exist, use the first variant's name for the code
+    // Add variant code if variants exist
     const firstVariant = variants?.[0];
-    if (firstVariant?.name) {
+    if (firstVariant?.name && firstVariant.name.toLowerCase() !== 'default') {
         const variantCode = firstVariant.name.substring(0, 3).toUpperCase().replace(/\s/g, '');
         parts.push(variantCode);
     }
 
-    parts.push(uniqueId);
+    // Add 3 random digits
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    parts.push(random);
 
     return parts.join('-');
 }
@@ -103,7 +109,7 @@ export async function generateProductSKU(input: GenerateSKUInput): Promise<strin
     const maxAttempts = 10;
 
     do {
-        sku = buildSKU(input.category, input.variants);
+        sku = buildSKU(input.category, input.variants, (input as any).name);
 
         // Check if SKU already exists
         const exists = await prisma.product.findUnique({

@@ -125,15 +125,6 @@ export default function SellerProductForm() {
             <Stack.Screen options={{ headerShown: false }} />
 
 
-            {/* Pending Approval Notice */}
-            {!isEditing && (
-                <InfoBox
-                    message="New products require admin approval before they appear in the shop."
-                    type="info"
-                    style={{ marginHorizontal: 16, marginTop: 12 }}
-                />
-            )}
-
             {/* Status Badge for Editing */}
             {isEditing && productStatus && (
                 <View style={[styles.statusBadge, { backgroundColor: getStatusColor(productStatus) + '20' }]}>

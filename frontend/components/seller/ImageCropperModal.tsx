@@ -63,14 +63,22 @@ export default function ImageCropperModal({
     const displayHeight = imageSize.height * displayScale;
 
     // PanResponder for dragging
+    const startPos = React.useRef({ x: 0, y: 0 });
+
     const panResponder = React.useMemo(
         () =>
             PanResponder.create({
                 onStartShouldSetPanResponder: () => true,
+                onPanResponderGrant: () => {
+                    setCropArea((prev) => {
+                        startPos.current = { x: prev.x, y: prev.y };
+                        return prev;
+                    });
+                },
                 onPanResponderMove: (evt, gestureState) => {
                     setCropArea((prev) => {
-                        const newX = prev.x + gestureState.dx / displayScale;
-                        const newY = prev.y + gestureState.dy / displayScale;
+                        const newX = startPos.current.x + gestureState.dx / displayScale;
+                        const newY = startPos.current.y + gestureState.dy / displayScale;
                         
                         // Bounds checking
                         const boundedX = Math.max(0, Math.min(newX, imageSize.width - prev.width));

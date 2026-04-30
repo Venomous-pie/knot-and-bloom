@@ -1,7 +1,7 @@
 import { isMobile } from '@/constants/layout';
 import { theme } from '@/constants/theme';
-import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2, ImagePlus } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2, ImagePlus, Lock } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -18,8 +18,9 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
-import { toTitleCase } from '@/utils/textUtils';
 import { Layers } from 'lucide-react-native';
+import { useDialog } from '@/contexts/DialogContext';
+import ImageUploader from './ImageUploader';
 
 interface CustomOptionsModalProps {
     visible: boolean;
@@ -142,7 +143,7 @@ export interface VariantData {
     sku: string;
     price: string;
     discountPercentage: string;
-    image: string;
+    images: string[];
 }
 
 interface VariantEditorProps {
@@ -153,174 +154,11 @@ interface VariantEditorProps {
     baseDiscount: string;
     onGenerateVariantSku: (index: number) => Promise<void>;
     onExpandedChange?: (index: number | null) => void;
+    productImages?: { uri: string; isUrl?: boolean }[];
+    variantErrors?: Record<string, string>;
 }
 
-// Variant image picker matching Step 1 ImageUploader UI/UX
-function VariantImagePicker({
-    imageUri,
-    onImageChange
-}: {
-    imageUri: string;
-    onImageChange: (uri: string) => void;
-}) {
-    const [uploading, setUploading] = useState(false);
-
-    const pickImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-        });
-
-        if (!result.canceled && result.assets[0]) {
-            const asset = result.assets[0];
-            if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-                Alert.alert('File Too Large', 'Image exceeds the 5MB limit.');
-                return;
-            }
-            setUploading(true);
-            try {
-                const uploaded = await uploadToImageKit({
-                    uri: asset.uri,
-                    name: `variant_${Date.now()}.jpg`,
-                });
-                onImageChange(uploaded.url);
-            } catch (error) {
-                console.error('Variant image upload failed:', error);
-                onImageChange(asset.uri);
-            } finally {
-                setUploading(false);
-            }
-        }
-    };
-
-    const removeImage = () => onImageChange('');
-
-    // Empty + loading state
-    if (!imageUri) {
-        return (
-            <Pressable
-                style={variantImageStyles.dropzone}
-                onPress={!uploading ? pickImage : undefined}
-            >
-                {uploading ? (
-                    <>
-                        <ActivityIndicator size="large" color="#B36979" />
-                        <Text style={variantImageStyles.dropzoneTitle}>Uploading...</Text>
-                    </>
-                ) : (
-                    <>
-                        <View style={variantImageStyles.iconContainer}>
-                            <ImagePlus size={28} color="#B36979" />
-                        </View>
-                        <Text style={variantImageStyles.dropzoneTitle}>Add Variant Image</Text>
-                        <Text style={variantImageStyles.dropzoneSubtitle}>Tap to browse · PNG, JPG (Max 5MB)</Text>
-                    </>
-                )}
-            </Pressable>
-        );
-    }
-
-    // Populated state — thumbnail with action overlay
-    return (
-        <View style={variantImageStyles.previewWrapper}>
-            <Image source={{ uri: imageUri }} style={variantImageStyles.preview} resizeMode="cover" />
-            {uploading && (
-                <View style={variantImageStyles.uploadingOverlay}>
-                    <ActivityIndicator size="small" color="white" />
-                </View>
-            )}
-            <View style={variantImageStyles.actionsOverlay}>
-                <Pressable style={variantImageStyles.actionButton} onPress={pickImage}>
-                    <ImagePlus size={13} color="#333" />
-                </Pressable>
-                <Pressable style={[variantImageStyles.actionButton, variantImageStyles.deleteActionButton]} onPress={removeImage}>
-                    <Trash2 size={13} color="#B36979" />
-                </Pressable>
-            </View>
-        </View>
-    );
-}
-
-const variantImageStyles = StyleSheet.create({
-    dropzone: {
-        borderWidth: 2,
-        borderColor: '#E8D5D9',
-        borderStyle: 'dashed',
-        borderRadius: 12,
-        paddingVertical: 24,
-        paddingHorizontal: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FCFAFA',
-        gap: 8,
-    },
-    iconContainer: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: '#F7EEF0',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 4,
-    },
-    dropzoneTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#B36979',
-    },
-    dropzoneSubtitle: {
-        fontSize: 12,
-        color: '#AAA',
-        textAlign: 'center',
-    },
-    previewWrapper: {
-        width: 120,
-        height: 120,
-        borderRadius: 10,
-        overflow: 'hidden',
-        backgroundColor: '#f0f0f0',
-        position: 'relative',
-        borderWidth: 2,
-        borderColor: '#B36979',
-    },
-    preview: {
-        width: '100%',
-        height: '100%',
-    },
-    uploadingOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    actionsOverlay: {
-        position: 'absolute',
-        bottom: 6,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 6,
-    },
-    actionButton: {
-        width: 26,
-        height: 26,
-        borderRadius: 13,
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    deleteActionButton: {
-        backgroundColor: '#fff',
-    },
-});
+// VariantImagePicker replaced by ImageUploader in compact mode
 
 
 export default function VariantEditor({
@@ -331,10 +169,13 @@ export default function VariantEditor({
     baseDiscount,
     onGenerateVariantSku,
     onExpandedChange,
+    productImages = [],
+    variantErrors = {},
 }: VariantEditorProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
 
+    const { confirm } = useDialog();
     const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
     const [generatingSkuIndex, setGeneratingSkuIndex] = useState<number | null>(null);
     const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -368,6 +209,18 @@ export default function VariantEditor({
     const [focusedField, setFocusedField] = useState<string | null>(null);
     const [bulkModalVisible, setBulkModalVisible] = useState(false);
 
+    // Auto-expand the first variant card that has errors
+    useEffect(() => {
+        const errorKeys = Object.keys(variantErrors).filter(k => k.startsWith('variant-'));
+        if (errorKeys.length > 0) {
+            const firstErrorIndex = Math.min(
+                ...errorKeys.map(k => parseInt(k.split('-')[1], 10)).filter(n => !isNaN(n))
+            );
+            setExpandedIndex(firstErrorIndex);
+            if (onExpandedChange) onExpandedChange(firstErrorIndex);
+        }
+    }, [variantErrors]);
+
     const getFieldKey = (index: number, field: string) => `${index}-${field}`;
 
     const addVariant = () => {
@@ -377,7 +230,7 @@ export default function VariantEditor({
             sku: '',
             price: '',
             discountPercentage: '',
-            image: ''
+            images: [] as string[]
         };
         onVariantsChange([...variants, newVariant]);
         setExpandedIndex(variants.length);
@@ -390,24 +243,21 @@ export default function VariantEditor({
         if (expandedIndex === index) setExpandedIndex(null);
     };
 
-    const removeVariant = (index: number) => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Are you sure you want to delete this variant?")) {
-                executeRemoveVariant(index);
-            }
-        } else {
-            Alert.alert(
-                "Delete Variant?",
-                "Are you sure you want to delete this variant?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Delete", style: "destructive", onPress: () => executeRemoveVariant(index) }
-                ]
-            );
+    const removeVariant = async (index: number) => {
+        const confirmed = await confirm({
+            title: "Delete Variant?",
+            message: "Are you sure you want to delete this variant?",
+            confirmText: "Delete",
+            cancelText: "Cancel",
+            isDestructive: true
+        });
+
+        if (confirmed) {
+            executeRemoveVariant(index);
         }
     };
 
-    const updateVariant = (index: number, field: keyof VariantData, value: string) => {
+    const updateVariant = (index: number, field: keyof VariantData, value: any) => {
         const newVariants = [...variants];
         newVariants[index] = { ...newVariants[index], [field]: value };
         onVariantsChange(newVariants);
@@ -432,16 +282,11 @@ export default function VariantEditor({
             sku: '',
             price: '',
             discountPercentage: '',
-            image: ''
+            images: []
         }));
 
-        // Append to existing, removing default empty one if it exists and is untouched
-        let currentVariants = [...variants];
-        if (currentVariants.length === 1 && currentVariants[0].name === 'Default' && currentVariants[0].stock === '0') {
-            currentVariants = [];
-        }
-
-        onVariantsChange([...currentVariants, ...newVariants]);
+        // Always keep the Default (index 0) as the main product variant
+        onVariantsChange([variants[0], ...newVariants]);
     };
 
     return (
@@ -483,11 +328,22 @@ export default function VariantEditor({
                             onPress={() => toggleExpand(index)}
                         >
                             <View style={styles.cardHeaderLeft}>
-                                <View style={styles.variantIndicator} />
+                                <View style={[
+                                    styles.variantIndicator,
+                                    index === 0 && { backgroundColor: theme.colors.primary }
+                                ]} />
                                 <View>
-                                    <Text style={styles.variantName}>
-                                        {variant.name || `Variant ${index + 1}`}
-                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={styles.variantName}>
+                                            {variant.name || `Variant ${index + 1}`}
+                                        </Text>
+                                        {index === 0 && (
+                                            <View style={styles.mainBadge}>
+                                                <Lock size={9} color={theme.colors.primary} />
+                                                <Text style={styles.mainBadgeText}>Main Product</Text>
+                                            </View>
+                                        )}
+                                    </View>
                                     <Text style={styles.variantMeta}>
                                         Stock: {variant.stock || '0'} •
                                         {variant.price ? ` ₱${variant.price}` : ` Inherits ₱${basePrice}`}
@@ -495,7 +351,7 @@ export default function VariantEditor({
                                 </View>
                             </View>
                             <View style={styles.cardHeaderRight}>
-                                {variants.length > 1 && (
+                                {variants.length > 1 && index > 0 && (
                                     <Pressable
                                         style={styles.deleteButton}
                                         onPress={() => removeVariant(index)}
@@ -518,20 +374,37 @@ export default function VariantEditor({
                                 <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
                                     <View style={[styles.field, !mobile && { flex: 2 }]}>
                                         <Text style={styles.fieldLabel}>Variant Name *</Text>
-                                        <TextInput
-                                            style={[styles.input, focusedField === getFieldKey(index, 'name') && styles.inputFocused]}
-                                            value={variant.name}
-                                            onChangeText={(text) => updateVariant(index, 'name', text)}
-                                            placeholder="e.g. Small Red, Blue XL"
-                                            placeholderTextColor={theme.colors.textLight}
-                                            onFocus={() => setFocusedField(getFieldKey(index, 'name'))}
-                                            onBlur={() => {
-                                                setFocusedField(null);
-                                                if (variant.name) {
-                                                    updateVariant(index, 'name', toTitleCase(variant.name));
-                                                }
-                                            }}
-                                        />
+                                        {index === 0 ? (
+                                            <View style={styles.lockedInput}>
+                                                <Lock size={13} color={theme.colors.textLight} />
+                                                <Text style={styles.lockedInputText}>Default</Text>
+                                                <Text style={styles.lockedInputHint}>(locked)</Text>
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <TextInput
+                                                    style={[
+                                                        styles.input,
+                                                        focusedField === getFieldKey(index, 'name') && styles.inputFocused,
+                                                        variantErrors[`variant-${index}-name`] && styles.inputError,
+                                                    ]}
+                                                    value={variant.name}
+                                                    onChangeText={(text) => updateVariant(index, 'name', text)}
+                                                    placeholder="e.g. Small Red, Blue XL"
+                                                    placeholderTextColor={theme.colors.textLight}
+                                                    onFocus={() => setFocusedField(getFieldKey(index, 'name'))}
+                                                    onBlur={() => {
+                                                        setFocusedField(null);
+                                                        if (variant.name) {
+                                                            updateVariant(index, 'name', variant.name.replace(/\b\w/g, c => c.toUpperCase()));
+                                                        }
+                                                    }}
+                                                />
+                                                {variantErrors[`variant-${index}-name`] && (
+                                                    <Text style={styles.errorText}>{variantErrors[`variant-${index}-name`]}</Text>
+                                                )}
+                                            </>
+                                        )}
                                     </View>
                                     <View style={[styles.field, !mobile && { flex: 2 }]}>
                                         <View style={styles.fieldLabelRow}>
@@ -570,7 +443,7 @@ export default function VariantEditor({
                                             style={[
                                                 styles.input,
                                                 focusedField === getFieldKey(index, 'stock') && styles.inputFocused,
-                                                errors[getFieldKey(index, 'stock')] ? styles.inputError : null
+                                                (errors[getFieldKey(index, 'stock')] || variantErrors[`variant-${index}-stock`]) ? styles.inputError : null
                                             ]}
                                             value={variant.stock}
                                             onChangeText={(text) => handleNumericInput(index, 'stock', text, false)}
@@ -580,8 +453,10 @@ export default function VariantEditor({
                                             onFocus={() => setFocusedField(getFieldKey(index, 'stock'))}
                                             onBlur={() => setFocusedField(null)}
                                         />
-                                        {errors[getFieldKey(index, 'stock')] && (
-                                            <Text style={styles.errorText}>{errors[getFieldKey(index, 'stock')]}</Text>
+                                        {(errors[getFieldKey(index, 'stock')] || variantErrors[`variant-${index}-stock`]) && (
+                                            <Text style={styles.errorText}>
+                                                {errors[getFieldKey(index, 'stock')] || variantErrors[`variant-${index}-stock`]}
+                                            </Text>
                                         )}
                                     </View>
                                     <View style={[styles.field, !mobile && { flex: 1 }]}>
@@ -627,14 +502,48 @@ export default function VariantEditor({
                                 </View>
 
 
-                                {/* Variant Image Upload */}
-                                <View style={styles.field}>
-                                    <Text style={styles.fieldLabel}>Variant Image</Text>
-                                    <VariantImagePicker
-                                        imageUri={variant.image}
-                                        onImageChange={(uri) => updateVariant(index, 'image', uri)}
-                                    />
-                                </View>
+                                {/* Product Images (Default variant only — inherited from Step 1) */}
+                                {index === 0 && (
+                                    <View style={styles.field}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                            <Text style={styles.fieldLabel}>Product Images</Text>
+                                            <View style={styles.inheritedBadge}>
+                                                <Text style={styles.inheritedBadgeText}>Inherited from Step 1</Text>
+                                            </View>
+                                        </View>
+                                        {productImages.length > 0 ? (
+                                            <View style={styles.inheritedImagesRow}>
+                                                {productImages.map((img, i) => (
+                                                    <Image
+                                                        key={i}
+                                                        source={{ uri: img.uri }}
+                                                        style={[
+                                                            styles.inheritedImage,
+                                                            i === 0 && styles.inheritedImagePrimary
+                                                        ]}
+                                                    />
+                                                ))}
+                                            </View>
+                                        ) : (
+                                            <View style={styles.noImagesPlaceholder}>
+                                                <Text style={styles.noImagesText}>No images uploaded yet — go to Step 1 to add product images.</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+
+                                {/* Variant Image Upload (non-Default variants only) */}
+                                {index > 0 && (
+                                    <View style={styles.field}>
+                                        <Text style={styles.fieldLabel}>Variant Images</Text>
+                                        <ImageUploader
+                                            compact
+                                            maxImages={3}
+                                            images={variant.images ? variant.images.map(uri => ({ uri, isUrl: true })) : []}
+                                            onImagesChange={(imgs) => updateVariant(index, 'images', imgs.map(img => img.uri))}
+                                        />
+                                    </View>
+                                )}
                             </View>
                         )}
                     </View>
@@ -723,6 +632,88 @@ const styles = StyleSheet.create({
         height: 12,
         borderRadius: 6,
         backgroundColor: theme.colors.border,
+    },
+    mainBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: theme.colors.primaryLight,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: theme.colors.primary + '40',
+    },
+    mainBadgeText: {
+        fontSize: 10,
+        color: theme.colors.primary,
+        fontWeight: '700',
+        fontFamily: 'Quicksand',
+    },
+    lockedInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        height: 44,
+        borderWidth: 2,
+        borderColor: theme.colors.border,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        backgroundColor: theme.colors.subtle,
+        borderStyle: 'dashed',
+    },
+    lockedInputText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+    },
+    lockedInputHint: {
+        fontSize: 12,
+        color: theme.colors.textLight,
+    },
+    inheritedBadge: {
+        backgroundColor: theme.colors.subtle,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 10,
+    },
+    inheritedBadgeText: {
+        fontSize: 10,
+        color: theme.colors.textSecondary,
+        fontWeight: '500',
+    },
+    inheritedImagesRow: {
+        flexDirection: 'row',
+        gap: 8,
+        flexWrap: 'wrap',
+    },
+    inheritedImage: {
+        width: 64,
+        height: 64,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        opacity: 0.9,
+    },
+    inheritedImagePrimary: {
+        width: 80,
+        height: 80,
+        borderColor: theme.colors.primary,
+        borderWidth: 2,
+        opacity: 1,
+    },
+    noImagesPlaceholder: {
+        padding: 12,
+        backgroundColor: theme.colors.subtle,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderStyle: 'dashed',
+    },
+    noImagesText: {
+        fontSize: 12,
+        color: theme.colors.textLight,
+        textAlign: 'center',
     },
     variantName: {
         fontSize: 14,

@@ -14,8 +14,9 @@ import {
     View,
 } from 'react-native';
 import ImageCropperModal from './ImageCropperModal';
-import { uploadToImageKit, compressImage } from '@/lib/imagekit';
+import { compressImage, uploadToImageKit } from '@/lib/imagekit';
 import { theme } from '@/constants/theme';
+import { useDialog } from '@/contexts/DialogContext';
 
 interface ImageItem {
     uri: string;
@@ -26,9 +27,10 @@ interface ImageUploaderProps {
     images: ImageItem[];
     onImagesChange: (images: ImageItem[]) => void;
     maxImages?: number;
+    compact?: boolean;
 }
 
-export default function ImageUploader({ images, onImagesChange, maxImages = 5 }: ImageUploaderProps) {
+export default function ImageUploader({ images, onImagesChange, maxImages = 5, compact = false }: ImageUploaderProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
     const containerRef = useRef<View>(null);
@@ -37,11 +39,13 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
     const [uploadProgress, setUploadProgress] = useState('');
     const [showUrlInput, setShowUrlInput] = useState(false);
     const [urlInput, setUrlInput] = useState('');
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     // Crop modal state
     const [showCropModal, setShowCropModal] = useState(false);
     const [pendingImages, setPendingImages] = useState<{ uri: string; name?: string }[]>([]);
     const [currentCropIndex, setCurrentCropIndex] = useState(0);
+    const { confirm } = useDialog();
 
     const imageSize = mobile ? (width - 60) / 2 : 150;
     const canAddMore = images.length < maxImages;
@@ -97,7 +101,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
         if (!result.canceled && result.assets) {
             setUploading(true);
             setUploadProgress('Uploading...');
-            
+
             const newImages: ImageItem[] = [];
             for (const asset of result.assets) {
                 if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
@@ -107,7 +111,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
                 const uploaded = await uploadSingleImage(asset.uri, asset.fileName || `image_${Date.now()}.jpg`);
                 if (uploaded) newImages.push(uploaded);
             }
-            
+
             onImagesChange([...images, ...newImages]);
             setUploading(false);
             setUploadProgress('');
@@ -119,14 +123,14 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
         setShowCropModal(false);
         setUploading(true);
         setUploadProgress('Applying crop...');
-        
+
         const uploaded = await uploadSingleImage(croppedUri, current?.name);
         if (uploaded) {
             const newImages = [...images];
             newImages[currentCropIndex] = uploaded;
             onImagesChange(newImages);
         }
-        
+
         setPendingImages([]);
         setCurrentCropIndex(0);
         setUploading(false);
@@ -144,7 +148,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
         setPendingImages([]);
         setCurrentCropIndex(0);
     };
-    
+
     const openCropper = (index: number) => {
         setPendingImages([{ uri: images[index].uri }]);
         setCurrentCropIndex(index);
@@ -174,10 +178,20 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
         setShowUrlInput(false);
     };
 
-    const removeImage = (index: number) => {
-        const newImages = [...images];
-        newImages.splice(index, 1);
-        onImagesChange(newImages);
+    const removeImage = async (index: number) => {
+        const confirmed = await confirm({
+            title: 'Remove Image',
+            message: 'Are you sure you want to remove this image?',
+            confirmText: 'Remove',
+            cancelText: 'Cancel',
+            isDestructive: true,
+        });
+
+        if (confirmed) {
+            const newImages = [...images];
+            newImages.splice(index, 1);
+            onImagesChange(newImages);
+        }
     };
 
     const moveImage = (fromIndex: number, toIndex: number) => {
@@ -196,32 +210,41 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
             {/* Header info is moved to parent or kept minimal */}
             {isEmpty && !uploading ? (
                 <Pressable
-                    style={styles.emptyDropzone}
+                    style={[styles.emptyDropzone, compact && styles.compactDropzone]}
                     onPress={pickImages}
                 >
-                    <View style={styles.iconContainer}>
-                        <ImagePlus size={40} color="#B36979" />
+                    <View style={[styles.iconContainer, compact && styles.compactIconContainer]}>
+                        <ImagePlus size={compact ? 24 : 40} color="#B36979" />
                     </View>
-                    <Text style={styles.dropzoneTitle}>Upload Product Images</Text>
-                    <Text style={styles.dropzoneSubtitle}>
-                        {Platform.OS === 'web' ? 'Click to browse, drag & drop, or paste (Ctrl+V)' : 'Tap to browse your photos'}
-                    </Text>
-                    <Text style={styles.dropzoneLimit}>Up to {maxImages} images • PNG, JPG (Max 5MB)</Text>
+                    <Text style={styles.dropzoneTitle}>{compact ? 'Add Image' : 'Upload Product Images'}</Text>
+                    {!compact && (
+                        <>
+                            <Text style={styles.dropzoneSubtitle}>
+                                {Platform.OS === 'web' ? 'Click to browse, drag & drop, or paste (Ctrl+V)' : 'Tap to browse your photos'}
+                            </Text>
+                            <Text style={styles.dropzoneLimit}>Up to {maxImages} images • PNG, JPG (Max 5MB)</Text>
+                        </>
+                    )}
                 </Pressable>
             ) : isEmpty && uploading ? (
-                <View style={[styles.emptyDropzone, { justifyContent: 'center', alignItems: 'center' }]}>
+                <View style={[styles.emptyDropzone, compact && styles.compactDropzone, { justifyContent: 'center', alignItems: 'center' }]}>
                     <ActivityIndicator size="large" color="#B36979" />
                     <Text style={[styles.dropzoneTitle, { marginTop: 16 }]}>{uploadProgress || 'Uploading...'}</Text>
                 </View>
             ) : (
                 <View style={styles.populatedContainer}>
-                    <View style={styles.header}>
-                        <Text style={styles.subtitle}>{images.length}/{maxImages} images uploaded</Text>
-                    </View>
-                    
+                    {!compact && (
+                        <View style={styles.header}>
+                            <Text style={styles.subtitle}>{images.length}/{maxImages} images uploaded</Text>
+                        </View>
+                    )}
+
                     <View style={styles.gridContainer}>
                         {images.map((image, index) => {
                             const isPrimary = index === 0;
+                            const isHovered = hoveredIndex === index;
+                            const showArrows = Platform.OS === 'web' ? isHovered : true;
+                            
                             return (
                                 <View
                                     key={index}
@@ -229,44 +252,55 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5 }:
                                         styles.imageWrapper,
                                         isPrimary ? styles.primaryImageWrapper : styles.secondaryImageWrapper
                                     ]}
+                                    {...(Platform.OS === 'web' ? {
+                                        onMouseEnter: () => setHoveredIndex(index),
+                                        onMouseLeave: () => setHoveredIndex(null),
+                                    } : {})}
                                 >
                                     <Image
                                         source={{ uri: image.uri }}
                                         style={styles.image}
                                         resizeMode="cover"
                                     />
-                                    
+
                                     {isPrimary && (
                                         <View style={styles.primaryBadge}>
                                             <Text style={styles.primaryBadgeText}>Primary</Text>
                                         </View>
                                     )}
 
+                                    {showArrows && (
+                                        <View style={styles.centerArrowsOverlay} pointerEvents="box-none">
+                                            <View style={styles.centerArrowsContainer}>
+                                                {index > 0 && (
+                                                    <Pressable style={styles.centerArrowButton} onPress={() => moveImage(index, index - 1)}>
+                                                        <Text style={styles.centerArrowText}>←</Text>
+                                                    </Pressable>
+                                                )}
+                                                {index < images.length - 1 && (
+                                                    <Pressable style={styles.centerArrowButton} onPress={() => moveImage(index, index + 1)}>
+                                                        <Text style={styles.centerArrowText}>→</Text>
+                                                    </Pressable>
+                                                )}
+                                            </View>
+                                        </View>
+                                    )}
+
                                     <View style={styles.actionsOverlay}>
-                                        {index > 0 && (
-                                            <Pressable style={styles.actionButton} onPress={() => moveImage(index, index - 1)}>
-                                                <Text style={styles.actionText}>←</Text>
-                                            </Pressable>
-                                        )}
                                         <Pressable style={styles.actionButton} onPress={() => openCropper(index)}>
                                             <Crop size={14} color="#333" />
                                         </Pressable>
                                         <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={() => removeImage(index)}>
                                             <Trash2 size={14} color={theme.colors.primary} />
                                         </Pressable>
-                                        {index < images.length - 1 && (
-                                            <Pressable style={styles.actionButton} onPress={() => moveImage(index, index + 1)}>
-                                                <Text style={styles.actionText}>→</Text>
-                                            </Pressable>
-                                        )}
                                     </View>
                                 </View>
                             );
                         })}
-                        
+
                         {canAddMore && !uploading && (
-                            <Pressable 
-                                style={[styles.secondaryImageWrapper, styles.uploadingWrapper, { borderColor: '#E8D5D9', backgroundColor: '#FCFAFA' }]} 
+                            <Pressable
+                                style={[styles.secondaryImageWrapper, styles.uploadingWrapper, { borderColor: '#E8D5D9', backgroundColor: '#FCFAFA' }]}
                                 onPress={pickImages}
                             >
                                 <ImagePlus size={24} color="#B36979" />
@@ -311,6 +345,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#FCFAFA',
         minHeight: 200,
     },
+    compactDropzone: {
+        minHeight: 120,
+        padding: 16,
+        borderRadius: 12,
+    },
     iconContainer: {
         width: 64,
         height: 64,
@@ -319,6 +358,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
+    },
+    compactIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        marginBottom: 8,
     },
     dropzoneTitle: {
         fontSize: 16,
@@ -446,6 +491,34 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
     },
     actionText: {
+        fontSize: 14,
+        color: '#333',
+        fontWeight: 'bold',
+    },
+    centerArrowsOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+    },
+    centerArrowsContainer: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    centerArrowButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    centerArrowText: {
         fontSize: 14,
         color: '#333',
         fontWeight: 'bold',

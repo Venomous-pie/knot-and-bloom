@@ -49,7 +49,7 @@ model ProductVariant {
   price              Decimal?
   discountPercentage Int?
   discountedPrice    Decimal?
-  image              String?
+  images             String[]
   cartItems          CartItem[]
 
   @@unique([productId, name])

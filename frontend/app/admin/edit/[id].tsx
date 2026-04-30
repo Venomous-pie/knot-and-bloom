@@ -53,6 +53,8 @@ export default function EditProductPage() {
                 description: product.description || "",
                 materials: (product as any).materials || "",
                 bundleQuantity: (product as any).bundleQuantity?.toString() || "1",
+                isCodAllowed: (product as any).isCodAllowed ?? true,
+                isBundle: (product as any).isBundle ?? false,
             };
 
             // Handle categories (ensure array)
@@ -68,10 +70,10 @@ export default function EditProductPage() {
                     stock: v.stock.toString(),
                     price: v.price ? v.price.toString() : "",
                     discountPercentage: v.discountPercentage ? v.discountPercentage.toString() : "",
-                    image: v.image || ""
+                    images: v.images || (v.image ? [v.image] : [])
                 }));
             } else {
-                variants = [{ name: "Default", sku: "", stock: "0", price: "", discountPercentage: "", image: "" }];
+                variants = [{ name: "Default", sku: "", stock: "0", price: "", discountPercentage: "", images: [] }];
             }
 
             setInitialData({ formData, selectedCategories, variants });
@@ -110,7 +112,7 @@ export default function EditProductPage() {
             stock: parseInt(v.stock) || 0,
             price: v.price ? parseFloat(v.price) : null,
             discountPercentage: v.discountPercentage ? parseFloat(v.discountPercentage) : null,
-            image: v.image || null
+            images: v.images
         }));
 
         const submissionData: any = {

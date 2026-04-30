@@ -2,7 +2,9 @@ import { categoryTitles } from '@/constants/categories';
 import { isMobile } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles } from 'lucide-react-native';
+import { useDialog } from '@/contexts/DialogContext';
+import { useSellerSettings } from '@/contexts/SellerSettingsContext';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock } from 'lucide-react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
@@ -17,22 +19,44 @@ import {
     View,
     Switch,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';
 import InfoBox from '@/shared/InfoBox';
 import VariantEditor, { VariantData } from './VariantEditor';
-import { toTitleCase, toSentenceCase, capitalizeMaterials } from '@/utils/textUtils';
-import { Platform } from 'react-native';
+import { toTitleCase, toSentenceCase } from '@/utils/textUtils';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 
 const PRESET_MATERIALS = [
+    // Fibers & Textiles
     'Cotton', 'Wool', 'Merino Wool', 'Acrylic', 'Polyester', 'Silk',
     'Bamboo', 'Cashmere', 'Linen', 'Hemp', 'Jute', 'Mohair',
     'Alpaca', 'Angora', 'Nylon', 'Rayon', 'Velvet', 'Satin',
     'Leather', 'Faux Leather', 'Felt', 'Fleece', 'Chenille', 'Yarn',
-    'Thread', 'Ribbon', 'Beads', 'Buttons', 'Sequins', 'Embroidery Floss',
+    'Thread', 'Crochet Thread', 'Embroidery Floss', 
+    
+    // Jewelry & Hardware
+    'Beads', 'Seed Beads', 'Pearls', 'Crystals', 'Gemstones', 'Glass Beads',
+    'Buttons', 'Sequins', 'Charms', 'Pendants', 
+    'Jump Rings', 'Clasps', 'Ear Wires', 'French Hooks', 'Chain',
+    'Sterling Silver', 'Gold-Plated', 'Rose Gold', 'Copper Wire', 'Craft Wire',
+    
+    // Floral & Craft Supplies
+    'Dried Flowers', 'Preserved Petals', 'Faux Botanicals', 'Raffia',
+    'Floral Tape', 'Floral Wire', 'Resin', 'Fabric Stiffener',
+    'Toy Stuffing', 'Safety Eyes', 'Wood', 'Ceramic', 'Clay', 'Polymer Clay',
+    
+    // Care Package & Gift Box Inclusions
+    'Gift Box', 'Kraft Box', 'Tissue Paper', 'Crinkle Paper', 'Paper Shred',
+    'Ribbon', 'Twine', 'Wax Seal', 'Custom Tags', 'Stickers',
+    'Personalized Letter', 'Handwritten Note', 'Greeting Card',
+    
+    // Comfort & Treats
+    'Scented Candle', 'Bath Bomb', 'Shower Steamer', 'Essential Oil',
+    'Soap', 'Lip Balm', 'Mug', 'Tea Bags', 'Coffee Packets', 'Hot Chocolate',
+    'Snacks', 'Cookies', 'Candy', 'Chocolate'
 ];
 
 export interface ProductFormData {
@@ -95,6 +119,7 @@ export default function ProductFormWizard({
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
     const { user } = useAuth();
+    const { confirm } = useDialog();
 
     const initializedRef = useRef(false);
     const [currentStep, setCurrentStep] = useState(1);
@@ -112,7 +137,7 @@ export default function ProductFormWizard({
     });
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [variants, setVariants] = useState<VariantData[]>([
-        { name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', image: '' }
+        { name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }
     ]);
     const [images, setImages] = useState<{ uri: string; isUrl?: boolean }[]>([]);
     const [showPreview, setShowPreview] = useState(!mobile);
@@ -121,6 +146,9 @@ export default function ProductFormWizard({
     const [generatingDescription, setGeneratingDescription] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
     const [activeVariantIndex, setActiveVariantIndex] = useState<number | null>(0);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const { settings } = useSellerSettings();
+    const router = useRouter();
 
     const categories = Object.values(categoryTitles);
 
@@ -192,7 +220,7 @@ export default function ProductFormWizard({
             setSelectedCategories(initialData.selectedCategories);
             setVariants(initialData.variants.length > 0
                 ? initialData.variants
-                : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', image: '' }]
+                : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]
             );
             if (initialData.formData.image) {
                 setImages([{ uri: initialData.formData.image, isUrl: true }]);
@@ -211,6 +239,13 @@ export default function ProductFormWizard({
 
     const handleChange = (field: keyof ProductFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => {
+                const next = { ...prev };
+                delete next[field];
+                return next;
+            });
+        }
     };
 
     // Auto-generate SKU
@@ -256,25 +291,22 @@ export default function ProductFormWizard({
             description: '', materials: '', bundleQuantity: '1', isCodAllowed: true, isBundle: false,
         });
         setSelectedCategories([]);
-        setVariants([{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', image: '' }]);
+        setVariants([{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]);
         setImages([]);
         setCurrentStep(1);
     };
 
-    const handleReset = () => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Are you sure you want to discard all changes and start fresh?")) {
-                executeReset();
-            }
-        } else {
-            Alert.alert(
-                "Start Over?",
-                "Are you sure you want to discard all changes and start fresh?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Start Over", style: "destructive", onPress: executeReset }
-                ]
-            );
+    const handleReset = async () => {
+        const confirmed = await confirm({
+            title: "Start Over?",
+            message: "Are you sure you want to discard all changes and start fresh?",
+            confirmText: "Start Over",
+            cancelText: "Cancel",
+            isDestructive: true
+        });
+
+        if (confirmed) {
+            executeReset();
         }
     };
 
@@ -347,40 +379,101 @@ export default function ProductFormWizard({
     };
 
     const validateStep = (step: number): boolean => {
+        const newErrors: Record<string, string> = {};
+        let isValid = true;
+
         switch (step) {
             case 1:
+                if (images.length === 0) {
+                    newErrors.images = 'Please upload at least one product image.';
+                    isValid = false;
+                }
                 if (!formData.name.trim()) {
-                    Alert.alert('Required', 'Please enter a product name.');
-                    return false;
+                    newErrors.name = 'Please enter a product name.';
+                    isValid = false;
                 }
                 if (selectedCategories.length === 0) {
-                    Alert.alert('Required', 'Please select at least one category.');
-                    return false;
+                    newErrors.categories = 'Please select at least one category.';
+                    isValid = false;
                 }
-                return true;
+                break;
             case 2:
+                if (!formData.sku.trim()) {
+                    newErrors.sku = 'Please enter or generate a Base SKU.';
+                    isValid = false;
+                }
                 if (!formData.basePrice.trim()) {
-                    Alert.alert('Required', 'Please enter a base price.');
-                    return false;
+                    newErrors.basePrice = 'Please enter a base price.';
+                    isValid = false;
                 }
-                return true; // Images are optional for step 1 now
+                if (!formData.description.trim()) {
+                    newErrors.description = 'Please enter a product description.';
+                    isValid = false;
+                }
+                if (!formData.materials.trim()) {
+                    newErrors.materials = 'Please specify materials & inclusions.';
+                    isValid = false;
+                }
+                if (formData.isBundle && !formData.bundleQuantity.trim()) {
+                    newErrors.bundleQty = 'Please enter the bundle quantity.';
+                    isValid = false;
+                }
+                break;
             case 3:
-                const hasValidVariant = variants.some(v => v.name.trim() && v.stock.trim());
-                if (!hasValidVariant) {
-                    Alert.alert('Required', 'Please add at least one variant with name and stock.');
-                    return false;
-                }
-                return true;
-            case 4:
-                return true;
-            default:
-                return true;
+                variants.forEach((v, i) => {
+                    if (!v.stock.trim()) {
+                        newErrors[`variant-${i}-stock`] = i === 0
+                            ? 'Stock is required for the main product.'
+                            : 'Stock is required.';
+                        isValid = false;
+                    }
+                    if (i > 0 && !v.name.trim()) {
+                        newErrors[`variant-${i}-name`] = 'Please enter a variant name.';
+                        isValid = false;
+                    }
+                });
+                break;
         }
+
+        if (!isValid) {
+            setErrors(prev => ({ ...prev, ...newErrors }));
+        }
+
+        return isValid;
     };
 
-    const goToStep = (step: number) => {
+    // Shows a confirmation dialog for non-blocking warnings before advancing a step.
+    // Returns true if the user confirms (or there's nothing to warn about).
+    const warnStep = async (step: number): Promise<boolean> => {
+        if (step === 3) {
+            const mainVariant = variants[0];
+            if (mainVariant && (mainVariant.stock === '0' || mainVariant.stock === '')) {
+                const confirmed = await confirm({
+                    title: '⚠️ Zero Stock',
+                    message:
+                        'The main product currently has 0 stock.\n\nSellers with 0 stock cannot receive new orders until stock is updated. Are you sure you want to continue?',
+                    confirmText: 'Yes, continue',
+                    cancelText: 'Go back & fix',
+                });
+                return confirmed;
+            }
+        }
+        return true;
+    };
+
+    const goToStep = async (step: number) => {
         if (step > currentStep) {
-            if (!validateStep(currentStep)) return;
+            for (let s = currentStep; s < step; s++) {
+                if (!validateStep(s)) {
+                    setCurrentStep(s);
+                    return;
+                }
+                const ok = await warnStep(s);
+                if (!ok) {
+                    setCurrentStep(s);
+                    return;
+                }
+            }
         }
         setCurrentStep(step);
     };
@@ -410,17 +503,25 @@ export default function ProductFormWizard({
                             <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
                                 Add photos to showcase your product. The first image will be the primary photo.
                             </Text>
-                            <ImageUploader
-                                images={images}
-                                onImagesChange={setImages}
-                                maxImages={5}
-                            />
+                            <View style={[errors.images && styles.fieldErrorContainer]}>
+                                <ImageUploader
+                                    images={images}
+                                    onImagesChange={(newImages) => {
+                                        setImages(newImages);
+                                        if (errors.images) {
+                                            setErrors(prev => { const n = {...prev}; delete n.images; return n; });
+                                        }
+                                    }}
+                                    maxImages={5}
+                                />
+                            </View>
+                            {errors.images && <Text style={styles.errorText}>{errors.images}</Text>}
                         </View>
                         {/* Product Name */}
                         <View style={styles.field}>
                             <Text style={styles.fieldLabel}>Product Name *</Text>
                             <TextInput
-                                style={[styles.input, focusedField === 'name' && styles.inputFocused]}
+                                style={[styles.input, focusedField === 'name' && styles.inputFocused, errors.name && styles.inputError]}
                                 value={formData.name}
                                 onChangeText={(text: string) => handleChange('name', text)}
                                 placeholder="e.g. Handmade Crochet Bear"
@@ -433,12 +534,13 @@ export default function ProductFormWizard({
                                     }
                                 }}
                             />
+                            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
                         </View>
 
                         {/* Categories */}
                         <View style={styles.field}>
                             <Text style={styles.fieldLabel}>Categories *</Text>
-                            <View style={styles.categoryList}>
+                            <View style={[styles.categoryList, errors.categories && styles.fieldErrorContainer]}>
                                 {categories.map((cat) => {
                                     const isSelected = selectedCategories.includes(cat);
                                     return (
@@ -449,6 +551,9 @@ export default function ProductFormWizard({
                                                 isSelected && styles.categoryChipSelected
                                             ]}
                                             onPress={() => {
+                                                if (errors.categories) {
+                                                    setErrors(prev => { const n = {...prev}; delete n.categories; return n; });
+                                                }
                                                 if (isSelected) {
                                                     setSelectedCategories(selectedCategories.filter(c => c !== cat));
                                                 } else {
@@ -464,6 +569,7 @@ export default function ProductFormWizard({
                                     );
                                 })}
                             </View>
+                            {errors.categories && <Text style={styles.errorText}>{errors.categories}</Text>}
                         </View>
 
                     </View>
@@ -476,7 +582,7 @@ export default function ProductFormWizard({
                         {/* SKU */}
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
-                                <Text style={styles.fieldLabel}>SKU</Text>
+                                <Text style={styles.fieldLabel}>SKU (Stock Keeping Unit)</Text>
                                 {generatingSku && (
                                     <ActivityIndicator size="small" color={theme.colors.primary} />
                                 )}
@@ -489,20 +595,23 @@ export default function ProductFormWizard({
                                             {selectedCategories.length > 0 ? '✓' : '○'}
                                         </Text>
                                         <Text style={[styles.skuReqText, selectedCategories.length > 0 && styles.skuReqTextDone]}>
-                                            Select a category
+                                            {selectedCategories.length > 0 
+                                                ? 'Category selected for auto-generation'
+                                                : 'Select a category in Step 1 to auto-generate SKU'}
                                         </Text>
                                     </View>
                                 </View>
                             )}
                             <TextInput
-                                style={[styles.input, focusedField === 'sku' && styles.inputFocused]}
+                                style={[styles.input, focusedField === 'sku' && styles.inputFocused, errors.sku && styles.inputError]}
                                 value={formData.sku}
-                                onChangeText={(text: string) => handleChange('sku', text)}
-                                placeholder="e.g. CB-001"
+                                onChangeText={(text: string) => handleChange('sku', text.toUpperCase().replace(/\s+/g, '-'))}
+                                placeholder="e.g. BEAR-001"
                                 placeholderTextColor={theme.colors.textLight}
                                 onFocus={() => setFocusedField('sku')}
                                 onBlur={() => setFocusedField(null)}
                             />
+                            {errors.sku && <Text style={styles.errorText}>{errors.sku}</Text>}
                         </View>
 
                         {/* Price Row */}
@@ -510,7 +619,7 @@ export default function ProductFormWizard({
                             <View style={[styles.field, !mobile && { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Base Price (₱) *</Text>
                                 <TextInput
-                                    style={[styles.input, focusedField === 'basePrice' && styles.inputFocused]}
+                                    style={[styles.input, focusedField === 'basePrice' && styles.inputFocused, errors.basePrice && styles.inputError]}
                                     value={formData.basePrice}
                                     onChangeText={(text: string) => handleChange('basePrice', text)}
                                     placeholder="0.00"
@@ -519,6 +628,7 @@ export default function ProductFormWizard({
                                     onFocus={() => setFocusedField('basePrice')}
                                     onBlur={() => setFocusedField(null)}
                                 />
+                                {errors.basePrice && <Text style={styles.errorText}>{errors.basePrice}</Text>}
                             </View>
                             <View style={[styles.field, !mobile && { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Discount (%)</Text>
@@ -558,19 +668,29 @@ export default function ProductFormWizard({
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
                                 <Text style={styles.fieldLabel}>Description</Text>
-                                <Pressable onPress={handleGenerateDescription} disabled={generatingDescription}>
-                                    {generatingDescription ? (
-                                        <ActivityIndicator size="small" color={theme.colors.primary} />
-                                    ) : (
-                                        <View style={styles.autoGenButton}>
-                                            <Sparkles size={14} color={theme.colors.primary} />
-                                            <Text style={styles.autoGenText}>AI Generate</Text>
-                                        </View>
-                                    )}
-                                </Pressable>
+                                {settings.aiDescriptionEnabled ? (
+                                    <Pressable onPress={handleGenerateDescription} disabled={generatingDescription}>
+                                        {generatingDescription ? (
+                                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                                        ) : (
+                                            <View style={styles.autoGenButton}>
+                                                <Sparkles size={14} color={theme.colors.primary} />
+                                                <Text style={styles.autoGenText}>AI Generate</Text>
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                ) : (
+                                    <Pressable
+                                        style={styles.autoGenButtonLocked}
+                                        onPress={() => router.push('/seller-dashboard/settings' as any)}
+                                    >
+                                        <Lock size={12} color={theme.colors.textLight} />
+                                        <Text style={styles.autoGenTextLocked}>AI Generate</Text>
+                                    </Pressable>
+                                )}
                             </View>
                             <TextInput
-                                style={[styles.input, styles.textArea, focusedField === 'description' && styles.inputFocused]}
+                                style={[styles.input, styles.textArea, focusedField === 'description' && styles.inputFocused, errors.description && styles.inputError]}
                                 value={formData.description}
                                 onChangeText={(text: string) => handleChange('description', text)}
                                 placeholder="Describe your product..."
@@ -585,6 +705,7 @@ export default function ProductFormWizard({
                                     }
                                 }}
                             />
+                            {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
                         </View>
 
 
@@ -592,7 +713,7 @@ export default function ProductFormWizard({
                         <View style={styles.field}>
                             <Text style={styles.fieldLabel}>Materials & Inclusions</Text>
                             <TextInput
-                                style={[styles.input, focusedField === 'materials' && styles.inputFocused]}
+                                style={[styles.input, focusedField === 'materials' && styles.inputFocused, errors.materials && styles.inputError]}
                                 value={formData.materials}
                                 onChangeText={(text: string) => handleChange('materials', text)}
                                 placeholder="e.g. Cotton yarn, aesthetic box, personalized letter..."
@@ -600,6 +721,7 @@ export default function ProductFormWizard({
                                 onFocus={() => setFocusedField('materials')}
                                 onBlur={() => setTimeout(() => setFocusedField(null), 150)}
                             />
+                            {errors.materials && <Text style={styles.errorText}>{errors.materials}</Text>}
                             {/* Smart Suggestions */}
                             {focusedField === 'materials' && (
                                 <View style={styles.materialSuggestions}>
@@ -658,7 +780,7 @@ export default function ProductFormWizard({
                             <View style={styles.field}>
                                 <Text style={styles.fieldLabel}>Bundle Quantity</Text>
                                 <TextInput
-                                    style={[styles.input, focusedField === 'bundleQty' && styles.inputFocused]}
+                                    style={[styles.input, focusedField === 'bundleQty' && styles.inputFocused, errors.bundleQty && styles.inputError]}
                                     value={formData.bundleQuantity}
                                     onChangeText={(text: string) => handleChange('bundleQuantity', text)}
                                     placeholder="Total number of items in the bundle (e.g. 3)"
@@ -667,6 +789,7 @@ export default function ProductFormWizard({
                                     onFocus={() => setFocusedField('bundleQty')}
                                     onBlur={() => setFocusedField(null)}
                                 />
+                                {errors.bundleQty && <Text style={styles.errorText}>{errors.bundleQty}</Text>}
                             </View>
                         )}
                     </View>
@@ -678,12 +801,22 @@ export default function ProductFormWizard({
                         <Text style={styles.stepTitle}>Variants & Stock</Text>
                         <VariantEditor
                             variants={variants}
-                            onVariantsChange={setVariants}
+                            onVariantsChange={(newVariants) => {
+                                setVariants(newVariants);
+                                // Clear all per-variant errors when any variant is edited
+                                setErrors(prev => {
+                                    const next = { ...prev };
+                                    Object.keys(next).filter(k => k.startsWith('variant-')).forEach(k => delete next[k]);
+                                    return next;
+                                });
+                            }}
                             baseSku={formData.sku}
                             basePrice={formData.basePrice}
                             baseDiscount={formData.discountPercentage}
                             onGenerateVariantSku={handleGenerateVariantSku}
                             onExpandedChange={setActiveVariantIndex}
+                            productImages={images}
+                            variantErrors={errors}
                         />
                     </View>
                 );
@@ -1074,6 +1207,23 @@ const styles = StyleSheet.create({
         color: theme.colors.primary,
         fontWeight: '600',
     },
+    autoGenButtonLocked: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderStyle: 'dashed',
+        opacity: 0.65,
+    },
+    autoGenTextLocked: {
+        fontSize: 12,
+        color: theme.colors.textLight,
+        fontWeight: '500',
+    },
     input: {
         borderWidth: 2,
         borderColor: theme.colors.border,
@@ -1088,6 +1238,21 @@ const styles = StyleSheet.create({
     inputFocused: {
         borderColor: theme.colors.primary,
         backgroundColor: 'white',
+    },
+    inputError: {
+        borderColor: theme.colors.error || '#D32F2F',
+    },
+    errorText: {
+        color: theme.colors.error || '#D32F2F',
+        fontSize: 12,
+        fontFamily: 'Quicksand',
+        marginTop: 2,
+    },
+    fieldErrorContainer: {
+        borderColor: theme.colors.error || '#D32F2F',
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 4,
     },
     textArea: {
         minHeight: 120,

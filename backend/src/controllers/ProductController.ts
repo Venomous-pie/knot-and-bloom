@@ -147,8 +147,8 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                                     Number(variant.discountPercentage),
                                     Number(parsedInput.discountPercentage)
                                 ),
-                                image: variant.image || null,
-                            }
+                                images: variant.images || [],
+                            } as any
                         });
                     }
                 } else {
@@ -607,9 +607,9 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                             Number(variant.discountPercentage),
                             Number(parsedInput.discountPercentage)
                         ),
-                        image: variant.image || null,
+                        images: variant.images || [],
                         sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
-                    }
+                    } as any
                 });
             } else {
                 await tx.productVariant.create({
@@ -624,9 +624,9 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                             Number(variant.discountPercentage),
                             Number(parsedInput.discountPercentage)
                         ),
-                        image: variant.image || null,
+                        images: variant.images || [],
                         sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
-                    }
+                    } as any
                 });
             }
         }

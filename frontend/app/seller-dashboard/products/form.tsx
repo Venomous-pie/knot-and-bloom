@@ -58,9 +58,9 @@ export default function SellerProductForm() {
                             sku: v.sku || '',
                             price: v.price ? String(v.price) : '',
                             discountPercentage: v.discountPercentage ? String(v.discountPercentage) : '',
-                            image: v.image || '',
+                            images: v.images || (v.image ? [v.image] : []),
                         }))
-                        : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', image: '' }]
+                        : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]
                 });
                 setProductStatus(p.status);
             }
@@ -90,7 +90,7 @@ export default function SellerProductForm() {
                     sku: v.sku,
                     price: v.price ? parseFloat(v.price) : undefined,
                     discountPercentage: v.discountPercentage ? parseFloat(v.discountPercentage) : undefined,
-                    image: v.image,
+                    images: v.images,
                 })),
                 status: isDraft ? 'DRAFT' : undefined,
             };

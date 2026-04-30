@@ -25,6 +25,7 @@ import {
     Package,
     ShoppingBag,
     LayoutDashboard,
+    Settings,
     Star,
     DollarSign,
     Trash2,
@@ -267,6 +268,13 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                             subtitle="Cash out your sales"
                             isActive={pathname === '/seller-dashboard/earnings'}
                             onPress={() => router.push('/seller-dashboard/earnings' as RelativePathString)}
+                        />
+                        <MenuItem
+                            icon={<Settings size={20} />}
+                            title="Seller Settings"
+                            subtitle="AI tools & preferences"
+                            isActive={pathname === '/seller-dashboard/settings'}
+                            onPress={() => router.push('/seller-dashboard/settings' as RelativePathString)}
                         />
                     </MenuSection>
                 )}

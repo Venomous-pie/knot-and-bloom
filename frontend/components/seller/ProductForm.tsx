@@ -20,7 +20,7 @@ export interface VariantData {
     sku: string;
     price: string;
     discountPercentage: string;
-    image: string;
+    images: string[];
 }
 
 interface ProductFormProps {
@@ -50,7 +50,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
 
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [variants, setVariants] = useState<VariantData[]>([
-        { name: "", stock: "", sku: "", price: "", discountPercentage: "", image: "" }
+        { name: "", stock: "", sku: "", price: "", discountPercentage: "", images: [] }
     ]);
 
     const [generatingSku, setGeneratingSku] = useState(false);
@@ -60,7 +60,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
         if (initialData) {
             setFormData(initialData.formData);
             setSelectedCategories(initialData.selectedCategories);
-            setVariants(initialData.variants.length > 0 ? initialData.variants : [{ name: "Default", stock: "0", sku: "", price: "", discountPercentage: "", image: "" }]);
+            setVariants(initialData.variants.length > 0 ? initialData.variants : [{ name: "Default", stock: "0", sku: "", price: "", discountPercentage: "", images: [] }]);
         }
     }, [initialData]);
 
@@ -181,7 +181,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
     };
 
     const addVariant = () => {
-        setVariants([...variants, { name: "", stock: "", sku: "", price: "", discountPercentage: "", image: "" }]);
+        setVariants([...variants, { name: "", stock: "", sku: "", price: "", discountPercentage: "", images: [] }]);
     };
 
     const removeVariant = (index: number) => {
@@ -190,7 +190,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
         }
     };
 
-    const updateVariant = (index: number, field: keyof VariantData, value: string) => {
+    const updateVariant = (index: number, field: keyof VariantData, value: any) => {
         const updated = [...variants];
         updated[index] = { ...updated[index], [field]: value };
         setVariants(updated);
@@ -380,8 +380,8 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                         </Text>
                         <TextInput
                             style={styles.input}
-                            value={variant.image}
-                            onChangeText={(text) => updateVariant(index, "image", text)}
+                            value={variant.images?.[0] || ''}
+                            onChangeText={(text) => updateVariant(index, "images", [text])}
                             placeholder="https://example.com/variant-image.jpg"
                             placeholderTextColor="#999"
                         />

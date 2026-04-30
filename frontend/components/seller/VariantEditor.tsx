@@ -7,6 +7,7 @@ import {
     Alert,
     Image,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -66,7 +67,7 @@ function CustomOptionsModal({ visible, onClose, onGenerate }: CustomOptionsModal
         <Modal
             visible={visible}
             transparent={true}
-            animationType="fade"
+            animationType="none"
             onRequestClose={onClose}
         >
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -382,11 +383,28 @@ export default function VariantEditor({
         setExpandedIndex(variants.length);
     };
 
-    const removeVariant = (index: number) => {
+    const executeRemoveVariant = (index: number) => {
         const newVariants = [...variants];
         newVariants.splice(index, 1);
         onVariantsChange(newVariants);
         if (expandedIndex === index) setExpandedIndex(null);
+    };
+
+    const removeVariant = (index: number) => {
+        if (Platform.OS === 'web') {
+            if (window.confirm("Are you sure you want to delete this variant?")) {
+                executeRemoveVariant(index);
+            }
+        } else {
+            Alert.alert(
+                "Delete Variant?",
+                "Are you sure you want to delete this variant?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: () => executeRemoveVariant(index) }
+                ]
+            );
+        }
     };
 
     const updateVariant = (index: number, field: keyof VariantData, value: string) => {
@@ -678,13 +696,11 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: theme.colors.border,
         overflow: 'hidden',
     },
     variantCardExpanded: {
         borderColor: theme.colors.primary,
         borderWidth: 2,
-        borderLeftWidth: 4,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -694,7 +710,8 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.backgroundAlt,
     },
     cardHeaderExpanded: {
-        backgroundColor: theme.colors.primaryLight,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.subtle,
     },
     cardHeaderLeft: {
         flexDirection: 'row',

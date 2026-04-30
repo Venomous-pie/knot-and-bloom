@@ -4,7 +4,9 @@ import { ChevronDown, ChevronUp, Plus, Sparkles, Trash2, ImagePlus } from 'lucid
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Image,
+    Modal,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -13,120 +15,122 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
-import ColorPickerModal from './ColorPickerModal';
 import { uploadToImageKit } from '@/lib/imagekit';
 import { toTitleCase } from '@/utils/textUtils';
 import { Layers } from 'lucide-react-native';
 
-interface BulkGenerateModalProps {
+interface CustomOptionsModalProps {
     visible: boolean;
     onClose: () => void;
-    onGenerate: (colors: string[], sizes: string[]) => void;
-    savedPalette: string[];
+    onGenerate: (combinations: string[]) => void;
 }
 
-function BulkGenerateModal({ visible, onClose, onGenerate, savedPalette }: BulkGenerateModalProps) {
-    const [selectedColors, setSelectedColors] = useState<string[]>([]);
-    const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+function CustomOptionsModal({ visible, onClose, onGenerate }: CustomOptionsModalProps) {
+    const [option1Name, setOption1Name] = useState('Variation');
+    const [option1Values, setOption1Values] = useState('');
 
-    const toggleColor = (color: string) => {
-        if (selectedColors.includes(color)) {
-            setSelectedColors(selectedColors.filter(c => c !== color));
-        } else {
-            setSelectedColors([...selectedColors, color]);
-        }
-    };
-
-    const toggleSize = (size: string) => {
-        if (selectedSizes.includes(size)) {
-            setSelectedSizes(selectedSizes.filter(s => s !== size));
-        } else {
-            setSelectedSizes([...selectedSizes, size]);
-        }
-    };
+    const [option2Name, setOption2Name] = useState('');
+    const [option2Values, setOption2Values] = useState('');
 
     const handleGenerate = () => {
-        onGenerate(selectedColors, selectedSizes);
+        const vals1 = option1Values.split(',').map(s => s.trim()).filter(Boolean);
+        const vals2 = option2Values.split(',').map(s => s.trim()).filter(Boolean);
+
+        const combinations: string[] = [];
+
+        if (vals1.length > 0 && vals2.length > 0) {
+            vals1.forEach(v1 => {
+                vals2.forEach(v2 => {
+                    combinations.push(`${v1} - ${v2}`);
+                });
+            });
+        } else if (vals1.length > 0) {
+            vals1.forEach(v1 => combinations.push(v1));
+        } else if (vals2.length > 0) {
+            vals2.forEach(v2 => combinations.push(v2));
+        }
+
+        if (combinations.length > 0) {
+            onGenerate(combinations);
+        }
+
         onClose();
-        setSelectedColors([]);
-        setSelectedSizes([]);
+        setOption1Name('Variation');
+        setOption1Values('');
+        setOption2Name('');
+        setOption2Values('');
     };
 
-    if (!visible) return null;
-
     return (
-        <View style={StyleSheet.absoluteFill}>
-            <Pressable style={styles.modalOverlay} onPress={onClose} />
-            <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Bulk Generate Variants</Text>
-                <Text style={styles.modalSubtitle}>Select colors and sizes to generate combinations.</Text>
+        <Modal
+            visible={visible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <Pressable style={styles.modalOverlay} onPress={onClose} />
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Bulk Generate Variants</Text>
+                    <Text style={styles.modalSubtitle}>Create combinations from custom options.</Text>
 
-                <ScrollView style={{ maxHeight: 400 }}>
-                    <Text style={styles.sectionLabel}>Colors</Text>
-                    <View style={styles.chipHelpers}>
-                        <Pressable onPress={() => setSelectedColors(PRESET_COLORS.map(c => c.value))}><Text style={styles.helperLink}>Select All</Text></Pressable>
-                        <Pressable onPress={() => setSelectedColors([])}><Text style={styles.helperLink}>Clear</Text></Pressable>
-                    </View>
-                    <View style={styles.colorGrid}>
-                        {/* Palette */}
-                        {savedPalette.map(color => (
-                            <Pressable
-                                key={color}
-                                style={[styles.colorOption, selectedColors.includes(color) && styles.colorOptionSelected]}
-                                onPress={() => toggleColor(color)}
-                            >
-                                <View style={[styles.colorCircle, { backgroundColor: color }]} />
-                                {selectedColors.includes(color) && <View style={styles.checkMark} />}
-                            </Pressable>
-                        ))}
-                        {/* Presets */}
-                        {PRESET_COLORS.map(color => (
-                            <Pressable
-                                key={color.value}
-                                style={[styles.colorOption, selectedColors.includes(color.value) && styles.colorOptionSelected]}
-                                onPress={() => toggleColor(color.value)}
-                            >
-                                <View style={[styles.colorCircle, { backgroundColor: color.value }]} />
-                                <Text style={styles.colorName}>{color.name}</Text>
-                            </Pressable>
-                        ))}
-                    </View>
+                    <ScrollView style={{ maxHeight: 400 }}>
+                        <View style={styles.field}>
+                            <Text style={styles.fieldLabel}>Option 1 Name</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={option1Name}
+                                onChangeText={setOption1Name}
+                                placeholder="e.g. Flower Count"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                            <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Option 1 Values (comma separated)</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={option1Values}
+                                onChangeText={setOption1Values}
+                                placeholder="e.g. 3 Stems, 6 Stems, 1 Dozen"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                        </View>
 
-                    <Text style={styles.sectionLabel}>Sizes</Text>
-                    <View style={styles.chipHelpers}>
-                        <Pressable onPress={() => setSelectedSizes(PRESET_SIZES)}><Text style={styles.helperLink}>Select All</Text></Pressable>
-                        <Pressable onPress={() => setSelectedSizes([])}><Text style={styles.helperLink}>Clear</Text></Pressable>
-                    </View>
-                    <View style={styles.sizeGrid}>
-                        {PRESET_SIZES.map(size => (
-                            <Pressable
-                                key={size}
-                                style={[styles.sizeOption, selectedSizes.includes(size) && styles.sizeOptionSelected]}
-                                onPress={() => toggleSize(size)}
-                            >
-                                <Text style={[styles.sizeText, selectedSizes.includes(size) && styles.sizeTextSelected]}>{size}</Text>
-                            </Pressable>
-                        ))}
-                    </View>
-                </ScrollView>
+                        <View style={[styles.field, { marginTop: 16 }]}>
+                            <Text style={styles.fieldLabel}>Option 2 Name (Optional)</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={option2Name}
+                                onChangeText={setOption2Name}
+                                placeholder="e.g. Wrap Type"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                            <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Option 2 Values (comma separated)</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={option2Values}
+                                onChangeText={setOption2Values}
+                                placeholder="e.g. Standard, Premium"
+                                placeholderTextColor={theme.colors.textLight}
+                            />
+                        </View>
+                    </ScrollView>
 
-                <View style={styles.modalActions}>
-                    <Pressable style={styles.modalCancel} onPress={onClose}>
-                        <Text style={styles.modalCancelText}>Cancel</Text>
-                    </Pressable>
-                    <Pressable
-                        style={[styles.modalGenerate, (selectedColors.length === 0 && selectedSizes.length === 0) && styles.disabledBtn]}
-                        onPress={handleGenerate}
-                        disabled={selectedColors.length === 0 && selectedSizes.length === 0}
-                    >
-                        <Sparkles size={16} color="white" />
-                        <Text style={styles.modalGenerateText}>Generate {selectedColors.length * selectedSizes.length || (selectedColors.length + selectedSizes.length)} Variants</Text>
-                    </Pressable>
+                    <View style={styles.modalActions}>
+                        <Pressable style={styles.modalCancel} onPress={onClose}>
+                            <Text style={styles.modalCancelText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            style={[styles.modalGenerate, (option1Values.trim() === '' && option2Values.trim() === '') && styles.disabledBtn]}
+                            onPress={handleGenerate}
+                            disabled={option1Values.trim() === '' && option2Values.trim() === ''}
+                        >
+                            <Sparkles size={16} color="white" />
+                            <Text style={styles.modalGenerateText}>Generate</Text>
+                        </Pressable>
+                    </View>
                 </View>
             </View>
-        </View>
+        </Modal>
     );
 }
 
@@ -138,9 +142,6 @@ export interface VariantData {
     price: string;
     discountPercentage: string;
     image: string;
-    color?: string;
-    customColor?: string;
-    size?: string;
 }
 
 interface VariantEditorProps {
@@ -153,24 +154,7 @@ interface VariantEditorProps {
     onExpandedChange?: (index: number | null) => void;
 }
 
-const PRESET_COLORS = [
-    { name: 'Red', value: '#E53935' },
-    { name: 'Pink', value: '#EC407A' },
-    { name: 'Purple', value: '#AB47BC' },
-    { name: 'Blue', value: '#42A5F5' },
-    { name: 'Teal', value: '#26A69A' },
-    { name: 'Green', value: '#66BB6A' },
-    { name: 'Yellow', value: '#FFEE58' },
-    { name: 'Orange', value: '#FFA726' },
-    { name: 'Brown', value: '#8D6E63' },
-    { name: 'Black', value: '#424242' },
-    { name: 'White', value: '#FAFAFA' },
-    { name: 'Gray', value: '#9E9E9E' },
-];
-
-const PRESET_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'];
-
-// Mini image picker for variants
+// Variant image picker matching Step 1 ImageUploader UI/UX
 function VariantImagePicker({
     imageUri,
     onImageChange
@@ -189,106 +173,151 @@ function VariantImagePicker({
         });
 
         if (!result.canceled && result.assets[0]) {
+            const asset = result.assets[0];
+            if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+                Alert.alert('File Too Large', 'Image exceeds the 5MB limit.');
+                return;
+            }
             setUploading(true);
             try {
                 const uploaded = await uploadToImageKit({
-                    uri: result.assets[0].uri,
+                    uri: asset.uri,
                     name: `variant_${Date.now()}.jpg`,
                 });
                 onImageChange(uploaded.url);
             } catch (error) {
                 console.error('Variant image upload failed:', error);
-                // Fallback to local URI
-                onImageChange(result.assets[0].uri);
+                onImageChange(asset.uri);
             } finally {
                 setUploading(false);
             }
         }
     };
 
-    const removeImage = () => {
-        onImageChange('');
-    };
+    const removeImage = () => onImageChange('');
 
-    if (uploading) {
+    // Empty + loading state
+    if (!imageUri) {
         return (
-            <View style={variantImageStyles.container}>
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-                <Text style={variantImageStyles.uploadingText}>Uploading...</Text>
-            </View>
+            <Pressable
+                style={variantImageStyles.dropzone}
+                onPress={!uploading ? pickImage : undefined}
+            >
+                {uploading ? (
+                    <>
+                        <ActivityIndicator size="large" color="#B36979" />
+                        <Text style={variantImageStyles.dropzoneTitle}>Uploading...</Text>
+                    </>
+                ) : (
+                    <>
+                        <View style={variantImageStyles.iconContainer}>
+                            <ImagePlus size={28} color="#B36979" />
+                        </View>
+                        <Text style={variantImageStyles.dropzoneTitle}>Add Variant Image</Text>
+                        <Text style={variantImageStyles.dropzoneSubtitle}>Tap to browse · PNG, JPG (Max 5MB)</Text>
+                    </>
+                )}
+            </Pressable>
         );
     }
 
-    if (imageUri) {
-        return (
-            <View style={variantImageStyles.previewContainer}>
-                <Image source={{ uri: imageUri }} style={variantImageStyles.preview} />
-                <Pressable style={variantImageStyles.removeButton} onPress={removeImage}>
-                    <Trash2 size={14} color="white" />
+    // Populated state — thumbnail with action overlay
+    return (
+        <View style={variantImageStyles.previewWrapper}>
+            <Image source={{ uri: imageUri }} style={variantImageStyles.preview} resizeMode="cover" />
+            {uploading && (
+                <View style={variantImageStyles.uploadingOverlay}>
+                    <ActivityIndicator size="small" color="white" />
+                </View>
+            )}
+            <View style={variantImageStyles.actionsOverlay}>
+                <Pressable style={variantImageStyles.actionButton} onPress={pickImage}>
+                    <ImagePlus size={13} color="#333" />
+                </Pressable>
+                <Pressable style={[variantImageStyles.actionButton, variantImageStyles.deleteActionButton]} onPress={removeImage}>
+                    <Trash2 size={13} color="#B36979" />
                 </Pressable>
             </View>
-        );
-    }
-
-    return (
-        <Pressable style={variantImageStyles.addButton} onPress={pickImage}>
-            <ImagePlus size={20} color={theme.colors.primary} />
-            <Text style={variantImageStyles.addText}>Add Image</Text>
-        </Pressable>
+        </View>
     );
 }
 
 const variantImageStyles = StyleSheet.create({
-    container: {
-        flexDirection: 'row',
+    dropzone: {
+        borderWidth: 2,
+        borderColor: '#E8D5D9',
+        borderStyle: 'dashed',
+        borderRadius: 12,
+        paddingVertical: 24,
+        paddingHorizontal: 16,
         alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FCFAFA',
         gap: 8,
-        padding: 12,
-        backgroundColor: theme.colors.background,
-        borderRadius: 8,
     },
-    uploadingText: {
-        fontSize: 13,
-        color: theme.colors.textLight,
+    iconContainer: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: '#F7EEF0',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 4,
     },
-    previewContainer: {
+    dropzoneTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#B36979',
+    },
+    dropzoneSubtitle: {
+        fontSize: 12,
+        color: '#AAA',
+        textAlign: 'center',
+    },
+    previewWrapper: {
+        width: 120,
+        height: 120,
+        borderRadius: 10,
+        overflow: 'hidden',
+        backgroundColor: '#f0f0f0',
         position: 'relative',
-        width: 80,
-        height: 80,
+        borderWidth: 2,
+        borderColor: '#B36979',
     },
     preview: {
-        width: 80,
-        height: 80,
-        borderRadius: 8,
-        backgroundColor: theme.colors.subtle,
+        width: '100%',
+        height: '100%',
     },
-    removeButton: {
-        position: 'absolute',
-        top: -6,
-        right: -6,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: theme.colors.error,
+    uploadingOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.35)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    addButton: {
+    actionsOverlay: {
+        position: 'absolute',
+        bottom: 6,
+        left: 0,
+        right: 0,
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        backgroundColor: theme.colors.primaryLight,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: theme.colors.primaryLight,
-        borderStyle: 'dashed',
+        justifyContent: 'center',
+        gap: 6,
     },
-    addText: {
-        fontSize: 13,
-        color: theme.colors.primary,
-        fontWeight: '500',
+    actionButton: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    deleteActionButton: {
+        backgroundColor: '#fff',
     },
 });
 
@@ -336,10 +365,7 @@ export default function VariantEditor({
     // Missing Logic Restoration
     // ----------------------------------------------------------------------
     const [focusedField, setFocusedField] = useState<string | null>(null);
-    const [colorPickerVisible, setColorPickerVisible] = useState(false);
     const [bulkModalVisible, setBulkModalVisible] = useState(false);
-    const [pickingVariantIndex, setPickingVariantIndex] = useState<number | null>(null);
-    const [savedPalette, setSavedPalette] = useState<string[]>([]);
 
     const getFieldKey = (index: number, field: string) => `${index}-${field}`;
 
@@ -350,9 +376,7 @@ export default function VariantEditor({
             sku: '',
             price: '',
             discountPercentage: '',
-            image: '',
-            color: '',
-            size: ''
+            image: ''
         };
         onVariantsChange([...variants, newVariant]);
         setExpandedIndex(variants.length);
@@ -383,84 +407,15 @@ export default function VariantEditor({
         setGeneratingSkuIndex(null);
     };
 
-    const openColorPicker = (index: number) => {
-        setPickingVariantIndex(index);
-        setColorPickerVisible(true);
-    };
-
-    const handleColorSelect = (color: string) => {
-        if (pickingVariantIndex !== null) {
-            updateVariant(pickingVariantIndex, 'color', color);
-        }
-        setColorPickerVisible(false);
-    };
-
-    const addToPalette = (color: string) => {
-        if (!savedPalette.includes(color)) {
-            const newPalette = [...savedPalette, color];
-            setSavedPalette(newPalette);
-            AsyncStorage.setItem('variantColorPalette', JSON.stringify(newPalette));
-        }
-    };
-
-    const removeFromPalette = (color: string) => {
-        const newPalette = savedPalette.filter(c => c !== color);
-        setSavedPalette(newPalette);
-        AsyncStorage.setItem('variantColorPalette', JSON.stringify(newPalette));
-    };
-
-    const handleBulkGenerate = (selectedColors: string[], selectedSizes: string[]) => {
-        const newVariants: VariantData[] = [];
-
-        // If only colors selected
-        if (selectedSizes.length === 0 && selectedColors.length > 0) {
-            selectedColors.forEach(color => {
-                const colorName = PRESET_COLORS.find(c => c.value === color)?.name || 'Custom';
-                newVariants.push({
-                    name: `${colorName}`,
-                    stock: '0',
-                    sku: '',
-                    price: '',
-                    discountPercentage: '',
-                    image: '',
-                    color: color,
-                    size: ''
-                });
-            });
-        }
-        // If only sizes selected
-        else if (selectedColors.length === 0 && selectedSizes.length > 0) {
-            selectedSizes.forEach(size => {
-                newVariants.push({
-                    name: `${size}`,
-                    stock: '0',
-                    sku: '',
-                    price: '',
-                    discountPercentage: '',
-                    image: '',
-                    color: '',
-                    size: size
-                });
-            });
-        }
-        // If both selected (combinations)
-        else {
-            selectedColors.forEach(color => {
-                const colorName = PRESET_COLORS.find(c => c.value === color)?.name || 'Custom';
-                selectedSizes.forEach(size => {
-                    newVariants.push({
-                        name: `${colorName} - ${size}`,
-                        stock: '0',
-                        sku: '',
-                        price: '',
-                        discountPercentage: '',
-                        image: '',
-                        color: color,
-                        size: size
-                    });
-                });
-            });
-        }
+    const handleBulkGenerate = (combinations: string[]) => {
+        const newVariants: VariantData[] = combinations.map(name => ({
+            name,
+            stock: '0',
+            sku: '',
+            price: '',
+            discountPercentage: '',
+            image: ''
+        }));
 
         // Append to existing, removing default empty one if it exists and is untouched
         let currentVariants = [...variants];
@@ -471,17 +426,11 @@ export default function VariantEditor({
         onVariantsChange([...currentVariants, ...newVariants]);
     };
 
-    React.useEffect(() => {
-        AsyncStorage.getItem('variantColorPalette').then(stored => {
-            if (stored) setSavedPalette(JSON.parse(stored));
-        });
-    }, []);
-
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>Product Variants</Text>
+                    <Text style={styles.fieldLabel}>Product Variants</Text>
                     <Text style={styles.subtitle}>
                         {variants.length} variant{variants.length !== 1 ? 's' : ''}
                     </Text>
@@ -516,10 +465,7 @@ export default function VariantEditor({
                             onPress={() => toggleExpand(index)}
                         >
                             <View style={styles.cardHeaderLeft}>
-                                <View style={[
-                                    styles.variantIndicator,
-                                    variant.color ? { backgroundColor: variant.color } : {}
-                                ]} />
+                                <View style={styles.variantIndicator} />
                                 <View>
                                     <Text style={styles.variantName}>
                                         {variant.name || `Variant ${index + 1}`}
@@ -662,105 +608,6 @@ export default function VariantEditor({
                                     </View>
                                 </View>
 
-                                {/* Color Picker Section */}
-                                <View style={styles.field}>
-                                    <View style={styles.labelRow}>
-                                        <Text style={styles.fieldLabel}>Color (Optional)</Text>
-                                        {savedPalette.length > 0 && (
-                                            <Text style={styles.paletteLabel}>My Palette</Text>
-                                        )}
-                                    </View>
-
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        contentContainerStyle={styles.colorPicker}
-                                    >
-                                        {/* Saved Palette */}
-                                        {savedPalette.map((color) => (
-                                            <Pressable
-                                                key={color}
-                                                style={[
-                                                    styles.colorSwatch,
-                                                    { backgroundColor: color },
-                                                    variant.color === color && styles.colorSwatchSelected,
-                                                ]}
-                                                onPress={() => updateVariant(index, 'color',
-                                                    variant.color === color ? '' : color
-                                                )}
-                                                onLongPress={() => removeFromPalette(color)}
-                                            />
-                                        ))}
-
-                                        {savedPalette.length > 0 && <View style={styles.dividerVertical} />}
-
-                                        {/* Preset Colors */}
-                                        {PRESET_COLORS.map((color) => (
-                                            <Pressable
-                                                key={color.value}
-                                                style={[
-                                                    styles.colorSwatch,
-                                                    { backgroundColor: color.value },
-                                                    variant.color === color.value && styles.colorSwatchSelected,
-                                                    color.value === '#FAFAFA' && styles.colorSwatchLight,
-                                                ]}
-                                                onPress={() => updateVariant(index, 'color',
-                                                    variant.color === color.value ? '' : color.value
-                                                )}
-                                            />
-                                        ))}
-
-                                        {/* Add Custom Color Button */}
-                                        <Pressable
-                                            style={[
-                                                styles.colorSwatch,
-                                                styles.customColorSwatch,
-                                                // Check if current color is not in presets or palette (custom)
-                                                !PRESET_COLORS.some(c => c.value === variant.color) &&
-                                                    !savedPalette.includes(variant.color || '') &&
-                                                    variant.color ? styles.colorSwatchSelected : null
-                                            ]}
-                                            onPress={() => openColorPicker(index)}
-                                        >
-                                            <Plus size={16} color={theme.colors.textSecondary} />
-                                        </Pressable>
-                                    </ScrollView>
-
-                                    {/* Show Selected Custom Color Info if not in list */}
-                                    {variant.color && !PRESET_COLORS.some(c => c.value === variant.color) && !savedPalette.includes(variant.color) && (
-                                        <View style={styles.customColorInputRow}>
-                                            <View style={[styles.customColorPreview, { backgroundColor: variant.color }]} />
-                                            <Text style={styles.selectedColorText}>{variant.color}</Text>
-                                            <Pressable onPress={() => openColorPicker(index)}>
-                                                <Text style={styles.editColorText}>Edit</Text>
-                                            </Pressable>
-                                        </View>
-                                    )}
-                                </View>
-
-                                {/* Size Selector */}
-                                <View style={styles.field}>
-                                    <Text style={styles.fieldLabel}>Size (Optional)</Text>
-                                    <View style={styles.sizePicker}>
-                                        {PRESET_SIZES.map((size) => (
-                                            <Pressable
-                                                key={size}
-                                                style={[
-                                                    styles.sizeChip,
-                                                    variant.size === size && styles.sizeChipSelected,
-                                                ]}
-                                                onPress={() => updateVariant(index, 'size',
-                                                    variant.size === size ? '' : size
-                                                )}
-                                            >
-                                                <Text style={[
-                                                    styles.sizeChipText,
-                                                    variant.size === size && styles.sizeChipTextSelected,
-                                                ]}>{size}</Text>
-                                            </Pressable>
-                                        ))}
-                                    </View>
-                                </View>
 
                                 {/* Variant Image Upload */}
                                 <View style={styles.field}>
@@ -780,19 +627,10 @@ export default function VariantEditor({
                 💡 Leave price empty to inherit from base price. Stock is required for each variant.
             </Text>
 
-            <ColorPickerModal
-                visible={colorPickerVisible}
-                onClose={() => setColorPickerVisible(false)}
-                onSelect={handleColorSelect}
-                onSaveToPalette={addToPalette}
-                initialColor={pickingVariantIndex !== null ? variants[pickingVariantIndex]?.color || theme.colors.primary : theme.colors.primary}
-            />
-
-            <BulkGenerateModal
+            <CustomOptionsModal
                 visible={bulkModalVisible}
                 onClose={() => setBulkModalVisible(false)}
                 onGenerate={handleBulkGenerate}
-                savedPalette={savedPalette}
             />
         </View>
     );
@@ -1016,10 +854,7 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     modalContent: {
-        position: 'absolute',
-        top: '10%',
-        left: '5%',
-        right: '5%',
+        position: 'relative',
         backgroundColor: 'white',
         borderRadius: 12,
         padding: 20,
@@ -1030,6 +865,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 5,
+        maxWidth: 1024,
+        width: '50%',
     },
     modalTitle: {
         fontSize: 18,

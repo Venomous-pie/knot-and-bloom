@@ -676,10 +676,6 @@ export default function ProductFormWizard({
                 return (
                     <View style={styles.stepContent}>
                         <Text style={styles.stepTitle}>Variants & Stock</Text>
-                        <Text style={styles.stepDescription}>
-                            Configure your product variants, stock levels, and pricing options.
-                        </Text>
-
                         <VariantEditor
                             variants={variants}
                             onVariantsChange={setVariants}
@@ -704,7 +700,7 @@ export default function ProductFormWizard({
                             <InfoBox
                                 message="New products require admin approval before they appear in the shop."
                                 type="info"
-                                style={{ marginBottom: 16 }}
+                                style={{ marginBottom: 20 }}
                             />
                         )}
 
@@ -1032,7 +1028,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background,
     },
     stepContent: {
-        gap: 20,
+        // gap: 20,
     },
     stepTitle: {
         fontSize: 22,
@@ -1043,11 +1039,12 @@ const styles = StyleSheet.create({
     stepDescription: {
         fontSize: 12,
         color: theme.colors.textSecondary,
-        lineHeight: 20,
         fontFamily: 'Quicksand',
+        marginBottom: 20,
     },
     field: {
         gap: 8,
+        marginVertical: 5,
     },
     fieldRow: {
         flexDirection: 'row',
@@ -1261,7 +1258,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.primaryLight,
         padding: 12,
         borderRadius: 12,
-        marginBottom: 24,
+        marginVertical: 24,
         borderWidth: 1,
         borderColor: theme.colors.primaryLight
     },

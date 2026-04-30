@@ -1,6 +1,7 @@
 import { isMobile } from '@/constants/layout';
+import { theme } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { Eye, Smartphone, Monitor } from 'lucide-react-native';
+import { Eye, Heart, Monitor, ShoppingCart, Smartphone } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
     Image,
@@ -31,6 +32,32 @@ interface ProductPreviewProps {
     sellerName?: string;
 }
 
+// Matches the proportional scale system from the real ProductCard
+const SCALE = {
+    padding: 0.07,
+    gap: 0.030,
+    gapSm: 0.015,
+    categoryFont: 0.050,
+    nameFont: 0.075,
+    sellerFont: 0.050,
+    priceFont: 0.100,
+    origPriceFont: 0.065,
+    iconSm: 0.060,
+    iconMd: 0.075,
+    badgeFont: 0.055,
+    badgePadH: 0.035,
+    badgePadV: 0.018,
+    actionBtn: 0.145,
+    actionRight: 0.055,
+} as const;
+
+function clamp(value: number, min: number, max: number) {
+    return Math.min(Math.max(value, min), max);
+}
+function scale(width: number, ratio: number, min: number, max: number) {
+    return clamp(width * ratio, min, max);
+}
+
 export default function ProductPreview({
     name,
     description,
@@ -40,29 +67,56 @@ export default function ProductPreview({
     images = [],
     categories,
     variants,
-    activeVariantIndex,
     sellerName,
 }: ProductPreviewProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
 
     const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
-    const [selectedVariant, setSelectedVariant] = useState(0);
-    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-    // Calculate actual display price
-    const variant = variants[selectedVariant];
-    const price = variant?.price ? parseFloat(variant.price) : parseFloat(basePrice) || 0;
-    const discount = variant?.discountPercentage
-        ? parseFloat(variant.discountPercentage)
+    // Mirror real ProductCard pricing logic: use lowest variant price
+    const baseNum = parseFloat(basePrice) || 0;
+    const lowestVariant = variants.reduce<{ price: string; discountPercentage: string } | null>((acc, v) => {
+        if (!acc) return v;
+        const vp = parseFloat(v.price) || baseNum;
+        const ap = parseFloat(acc.price) || baseNum;
+        return vp < ap ? v : acc;
+    }, null);
+
+    const variantPrice = lowestVariant?.price ? parseFloat(lowestVariant.price) : baseNum;
+    const discountPct = lowestVariant?.discountPercentage
+        ? parseFloat(lowestVariant.discountPercentage)
         : parseFloat(discountPercentage) || 0;
-    const finalPrice = price * (1 - discount / 100);
+    const finalPrice = variantPrice * (1 - discountPct / 100);
+    const hasDiscount = discountPct > 0;
 
-    // Get display image
+    // Get display image — primary image just like real card
     const displayImages = images.length > 0 ? images : (image ? [{ uri: image }] : []);
-    const currentImage = displayImages[selectedImageIndex]?.uri;
+    const displayImage = displayImages[0]?.uri || '';
 
-    const previewWidth = viewMode === 'mobile' ? 280 : mobile ? width - 40 : 350;
+    // Card width
+    const cardWidth = viewMode === 'mobile' ? 180 : mobile ? Math.min(width - 40, 260) : 260;
+
+    const s = {
+        padding: scale(cardWidth, SCALE.padding, 7, 20),
+        gap: scale(cardWidth, SCALE.gap, 3, 10),
+        gapSm: scale(cardWidth, SCALE.gapSm, 2, 5),
+        categoryFont: scale(cardWidth, SCALE.categoryFont, 7, 12),
+        nameFont: scale(cardWidth, SCALE.nameFont, 10, 18),
+        sellerFont: scale(cardWidth, SCALE.sellerFont, 7, 12),
+        priceFont: scale(cardWidth, SCALE.priceFont, 12, 24),
+        origPriceFont: scale(cardWidth, SCALE.origPriceFont, 9, 15),
+        iconSm: scale(cardWidth, SCALE.iconSm, 9, 16),
+        iconMd: scale(cardWidth, SCALE.iconMd, 11, 19),
+        badgeFont: scale(cardWidth, SCALE.badgeFont, 8, 12),
+        badgePadH: scale(cardWidth, SCALE.badgePadH, 4, 9),
+        badgePadV: scale(cardWidth, SCALE.badgePadV, 2, 5),
+        actionBtn: scale(cardWidth, SCALE.actionBtn, 20, 36),
+        actionRight: scale(cardWidth, SCALE.actionRight, 7, 14),
+    };
+
+    const sellerDisplay = sellerName || 'Your Store';
+    const isKnotAndBloom = sellerDisplay === 'Knot & Bloom';
 
     return (
         <View style={styles.container}>
@@ -88,165 +142,124 @@ export default function ProductPreview({
                 </View>
             </View>
 
-            {/* Preview Card */}
+            {/* Card Preview */}
             <ScrollView
                 contentContainerStyle={styles.previewContainer}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={[
-                    styles.productCard,
-                    { width: previewWidth },
-                    viewMode === 'mobile' && styles.productCardMobile
-                ]}>
-                    {/* Product Image */}
-                    <View style={styles.imageContainer}>
-                        {currentImage ? (
+                {/* Simulated grid background */}
+                <View style={[styles.productCard, { width: cardWidth }]}>
+                    {/* Image */}
+                    <View style={[styles.imageContainer, { aspectRatio: 1 }]}>
+                        {displayImage ? (
                             <Image
-                                source={{ uri: currentImage }}
+                                source={{ uri: displayImage }}
                                 style={styles.productImage}
                                 resizeMode="cover"
                             />
                         ) : (
                             <View style={styles.imagePlaceholder}>
-                                <Text style={styles.placeholderText}>No Image</Text>
+                                <Text style={{ color: theme.colors.textLight, fontSize: s.sellerFont }}>
+                                    No Image
+                                </Text>
                             </View>
                         )}
 
-                        {/* Discount Badge */}
-                        {discount > 0 && (
-                            <View style={styles.discountBadge}>
-                                <Text style={styles.discountBadgeText}>-{Math.round(discount)}%</Text>
+                        {/* New badge — all new products get this */}
+                        <View style={[styles.badge, {
+                            backgroundColor: theme.colors.primary,
+                            top: s.actionRight,
+                            left: s.actionRight,
+                            paddingHorizontal: s.badgePadH,
+                            paddingVertical: s.badgePadV,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 3,
+                        }]}>
+                            <Ionicons name="sparkles" size={s.badgeFont} color="white" />
+                            <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>New</Text>
+                        </View>
+
+                        {/* Discount badge bottom-left */}
+                        {hasDiscount && (
+                            <View style={[styles.badge, {
+                                backgroundColor: theme.colors.error,
+                                bottom: s.actionRight,
+                                left: s.actionRight,
+                                paddingHorizontal: s.badgePadH,
+                                paddingVertical: s.badgePadV,
+                            }]}>
+                                <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>
+                                    -{Math.round(discountPct)}%
+                                </Text>
                             </View>
                         )}
+
+                        {/* Wishlist button top-right */}
+                        <View style={[styles.actionButton, {
+                            right: s.actionRight,
+                            top: s.actionRight,
+                            width: s.actionBtn,
+                            height: s.actionBtn,
+                            borderRadius: s.actionBtn / 2,
+                        }]}>
+                            <Heart size={s.iconMd} color={theme.colors.textLight} />
+                        </View>
                     </View>
 
-                    {/* Image Thumbnails */}
-                    {displayImages.length > 1 && (
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.thumbnailRow}
-                        >
-                            {displayImages.map((img, idx) => (
-                                <Pressable
-                                    key={idx}
-                                    style={[
-                                        styles.thumbnail,
-                                        selectedImageIndex === idx && styles.thumbnailSelected
-                                    ]}
-                                    onPress={() => setSelectedImageIndex(idx)}
-                                >
-                                    <Image
-                                        source={{ uri: img.uri }}
-                                        style={styles.thumbnailImage}
-                                        resizeMode="cover"
-                                    />
-                                </Pressable>
-                            ))}
-                        </ScrollView>
-                    )}
-
-                    {/* Product Info */}
-                    <View style={[styles.productInfo, viewMode === 'mobile' && styles.productInfoMobile]}>
-                        {/* Categories */}
+                    {/* Product Info — exactly mirrors real ProductCard */}
+                    <View style={{ padding: s.padding, gap: s.gap }}>
+                        {/* Row 1: Category */}
                         {categories.length > 0 && (
-                            <Text style={[styles.categoryText, viewMode === 'mobile' && styles.categoryTextMobile]} numberOfLines={1}>
-                                {categories.slice(0, 2).join(' • ')}
+                            <Text style={{
+                                fontSize: s.categoryFont,
+                                color: theme.colors.textLight,
+                                letterSpacing: 0.3,
+                            }} numberOfLines={1}>
+                                {categories.slice(0, 2).map(c =>
+                                    c.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+                                ).join(' • ')}
                             </Text>
                         )}
 
-                        {/* Name */}
-                        <Text style={[styles.productName, viewMode === 'mobile' && styles.productNameMobile]} numberOfLines={2}>
+                        {/* Row 2: Name */}
+                        <Text style={{
+                            fontSize: s.nameFont,
+                            fontWeight: '600',
+                            color: theme.colors.text,
+                            fontFamily: 'Quicksand',
+                            lineHeight: s.nameFont * 1.25,
+                        }} numberOfLines={2}>
                             {name || 'Product Name'}
                         </Text>
 
-                        {/* Marketing / Status Row (matching ProductCard) */}
-                        <View style={[styles.ratingRow, viewMode === 'mobile' && styles.ratingRowMobile]}>
-                            <Ionicons name="sparkles" size={viewMode === 'mobile' ? 12 : 14} color="#B36979" />
-                            <Text style={[styles.ratingText, viewMode === 'mobile' && styles.ratingTextMobile, { color: '#B36979', fontWeight: '600' }]}>
-                                New Arrival
-                            </Text>
-                        </View>
+                        {/* Row 3: Seller */}
+                        <Text style={{ fontSize: s.sellerFont, color: theme.colors.textLight }} numberOfLines={1}>
+                            <Text style={
+                                isKnotAndBloom
+                                    ? { fontWeight: '600', color: theme.colors.primary }
+                                    : { textDecorationLine: 'underline' }
+                            }>{sellerDisplay}</Text>
+                        </Text>
 
-                        {/* Seller Attribution */}
-                        <View style={styles.sellerContainer}>
-                            <Text style={[styles.sellerText, viewMode === 'mobile' && styles.sellerTextMobile]}>
-                                Sold by <Text style={
-                                    sellerName === 'Knot & Bloom'
-                                        ? { fontWeight: '600', color: '#B36979' }
-                                        : { textDecorationLine: 'underline' }
-                                }>{sellerName || 'Your Store'}</Text>
-                            </Text>
-                        </View>
-
-                        {/* Price */}
-                        <View style={[styles.priceRow, viewMode === 'mobile' && styles.priceRowMobile]}>
-                            <Text style={[styles.finalPrice, viewMode === 'mobile' && styles.finalPriceMobile]}>
+                        {/* Row 4: Price */}
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: s.gap }}>
+                            <Text style={{ fontSize: s.priceFont, fontWeight: '700', color: theme.colors.primary }}>
                                 ₱{finalPrice.toFixed(2)}
                             </Text>
-                            {discount > 0 && (
-                                <Text style={[styles.originalPrice, viewMode === 'mobile' && styles.originalPriceMobile]}>
-                                    ₱{price.toFixed(2)}
+                            {hasDiscount && (
+                                <Text style={{ fontSize: s.origPriceFont, color: theme.colors.textLight, textDecorationLine: 'line-through' }}>
+                                    ₱{variantPrice.toFixed(2)}
                                 </Text>
                             )}
                         </View>
-
-                        {/* Variant Selector */}
-                        {variants.length > 1 && (
-                            <View style={styles.variantSection}>
-                                <Text style={styles.variantLabel}>Variants</Text>
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={styles.variantRow}
-                                >
-                                    {variants.map((v, idx) => (
-                                        <Pressable
-                                            key={idx}
-                                            style={[
-                                                styles.variantChip,
-                                                selectedVariant === idx && styles.variantChipSelected,
-                                                activeVariantIndex === idx && styles.variantChipEditing,
-                                                v.color ? { borderColor: v.color } : {}
-                                            ]}
-                                            onPress={() => setSelectedVariant(idx)}
-                                        >
-                                            {activeVariantIndex === idx && (
-                                                <View style={styles.editingIndicator} />
-                                            )}
-                                            {v.color && (
-                                                <View style={[styles.variantColor, { backgroundColor: v.color }]} />
-                                            )}
-                                            <Text style={[
-                                                styles.variantChipText,
-                                                selectedVariant === idx && styles.variantChipTextSelected,
-                                                activeVariantIndex === idx && styles.variantChipTextEditing
-                                            ]}>
-                                                {v.name || `Variant ${idx + 1}`}
-                                            </Text>
-                                        </Pressable>
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        )}
-
-                        {/* Stock Status */}
-                        <View style={[styles.stockRow, viewMode === 'mobile' && styles.stockRowMobile]}>
-                            <View style={[
-                                styles.stockIndicator,
-                                viewMode === 'mobile' && styles.stockIndicatorMobile,
-                                parseInt(variant?.stock || '0') > 0
-                                    ? styles.stockInStock
-                                    : styles.stockOutOfStock
-                            ]} />
-                            <Text style={[styles.stockText, viewMode === 'mobile' && styles.stockTextMobile]}>
-                                {parseInt(variant?.stock || '0') > 0
-                                    ? `${variant?.stock} in stock`
-                                    : 'Out of stock'}
-                            </Text>
-                        </View>
                     </View>
                 </View>
+
+                {/* Caption */}
+                <Text style={styles.caption}>
+                    Showing lowest variant price · {variants.length} variant{variants.length !== 1 ? 's' : ''} total
+                </Text>
             </ScrollView>
         </View>
     );
@@ -293,26 +306,43 @@ const styles = StyleSheet.create({
     viewButtonActive: {
         backgroundColor: 'white',
     },
+    contextLabel: {
+        backgroundColor: '#FFF8F9',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0E6E9',
+    },
+    contextLabelText: {
+        fontSize: 11,
+        color: '#B36979',
+        fontWeight: '500',
+        textAlign: 'center',
+    },
     previewContainer: {
-        padding: 16,
+        padding: 20,
         alignItems: 'center',
+        gap: 16,
+    },
+    gridBg: {
+        backgroundColor: '#F5F0F1',
+        borderRadius: 12,
+        padding: 16,
     },
     productCard: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.surface,
         borderRadius: 12,
         overflow: 'hidden',
-        shadowColor: '#000',
+        shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 4,
-    },
-    productCardMobile: {
-        maxWidth: 280,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
     },
     imageContainer: {
-        aspectRatio: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: theme.colors.backgroundAlt,
         position: 'relative',
     },
     productImage: {
@@ -324,237 +354,28 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    placeholderText: {
-        color: '#999',
-        fontSize: 14,
-    },
-    discountBadge: {
+    badge: {
         position: 'absolute',
-        top: 12,
-        left: 12,
-        backgroundColor: '#E53935',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
         borderRadius: 6,
     },
-    discountBadgeText: {
+    badgeText: {
         color: 'white',
-        fontSize: 12,
         fontWeight: '700',
     },
-    thumbnailRow: {
-        flexDirection: 'row',
-        gap: 8,
-        padding: 12,
-    },
-    thumbnail: {
-        width: 50,
-        height: 50,
-        borderRadius: 8,
-        overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: 'transparent',
-    },
-    thumbnailSelected: {
-        borderColor: '#B36979',
-    },
-    thumbnailImage: {
-        width: '100%',
-        height: '100%',
-    },
-    productInfo: {
-        padding: 16,
-        gap: 8,
-    },
-    productInfoMobile: {
-        padding: 10,
-        gap: 4,
-    },
-    categoryText: {
-        fontSize: 11,
-        color: '#888',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    categoryTextMobile: {
-        fontSize: 9,
-    },
-    productName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-        fontFamily: 'Quicksand',
-        lineHeight: 22,
-    },
-    productNameMobile: {
-        fontSize: 13,
-        lineHeight: 18,
-    },
-    ratingRow: {
-        flexDirection: 'row',
+    actionButton: {
+        position: 'absolute',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    ratingRowMobile: {
-        gap: 2,
-    },
-    ratingText: {
-        fontSize: 12,
-        color: '#888',
-        marginLeft: 4,
-    },
-    ratingTextMobile: {
-        fontSize: 10,
-        marginLeft: 2,
-    },
-    sellerContainer: {
-        // Container for seller attribution
-    },
-    sellerText: {
+    caption: {
         fontSize: 11,
-        color: '#888',
-    },
-    sellerTextMobile: {
-        fontSize: 9,
-    },
-    priceRow: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: 8,
-    },
-    priceRowMobile: {
-        gap: 6,
-    },
-    finalPrice: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#B36979',
-    },
-    finalPriceMobile: {
-        fontSize: 16,
-    },
-    originalPrice: {
-        fontSize: 14,
         color: '#999',
-        textDecorationLine: 'line-through',
-    },
-    originalPriceMobile: {
-        fontSize: 11,
-    },
-    variantSection: {
-        gap: 8,
-    },
-    variantLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#666',
-    },
-    variantRow: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    variantChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        backgroundColor: '#f5f5f5',
-        borderWidth: 1,
-        borderColor: '#ddd',
-    },
-    variantChipSelected: {
-        backgroundColor: '#E8D5D9',
-        borderColor: '#B36979',
-    },
-    variantColor: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-    },
-    variantChipText: {
-        fontSize: 12,
-        color: '#666',
-    },
-    variantChipTextSelected: {
-        color: '#B36979',
-        fontWeight: '600',
-    },
-    variantChipEditing: {
-        borderWidth: 2,
-        borderColor: '#4CAF50',
-        backgroundColor: '#E8F5E9',
-    },
-    variantChipTextEditing: {
-        color: '#2E7D32',
-        fontWeight: '600',
-    },
-    editingIndicator: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#4CAF50',
-    },
-    stockRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 4,
-    },
-    stockRowMobile: {
-        gap: 4,
-        marginTop: 2,
-    },
-    stockIndicator: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-    },
-    stockIndicatorMobile: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    stockInStock: {
-        backgroundColor: '#4CAF50',
-    },
-    stockOutOfStock: {
-        backgroundColor: '#E53935',
-    },
-    stockText: {
-        fontSize: 12,
-        color: '#666',
-    },
-    stockTextMobile: {
-        fontSize: 10,
-    },
-    descriptionSection: {
-        gap: 4,
-        marginTop: 8,
-    },
-    descriptionLabel: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#666',
-    },
-    descriptionText: {
-        fontSize: 13,
-        color: '#555',
-        lineHeight: 18,
-        maxHeight: 54,
-        overflow: 'hidden',
-    },
-    mockButton: {
-        backgroundColor: '#B36979',
-        paddingVertical: 14,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    mockButtonText: {
-        color: 'white',
-        fontSize: 15,
-        fontWeight: '600',
+        textAlign: 'center',
     },
 });

@@ -20,6 +20,8 @@ export const categoryTitles: Record<string, string> = {
     "tote-bags": "Tote Bags",
     "stickers-prints": "Stickers & Prints",
     "clay-accessories": "Clay Accessories",
+    "key-chains": "Key Chains",
+    "flower-boquets": "Flower Boquets",
 };
 
 // Navigation-only categories (includes backend-computed ones)

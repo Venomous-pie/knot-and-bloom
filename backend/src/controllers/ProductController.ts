@@ -148,6 +148,7 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                                     Number(parsedInput.discountPercentage)
                                 ),
                                 images: variant.images || [],
+                                materials: variant.materials || null,
                             } as any
                         });
                     }
@@ -608,6 +609,7 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                             Number(parsedInput.discountPercentage)
                         ),
                         images: variant.images || [],
+                        materials: variant.materials || null,
                         sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
                     } as any
                 });
@@ -625,6 +627,7 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                             Number(parsedInput.discountPercentage)
                         ),
                         images: variant.images || [],
+                        materials: variant.materials || null,
                         sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
                     } as any
                 });

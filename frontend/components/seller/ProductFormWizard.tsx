@@ -4,7 +4,7 @@ import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive } from 'lucide-react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
@@ -26,38 +26,11 @@ import ProductPreview from './ProductPreview';
 import InfoBox from '@/shared/InfoBox';
 import VariantEditor, { VariantData } from './VariantEditor';
 import { toTitleCase, toSentenceCase } from '@/utils/textUtils';
+import { PRESET_MATERIALS } from '@/constants/materials';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 
-const PRESET_MATERIALS = [
-    // Fibers & Textiles
-    'Cotton', 'Wool', 'Merino Wool', 'Acrylic', 'Polyester', 'Silk',
-    'Bamboo', 'Cashmere', 'Linen', 'Hemp', 'Jute', 'Mohair',
-    'Alpaca', 'Angora', 'Nylon', 'Rayon', 'Velvet', 'Satin',
-    'Leather', 'Faux Leather', 'Felt', 'Fleece', 'Chenille', 'Yarn',
-    'Thread', 'Crochet Thread', 'Embroidery Floss', 
-    
-    // Jewelry & Hardware
-    'Beads', 'Seed Beads', 'Pearls', 'Crystals', 'Gemstones', 'Glass Beads',
-    'Buttons', 'Sequins', 'Charms', 'Pendants', 
-    'Jump Rings', 'Clasps', 'Ear Wires', 'French Hooks', 'Chain',
-    'Sterling Silver', 'Gold-Plated', 'Rose Gold', 'Copper Wire', 'Craft Wire',
-    
-    // Floral & Craft Supplies
-    'Dried Flowers', 'Preserved Petals', 'Faux Botanicals', 'Raffia',
-    'Floral Tape', 'Floral Wire', 'Resin', 'Fabric Stiffener',
-    'Toy Stuffing', 'Safety Eyes', 'Wood', 'Ceramic', 'Clay', 'Polymer Clay',
-    
-    // Care Package & Gift Box Inclusions
-    'Gift Box', 'Kraft Box', 'Tissue Paper', 'Crinkle Paper', 'Paper Shred',
-    'Ribbon', 'Twine', 'Wax Seal', 'Custom Tags', 'Stickers',
-    'Personalized Letter', 'Handwritten Note', 'Greeting Card',
-    
-    // Comfort & Treats
-    'Scented Candle', 'Bath Bomb', 'Shower Steamer', 'Essential Oil',
-    'Soap', 'Lip Balm', 'Mug', 'Tea Bags', 'Coffee Packets', 'Hot Chocolate',
-    'Snacks', 'Cookies', 'Candy', 'Chocolate'
-];
+
 
 export interface ProductFormData {
     name: string;
@@ -410,10 +383,7 @@ export default function ProductFormWizard({
                     newErrors.description = 'Please enter a product description.';
                     isValid = false;
                 }
-                if (!formData.materials.trim()) {
-                    newErrors.materials = 'Please specify materials & inclusions.';
-                    isValid = false;
-                }
+
                 if (formData.isBundle && !formData.bundleQuantity.trim()) {
                     newErrors.bundleQty = 'Please enter the bundle quantity.';
                     isValid = false;
@@ -431,6 +401,14 @@ export default function ProductFormWizard({
                         newErrors[`variant-${i}-name`] = 'Please enter a variant name.';
                         isValid = false;
                     }
+                    if (i === 0 && (!v.materials || !v.materials.trim())) {
+                        newErrors[`variant-${i}-materials`] = 'Base materials and inclusions are required.';
+                        isValid = false;
+                    }
+                    if (i > 0 && (!v.images || v.images.length === 0)) {
+                        newErrors[`variant-${i}-images`] = 'Please upload at least one image for this variant.';
+                        isValid = false;
+                    }
                 });
                 break;
         }
@@ -446,12 +424,22 @@ export default function ProductFormWizard({
     // Returns true if the user confirms (or there's nothing to warn about).
     const warnStep = async (step: number): Promise<boolean> => {
         if (step === 3) {
-            const mainVariant = variants[0];
-            if (mainVariant && (mainVariant.stock === '0' || mainVariant.stock === '')) {
+            const mainIsZero = variants[0] && (variants[0].stock === '0' || variants[0].stock === '');
+            const zeroNonDefault = variants.slice(1).filter(v => v.stock === '0' || v.stock === '');
+
+            if (mainIsZero || zeroNonDefault.length > 0) {
+                let message: string;
+                if (mainIsZero && zeroNonDefault.length > 0) {
+                    message = 'The main product and some variants have 0 stock. These will not be available for purchase until stock is updated.\n\nAre you sure you want to continue?';
+                } else if (mainIsZero) {
+                    message = 'The main product currently has 0 stock.\n\nSellers with 0 stock cannot receive new orders until stock is updated. Are you sure you want to continue?';
+                } else {
+                    const names = zeroNonDefault.map(v => `"${v.name || 'Unnamed'}"`).join(', ');
+                    message = `The following variant(s) have 0 stock: ${names}.\n\nThese variants won't be available for purchase. Are you sure you want to continue?`;
+                }
                 const confirmed = await confirm({
                     title: '⚠️ Zero Stock',
-                    message:
-                        'The main product currently has 0 stock.\n\nSellers with 0 stock cannot receive new orders until stock is updated. Are you sure you want to continue?',
+                    message,
                     confirmText: 'Yes, continue',
                     cancelText: 'Go back & fix',
                 });
@@ -609,7 +597,34 @@ export default function ProductFormWizard({
                                 placeholder="e.g. BEAR-001"
                                 placeholderTextColor={theme.colors.textLight}
                                 onFocus={() => setFocusedField('sku')}
-                                onBlur={() => setFocusedField(null)}
+                                onBlur={async () => {
+                                    setFocusedField(null);
+                                    if (!formData.sku.trim() && selectedCategories.length > 0) {
+                                        setGeneratingSku(true);
+                                        try {
+                                            const response = await fetch(`${API_URL}/api/products/generate-sku`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    category: selectedCategories[0],
+                                                    variants: variants.map(v => v.name).filter(Boolean)
+                                                })
+                                            });
+                                            const data = await response.json();
+                                            if (data.success && data.sku) {
+                                                setFormData(prev => ({ ...prev, sku: data.sku }));
+                                                setVariants(prevVariants => prevVariants.map(v => ({
+                                                    ...v,
+                                                    sku: v.name ? `${data.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}` : ''
+                                                })));
+                                            }
+                                        } catch {
+                                            // silent fail
+                                        } finally {
+                                            setGeneratingSku(false);
+                                        }
+                                    }
+                                }}
                             />
                             {errors.sku && <Text style={styles.errorText}>{errors.sku}</Text>}
                         </View>
@@ -709,55 +724,7 @@ export default function ProductFormWizard({
                         </View>
 
 
-                        {/* Materials */}
-                        <View style={styles.field}>
-                            <Text style={styles.fieldLabel}>Materials & Inclusions</Text>
-                            <TextInput
-                                style={[styles.input, focusedField === 'materials' && styles.inputFocused, errors.materials && styles.inputError]}
-                                value={formData.materials}
-                                onChangeText={(text: string) => handleChange('materials', text)}
-                                placeholder="e.g. Cotton yarn, aesthetic box, personalized letter..."
-                                placeholderTextColor={theme.colors.textLight}
-                                onFocus={() => setFocusedField('materials')}
-                                onBlur={() => setTimeout(() => setFocusedField(null), 150)}
-                            />
-                            {errors.materials && <Text style={styles.errorText}>{errors.materials}</Text>}
-                            {/* Smart Suggestions */}
-                            {focusedField === 'materials' && (
-                                <View style={styles.materialSuggestions}>
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        contentContainerStyle={styles.materialChipsRow}
-                                    >
-                                        {PRESET_MATERIALS
-                                            .filter(m => {
-                                                const currentMaterials = formData.materials.toLowerCase().split(',').map(s => s.trim());
-                                                const lastInput = currentMaterials[currentMaterials.length - 1] || '';
-                                                const alreadyAdded = currentMaterials.slice(0, -1).includes(m.toLowerCase());
-                                                return !alreadyAdded && (lastInput === '' || m.toLowerCase().includes(lastInput));
-                                            })
-                                            .slice(0, 10)
-                                            .map((material) => (
-                                                <Pressable
-                                                    key={material}
-                                                    style={styles.materialChip}
-                                                    onPress={() => {
-                                                        const parts = formData.materials.split(',').map(s => s.trim()).filter(s => s);
-                                                        if (parts.length > 0 && !PRESET_MATERIALS.map(m => m.toLowerCase()).includes(parts[parts.length - 1].toLowerCase())) {
-                                                            parts.pop();
-                                                        }
-                                                        parts.push(material);
-                                                        handleChange('materials', parts.join(', '));
-                                                    }}
-                                                >
-                                                    <Text style={styles.materialChipText}>{material}</Text>
-                                                </Pressable>
-                                            ))}
-                                    </ScrollView>
-                                </View>
-                            )}
-                        </View>
+                        
                         
                         {/* Bundle / Giftbox Toggle */}
                         <View style={styles.switchContainer}>
@@ -797,31 +764,29 @@ export default function ProductFormWizard({
 
             case 3:
                 return (
-                    <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Variants & Stock</Text>
-                        <VariantEditor
-                            variants={variants}
-                            onVariantsChange={(newVariants) => {
-                                setVariants(newVariants);
-                                // Clear all per-variant errors when any variant is edited
-                                setErrors(prev => {
-                                    const next = { ...prev };
-                                    Object.keys(next).filter(k => k.startsWith('variant-')).forEach(k => delete next[k]);
-                                    return next;
-                                });
-                            }}
-                            baseSku={formData.sku}
-                            basePrice={formData.basePrice}
-                            baseDiscount={formData.discountPercentage}
-                            onGenerateVariantSku={handleGenerateVariantSku}
-                            onExpandedChange={setActiveVariantIndex}
-                            productImages={images}
-                            variantErrors={errors}
-                        />
-                    </View>
+                    <VariantEditor
+                        variants={variants}
+                        onVariantsChange={(newVariants) => {
+                            setVariants(newVariants);
+                            setErrors(prev => {
+                                const next = { ...prev };
+                                Object.keys(next).filter(k => k.startsWith('variant-')).forEach(k => delete next[k]);
+                                return next;
+                            });
+                        }}
+                        baseSku={formData.sku}
+                        basePrice={formData.basePrice}
+                        baseDiscount={formData.discountPercentage}
+                        onGenerateVariantSku={handleGenerateVariantSku}
+                        onExpandedChange={setActiveVariantIndex}
+                        productImages={images}
+                        variantErrors={errors}
+                    />
                 );
 
             case 4:
+                const totalStock = variants.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
+
                 return (
                     <View style={styles.stepContent}>
                         <Text style={styles.stepTitle}>Review & Submit</Text>
@@ -837,32 +802,99 @@ export default function ProductFormWizard({
                             />
                         )}
 
-                        {/* Summary */}
                         <View style={styles.summaryCard}>
                             <Text style={styles.summaryTitle}>Product Summary</Text>
+                            
+                            {/* Basic Info */}
+                            <Text style={styles.summarySectionTitle}>Basic Info</Text>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Name:</Text>
+                                <View style={styles.summaryLabelContainer}>
+                                    <Tag size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Name:</Text>
+                                </View>
                                 <Text style={styles.summaryValue}>{formData.name || '—'}</Text>
                             </View>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>SKU:</Text>
+                                <View style={styles.summaryLabelContainer}>
+                                    <Archive size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>SKU:</Text>
+                                </View>
                                 <Text style={styles.summaryValue}>{formData.sku || '—'}</Text>
                             </View>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Categories:</Text>
+                                <View style={styles.summaryLabelContainer}>
+                                    <Layers size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Categories:</Text>
+                                </View>
                                 <Text style={styles.summaryValue}>{selectedCategories.join(', ') || '—'}</Text>
                             </View>
+
+                            <View style={styles.summaryDivider} />
+
+                            {/* Details & Pricing */}
+                            <Text style={styles.summarySectionTitle}>Details & Pricing</Text>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Base Price:</Text>
+                                <View style={styles.summaryLabelContainer}>
+                                    <PhilippinePeso size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Base Price:</Text>
+                                </View>
                                 <Text style={styles.summaryValue}>₱{formData.basePrice || '0'}</Text>
                             </View>
+                            {formData.discountPercentage && parseFloat(formData.discountPercentage) > 0 && (
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryLabelContainer}>
+                                        <Percent size={16} color={theme.colors.textLight} />
+                                        <Text style={styles.summaryLabel}>Discount:</Text>
+                                    </View>
+                                    <Text style={[styles.summaryValue, { color: theme.colors.error }]}>{formData.discountPercentage}% OFF</Text>
+                                </View>
+                            )}
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Variants:</Text>
-                                <Text style={styles.summaryValue}>{variants.length}</Text>
+                                <View style={styles.summaryLabelContainer}>
+                                    <FileText size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Description:</Text>
+                                </View>
+                                <Text style={styles.summaryValue} numberOfLines={2}>
+                                    {formData.description || '—'}
+                                </Text>
+                            </View>
+
+                            <View style={styles.summaryDivider} />
+
+                            {/* Inventory & Media */}
+                            <Text style={styles.summarySectionTitle}>Inventory & Media</Text>
+                            <View style={styles.summaryRow}>
+                                <View style={styles.summaryLabelContainer}>
+                                    <ImageIcon size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Images:</Text>
+                                </View>
+                                <Text style={styles.summaryValue}>{images.length}</Text>
                             </View>
                             <View style={styles.summaryRow}>
-                                <Text style={styles.summaryLabel}>Images:</Text>
-                                <Text style={styles.summaryValue}>{images.length}</Text>
+                                <View style={styles.summaryLabelContainer}>
+                                    <Package size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Total Stock:</Text>
+                                </View>
+                                <Text style={styles.summaryValue}>{totalStock}</Text>
+                            </View>
+
+                            <View style={{ marginTop: 8, gap: 8 }}>
+                                <View style={styles.summaryLabelContainer}>
+                                    <Layers size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Variants Details:</Text>
+                                </View>
+                                {variants.map((v, i) => (
+                                    <View key={i} style={styles.summaryVariantItem}>
+                                        <Text style={styles.summaryVariantName}>
+                                            {v.name || 'Unnamed'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Main)</Text>}
+                                        </Text>
+                                        <Text style={styles.summaryVariantDetail}>
+                                            Stock: {v.stock || '0'} • {v.price ? `₱${v.price}` : `Inherits ₱${formData.basePrice || '0'}`}
+                                            {v.images && v.images.length > 0 ? ` • ${v.images.length} img` : ''}
+                                            {v.materials ? ` • ${v.materials}` : ''}
+                                        </Text>
+                                    </View>
+                                ))}
                             </View>
                         </View>
                     </View>
@@ -941,13 +973,23 @@ export default function ProductFormWizard({
             {/* Main Content Area */}
             <View style={styles.mainContent}>
                 {/* Form Area */}
-                <ScrollView
-                    style={[styles.formArea, !mobile && showPreview && { flex: 1 }]}
-                    contentContainerStyle={styles.formAreaContent}
-                    showsVerticalScrollIndicator={false}
-                >
-                    {renderStepContent()}
-                </ScrollView>
+                {currentStep === 3 ? (
+                    // Step 3: sticky title + dynamic-height variant list
+                    <View style={[styles.formArea, !mobile && showPreview && { flex: 1 }, { flex: 1 }]}>
+                        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 }}>
+                            <Text style={styles.stepTitle}>Variants & Stock</Text>
+                        </View>
+                        {renderStepContent()}
+                    </View>
+                ) : (
+                    <ScrollView
+                        style={[styles.formArea, !mobile && showPreview && { flex: 1 }]}
+                        contentContainerStyle={styles.formAreaContent}
+                        showsVerticalScrollIndicator={false}
+                    >
+                        {renderStepContent()}
+                    </ScrollView>
+                )}
 
                 {/* Preview Panel - Desktop Only */}
                 {!mobile && showPreview && (
@@ -1300,9 +1342,23 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
         marginBottom: 4,
     },
+    summarySectionTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: theme.colors.primary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: 8,
+    },
     summaryRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    summaryLabelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     summaryLabel: {
         fontSize: 14,
@@ -1315,6 +1371,29 @@ const styles = StyleSheet.create({
         textAlign: 'right',
         flex: 1,
         marginLeft: 16,
+    },
+    summaryDivider: {
+        height: 1,
+        backgroundColor: theme.colors.border,
+        marginVertical: 4,
+    },
+    summaryVariantItem: {
+        backgroundColor: theme.colors.subtle,
+        padding: 10,
+        borderRadius: 8,
+        marginLeft: 22, // Align with text past the icon
+        borderWidth: 1,
+        borderColor: theme.colors.border + '50',
+    },
+    summaryVariantName: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: theme.colors.text,
+        marginBottom: 2,
+    },
+    summaryVariantDetail: {
+        fontSize: 12,
+        color: theme.colors.textSecondary,
     },
     footer: {
         flexDirection: 'row',

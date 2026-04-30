@@ -13,7 +13,8 @@ export const productSchema = z.object({
         stock: z.coerce.number().int().min(0),
         price: z.any().optional(), // Allow string or number, parse later
         discountPercentage: z.coerce.number().min(0).max(100).optional(),
-        images: z.array(z.string()).optional()
+        images: z.array(z.string()).optional(),
+        materials: z.string().optional()
     })).optional(),
     basePrice: z.number().positive("Base price must be positive"),
     discountPercentage: z.number().min(0).max(100).optional(),

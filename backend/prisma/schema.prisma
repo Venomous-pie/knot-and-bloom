@@ -50,6 +50,7 @@ model ProductVariant {
   discountPercentage Int?
   discountedPrice    Decimal?
   images             String[]
+  materials          String?
   cartItems          CartItem[]
 
   @@unique([productId, name])

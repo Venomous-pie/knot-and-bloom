@@ -21,6 +21,7 @@ import { uploadToImageKit } from '@/lib/imagekit';
 import { Layers } from 'lucide-react-native';
 import { useDialog } from '@/contexts/DialogContext';
 import ImageUploader from './ImageUploader';
+import { PRESET_MATERIALS } from '@/constants/materials';
 
 interface CustomOptionsModalProps {
     visible: boolean;
@@ -144,6 +145,7 @@ export interface VariantData {
     price: string;
     discountPercentage: string;
     images: string[];
+    materials?: string;
 }
 
 interface VariantEditorProps {
@@ -179,6 +181,7 @@ export default function VariantEditor({
     const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
     const [generatingSkuIndex, setGeneratingSkuIndex] = useState<number | null>(null);
     const [errors, setErrors] = useState<Record<string, string | null>>({});
+    const [materialInputs, setMaterialInputs] = useState<Record<number, string>>({});
 
     const validateNumeric = (value: string, allowDecimal = false): boolean => {
         if (!value) return true; // Allow empty for typing
@@ -292,12 +295,9 @@ export default function VariantEditor({
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.fieldLabel}>Product Variants</Text>
-                    <Text style={styles.subtitle}>
-                        {variants.length} variant{variants.length !== 1 ? 's' : ''}
-                    </Text>
-                </View>
+                <Text style={styles.subtitle}>
+                    {variants.length} variant{variants.length !== 1 ? 's' : ''}
+                </Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     <Pressable style={styles.outlineButton} onPress={() => setBulkModalVisible(true)}>
                         <Layers size={16} color={theme.colors.primary} />
@@ -312,6 +312,7 @@ export default function VariantEditor({
 
             <ScrollView
                 style={styles.variantsList}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
             >
                 {variants.map((variant, index) => (
@@ -409,34 +410,154 @@ export default function VariantEditor({
                                     <View style={[styles.field, !mobile && { flex: 2 }]}>
                                         <View style={styles.fieldLabelRow}>
                                             <Text style={styles.fieldLabel}>SKU</Text>
-                                            <Pressable
-                                                onPress={() => handleGenerateSku(index)}
-                                                disabled={generatingSkuIndex === index || !baseSku}
-                                            >
-                                                {generatingSkuIndex === index ? (
-                                                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                                                ) : (
-                                                    <View style={styles.autoGenButton}>
-                                                        <Sparkles size={12} color={theme.colors.primary} />
-                                                        <Text style={styles.autoGenText}>Auto</Text>
-                                                    </View>
-                                                )}
-                                            </Pressable>
+                                            {generatingSkuIndex === index && (
+                                                <ActivityIndicator size="small" color={theme.colors.primary} />
+                                            )}
                                         </View>
-                                        <TextInput
-                                            style={[styles.input, focusedField === getFieldKey(index, 'sku') && styles.inputFocused]}
-                                            value={variant.sku}
-                                            onChangeText={(text) => updateVariant(index, 'sku', text)}
-                                            placeholder="Auto-generated"
-                                            placeholderTextColor={theme.colors.textLight}
-                                            onFocus={() => setFocusedField(getFieldKey(index, 'sku'))}
-                                            onBlur={() => setFocusedField(null)}
-                                        />
+                                        {index === 0 ? (
+                                            <View style={styles.lockedInput}>
+                                                <Lock size={13} color={theme.colors.textLight} />
+                                                <Text style={styles.lockedInputText}>{baseSku || '—'}</Text>
+                                                <Text style={styles.lockedInputHint}>(inherited)</Text>
+                                            </View>
+                                        ) : (
+                                            <TextInput
+                                                style={[styles.input, focusedField === getFieldKey(index, 'sku') && styles.inputFocused]}
+                                                value={variant.sku}
+                                                onChangeText={(text) => updateVariant(index, 'sku', text)}
+                                                placeholder="Auto-generated"
+                                                placeholderTextColor={theme.colors.textLight}
+                                                onFocus={() => setFocusedField(getFieldKey(index, 'sku'))}
+                                                onBlur={() => {
+                                                    setFocusedField(null);
+                                                    if (!variant.sku.trim() && baseSku) {
+                                                        handleGenerateSku(index);
+                                                    }
+                                                }}
+                                            />
+                                        )}
                                     </View>
                                 </View>
 
+                                {/* Materials Row */}
+                                <View style={[styles.field, { marginTop: 12 }]}>
+                                    <View style={{ gap: 2 }}>
+                                        <Text style={styles.fieldLabel}>
+                                            Specific Materials / Inclusions {index === 0 ? '*' : '(Optional)'}
+                                        </Text>
+                                        {index > 0 && (
+                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontStyle: 'italic' }}>
+                                                If left empty, this variant will inherit the default materials.
+                                            </Text>
+                                        )}
+                                    </View>
+                                    
+                                    {/* Selected Chips */}
+                                    {(variant.materials || '').trim().length > 0 && (
+                                        <View style={[styles.categoryList, { marginBottom: 8 }]}>
+                                            {(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).map((mat, i) => (
+                                                <View key={i} style={[styles.categoryChip, styles.categoryChipSelected, { paddingRight: 8 }]}>
+                                                    <Text style={styles.categoryTextSelected}>{mat}</Text>
+                                                    <Pressable
+                                                        onPress={() => {
+                                                            const updated = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s && s !== mat).join(', ');
+                                                            updateVariant(index, 'materials', updated);
+                                                        }}
+                                                        style={{ marginLeft: 6, backgroundColor: theme.colors.backgroundAlt, borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}
+                                                    >
+                                                        <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '700', lineHeight: 14 }}>×</Text>
+                                                    </Pressable>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
+
+                                    <View style={[
+                                        styles.input, 
+                                        focusedField === getFieldKey(index, 'materials') && styles.inputFocused, 
+                                        variantErrors[`variant-${index}-materials`] && styles.inputError,
+                                        { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }
+                                    ]}>
+                                        <TextInput
+                                            style={{ flex: 1, paddingVertical: 12, outlineStyle: 'none' } as any}
+                                            value={materialInputs[index] || ''}
+                                            onChangeText={(text) => setMaterialInputs(prev => ({ ...prev, [index]: text }))}
+                                            placeholder="Type and press Enter, or select below..."
+                                            placeholderTextColor={theme.colors.textLight}
+                                            onFocus={() => setFocusedField(getFieldKey(index, 'materials'))}
+                                            onBlur={() => setTimeout(() => setFocusedField(null), 200)}
+                                            onSubmitEditing={() => {
+                                                const currentInput = (materialInputs[index] || '').trim();
+                                                if (currentInput) {
+                                                    const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
+                                                    if (!parts.includes(currentInput)) {
+                                                        parts.push(currentInput);
+                                                        updateVariant(index, 'materials', parts.join(', '));
+                                                    }
+                                                    setMaterialInputs(prev => ({ ...prev, [index]: '' }));
+                                                }
+                                            }}
+                                        />
+                                        {(materialInputs[index] || '').trim().length > 0 && (
+                                            <Pressable 
+                                                style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginLeft: 8 }}
+                                                onPress={() => {
+                                                    const currentInput = (materialInputs[index] || '').trim();
+                                                    const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
+                                                    if (!parts.includes(currentInput)) {
+                                                        parts.push(currentInput);
+                                                        updateVariant(index, 'materials', parts.join(', '));
+                                                    }
+                                                    setMaterialInputs(prev => ({ ...prev, [index]: '' }));
+                                                }}
+                                            >
+                                                <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add</Text>
+                                            </Pressable>
+                                        )}
+                                    </View>
+                                    {variantErrors[`variant-${index}-materials`] && (
+                                        <Text style={styles.errorText}>{variantErrors[`variant-${index}-materials`]}</Text>
+                                    )}
+                                    
+                                    {/* Smart Suggestions */}
+                                    {focusedField === getFieldKey(index, 'materials') && (
+                                        <View style={styles.materialSuggestions}>
+                                            <ScrollView
+                                                horizontal
+                                                showsHorizontalScrollIndicator={false}
+                                                contentContainerStyle={styles.materialChipsRow}
+                                            >
+                                                {PRESET_MATERIALS
+                                                    .filter(m => {
+                                                        const currentMaterials = (variant.materials || '').toLowerCase().split(',').map(s => s.trim());
+                                                        const alreadyAdded = currentMaterials.includes(m.toLowerCase());
+                                                        const currentInput = (materialInputs[index] || '').toLowerCase();
+                                                        return !alreadyAdded && (currentInput === '' || m.toLowerCase().includes(currentInput));
+                                                    })
+                                                    .slice(0, 15)
+                                                    .map((material) => (
+                                                        <Pressable
+                                                            key={material}
+                                                            style={styles.materialChip}
+                                                            onPress={() => {
+                                                                const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
+                                                                if (!parts.includes(material)) {
+                                                                    parts.push(material);
+                                                                    updateVariant(index, 'materials', parts.join(', '));
+                                                                }
+                                                                setMaterialInputs(prev => ({ ...prev, [index]: '' }));
+                                                            }}
+                                                        >
+                                                            <Text style={styles.materialChipText}>+ {material}</Text>
+                                                        </Pressable>
+                                                    ))}
+                                            </ScrollView>
+                                        </View>
+                                    )}
+                                </View>
+
                                 {/* Stock & Price Row */}
-                                <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
+                                <View style={[mobile ? styles.fieldColumn : styles.fieldRow, { marginTop: 12 }]}>
                                     <View style={[styles.field, !mobile && { flex: 1 }]}>
                                         <Text style={styles.fieldLabel}>Stock *</Text>
                                         <TextInput
@@ -535,13 +656,23 @@ export default function VariantEditor({
                                 {/* Variant Image Upload (non-Default variants only) */}
                                 {index > 0 && (
                                     <View style={styles.field}>
-                                        <Text style={styles.fieldLabel}>Variant Images</Text>
-                                        <ImageUploader
-                                            compact
-                                            maxImages={3}
-                                            images={variant.images ? variant.images.map(uri => ({ uri, isUrl: true })) : []}
-                                            onImagesChange={(imgs) => updateVariant(index, 'images', imgs.map(img => img.uri))}
-                                        />
+                                        <Text style={[
+                                            styles.fieldLabel,
+                                            variantErrors[`variant-${index}-images`] && { color: theme.colors.error }
+                                        ]}>
+                                            Variant Images *
+                                        </Text>
+                                        <View style={variantErrors[`variant-${index}-images`] ? styles.imageErrorBorder : undefined}>
+                                            <ImageUploader
+                                                compact
+                                                maxImages={3}
+                                                images={variant.images ? variant.images.map(uri => ({ uri, isUrl: true })) : []}
+                                                onImagesChange={(imgs) => updateVariant(index, 'images', imgs.map(img => img.uri))}
+                                            />
+                                        </View>
+                                        {variantErrors[`variant-${index}-images`] && (
+                                            <Text style={styles.errorText}>{variantErrors[`variant-${index}-images`]}</Text>
+                                        )}
                                     </View>
                                 )}
                             </View>
@@ -565,12 +696,16 @@ export default function VariantEditor({
 
 const styles = StyleSheet.create({
     container: {
-        gap: 12,
+        flex: 1,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
     },
     title: {
         fontSize: 16,
@@ -598,7 +733,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     variantsList: {
-        maxHeight: 500,
+        flex: 1,
     },
     variantCard: {
         backgroundColor: 'white',
@@ -715,6 +850,13 @@ const styles = StyleSheet.create({
         color: theme.colors.textLight,
         textAlign: 'center',
     },
+    imageErrorBorder: {
+        borderWidth: 1,
+        borderColor: theme.colors.error,
+        borderRadius: 12,
+        padding: 4,
+        backgroundColor: theme.colors.error + '05',
+    },
     variantName: {
         fontSize: 14,
         fontWeight: '600',
@@ -734,7 +876,7 @@ const styles = StyleSheet.create({
         padding: 6,
     },
     cardContent: {
-        padding: 14,
+        padding: 20,
         gap: 16,
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
@@ -1062,6 +1204,56 @@ const styles = StyleSheet.create({
     },
     editColorText: {
         fontSize: 13,
+        color: theme.colors.primary,
+        fontWeight: '500',
+    },
+    categoryList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    categoryChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: theme.colors.backgroundAlt,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    categoryChipSelected: {
+        backgroundColor: theme.colors.primaryLight,
+        borderColor: theme.colors.primary,
+    },
+    categoryTextSelected: {
+        fontSize: 13,
+        color: theme.colors.primary,
+        fontWeight: '600',
+    },
+    materialSuggestions: {
+        marginTop: 8,
+        borderRadius: 10,
+        backgroundColor: theme.colors.backgroundAlt,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        paddingVertical: 8,
+    },
+    materialChipsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingHorizontal: 10,
+    },
+    materialChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: theme.colors.background,
+        borderWidth: 1,
+        borderColor: theme.colors.primary,
+    },
+    materialChipText: {
+        fontSize: 12,
         color: theme.colors.primary,
         fontWeight: '500',
     },

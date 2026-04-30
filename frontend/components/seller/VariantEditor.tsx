@@ -452,25 +452,45 @@ export default function VariantEditor({
                                         )}
                                     </View>
                                     
-                                    {/* Selected Chips */}
-                                    {(variant.materials || '').trim().length > 0 && (
-                                        <View style={[styles.categoryList, { marginBottom: 8 }]}>
-                                            {(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).map((mat, i) => (
-                                                <View key={i} style={[styles.categoryChip, styles.categoryChipSelected, { paddingRight: 8 }]}>
-                                                    <Text style={styles.categoryTextSelected}>{mat}</Text>
-                                                    <Pressable
-                                                        onPress={() => {
-                                                            const updated = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s && s !== mat).join(', ');
-                                                            updateVariant(index, 'materials', updated);
-                                                        }}
-                                                        style={{ marginLeft: 6, backgroundColor: theme.colors.backgroundAlt, borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}
-                                                    >
-                                                        <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '700', lineHeight: 14 }}>×</Text>
-                                                    </Pressable>
+                                    {/* Selected or Inherited Chips */}
+                                    {(() => {
+                                        const hasOwnMaterials = (variant.materials || '').trim().length > 0;
+                                        const inheritedMaterials = index > 0 && !hasOwnMaterials ? (variants[0].materials || '').trim() : '';
+
+                                        if (hasOwnMaterials) {
+                                            return (
+                                                <View style={[styles.categoryList, { marginBottom: 8 }]}>
+                                                    {(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).map((mat, i) => (
+                                                        <View key={i} style={[styles.categoryChip, styles.categoryChipSelected, { paddingRight: 8 }]}>
+                                                            <Text style={styles.categoryTextSelected}>{mat}</Text>
+                                                            <Pressable
+                                                                onPress={() => {
+                                                                    const updated = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s && s !== mat).join(', ');
+                                                                    updateVariant(index, 'materials', updated);
+                                                                }}
+                                                                style={{ marginLeft: 6, backgroundColor: theme.colors.backgroundAlt, borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}
+                                                            >
+                                                                <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '700', lineHeight: 14 }}>×</Text>
+                                                            </Pressable>
+                                                        </View>
+                                                    ))}
                                                 </View>
-                                            ))}
-                                        </View>
-                                    )}
+                                            );
+                                        }
+
+                                        if (inheritedMaterials) {
+                                            return (
+                                                <View style={[styles.categoryList, { marginBottom: 8, opacity: 0.6 }]}>
+                                                    {inheritedMaterials.split(',').map(s => s.trim()).filter(Boolean).map((mat, i) => (
+                                                        <View key={i} style={[styles.categoryChip, { backgroundColor: theme.colors.backgroundAlt, borderColor: theme.colors.border, paddingRight: 12 }]}>
+                                                            <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontWeight: '500' }}>{mat}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
 
                                     <View style={[
                                         styles.input, 

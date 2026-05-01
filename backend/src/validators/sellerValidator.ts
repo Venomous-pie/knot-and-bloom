@@ -10,6 +10,7 @@ export const sellerSchema = z.object({
     phone: z.string().optional(),
     socialMediaLink: z.string().optional(),
     email: z.string().email().optional(),
+    termsAccepted: z.boolean().optional(),
 });
 
 // Validator for Direct Registration (Customer + Seller)

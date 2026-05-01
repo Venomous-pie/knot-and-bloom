@@ -116,7 +116,9 @@ export const sellerController = {
                             phone: req.body.contactNumber ?? data.phone ?? null,
                             socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
                             status: SellerStatus.PENDING,
-                            rejectionReason: null // Clear previous rejection reason
+                            rejectionReason: null, // Clear previous rejection reason
+                            termsAccepted: data.termsAccepted ?? false,
+                            termsAcceptedAt: data.termsAccepted ? new Date() : null
                         }
                     });
                     return res.status(200).json(updatedSeller);
@@ -143,7 +145,9 @@ export const sellerController = {
                     // Map contactNumber (frontend) to phone (schema)
                     phone: req.body.contactNumber ?? data.phone ?? null,
                     socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
-                    status: SellerStatus.PENDING
+                    status: SellerStatus.PENDING,
+                    termsAccepted: data.termsAccepted ?? false,
+                    termsAcceptedAt: data.termsAccepted ? new Date() : null
                 }
             });
 

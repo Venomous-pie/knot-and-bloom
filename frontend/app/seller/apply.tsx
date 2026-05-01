@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { RelativePathString, useRouter } from "expo-router";
+import { Link, RelativePathString, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -196,13 +196,27 @@ export default function SellerApplyPage() {
 
     const validateStep2 = () => {
         const newErrors: Record<string, string> = {};
-        if (!phoneNumber.trim()) newErrors.phoneNumber = "Phone number is required";
+        
+        const trimmedPhone = phoneNumber.trim();
+        if (!trimmedPhone) {
+            newErrors.phoneNumber = "Phone number is required";
+        } else if (trimmedPhone.replace(/[^0-9]/g, '').length < 10) {
+            newErrors.phoneNumber = "Phone number must be at least 10 digits";
+        }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!email.trim()) {
             newErrors.email = "Email is required";
         } else if (!emailRegex.test(email)) {
             newErrors.email = "Please enter a valid email address";
+        }
+
+        const trimmedSocial = socialLink.trim();
+        if (trimmedSocial) {
+            const urlRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+            if (!urlRegex.test(trimmedSocial)) {
+                newErrors.socialLink = "Please enter a valid URL";
+            }
         }
 
         setErrors(newErrors);
@@ -250,10 +264,10 @@ export default function SellerApplyPage() {
                         description: description.trim() || undefined,
                         logo: logoUrl.trim() || undefined,
                         banner: bannerUrl.trim() || undefined,
-                        // New fields - send them even if backend might ignore them for now
-                        contactNumber: phoneNumber.trim(),
+                        phone: phoneNumber.trim(),
                         socialMediaLink: socialLink.trim() || undefined,
                         email: email.trim(),
+                        termsAccepted: termsAccepted,
                     }),
                 }
             );
@@ -367,7 +381,7 @@ export default function SellerApplyPage() {
                     onBlur={() => setFocusedField(null)}
                 />
                 {errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
-                {!errors.email && user?.email && (
+                {!errors.email && user?.email && email === user.email && (
                     <Text style={styles.helperText}>Pre-filled from your account.</Text>
                 )}
             </View>
@@ -403,6 +417,7 @@ export default function SellerApplyPage() {
                     onFocus={() => setFocusedField('socialLink')}
                     onBlur={() => setFocusedField(null)}
                 />
+                {errors.socialLink && <Text style={styles.fieldError}>{errors.socialLink}</Text>}
                 <Text style={styles.helperText}>Used to verify your existing presence.</Text>
             </View>
 
@@ -466,7 +481,9 @@ export default function SellerApplyPage() {
                 </View>
                 <Text style={styles.termsText}>
                     I agree to the{" "}
-                    <Text style={styles.termsLink}>Seller Terms and Conditions</Text>
+                    <Link href="/terms/seller" asChild>
+                        <Text style={styles.termsLink}>Seller Terms and Conditions</Text>
+                    </Link>
                 </Text>
             </Pressable>
             {errors.terms && <Text style={styles.fieldError}>{errors.terms}</Text>}
@@ -495,7 +512,7 @@ export default function SellerApplyPage() {
                             {isDesktop ? (
                                 <>
                                     <Image
-                                        source={require('@/assets/hero-images/Ecommerce.gif')}
+                                        source={require('@/assets/bespoke_seller_onboarding.png')}
                                         style={styles.brandingImage}
                                         resizeMode="cover"
                                     />
@@ -551,6 +568,14 @@ export default function SellerApplyPage() {
 
                                         {/* Navigation Buttons */}
                                         <View style={styles.navigationButtons}>
+                                            <TouchableOpacity
+                                                style={styles.backButton}
+                                                onPress={() => router.back()}
+                                                disabled={loading}
+                                            >
+                                                <Text style={styles.backButtonText}>Cancel</Text>
+                                            </TouchableOpacity>
+
                                             {currentStep > 1 && (
                                                 <TouchableOpacity
                                                     style={styles.backButton}
@@ -563,8 +588,13 @@ export default function SellerApplyPage() {
 
                                             {currentStep < totalSteps ? (
                                                 <TouchableOpacity
-                                                    style={[styles.nextButton, currentStep === 1 && styles.fullWidthButton]}
+                                                    style={[
+                                                        styles.nextButton, 
+                                                        currentStep === 1 && styles.fullWidthButton,
+                                                        uploadingImage && styles.submitButtonDisabled
+                                                    ]}
                                                     onPress={handleNext}
+                                                    disabled={!!uploadingImage}
                                                 >
                                                     <Text style={styles.nextButtonText}>Next Step →</Text>
                                                 </TouchableOpacity>
@@ -572,10 +602,10 @@ export default function SellerApplyPage() {
                                                 <TouchableOpacity
                                                     style={[
                                                         styles.submitButton,
-                                                        (loading || !termsAccepted) && styles.submitButtonDisabled
+                                                        (loading || !termsAccepted || !!uploadingImage) && styles.submitButtonDisabled
                                                     ]}
                                                     onPress={handleSubmit}
-                                                    disabled={loading || !termsAccepted}
+                                                    disabled={loading || !termsAccepted || !!uploadingImage}
                                                 >
                                                     {loading ? (
                                                         <ActivityIndicator color="white" />

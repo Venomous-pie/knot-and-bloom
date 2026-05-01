@@ -14,18 +14,19 @@ interface User {
     sellerRating?: string | number;
     sellerTotalSales?: string | number;
     sellerTotalOrders?: number;
+    sellerRejectionReason?: string | null;
     passwordResetRequired?: boolean;
 }
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (data: any) => Promise<void>;
+    login: (data: any, returnTo?: string) => Promise<void>;
     register: (data: any) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
-    loginWithGoogle: (data: { token?: string, accessToken?: string }) => Promise<void>;
-    loginWithToken: (token: string) => Promise<void>;
+    loginWithGoogle: (data: { token?: string, accessToken?: string }, returnTo?: string) => Promise<void>;
+    loginWithToken: (token: string, returnTo?: string) => Promise<void>;
     token: string | null;
 }
 

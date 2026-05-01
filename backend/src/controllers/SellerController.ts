@@ -257,6 +257,17 @@ export const sellerController = {
                         rejectionReason: updates.rejectionReason || "Application rejected by admin."
                     }
                 });
+
+                // Send in-app notification to the seller's customer
+                await prisma.notification.create({
+                    data: {
+                        customerId: seller.customerId,
+                        title: '⚠️ Application Update',
+                        message: `Your seller application could not be approved at this time. Reason: ${seller.rejectionReason}`,
+                        type: 'system',
+                    }
+                });
+
                 return res.json(seller);
             }
 
@@ -489,8 +500,8 @@ export const sellerController = {
                 id: updatedCustomer.uid,
                 ...(updatedCustomer.email ? { email: updatedCustomer.email } : {}),
                 role: updatedCustomer.role as any,
-                sellerId: updatedCustomer.sellerProfile?.uid,
-                sellerStatus: updatedCustomer.sellerProfile?.status as any,
+                ...(updatedCustomer.sellerProfile?.uid && { sellerId: updatedCustomer.sellerProfile.uid }),
+                ...(updatedCustomer.sellerProfile?.status && { sellerStatus: updatedCustomer.sellerProfile.status as any }),
             };
 
             const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });

@@ -97,7 +97,8 @@ const customerRegisterController = async (input: unknown) => {
                 sellerSlug: undefined,
                 sellerRating: undefined,
                 sellerTotalSales: undefined,
-                sellerTotalOrders: undefined
+                sellerTotalOrders: undefined,
+                sellerRejectionReason: undefined
             }
         };
     } catch (error) {
@@ -168,7 +169,8 @@ const customerLoginController = async (input: unknown) => {
                 sellerSlug: customer.sellerProfile?.slug,
                 sellerRating: customer.sellerProfile?.rating,
                 sellerTotalSales: customer.sellerProfile?.totalSales,
-                sellerTotalOrders: customer.sellerProfile?.totalOrders
+                sellerTotalOrders: customer.sellerProfile?.totalOrders,
+                sellerRejectionReason: customer.sellerProfile?.rejectionReason
             }
         };
 
@@ -214,7 +216,8 @@ const getCustomerProfile = async (userId: number) => {
             sellerSlug: customer.sellerProfile?.slug,
             sellerRating: customer.sellerProfile?.rating,
             sellerTotalSales: customer.sellerProfile?.totalSales,
-            sellerTotalOrders: customer.sellerProfile?.totalOrders
+            sellerTotalOrders: customer.sellerProfile?.totalOrders,
+            sellerRejectionReason: customer.sellerProfile?.rejectionReason
         },
         token
     };
@@ -340,7 +343,8 @@ const googleLoginController = async (input: unknown) => {
                 sellerSlug: customer.sellerProfile?.slug,
                 sellerRating: customer.sellerProfile?.rating,
                 sellerTotalSales: customer.sellerProfile?.totalSales,
-                sellerTotalOrders: customer.sellerProfile?.totalOrders
+                sellerTotalOrders: customer.sellerProfile?.totalOrders,
+                sellerRejectionReason: customer.sellerProfile?.rejectionReason
             }
         };
 

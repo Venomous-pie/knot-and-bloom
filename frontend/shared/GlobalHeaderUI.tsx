@@ -334,7 +334,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         }}
                         style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}
                         body={
-                            <View style={{ minWidth: 280, maxWidth: 320, paddingVertical: 8 }}>
+                            <View style={{ minWidth: 280, maxWidth: 320, paddingVertical: 8, paddingHorizontal: 16 }}>
                                 {notifLoading ? (
                                     <View style={{ paddingVertical: 52, alignItems: 'center' }}>
                                         <Text style={{ fontSize: 12, color: theme.colors.textLight }}>Loading…</Text>
@@ -352,39 +352,40 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                                                 onPress={() => {
                                                     setActiveMenu(null);
                                                 }}
-                                            style={({ hovered }) => ([
-                                                {
-                                                    flexDirection: 'row',
-                                                    alignItems: 'flex-start',
-                                                    paddingVertical: 10,
-                                                    paddingHorizontal: 14,
-                                                    gap: 10,
-                                                    borderLeftWidth: !n.isRead ? 3 : 0,
-                                                    borderLeftColor: theme.colors.primaryLight,
-                                                },
-                                                hovered && { backgroundColor: theme.colors.subtle }
-                                            ])}
-                                        >
-                                            {!n.isRead && (
-                                                <View style={{
-                                                    width: 7, height: 7, borderRadius: 4,
-                                                    backgroundColor: theme.colors.primary,
-                                                    marginTop: 5, flexShrink: 0
-                                                }} />
-                                            )}
-                                            {n.isRead && <View style={{ width: 7 }} />}
-                                            <View style={{ flex: 1 }}>
-                                                <Text
-                                                    numberOfLines={1}
-                                                    style={{ fontSize: 12, fontWeight: n.isRead ? '500' : '700', color: theme.colors.text, fontFamily: 'Quicksand' }}
-                                                >
-                                                    {n.title}
-                                                </Text>
-                                                <Text numberOfLines={2} style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 16 }}>
-                                                    {n.message}
-                                                </Text>
-                                            </View>
-                                        </Pressable>
+                                                style={({ hovered }) => ([
+                                                    {
+                                                        flexDirection: 'row',
+                                                        alignItems: 'flex-start',
+                                                        paddingVertical: 10,
+                                                        paddingHorizontal: 14,
+                                                        gap: 10,
+                                                        borderLeftWidth: !n.isRead ? 3 : 0,
+                                                        borderLeftColor: theme.colors.primaryLight,
+                                                    },
+                                                    hovered && { backgroundColor: theme.colors.subtle }
+                                                ])}
+                                            >
+                                                <View style={{ flex: 1 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                        <Text
+                                                            numberOfLines={1}
+                                                            style={{ flexShrink: 1, fontSize: 12, fontWeight: n.isRead ? '500' : '700', color: theme.colors.text, fontFamily: 'Quicksand' }}
+                                                        >
+                                                            {n.title}
+                                                        </Text>
+                                                        {!n.isRead && (
+                                                            <View style={{
+                                                                width: 7, height: 7, borderRadius: 4,
+                                                                backgroundColor: theme.colors.secondary,
+                                                                flexShrink: 0
+                                                            }} />
+                                                        )}
+                                                    </View>
+                                                    <Text numberOfLines={2} style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 2, lineHeight: 16 }}>
+                                                        {n.message}
+                                                    </Text>
+                                                </View>
+                                            </Pressable>
                                         </Link>
                                     ))
                                 )}
@@ -409,7 +410,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                     >
                         <View style={{ position: 'relative' }}>
                             <Bell size={18} />
-                        {unreadCount > 0 && <BadgeDot count={unreadCount} />}
+                            {unreadCount > 0 && <BadgeDot count={unreadCount} />}
                         </View>
                     </DropdownMenu>
 

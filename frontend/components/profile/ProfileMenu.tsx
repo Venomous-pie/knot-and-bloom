@@ -205,9 +205,9 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         <Text style={styles.userName}>{user.name}</Text>
                         <Text style={styles.userEmail}>{user.email || user.phone}</Text>
                         {user.sellerStatus && (
-                            <View style={[styles.statusBadge, { backgroundColor: user.sellerStatus === 'ACTIVE' ? '#E8F5E9' : '#FFF3E0' }]}>
-                                <Text style={[styles.statusText, { color: user.sellerStatus === 'ACTIVE' ? theme.colors.success : theme.colors.warning }]}>
-                                    {user.sellerStatus === 'ACTIVE' ? '✓ Seller' : '⏳ Pending Seller'}
+                            <View style={[styles.statusBadge, { backgroundColor: user.sellerStatus === 'ACTIVE' ? '#E8F5E9' : user.sellerStatus === 'REJECTED' ? theme.colors.errorLight : '#FFF3E0' }]}>
+                                <Text style={[styles.statusText, { color: user.sellerStatus === 'ACTIVE' ? theme.colors.success : user.sellerStatus === 'REJECTED' ? theme.colors.error : theme.colors.warning }]}>
+                                    {user.sellerStatus === 'ACTIVE' ? '✓ Seller' : user.sellerStatus === 'REJECTED' ? '❌ Application Rejected' : '⏳ Pending Seller'}
                                 </Text>
                             </View>
                         )}

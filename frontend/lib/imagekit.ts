@@ -2,13 +2,6 @@ import ImageKit from 'imagekit-javascript';
 import { IMAGEKIT_CONFIG } from '../config/imagekit';
 import * as ImageManipulator from 'expo-image-manipulator';
 
-// Initialize ImageKit SDK
-console.log('Initializing ImageKit with:', {
-    urlEndpoint: IMAGEKIT_CONFIG.urlEndpoint,
-    publicKey: IMAGEKIT_CONFIG.publicKey ? 'Present' : 'Missing',
-    authEndpoint: IMAGEKIT_CONFIG.authenticationEndpoint
-});
-
 const imagekit = new ImageKit({
     urlEndpoint: IMAGEKIT_CONFIG.urlEndpoint,
     publicKey: IMAGEKIT_CONFIG.publicKey,

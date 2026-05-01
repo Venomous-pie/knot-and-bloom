@@ -138,7 +138,7 @@ export default function ApplicationStatusPage() {
                         <View style={styles.rejectionBox}>
                             <Ionicons name="information-circle-outline" size={20} color={theme.colors.errorDark} />
                             <Text style={styles.rejectionReasonText}>
-                                {(user as any).sellerRejectionReason || "Information provided was incomplete. Please update your details and try again."}
+                                {user.sellerRejectionReason || "Information provided was incomplete. Please update your details and try again."}
                             </Text>
                         </View>
                         

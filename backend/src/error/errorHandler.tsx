@@ -25,7 +25,7 @@ export class NotFoundError extends CustomError {
 
 export class DuplicateCustomerError extends CustomError {
     constructor(email: string) {
-        super(`Customer with email "${email}" already exists`, 409, 'DUPLICATE_CUSTOMER');
+        super(`Looks like you already have an account. Sign in instead?`, 409, 'DUPLICATE_CUSTOMER');
     }
 }
 
@@ -42,7 +42,7 @@ export class ConflictError extends CustomError {
 }
 
 export class AuthenticationError extends CustomError {
-     constructor(message: string = 'Authentication failed') {
+    constructor(message: string = 'Authentication failed') {
         super(message, 401, 'AUTHENTICATION_ERROR');
     }
 }

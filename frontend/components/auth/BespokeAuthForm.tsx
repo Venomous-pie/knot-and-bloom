@@ -67,6 +67,7 @@ export default function BespokeAuthForm({
     const [isLoading, setIsLoading] = useState(false);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
+    const [loginAttempts, setLoginAttempts] = useState(0);
 
     // OTP State
     const [showOtpModal, setShowOtpModal] = useState(false);
@@ -196,9 +197,13 @@ export default function BespokeAuthForm({
                     ...(authMethod === 'email' ? { email: email.trim().toLowerCase() } : { phone: phoneNumber })
                 };
                 await login(payload, returnTo);
+                setLoginAttempts(0);
             }
         } catch (err: any) {
             console.error(err);
+            if (!isSignUp) {
+                setLoginAttempts((prev) => prev + 1);
+            }
             if (err.response?.data?.issues) {
                 const newFieldErrors: Record<string, string> = {};
                 err.response.data.issues.forEach((issue: any) => {
@@ -792,6 +797,19 @@ export default function BespokeAuthForm({
                                         </Text>
                                     )}
                                 </TouchableOpacity>
+
+                                {!isSignUp && loginAttempts >= 2 && (
+                                    <View style={{ marginTop: 16, padding: 16, backgroundColor: theme.colors.primary + "10", borderRadius: 8, borderWidth: 1, borderColor: theme.colors.primary + "30" }}>
+                                        <Text style={{ textAlign: 'center', color: theme.colors.textSecondary, marginBottom: 8, fontSize: 14 }}>
+                                            Having trouble signing in? You might not have an account yet.
+                                        </Text>
+                                        <TouchableOpacity onPress={() => toggleMode(true)}>
+                                            <Text style={{ textAlign: 'center', color: theme.colors.primary, fontWeight: 'bold', fontSize: 15 }}>
+                                                Create an account
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </View>
 
                             <View style={{ marginTop: 20, alignItems: 'center' }}>

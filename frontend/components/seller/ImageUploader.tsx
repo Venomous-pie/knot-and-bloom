@@ -287,10 +287,10 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                                     )}
 
                                     <View style={styles.actionsOverlay}>
-                                        <Pressable style={styles.actionButton} onPress={() => openCropper(index)}>
+                                        <Pressable testID="crop-image-btn" style={styles.actionButton} onPress={() => openCropper(index)}>
                                             <Crop size={14} color="#333" />
                                         </Pressable>
-                                        <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={() => removeImage(index)}>
+                                        <Pressable testID="delete-image-btn" style={[styles.actionButton, styles.deleteButton]} onPress={() => removeImage(index)}>
                                             <Trash2 size={14} color={theme.colors.primary} />
                                         </Pressable>
                                     </View>

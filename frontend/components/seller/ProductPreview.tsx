@@ -171,10 +171,13 @@ export default function ProductPreview({
 
                         {/* Image Dots (Pagination) */}
                         {displayImages.length > 1 && (
-                            <View style={{
-                                position: 'absolute', bottom: s.gap + 4, left: 0, right: 0, 
-                                flexDirection: 'row', justifyContent: 'center', gap: 4 
-                            }}>
+                            <View 
+                                testID="pagination-dots"
+                                style={{
+                                    position: 'absolute', bottom: s.gap + 4, left: 0, right: 0, 
+                                    flexDirection: 'row', justifyContent: 'center', gap: 4 
+                                }}
+                            >
                                 {displayImages.slice(0, 5).map((_, i) => (
                                     <View key={i} style={{
                                         width: 4, height: 4, borderRadius: 2,

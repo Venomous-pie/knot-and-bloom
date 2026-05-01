@@ -369,6 +369,7 @@ export default function VariantEditor({
                             <View style={styles.cardHeaderRight}>
                                 {variants.length > 1 && index > 0 && (
                                     <Pressable
+                                        testID="delete-variant-btn"
                                         style={styles.deleteButton}
                                         onPress={() => removeVariant(index)}
                                     >

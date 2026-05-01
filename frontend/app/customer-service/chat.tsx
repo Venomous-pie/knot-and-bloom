@@ -19,6 +19,7 @@ import { chatAPI, productAPI } from '@/api/api';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDialog } from '@/contexts/DialogContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Message {
@@ -111,6 +112,7 @@ const TypingIndicator = () => {
 export default function ChatScreen() {
     const router = useRouter();
     const { user } = useAuth();
+    const { confirm } = useDialog();
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [activeSessionId, setActiveSessionId] = useState<string>('');
     const [input, setInput] = useState('');
@@ -187,19 +189,22 @@ export default function ChatScreen() {
     };
 
     // ─── Start new conversation ─────────────────────────────────────
-    const handleNewConversation = () => {
+    const handleNewConversation = async () => {
         const doCreate = () => {
             const fresh = makeSession();
             setSessions(prev => [fresh, ...prev]);
             setActiveSessionId(fresh.id);
         };
-        if (Platform.OS === 'web') {
-            if ((window as any).confirm('Start a new conversation?')) doCreate();
-        } else {
-            Alert.alert('New Conversation', 'Start a fresh chat?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Start Fresh', onPress: doCreate }
-            ]);
+        
+        const isConfirmed = await confirm({
+            title: 'New Conversation',
+            message: 'Start a fresh chat?',
+            confirmText: 'Start Fresh',
+            cancelText: 'Cancel'
+        });
+
+        if (isConfirmed) {
+            doCreate();
         }
     };
 

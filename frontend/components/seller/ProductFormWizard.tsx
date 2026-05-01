@@ -199,8 +199,11 @@ export default function ProductFormWizard({
             if (initialData.formData.image) {
                 setImages([{ uri: initialData.formData.image, isUrl: true }]);
             }
+        } else if (!isEditing && !initializedRef.current) {
+            initializedRef.current = true;
+            loadDraft();
         }
-    }, [initialData]);
+    }, [initialData, isEditing]);
 
     // Sync primary image to formData
     useEffect(() => {
@@ -376,8 +379,8 @@ export default function ProductFormWizard({
                     newErrors.sku = 'Please enter or generate a Base SKU.';
                     isValid = false;
                 }
-                if (!formData.basePrice.trim() || isNaN(Number(formData.basePrice)) || Number(formData.basePrice) <= 0) {
-                    newErrors.basePrice = 'Please enter a valid base price greater than 0.';
+                if (!formData.basePrice.trim() || isNaN(Number(formData.basePrice)) || Number(formData.basePrice) < 0) {
+                    newErrors.basePrice = 'Please enter a valid base price (0 or greater).';
                     isValid = false;
                 }
                 if (formData.discountPercentage && (isNaN(Number(formData.discountPercentage)) || Number(formData.discountPercentage) < 0 || Number(formData.discountPercentage) > 100)) {
@@ -473,8 +476,14 @@ export default function ProductFormWizard({
 
     const handleSubmit = async () => {
         if (!validateStep(currentStep)) return;
-        await onSubmit({ formData, selectedCategories, variants });
-        if (!isEditing) clearDraft();
+        try {
+            await onSubmit({ formData, selectedCategories, variants });
+            if (!isEditing) clearDraft();
+        } catch (error) {
+            console.error('Submission failed:', error);
+            // Re-throw if parent expects to handle it synchronously, 
+            // but for now we just prevent the unhandled rejection crash.
+        }
     };
 
     const handleSaveDraft = async () => {
@@ -678,6 +687,7 @@ export default function ProductFormWizard({
                                     onFocus={() => setFocusedField('discount')}
                                     onBlur={() => setFocusedField(null)}
                                 />
+                                {errors.discountPercentage && <Text style={styles.errorText}>{errors.discountPercentage}</Text>}
                             </View>
                         </View>
 
@@ -995,6 +1005,7 @@ export default function ProductFormWizard({
                     {STEPS.map((step, index) => (
                         <React.Fragment key={step.id}>
                             <Pressable
+                                testID={`step-indicator-${step.id}`}
                                 style={styles.stepItem}
                                 onPress={() => goToStep(step.id)}
                             >

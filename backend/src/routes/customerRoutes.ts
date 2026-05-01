@@ -119,7 +119,8 @@ router.post('/login', loginRateLimiter.middleware, async (req, res) => {
             loginRateLimiter.increment(ip);
             return res.status(error.statusCode).json({
                 success: false,
-                message: error.message
+                message: error.message,
+                code: error.code
             });
         }
 

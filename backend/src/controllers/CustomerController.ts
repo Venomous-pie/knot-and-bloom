@@ -126,18 +126,17 @@ const customerLoginController = async (input: unknown) => {
         });
 
         if (!customer) {
-            // Use generic message for security
-            throw new ErrorHandler.AuthenticationError("Invalid credentials");
+            throw new ErrorHandler.AuthenticationError("No account found with those credentials.", 'USER_NOT_FOUND');
         }
 
         if (!customer.password) {
-            throw new ErrorHandler.AuthenticationError("Invalid credentials");
+            throw new ErrorHandler.AuthenticationError("This account uses Google Sign-In. Please continue with Google.", 'NO_PASSWORD_SET');
         }
 
         const isPasswordValid = await bcrypt.compare(parsedInput.password, customer.password);
 
         if (!isPasswordValid) {
-            throw new ErrorHandler.AuthenticationError("Invalid credentials");
+            throw new ErrorHandler.AuthenticationError("Incorrect password.", 'WRONG_PASSWORD');
         }
 
         const payload: AuthPayload = {

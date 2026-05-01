@@ -42,8 +42,8 @@ export class ConflictError extends CustomError {
 }
 
 export class AuthenticationError extends CustomError {
-    constructor(message: string = 'Authentication failed') {
-        super(message, 401, 'AUTHENTICATION_ERROR');
+    constructor(message: string = 'Authentication failed', code: string = 'AUTHENTICATION_ERROR') {
+        super(message, 401, code);
     }
 }
 

@@ -4,6 +4,7 @@ import { theme } from "@/constants/theme";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 import { RelativePathString, useRouter, useLocalSearchParams } from "expo-router";
 import {
+    AlertCircle,
     CloudSnow,
     Eye,
     EyeOff,
@@ -13,7 +14,6 @@ import {
     Phone,
     Rose,
     Snowflake,
-    Sparkles,
     SquircleDashed,
 } from "lucide-react-native";
 import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
@@ -76,7 +76,8 @@ export default function BespokeAuthForm({
 
     // Refs
     const passwordInputRef = useRef<TextInput>(null);
-    const [error, setError] = useState("");
+    // Structured auth error: includes a machine-readable code + optional actionable hint
+    const [authError, setAuthError] = useState<{ code?: string; message: string; hint?: string } | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
     // Animation state
@@ -104,7 +105,7 @@ export default function BespokeAuthForm({
             }, 1000);
         } else if (retryCountdown === 0) {
             setRetryCountdown(null);
-            setError(""); // Clear error when timer finishes
+            setAuthError(null); // Clear error when timer finishes
         }
         return () => clearTimeout(timer);
     }, [retryCountdown]);
@@ -140,12 +141,12 @@ export default function BespokeAuthForm({
 
     const toggleMode = (signup: boolean) => {
         setIsSignUp(signup);
-        setError("");
-        // Reset form? maybe keep email/phone populated
+        setAuthError(null);
+        setFieldErrors({});
     };
 
     const handleAuth = async () => {
-        setError("");
+        setAuthError(null);
         setFieldErrors({});
         setIsLoading(true);
         Keyboard.dismiss();
@@ -159,24 +160,21 @@ export default function BespokeAuthForm({
             }
         }
 
-
-
         try {
             if (isSignUp) {
                 if (!agreeToTerms) {
-                    setError("You must agree to the terms and conditions");
+                    setAuthError({ message: "You must agree to the Terms & Conditions to continue." });
                     setIsLoading(false);
                     return;
                 }
 
                 if (authMethod === 'phone') {
-                    // 1. Send OTP first
                     try {
                         await authAPI.sendOTP(phoneNumber);
                         setShowOtpModal(true);
-                        setResendCooldown(60); // Start timer on first open
+                        setResendCooldown(60);
                     } catch (err: any) {
-                        setError(err.response?.data?.message || "Failed to send OTP.");
+                        setAuthError({ message: err.response?.data?.message || "Failed to send OTP. Please try again." });
                     }
                     setIsLoading(false);
                     return;
@@ -188,8 +186,6 @@ export default function BespokeAuthForm({
                     password,
                     ...(authMethod === 'email' ? { email } : { phone: phoneNumber })
                 };
-
-                // Note: Ensure your backend handles 'phone' or maps it correctly
                 await register(payload);
             } else {
                 const payload = {
@@ -201,32 +197,81 @@ export default function BespokeAuthForm({
             }
         } catch (err: any) {
             console.error(err);
+            const responseData = err.response?.data;
+            const errorCode = responseData?.code;
+            const status = err.response?.status;
+
             if (!isSignUp) {
                 setLoginAttempts((prev) => prev + 1);
             }
-            if (err.response?.data?.issues) {
+
+            // --- Structured field-level validation errors ---
+            if (responseData?.issues) {
                 const newFieldErrors: Record<string, string> = {};
-                err.response.data.issues.forEach((issue: any) => {
+                responseData.issues.forEach((issue: any) => {
                     if (issue.path && issue.path.length > 0) {
                         newFieldErrors[issue.path[0]] = issue.message;
                     }
                 });
                 setFieldErrors(newFieldErrors);
-
-                // Only show generic error if we couldn't map any specific field errors
                 if (Object.keys(newFieldErrors).length === 0) {
-                    setError(err.response?.data?.error || "Validation failed.");
+                    setAuthError({ message: responseData?.error || "Validation failed." });
                 }
-            } else {
-                if (err.response?.status === 429 && err.response?.data?.retryAfter) {
-                    setRetryCountdown(err.response.data.retryAfter);
-                    setError(`Too many attempts. Please wait ${err.response.data.retryAfter}s.`);
-                } else {
-                    setError(
-                        err.response?.data?.message || err.response?.data?.error || "Authentication failed. Please try again."
-                    );
+                return;
+            }
+
+            // --- Rate limit ---
+            if (status === 429 && responseData?.retryAfter) {
+                setRetryCountdown(responseData.retryAfter);
+                setAuthError({
+                    code: 'RATE_LIMITED',
+                    message: `Too many attempts. Please wait ${responseData.retryAfter}s before trying again.`,
+                });
+                return;
+            }
+
+            // --- Credential-specific errors (login only) ---
+            if (!isSignUp) {
+                if (errorCode === 'USER_NOT_FOUND') {
+                    setAuthError({
+                        code: 'USER_NOT_FOUND',
+                        message: `We couldn't find an account with that ${authMethod === 'email' ? 'email address' : 'phone number'}.`,
+                        hint: 'new_account',
+                    });
+                    return;
+                }
+                if (errorCode === 'WRONG_PASSWORD') {
+                    setAuthError({
+                        code: 'WRONG_PASSWORD',
+                        message: 'That password doesn\'t match our records.',
+                        hint: 'reset_password',
+                    });
+                    return;
+                }
+                if (errorCode === 'NO_PASSWORD_SET') {
+                    setAuthError({
+                        code: 'NO_PASSWORD_SET',
+                        message: 'This account was created with Google. Please sign in with Google.',
+                        hint: 'use_google',
+                    });
+                    return;
                 }
             }
+
+            // --- Duplicate account on sign-up ---
+            if (isSignUp && (status === 409 || errorCode === 'DUPLICATE_CUSTOMER')) {
+                setAuthError({
+                    code: 'DUPLICATE_CUSTOMER',
+                    message: responseData?.error || 'An account with this email already exists.',
+                    hint: 'sign_in',
+                });
+                return;
+            }
+
+            // --- Fallback ---
+            setAuthError({
+                message: responseData?.message || responseData?.error || 'Something went wrong. Please try again.',
+            });
         } finally {
             setIsLoading(false);
         }
@@ -248,20 +293,19 @@ export default function BespokeAuthForm({
     const handleResendOtp = async () => {
         if (resendCooldown > 0) return;
 
-        setError("");
+        setAuthError(null);
         try {
             await authAPI.sendOTP(phoneNumber);
-            setResendCooldown(60); // 1 minute cooldown
-            setOtpCode(""); // Reset inputs
+            setResendCooldown(60);
+            setOtpCode("");
         } catch (err: any) {
-            // Handle 429 specifically if we want custom message, otherwise use backend message
-            setError(err.response?.data?.message || err.response?.data?.error || "Failed to resend OTP.");
+            setAuthError({ message: err.response?.data?.message || err.response?.data?.error || "Failed to resend OTP." });
         }
     };
 
     const handleVerifyOtp = async () => {
         setOtpLoading(true);
-        setError(""); // Clear previous errors
+        setAuthError(null);
         try {
             const randomName = generateRandomName();
             const payload = {
@@ -271,24 +315,53 @@ export default function BespokeAuthForm({
                 otp: otpCode
             };
             await register(payload);
-            // On success, the useAuth effect will redirect
             setShowOtpModal(false);
         } catch (err: any) {
             console.error(err);
             if (err.response?.data?.issues) {
-                // If validation error on OTP
                 const otpError = err.response.data.issues.find((i: any) => i.path.includes('otp'));
-                if (otpError) {
-                    setError(otpError.message);
-                } else {
-                    setError("Registration failed.");
-                }
+                setAuthError({ message: otpError ? otpError.message : "Registration failed. Please check your details." });
             } else {
-                setError(err.response?.data?.message || "Invalid OTP");
+                setAuthError({ message: err.response?.data?.message || "Invalid or expired OTP. Please try again." });
             }
         } finally {
             setOtpLoading(false);
         }
+    };
+
+    // Renders the right error banner based on the structured authError object
+    const renderAuthError = () => {
+        if (!authError) return null;
+        const { code, message, hint } = authError;
+
+        return (
+            <View style={styles.authErrorBanner}>
+                <View style={styles.authErrorHeader}>
+                    <Text style={styles.authErrorMessage}>{message}</Text>
+                </View>
+                {hint === 'new_account' && (
+                    <TouchableOpacity onPress={() => toggleMode(true)} style={styles.authErrorCTA}>
+                        <Text style={styles.authErrorCTAText}>Create a free account →</Text>
+                    </TouchableOpacity>
+                )}
+                {hint === 'reset_password' && (
+                    <TouchableOpacity
+                        onPress={() => router.push("/auth/reset-password" as RelativePathString)}
+                        style={styles.authErrorCTA}
+                    >
+                        <Text style={styles.authErrorCTAText}>Reset your password →</Text>
+                    </TouchableOpacity>
+                )}
+                {hint === 'use_google' && (
+                    <Text style={styles.authErrorHint}>Use the "Continue with Google" button above.</Text>
+                )}
+                {hint === 'sign_in' && (
+                    <TouchableOpacity onPress={() => toggleMode(false)} style={styles.authErrorCTA}>
+                        <Text style={styles.authErrorCTAText}>Sign in instead →</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        );
     };
 
     // Google Icon SVG removed as it is now inside GoogleAuthButton
@@ -619,8 +692,8 @@ export default function BespokeAuthForm({
 
 
 
-                                {/* Error Message */}
-                                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                                {/* Error Banner */}
+                                {renderAuthError()}
 
                                 {/* Form Fields */}
                                 <View style={{ gap: 16 }}>
@@ -636,7 +709,7 @@ export default function BespokeAuthForm({
                                                 placeholder="artisan@gmail.com"
                                                 placeholderTextColor={theme.colors.textLight}
                                                 value={email}
-                                                onChangeText={(text) => { setEmail(text); setError(""); setFieldErrors({}); }}
+                                                onChangeText={(text) => { setEmail(text); setAuthError(null); setFieldErrors({}); }}
                                                 keyboardType="email-address"
                                                 autoCapitalize="none"
                                                 onFocus={() => setFocusedInput("email")}
@@ -676,7 +749,7 @@ export default function BespokeAuthForm({
                                                 placeholder="+63 912 345 6789"
                                                 placeholderTextColor={theme.colors.textLight}
                                                 value={phoneNumber}
-                                                onChangeText={(text) => { setPhoneNumber(text); setError(""); setFieldErrors({}); }}
+                                                onChangeText={(text) => { setPhoneNumber(text); setAuthError(null); setFieldErrors({}); }}
                                                 keyboardType="phone-pad"
                                                 onFocus={() => setFocusedInput("phone")}
                                                 onBlur={() => setFocusedInput(null)}
@@ -737,7 +810,7 @@ export default function BespokeAuthForm({
                                                 placeholderTextColor={theme.colors.textLight}
                                                 secureTextEntry={!showPassword}
                                                 value={password}
-                                                onChangeText={(text) => { setPassword(text); setError(""); setFieldErrors({}); }}
+                                                onChangeText={(text) => { setPassword(text); setAuthError(null); setFieldErrors({}); }}
                                                 onFocus={() => setFocusedInput("password")}
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor={theme.colors.primary}
@@ -798,18 +871,6 @@ export default function BespokeAuthForm({
                                     )}
                                 </TouchableOpacity>
 
-                                {!isSignUp && loginAttempts >= 2 && (
-                                    <View style={{ marginTop: 16, padding: 16, backgroundColor: theme.colors.primary + "10", borderRadius: 8, borderWidth: 1, borderColor: theme.colors.primary + "30" }}>
-                                        <Text style={{ textAlign: 'center', color: theme.colors.textSecondary, marginBottom: 8, fontSize: 14 }}>
-                                            Having trouble signing in? You might not have an account yet.
-                                        </Text>
-                                        <TouchableOpacity onPress={() => toggleMode(true)}>
-                                            <Text style={{ textAlign: 'center', color: theme.colors.primary, fontWeight: 'bold', fontSize: 15 }}>
-                                                Create an account
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
                             </View>
 
                             <View style={{ marginTop: 20, alignItems: 'center' }}>
@@ -900,8 +961,8 @@ export default function BespokeAuthForm({
                             autoFocus={true}
                         />
 
-                        {/* Error Handling */}
-                        {error ? <Text style={[styles.errorText, { marginBottom: 20 }]}>{error}</Text> : null}
+                        {/* OTP Error Handling */}
+                        {authError ? <Text style={[styles.errorText, { marginBottom: 20 }]}>{authError.message}</Text> : null}
 
                         {/* Verify Button */}
                         <TouchableOpacity
@@ -1238,6 +1299,47 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         fontSize: 14,
         textAlign: "center",
+    },
+    authErrorBanner: {
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.errorBorder,
+        borderRadius: 8,
+        padding: 16,
+        gap: 10,
+        shadowColor: theme.colors.shadow,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    authErrorHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+    },
+    authErrorMessage: {
+        flex: 1,
+        color: theme.colors.text,
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '500',
+    },
+    authErrorCTA: {
+        alignSelf: 'flex-start',
+        marginTop: 2,
+    },
+    authErrorCTAText: {
+        color: theme.colors.primary,
+        fontSize: 14,
+        fontWeight: '600',
+        textDecorationLine: 'underline',
+    },
+    authErrorHint: {
+        marginLeft: 28,
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontStyle: 'italic',
     },
     logoCornerDecoration: {
         position: "absolute",

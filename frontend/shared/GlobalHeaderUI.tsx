@@ -1,5 +1,6 @@
 import { productAPI, notificationAPI, Notification } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSocketContext } from "@/contexts/SocketContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { getNavbarMargin, isMobile } from "@/constants/layout";
@@ -157,6 +158,28 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
             setNotifLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (user) {
+            fetchNotifications();
+        }
+    }, [user]);
+
+    const { socket } = useSocketContext();
+
+    useEffect(() => {
+        if (!socket) return;
+        
+        const handleNewNotification = () => {
+            fetchNotifications();
+        };
+
+        socket.on('notification:new', handleNewNotification);
+        
+        return () => {
+            socket.off('notification:new', handleNewNotification);
+        };
+    }, [socket]);
 
 
     const expandedAnim = useRef(new Animated.Value(0)).current;
@@ -415,11 +438,13 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                     </DropdownMenu>
 
                     <Pressable
-                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}
+                        style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
                         onPress={() => router.push("/wishlist" as RelativePathString)}
                     >
-                        <Heart size={18} />
-                        <BadgeDot count={wishlistCount} />
+                        <View style={{ position: 'relative' }}>
+                            <Heart size={18} />
+                            <BadgeDot count={wishlistCount} />
+                        </View>
                     </Pressable>
 
                     {(user) ? (
@@ -427,7 +452,8 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                             items={[
                                 ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString, icon: <LayoutDashboard size={16} color={theme.colors.textSecondary} /> }] : []),
                                 ...(user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard/orders' as RelativePathString, icon: <Store size={16} color={theme.colors.textSecondary} /> }] : []),
-                                { title: 'Edit Profile', href: '/profile' as RelativePathString, icon: <User size={16} color={theme.colors.textSecondary} /> },
+                                ...(!user.sellerId ? [{ title: 'Become a Seller', href: '/seller/apply' as RelativePathString, icon: <Store size={16} color={theme.colors.textSecondary} /> }] : []),
+                                { title: 'View Profile', href: '/profile' as RelativePathString, icon: <User size={16} color={theme.colors.textSecondary} /> },
                                 { title: 'My Orders', href: '/profile/orders' as RelativePathString, icon: <Package size={16} color={theme.colors.textSecondary} /> },
                                 { type: 'separator' },
                                 { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color={theme.colors.textSecondary} /> },
@@ -460,11 +486,13 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         }}
                     >
                         <Pressable
-                            style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered, { position: 'relative' }]}
+                            style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
                             onPress={() => router.push("/cart" as RelativePathString)}
                         >
-                            <Handbag size={18} />
-                            <BadgeDot count={cartCount} />
+                            <View style={{ position: 'relative' }}>
+                                <Handbag size={18} />
+                                <BadgeDot count={cartCount} />
+                            </View>
                         </Pressable>
                     </View>
 

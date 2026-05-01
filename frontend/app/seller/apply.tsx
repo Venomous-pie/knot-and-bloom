@@ -23,6 +23,7 @@ import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/seller/ImageCropperModal';
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from '@/constants/theme';
+import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
 
 const ImageUploadSection = ({
     type,
@@ -76,7 +77,7 @@ const ImageUploadSection = ({
                         <ActivityIndicator color={theme.colors.primaryLight} />
                     ) : (
                         <>
-                            <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.textSecondary} />
+                            <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.primary} />
                             <Text style={styles.uploadButtonText}>Upload {title}</Text>
                         </>
                     )}
@@ -302,7 +303,7 @@ export default function SellerApplyPage() {
 
 
     const renderStep1 = () => (
-        <View>
+        <Animated.View entering={FadeIn.duration(400)}>
             <Text style={styles.stepTitle}>Shop Identity</Text>
             <Text style={styles.stepSubtitle}>Let's start with the basics of your shop.</Text>
 
@@ -340,24 +341,29 @@ export default function SellerApplyPage() {
                 {errors.description && <Text style={styles.fieldError}>{errors.description}</Text>}
             </View>
 
-            <ImageUploadSection
-                type="logo"
-                imageUrl={logoUrl}
-                onPress={() => handlePickImage('logo')}
-                isUploading={uploadingImage === 'logo'}
-            />
-
-            <ImageUploadSection
-                type="banner"
-                imageUrl={bannerUrl}
-                onPress={() => handlePickImage('banner')}
-                isUploading={uploadingImage === 'banner'}
-            />
-        </View>
+            <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 16 }}>
+                <View style={{ flex: 1 }}>
+                    <ImageUploadSection
+                        type="logo"
+                        imageUrl={logoUrl}
+                        onPress={() => handlePickImage('logo')}
+                        isUploading={uploadingImage === 'logo'}
+                    />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <ImageUploadSection
+                        type="banner"
+                        imageUrl={bannerUrl}
+                        onPress={() => handlePickImage('banner')}
+                        isUploading={uploadingImage === 'banner'}
+                    />
+                </View>
+            </View>
+        </Animated.View>
     );
 
     const renderStep2 = () => (
-        <View>
+        <Animated.View entering={FadeIn.duration(400)}>
             <Text style={styles.stepTitle}>Contact Details</Text>
             <Text style={styles.stepSubtitle}>How can we reach you?</Text>
 
@@ -427,11 +433,11 @@ export default function SellerApplyPage() {
                     Note: You can add your pickup address and bank details later in your Seller Dashboard after approval.
                 </Text>
             </View>
-        </View>
+        </Animated.View>
     );
 
     const renderStep3 = () => (
-        <View>
+        <Animated.View entering={FadeIn.duration(400)}>
             <Text style={styles.stepTitle}>Review & Submit</Text>
             <Text style={styles.stepSubtitle}>Please review your application details.</Text>
 
@@ -488,7 +494,7 @@ export default function SellerApplyPage() {
             </Pressable>
             {errors.terms && <Text style={styles.fieldError}>{errors.terms}</Text>}
             {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
-        </View>
+        </Animated.View>
     );
 
     if (authLoading) {
@@ -557,9 +563,30 @@ export default function SellerApplyPage() {
                                     </View>
                                 ) : (
                                     <>
-                                        {/* Progress Indicator (Desktop mainly, or minimal on mobile) */}
-                                        <View style={styles.progressContainer}>
-                                            <View style={[styles.progressBar, { width: `${(currentStep / totalSteps) * 100}%` }]} />
+                                        {/* Step Indicator */}
+                                        <View style={styles.stepIndicatorContainer}>
+                                            {[1, 2, 3].map((step) => (
+                                                <React.Fragment key={step}>
+                                                    <View style={[
+                                                        styles.stepCircle,
+                                                        currentStep >= step && styles.stepCircleActive
+                                                    ]}>
+                                                        {currentStep > step ? (
+                                                            <Ionicons name="checkmark" size={16} color="white" />
+                                                        ) : (
+                                                            <Text style={[styles.stepNumber, currentStep >= step && styles.stepNumberActive]}>
+                                                                {step}
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                    {step < 3 && (
+                                                        <View style={[
+                                                            styles.stepLine,
+                                                            currentStep > step && styles.stepLineActive
+                                                        ]} />
+                                                    )}
+                                                </React.Fragment>
+                                            ))}
                                         </View>
 
                                         {currentStep === 1 && renderStep1()}
@@ -681,7 +708,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.45)",
+        backgroundColor: "rgba(143, 84, 97, 0.65)",
     },
     brandingTextContainer: {
         position: "absolute",
@@ -838,16 +865,20 @@ const styles = StyleSheet.create({
     input: {
         borderWidth: 1,
         borderColor: theme.colors.border,
-        borderRadius: 8,
-        padding: 12,
+        borderRadius: 12,
+        padding: 14,
         fontSize: 16,
         backgroundColor: theme.colors.surface,
         color: theme.colors.text,
         outlineStyle: "none" as any,
+        ...theme.shadows.sm,
+        shadowOpacity: 0.03,
     },
     inputFocused: {
         borderColor: theme.colors.primary,
         backgroundColor: "white",
+        ...theme.shadows.sm,
+        shadowOpacity: 0.08,
     },
     inputError: {
         borderColor: "#e74c3c",
@@ -908,14 +939,16 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     uploadButton: {
-        borderWidth: 2,
+        borderWidth: 1,
         borderColor: theme.colors.border,
-        borderStyle: 'dashed',
-        borderRadius: 8,
+        borderStyle: 'solid',
+        borderRadius: 12,
         padding: 30,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: theme.colors.background,
+        backgroundColor: theme.colors.subtle,
+        ...theme.shadows.sm,
+        shadowOpacity: 0.04,
     },
     uploadButtonText: {
         marginTop: 8,
@@ -1006,18 +1039,44 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         fontSize: 16,
     },
-    // Progress Bar
-    progressContainer: {
-        height: 4,
-        backgroundColor: theme.colors.border,
-        borderRadius: 2,
+    // Step Indicator
+    stepIndicatorContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
         marginBottom: 30,
         width: "100%",
     },
-    progressBar: {
-        height: "100%",
+    stepCircle: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: theme.colors.surface,
+        borderWidth: 2,
+        borderColor: theme.colors.border,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    stepCircleActive: {
         backgroundColor: theme.colors.primary,
-        borderRadius: 2,
+        borderColor: theme.colors.primary,
+    },
+    stepNumber: {
+        fontSize: 14,
+        fontWeight: "bold",
+        color: theme.colors.textLight,
+    },
+    stepNumberActive: {
+        color: "white",
+    },
+    stepLine: {
+        flex: 1,
+        height: 2,
+        backgroundColor: theme.colors.border,
+        marginHorizontal: 8,
+    },
+    stepLineActive: {
+        backgroundColor: theme.colors.primary,
     },
     // Terms
     termsContainer: {

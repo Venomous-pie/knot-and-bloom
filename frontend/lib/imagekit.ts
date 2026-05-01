@@ -13,15 +13,19 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024;
 // Compression quality
 const COMPRESSION_QUALITY = 0.7;
 
+import { apiClient } from '../api/api';
+
 /**
  * Fetch authentication parameters from backend
  */
 const getAuthParams = async (): Promise<{ token: string; expire: number; signature: string }> => {
-    const response = await fetch(IMAGEKIT_CONFIG.authenticationEndpoint);
-    if (!response.ok) {
+    try {
+        const response = await apiClient.get('/imagekit/auth');
+        return response.data;
+    } catch (error) {
+        console.error('Failed to get ImageKit auth params:', error);
         throw new Error('Failed to get ImageKit auth params');
     }
-    return response.json();
 };
 
 /**

@@ -8,6 +8,7 @@ import type { AuthPayload } from '../types/authTypes.js';
 import prisma from '../utils/prismaUtils.js';
 import { ensureAdminSellerProfile } from '../utils/sellerUtils.js';
 import { sellerSchema, registerSellerSchema } from '../validators/sellerValidator.js';
+import { socketService } from '../services/SocketService.js';
 
 export const sellerController = {
     // Flow B: Direct Register as Seller (Public)
@@ -54,6 +55,19 @@ export const sellerController = {
                         status: SellerStatus.PENDING
                     }
                 });
+
+                const admins = await tx.customer.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
+                if (admins.length > 0) {
+                    await tx.notification.createMany({
+                        data: admins.map(admin => ({
+                            customerId: admin.uid,
+                            title: 'New Seller Application',
+                            message: `A new seller (${data.name}) has applied and is waiting for approval.`,
+                            type: 'system'
+                        }))
+                    });
+                    admins.forEach(admin => socketService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                }
 
                 return { customer, seller };
             });
@@ -121,6 +135,20 @@ export const sellerController = {
                             termsAcceptedAt: data.termsAccepted ? new Date() : null
                         }
                     });
+
+                    const admins = await prisma.customer.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
+                    if (admins.length > 0) {
+                        await prisma.notification.createMany({
+                            data: admins.map(admin => ({
+                                customerId: admin.uid,
+                                title: 'New Seller Application',
+                                message: `A new seller (${data.name}) has reapplied and is waiting for approval.`,
+                                type: 'system'
+                            }))
+                        });
+                        admins.forEach(admin => socketService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                    }
+
                     return res.status(200).json(updatedSeller);
                 }
 
@@ -150,6 +178,19 @@ export const sellerController = {
                     termsAcceptedAt: data.termsAccepted ? new Date() : null
                 }
             });
+
+            const admins = await prisma.customer.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
+            if (admins.length > 0) {
+                await prisma.notification.createMany({
+                    data: admins.map(admin => ({
+                        customerId: admin.uid,
+                        title: 'New Seller Application',
+                        message: `A new seller (${data.name}) has applied and is waiting for approval.`,
+                        type: 'system'
+                    }))
+                });
+                admins.forEach(admin => socketService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+            }
 
             res.status(201).json(seller);
         } catch (error) {
@@ -247,6 +288,7 @@ export const sellerController = {
                         type: 'system',
                     }
                 });
+                socketService.emitToRoom(`user_${currentSeller.customerId}`, 'notification:new', {});
 
                 const updatedSeller = await prisma.seller.findUnique({ where: { uid: targetSellerId } });
                 return res.json(updatedSeller);
@@ -271,6 +313,7 @@ export const sellerController = {
                         type: 'system',
                     }
                 });
+                socketService.emitToRoom(`user_${seller.customerId}`, 'notification:new', {});
 
                 return res.json(seller);
             }

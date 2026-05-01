@@ -895,7 +895,7 @@ export default function ProductFormWizard({
                                 </View>
                                 <Text 
                                     style={[styles.summaryValue, { marginTop: 4, textAlign: 'left', flex: 0 }]} 
-                                    numberOfLines={isDescriptionExpanded ? undefined : 3}
+                                    numberOfLines={isDescriptionExpanded ? undefined : 2}
                                 >
                                     {formData.description || '—'}
                                 </Text>
@@ -920,7 +920,9 @@ export default function ProductFormWizard({
                                     <ImageIcon size={16} color={theme.colors.textLight} />
                                     <Text style={styles.summaryLabel}>Images:</Text>
                                 </View>
-                                <Text style={styles.summaryValue}>{images.length}</Text>
+                                <Text style={styles.summaryValue}>
+                                    {images.length + variants.reduce((sum, v) => sum + (v.images?.length || 0), 0)}
+                                </Text>
                             </View>
                             <View style={styles.summaryRow}>
                                 <View style={styles.summaryLabelContainer}>

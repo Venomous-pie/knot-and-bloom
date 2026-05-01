@@ -25,6 +25,7 @@ jest.mock('../../contexts/AuthContext', () => ({
 
 jest.mock('expo-router', () => ({
     useRouter: () => ({ replace: mockReplace, push: mockPush }),
+    useLocalSearchParams: jest.fn(() => ({})),
     RelativePathString: String,
 }));
 
@@ -96,7 +97,7 @@ describe('BespokeAuthForm', () => {
             expect(mockLogin).toHaveBeenCalledWith({
                 email: 'user@test.com',
                 password: 'mypassword',
-            });
+            }, undefined);
         });
 
         it('should display API error when login fails with wrong credentials', async () => {
@@ -140,7 +141,7 @@ describe('BespokeAuthForm', () => {
                 <BespokeAuthForm initialMode="login" />
             );
 
-            fireEvent.changeText(getByPlaceholderText('artisan@gmail.com'), 'bad');
+            fireEvent.changeText(getByPlaceholderText('artisan@gmail.com'), 'valid@email.com');
             fireEvent.changeText(getByPlaceholderText('••••••••••'), '12');
 
             await act(async () => {
@@ -200,7 +201,7 @@ describe('BespokeAuthForm', () => {
             });
 
             expect(await findByText(/Too many attempts/)).toBeTruthy();
-            expect(await findByText(/Try again in 30s/)).toBeTruthy();
+            expect(await findByText(/wait 30s/)).toBeTruthy();
 
             consoleErrorSpy.mockRestore();
         });

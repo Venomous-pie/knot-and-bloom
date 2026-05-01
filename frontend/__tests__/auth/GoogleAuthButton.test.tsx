@@ -30,6 +30,10 @@ jest.mock('expo-linking', () => ({
     createURL: jest.fn(() => 'exp://auth/success'),
 }));
 
+jest.mock('expo-router', () => ({
+    useLocalSearchParams: jest.fn(() => ({})),
+}));
+
 // ── Tests ────────────────────────────────────────────────
 
 describe('GoogleAuthButton', () => {
@@ -68,7 +72,7 @@ describe('GoogleAuthButton', () => {
             fireEvent.press(getByText('Continue with Google'));
         });
 
-        expect(mockLoginWithToken).toHaveBeenCalledWith('jwt-from-google-123');
+        expect(mockLoginWithToken).toHaveBeenCalledWith('jwt-from-google-123', undefined);
     });
 
     it('should handle user cancel gracefully without crash or calling loginWithToken', async () => {

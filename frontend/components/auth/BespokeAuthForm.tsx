@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { authAPI } from "@/api/api";
 import { theme } from "@/constants/theme";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
-import { RelativePathString, useRouter } from "expo-router";
+import { RelativePathString, useRouter, useLocalSearchParams } from "expo-router";
 import {
     CloudSnow,
     Eye,
@@ -56,6 +56,9 @@ export default function BespokeAuthForm({
 }: BespokeAuthFormProps) {
     const { login, register, user, loading: authLoading } = useAuth();
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
+    
     const { width, height } = useWindowDimensions();
     const isDesktop = width > 1024;
 
@@ -146,6 +149,17 @@ export default function BespokeAuthForm({
         setIsLoading(true);
         Keyboard.dismiss();
 
+        if (authMethod === 'email') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                setFieldErrors({ email: "Please enter a valid email address." });
+                setIsLoading(false);
+                return;
+            }
+        }
+
+
+
         try {
             if (isSignUp) {
                 if (!agreeToTerms) {
@@ -179,9 +193,9 @@ export default function BespokeAuthForm({
             } else {
                 const payload = {
                     password,
-                    ...(authMethod === 'email' ? { email } : { phone: phoneNumber })
+                    ...(authMethod === 'email' ? { email: email.trim().toLowerCase() } : { phone: phoneNumber })
                 };
-                await login(payload);
+                await login(payload, returnTo);
             }
         } catch (err: any) {
             console.error(err);

@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Svg, Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalSearchParams } from 'expo-router';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -40,6 +41,8 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 export default function GoogleAuthButton({ text = "Continue with Google", style, textStyle }: GoogleAuthButtonProps) {
     const { loginWithToken } = useAuth();
     const [loading, setLoading] = React.useState(false);
+    const params = useLocalSearchParams();
+    const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
 
     const handleGoogleLogin = async () => {
         try {
@@ -63,7 +66,7 @@ export default function GoogleAuthButton({ text = "Continue with Google", style,
                 }
 
                 if (token) {
-                    await loginWithToken(token);
+                    await loginWithToken(token, returnTo);
                 }
             }
         } catch (error) {

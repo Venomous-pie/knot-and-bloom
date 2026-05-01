@@ -8,12 +8,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
-    login: async () => { },
-    register: async () => { },
+    login: async (data: any, returnTo?: string) => { },
+    register: async (data: any) => { },
     logout: async () => { },
     refreshUser: async () => { },
-    loginWithGoogle: async (data: { token?: string, accessToken?: string }) => { },
-    loginWithToken: async (token: string) => { },
+    loginWithGoogle: async (data: { token?: string, accessToken?: string }, returnTo?: string) => { },
+    loginWithToken: async (token: string, returnTo?: string) => { },
     token: null,
 });
 
@@ -39,6 +39,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return unsubscribe;
     }, []);
 
+    // Frontend Route Guard
+    useEffect(() => {
+        if (!loading) {
+            const inAuthGroup = segments[0] === 'auth';
+            const isProtectedRoute = ['admin', 'checkout', 'profile', 'secure', 'seller', 'seller-dashboard', 'wishlist'].includes(segments[0]);
+
+            if (!user && isProtectedRoute) {
+                // Unauthenticated user trying to access a protected route
+                const returnTo = encodeURIComponent('/' + segments.join('/'));
+                router.replace(`/auth/login?returnTo=${returnTo}` as RelativePathString);
+            } else if (user && inAuthGroup) {
+                // Authenticated user trying to access auth screens (login/register)
+                router.replace('/');
+            }
+        }
+    }, [user, segments, loading]);
+
     const loadUser = async () => {
         try {
             const token = await AsyncStorage.getItem('authToken');
@@ -59,7 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
-    const login = async (data: any) => {
+    const login = async (data: any, returnTo?: string) => {
         try {
             const response = await authAPI.login(data);
             const { token, customer, data: legacyUser } = response.data;
@@ -74,6 +91,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 if (user.passwordResetRequired) {
                     router.replace('/auth/reset-password' as RelativePathString);
+                } else if (returnTo) {
+                    router.replace(returnTo as RelativePathString);
                 } else {
                     router.replace('/');
                 }
@@ -131,7 +150,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
-    const loginWithGoogle = async (data: { token?: string, accessToken?: string }) => {
+    const loginWithGoogle = async (data: { token?: string, accessToken?: string }, returnTo?: string) => {
         try {
             const response = await authAPI.loginWithGoogle(data);
             const { token: authToken, customer, data: legacyUser, isNewUser } = response.data;
@@ -145,6 +164,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
                 if (user.passwordResetRequired) {
                     router.replace('/auth/reset-password' as RelativePathString);
+                } else if (returnTo) {
+                    router.replace(returnTo as RelativePathString);
                 } else {
                     router.replace('/');
                 }
@@ -154,7 +175,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
-    const loginWithToken = async (token: string) => {
+    const loginWithToken = async (token: string, returnTo?: string) => {
         try {
             if (token) {
                 await AsyncStorage.setItem('authToken', token);
@@ -177,7 +198,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     setToken(newToken);
                     await AsyncStorage.setItem('authUser', JSON.stringify(userData));
                     setUser(userData);
-                    router.replace('/');
+                    if (returnTo) {
+                        router.replace(returnTo as RelativePathString);
+                    } else {
+                        router.replace('/');
+                    }
                 }
             }
         } catch (error) {

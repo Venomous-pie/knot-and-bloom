@@ -50,7 +50,7 @@ const sendAiMessage = async (req: Request, res: Response) => {
             { role: "system", content: SYSTEM_PROMPT },
             ...messages.map((m: any) => ({
                 role: m.role,
-                content: m.content
+                content: m.content?.substring(0, 280) // Enforce Twitter-style length limit
             }))
         ];
 

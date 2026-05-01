@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { Send, Bot, User, ArrowLeft } from 'lucide-react-native';
-import { chatAPI } from '@/api/api';
+import { chatAPI, productAPI } from '@/api/api';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -88,7 +88,22 @@ export default function ChatScreen() {
     const [isFocused, setIsFocused] = useState(false);
     const [inputHeight, setInputHeight] = useState(48);
     const [isLoading, setIsLoading] = useState(false);
+    const [isOnline, setIsOnline] = useState(true);
     const flatListRef = useRef<FlatList>(null);
+
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                await productAPI.getCategoryCounts();
+                setIsOnline(true);
+            } catch (error: any) {
+                if (error.message === 'Network Error' || error.code === 'ERR_NETWORK' || !error.response) {
+                    setIsOnline(false);
+                }
+            }
+        };
+        checkStatus();
+    }, []);
 
     const isGuestLimited = !user && messages.length >= 21;
 
@@ -160,6 +175,43 @@ export default function ChatScreen() {
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    const renderFormattedText = (text: string, isUser: boolean) => {
+        if (!text) return null;
+        
+        const baseStyle = [styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant];
+        
+        // Split by **bold**, *italic*, and links [text](url)
+        const regex = /(\*\*.*?\*\*|\*.*?\*|\[.*?\]\(.*?\))/g;
+        const parts = text.split(regex);
+
+        return (
+            <Text style={baseStyle}>
+                {parts.map((part, index) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        return <Text key={index} style={{ fontWeight: 'bold' }}>{part.slice(2, -2)}</Text>;
+                    }
+                    if (part.startsWith('*') && part.endsWith('*')) {
+                        return <Text key={index} style={{ fontStyle: 'italic' }}>{part.slice(1, -1)}</Text>;
+                    }
+                    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+                        const match = part.match(/\[(.*?)\]\((.*?)\)/);
+                        if (match) {
+                            return (
+                                <Text 
+                                    key={index} 
+                                    style={{ textDecorationLine: 'underline', fontWeight: '500' }}
+                                >
+                                    {match[1]}
+                                </Text>
+                            );
+                        }
+                    }
+                    return <Text key={index}>{part}</Text>;
+                })}
+            </Text>
+        );
+    };
+
     const renderMessage = ({ item }: { item: Message }) => {
         if (item.type === 'limit_reached') {
             return (
@@ -183,9 +235,7 @@ export default function ChatScreen() {
                 
                 <View style={isUser ? styles.messageContentUser : styles.messageContentAssistant}>
                     <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
-                        <Text style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant]}>
-                            {item.content}
-                        </Text>
+                        {renderFormattedText(item.content, isUser)}
                     </View>
                     <Text style={[styles.timestamp, isUser ? styles.timestampUser : styles.timestampAssistant]}>
                         {formatTime(item.timestamp)}
@@ -211,11 +261,13 @@ export default function ChatScreen() {
                 <View style={styles.headerTitleContainer}>
                     <View style={styles.statusIndicatorContainer}>
                         <Image source={require('../../assets/bot.png')} style={styles.botImage} />
-                        <View style={styles.statusDot} />
+                        <View style={[styles.statusDot, !isOnline && { backgroundColor: '#DC3545' }]} />
                     </View>
                     <View>
                         <Text style={styles.headerTitle}>Knot & Bloom Support</Text>
-                        <Text style={styles.statusText}>Online</Text>
+                        <Text style={[styles.statusText, !isOnline && { color: '#DC3545' }]}>
+                            {isOnline ? 'Online' : 'Offline'}
+                        </Text>
                     </View>
                 </View>
                 <View style={{ width: 24 }} /> {/* Spacer */}
@@ -236,6 +288,20 @@ export default function ChatScreen() {
                             contentContainerStyle={styles.chatList}
                             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                             onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                            ListHeaderComponent={
+                                messages.length === 1 ? (
+                                    <View style={styles.brandingCenterContainer}>
+                                        <View style={styles.brandingLogoRow}>
+                                            <Image source={require('../../assets/yarn.png')} style={styles.brandingYarn} resizeMode='contain' />
+                                            <Text style={styles.brandingKnot}>Knot</Text>
+                                            <Text style={styles.brandingBloom}>&Bloom</Text>
+                                        </View>
+                                        <Text style={styles.brandingSubtitle}>
+                                            A multi-vendor marketplace dedicated to handcrafted goods
+                                        </Text>
+                                    </View>
+                                ) : null
+                            }
                             ListFooterComponent={isLoading ? <TypingIndicator /> : null}
                         />
                     </View>
@@ -262,6 +328,7 @@ export default function ChatScreen() {
                     )}
 
                     <View style={styles.inputContainer}>
+                        <View style={{ flex: 1 }}>
                         <TextInput
                             style={[
                                 styles.input, 
@@ -277,28 +344,40 @@ export default function ChatScreen() {
                             onContentSizeChange={(e) => {
                                 setInputHeight(e.nativeEvent.contentSize.height);
                             }}
-                            placeholder={isGuestLimited ? "Limit reached..." : "Type your message..."}
+                            placeholder={!isOnline ? "Support is offline" : isGuestLimited ? "Limit reached..." : "Type your message..."}
                             placeholderTextColor={theme.colors.textLight}
                             multiline
-                            maxLength={500}
-                            editable={!isGuestLimited}
+                            maxLength={280}
+                            editable={!isGuestLimited && isOnline}
                             onSubmitEditing={() => {
-                                if (Platform.OS === 'web' && !isGuestLimited) {
+                                if (Platform.OS === 'web' && !isGuestLimited && isOnline) {
                                     handleSend();
                                 }
                             }}
                             onKeyPress={(e) => {
                                 // Support Enter to send on web (Shift+Enter for newline)
-                                if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !(e.nativeEvent as any).shiftKey && !isGuestLimited) {
+                                if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !(e.nativeEvent as any).shiftKey && !isGuestLimited && isOnline) {
                                     e.preventDefault();
                                     handleSend();
                                 }
                             }}
                         />
+                            {!isGuestLimited && (
+                                <View style={{ alignSelf: 'flex-end', marginTop: 4, marginRight: 16 }}>
+                                    <Text style={[styles.charCountText, input.length >= 280 && styles.charCountTextLimit]}>
+                                        {input.length}/280
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                         <Pressable 
-                            style={[styles.sendButton, (!input.trim() || isGuestLimited) && styles.sendButtonDisabled]} 
+                            style={[
+                                styles.sendButton, 
+                                (!input.trim() || isGuestLimited || !isOnline) && styles.sendButtonDisabled,
+                                !isGuestLimited && { marginBottom: 22 }
+                            ]} 
                             onPress={() => handleSend()}
-                            disabled={!input.trim() || isLoading || isGuestLimited}
+                            disabled={!input.trim() || isLoading || isGuestLimited || !isOnline}
                         >
                             <Send size={20} color="#FFF" />
                         </Pressable>
@@ -345,6 +424,39 @@ const styles = StyleSheet.create({
     headerTitleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+    },
+    brandingCenterContainer: {
+        alignItems: 'center',
+        marginBottom: 300,
+        marginTop: 20,
+    },
+    brandingLogoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    brandingYarn: {
+        width: 60,
+        height: 60,
+    },
+    brandingKnot: {
+        fontFamily: 'Lovingly',
+        color: theme.colors.primary,
+        marginTop: 15,
+        fontWeight: 'bold',
+        fontSize: 28,
+    },
+    brandingBloom: {
+        fontFamily: 'Lovingly',
+        color: theme.colors.secondary,
+        marginTop: 15,
+        fontWeight: 'bold',
+        fontSize: 28,
+    },
+    brandingSubtitle: {
+        color: theme.colors.textLight,
+        marginTop: 8,
+        fontSize: 14,
+        textAlign: 'center',
     },
     botImage: {
         width: '100%',
@@ -540,7 +652,6 @@ const styles = StyleSheet.create({
         marginBottom: 40
     },
     input: {
-        flex: 1,
         backgroundColor: theme.colors.subtle,
         borderWidth: 1,
         borderColor: theme.colors.border,
@@ -550,7 +661,7 @@ const styles = StyleSheet.create({
         paddingBottom: Platform.OS === 'ios' ? 14 : 12,
         fontSize: 15,
         color: theme.colors.text,
-        textAlignVertical: 'center',
+        textAlignVertical: 'top',
         ...Platform.select({
             web: { outlineStyle: 'none' } as any
         })
@@ -562,6 +673,19 @@ const styles = StyleSheet.create({
     inputDisabled: {
         backgroundColor: '#E9ECEF',
         color: theme.colors.textLight,
+    },
+    charCountContainer: {
+        alignItems: 'flex-end',
+        paddingHorizontal: 24,
+        paddingBottom: 4,
+    },
+    charCountText: {
+        fontSize: 12,
+        color: theme.colors.textLight,
+        fontWeight: '500',
+    },
+    charCountTextLimit: {
+        color: '#DC3545',
     },
     sendButton: {
         width: 48,

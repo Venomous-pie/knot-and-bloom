@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -10,21 +10,31 @@ import {
     Platform,
     Animated,
     ScrollView,
-    Image
+    Image,
+    Alert
 } from 'react-native';
 import { theme } from '@/constants/theme';
-import { Send, Bot, User, ArrowLeft } from 'lucide-react-native';
+import { Send, User, ArrowLeft, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { chatAPI, productAPI } from '@/api/api';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    timestamp: Date;
+    timestamp: string;
     type?: 'text' | 'limit_reached';
+}
+
+interface ChatSession {
+    id: string;
+    title: string;
+    messages: Message[];
+    createdAt: string;
+    updatedAt: string;
 }
 
 const QUICK_REPLIES = [
@@ -33,6 +43,31 @@ const QUICK_REPLIES = [
     "Ask about a product",
     "Custom order inquiry"
 ];
+
+const WELCOME_MESSAGE: Message = {
+    id: 'welcome',
+    role: 'assistant',
+    content: 'Hello! I am the Knot & Bloom Customer Assistant. How can I help you today?',
+    timestamp: new Date().toISOString()
+};
+
+function getSessionsKey(userId?: number | string | null): string {
+    return userId ? `chat_sessions_user_${userId}` : 'chat_sessions_guest';
+}
+
+function makeWelcomeMessage(): Message {
+    return { ...WELCOME_MESSAGE, id: Date.now().toString(), timestamp: new Date().toISOString() };
+}
+
+function makeSession(): ChatSession {
+    return {
+        id: Date.now().toString(),
+        title: 'New Conversation',
+        messages: [makeWelcomeMessage()],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+}
 
 const TypingIndicator = () => {
     const dot1 = useRef(new Animated.Value(0)).current;
@@ -76,21 +111,51 @@ const TypingIndicator = () => {
 export default function ChatScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            role: 'assistant',
-            content: 'Hello! I am the Knot & Bloom Customer Assistant. How can I help you today?',
-            timestamp: new Date()
-        }
-    ]);
+    const [sessions, setSessions] = useState<ChatSession[]>([]);
+    const [activeSessionId, setActiveSessionId] = useState<string>('');
     const [input, setInput] = useState('');
     const [isFocused, setIsFocused] = useState(false);
     const [inputHeight, setInputHeight] = useState(48);
     const [isLoading, setIsLoading] = useState(false);
     const [isOnline, setIsOnline] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const flatListRef = useRef<FlatList>(null);
 
+    const sessionsKey = getSessionsKey(user?.uid);
+    const activeSession = sessions.find(s => s.id === activeSessionId);
+    const messages = activeSession?.messages ?? [WELCOME_MESSAGE];
+
+    // ─── Load sessions on mount ─────────────────────────────────────
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const raw = await AsyncStorage.getItem(sessionsKey);
+                if (raw) {
+                    const saved: ChatSession[] = JSON.parse(raw);
+                    if (saved.length > 0) {
+                        setSessions(saved);
+                        setActiveSessionId(saved[0].id);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not load sessions:', e);
+            }
+            // No sessions yet — create a fresh one
+            const fresh = makeSession();
+            setSessions([fresh]);
+            setActiveSessionId(fresh.id);
+        };
+        load();
+    }, [sessionsKey]);
+
+    // ─── Persist sessions whenever they change ──────────────────────
+    useEffect(() => {
+        if (sessions.length === 0) return;
+        AsyncStorage.setItem(sessionsKey, JSON.stringify(sessions)).catch(() => {});
+    }, [sessions, sessionsKey]);
+
+    // ─── Online status check ────────────────────────────────────────
     useEffect(() => {
         const checkStatus = async () => {
             try {
@@ -107,6 +172,37 @@ export default function ChatScreen() {
 
     const isGuestLimited = !user && messages.length >= 21;
 
+    // ─── Update messages in the active session ──────────────────────
+    const updateSessionMessages = (updater: (prev: Message[]) => Message[]) => {
+        setSessions(prev => prev.map(s => {
+            if (s.id !== activeSessionId) return s;
+            const newMessages = updater(s.messages);
+            // Use first user message as session title
+            const firstUser = newMessages.find(m => m.role === 'user');
+            const title = firstUser
+                ? firstUser.content.slice(0, 40) + (firstUser.content.length > 40 ? '…' : '')
+                : s.title;
+            return { ...s, messages: newMessages, title, updatedAt: new Date().toISOString() };
+        }));
+    };
+
+    // ─── Start new conversation ─────────────────────────────────────
+    const handleNewConversation = () => {
+        const doCreate = () => {
+            const fresh = makeSession();
+            setSessions(prev => [fresh, ...prev]);
+            setActiveSessionId(fresh.id);
+        };
+        if (Platform.OS === 'web') {
+            if ((window as any).confirm('Start a new conversation?')) doCreate();
+        } else {
+            Alert.alert('New Conversation', 'Start a fresh chat?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Start Fresh', onPress: doCreate }
+            ]);
+        }
+    };
+
     const handleSend = async (textToSend: string = input) => {
         const text = textToSend.trim();
         if (!text) return;
@@ -115,12 +211,12 @@ export default function ChatScreen() {
             id: Date.now().toString(),
             role: 'user',
             content: text,
-            timestamp: new Date()
+            timestamp: new Date().toISOString()
         };
 
-        setMessages(prev => [...prev, userMsg]);
+        updateSessionMessages(prev => [...prev, userMsg]);
         setInput('');
-        setInputHeight(48); // Reset height on send
+        setInputHeight(48);
         setIsLoading(true);
 
         try {
@@ -142,17 +238,17 @@ export default function ChatScreen() {
                         replyType = 'limit_reached';
                     }
                 } catch (e) {
-                    // It's normal text, not JSON
+                    // Normal text, not JSON
                 }
 
                 const assistantMsg: Message = {
                     id: (Date.now() + 1).toString(),
                     role: 'assistant',
                     content: replyContent,
-                    timestamp: new Date(),
+                    timestamp: new Date().toISOString(),
                     type: replyType
                 };
-                setMessages(prev => [...prev, assistantMsg]);
+                updateSessionMessages(prev => [...prev, assistantMsg]);
             } else {
                 throw new Error("Failed to get a response");
             }
@@ -163,24 +259,23 @@ export default function ChatScreen() {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
                 content: 'Sorry, I am having trouble connecting to the server right now. Please try again later.',
-                timestamp: new Date()
+                timestamp: new Date().toISOString()
             };
-            setMessages(prev => [...prev, errorMsg]);
+            updateSessionMessages(prev => [...prev, errorMsg]);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formatTime = (isoString: string) => {
+        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
     const renderFormattedText = (text: string, isUser: boolean) => {
         if (!text) return null;
-        
+
         const baseStyle = [styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAssistant];
-        
-        // Split by **bold**, *italic*, and links [text](url)
+
         const regex = /(\*\*.*?\*\*|\*.*?\*|\[.*?\]\(.*?\))/g;
         const parts = text.split(regex);
 
@@ -197,8 +292,8 @@ export default function ChatScreen() {
                         const match = part.match(/\[(.*?)\]\((.*?)\)/);
                         if (match) {
                             return (
-                                <Text 
-                                    key={index} 
+                                <Text
+                                    key={index}
                                     style={{ textDecorationLine: 'underline', fontWeight: '500' }}
                                 >
                                     {match[1]}
@@ -232,7 +327,7 @@ export default function ChatScreen() {
                         <Image source={require('../../assets/bot.png')} style={styles.botImage} />
                     </View>
                 )}
-                
+
                 <View style={isUser ? styles.messageContentUser : styles.messageContentAssistant}>
                     <View style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant]}>
                         {renderFormattedText(item.content, isUser)}
@@ -270,120 +365,168 @@ export default function ChatScreen() {
                         </Text>
                     </View>
                 </View>
-                <View style={{ width: 24 }} /> {/* Spacer */}
             </View>
 
-            <KeyboardAvoidingView 
-                style={styles.keyboardView} 
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-            >
-                <View style={styles.contentWrapper}>
-                    <View style={styles.chatArea}>
-                        <FlatList
-                            ref={flatListRef}
-                            data={messages}
-                            keyExtractor={item => item.id}
-                            renderItem={renderMessage}
-                            contentContainerStyle={styles.chatList}
-                            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                            ListHeaderComponent={
-                                messages.length === 1 ? (
-                                    <View style={styles.brandingCenterContainer}>
-                                        <View style={styles.brandingLogoRow}>
-                                            <Image source={require('../../assets/yarn.png')} style={styles.brandingYarn} resizeMode='contain' />
-                                            <Text style={styles.brandingKnot}>Knot</Text>
-                                            <Text style={styles.brandingBloom}>&Bloom</Text>
-                                        </View>
-                                        <Text style={styles.brandingSubtitle}>
-                                            A multi-vendor marketplace dedicated to handcrafted goods
-                                        </Text>
-                                    </View>
-                                ) : null
-                            }
-                            ListFooterComponent={isLoading ? <TypingIndicator /> : null}
-                        />
-                    </View>
-
-                    {/* Quick Replies */}
-                    {messages.length === 1 && !isLoading && (
-                        <View>
-                            <ScrollView 
-                                horizontal 
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.quickRepliesContainer}
-                            >
-                                {QUICK_REPLIES.map((reply, index) => (
-                                    <Pressable 
-                                        key={index} 
-                                        style={styles.quickReplyChip}
-                                        onPress={() => handleSend(reply)}
+            {/* Body: sidebar + chat */}
+            <View style={styles.body}>
+                {/* Left Sidebar — wrapper holds content + pull-tab */}
+                <View style={styles.sidebarWrapper}>
+                    {sidebarOpen && (
+                        <View style={styles.sidebar}>
+                            <Pressable style={styles.sidebarNewBtn} onPress={handleNewConversation}>
+                                <RotateCcw size={14} color={theme.colors.primary} />
+                                <Text style={styles.sidebarNewBtnText}>New Conversation</Text>
+                            </Pressable>
+                            <Text style={styles.sidebarHeading}>History</Text>
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {sessions.map(session => (
+                                    <Pressable
+                                        key={session.id}
+                                        style={[
+                                            styles.sessionItem,
+                                            session.id === activeSessionId && styles.sessionItemActive
+                                        ]}
+                                        onPress={() => setActiveSessionId(session.id)}
                                     >
-                                        <Text style={styles.quickReplyText}>{reply}</Text>
+                                        <Text
+                                            style={[
+                                                styles.sessionTitle,
+                                                session.id === activeSessionId && styles.sessionTitleActive
+                                            ]}
+                                            numberOfLines={2}
+                                        >
+                                            {session.title}
+                                        </Text>
+                                        <Text style={styles.sessionDate}>
+                                            {new Date(session.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                        </Text>
                                     </Pressable>
                                 ))}
                             </ScrollView>
                         </View>
                     )}
-
-                    <View style={styles.inputContainer}>
-                        <View style={{ flex: 1 }}>
-                        <TextInput
-                            style={[
-                                styles.input, 
-                                isFocused && styles.inputFocused,
-                                isGuestLimited && styles.inputDisabled,
-                                { height: Math.max(48, Math.min(120, inputHeight)) }
-                            ]}
-                            value={input}
-                            onChangeText={setInput}
-                            onFocus={() => setIsFocused(true)}
-                            onBlur={() => setIsFocused(false)}
-                            selectionColor={theme.colors.primary}
-                            onContentSizeChange={(e) => {
-                                setInputHeight(e.nativeEvent.contentSize.height);
-                            }}
-                            placeholder={!isOnline ? "Support is offline" : isGuestLimited ? "Limit reached..." : "Type your message..."}
-                            placeholderTextColor={theme.colors.textLight}
-                            multiline
-                            maxLength={280}
-                            editable={!isGuestLimited && isOnline}
-                            onSubmitEditing={() => {
-                                if (Platform.OS === 'web' && !isGuestLimited && isOnline) {
-                                    handleSend();
-                                }
-                            }}
-                            onKeyPress={(e) => {
-                                // Support Enter to send on web (Shift+Enter for newline)
-                                if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !(e.nativeEvent as any).shiftKey && !isGuestLimited && isOnline) {
-                                    e.preventDefault();
-                                    handleSend();
-                                }
-                            }}
-                        />
-                            {!isGuestLimited && (
-                                <View style={{ alignSelf: 'flex-end', marginTop: 4, marginRight: 16 }}>
-                                    <Text style={[styles.charCountText, input.length >= 280 && styles.charCountTextLimit]}>
-                                        {input.length}/280
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
-                        <Pressable 
-                            style={[
-                                styles.sendButton, 
-                                (!input.trim() || isGuestLimited || !isOnline) && styles.sendButtonDisabled,
-                                !isGuestLimited && { marginBottom: 22 }
-                            ]} 
-                            onPress={() => handleSend()}
-                            disabled={!input.trim() || isLoading || isGuestLimited || !isOnline}
-                        >
-                            <Send size={20} color="#FFF" />
-                        </Pressable>
-                    </View>
+                    {/* Collapse tab — always visible, centered on the right edge */}
+                    <Pressable
+                        style={[styles.collapseTab, !sidebarOpen && styles.collapseTabCollapsed]}
+                        onPress={() => setSidebarOpen(v => !v)}
+                    >
+                        {sidebarOpen
+                            ? <ChevronLeft size={14} color={theme.colors.textSecondary} />
+                            : <ChevronRight size={14} color="#FFF" />
+                        }
+                    </Pressable>
                 </View>
-            </KeyboardAvoidingView>
+
+                {/* Chat Area */}
+                <KeyboardAvoidingView
+                    style={styles.keyboardView}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                >
+                    <View style={styles.contentWrapper}>
+                        <View style={styles.chatArea}>
+                            <FlatList
+                                ref={flatListRef}
+                                data={messages}
+                                keyExtractor={item => item.id}
+                                renderItem={renderMessage}
+                                contentContainerStyle={styles.chatList}
+                                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                ListHeaderComponent={
+                                    messages.length === 1 ? (
+                                        <View style={styles.brandingCenterContainer}>
+                                            <View style={styles.brandingLogoRow}>
+                                                <Image source={require('../../assets/yarn.png')} style={styles.brandingYarn} resizeMode='contain' />
+                                                <Text style={styles.brandingKnot}>Knot</Text>
+                                                <Text style={styles.brandingBloom}>&Bloom</Text>
+                                            </View>
+                                            <Text style={styles.brandingSubtitle}>
+                                                A multi-vendor marketplace dedicated to handcrafted goods
+                                            </Text>
+                                        </View>
+                                    ) : null
+                                }
+                                ListFooterComponent={isLoading ? <TypingIndicator /> : null}
+                            />
+                        </View>
+
+                        {/* Quick Replies */}
+                        {messages.length === 1 && !isLoading && (
+                            <View>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={styles.quickRepliesContainer}
+                                >
+                                    {QUICK_REPLIES.map((reply, index) => (
+                                        <Pressable
+                                            key={index}
+                                            style={styles.quickReplyChip}
+                                            onPress={() => handleSend(reply)}
+                                        >
+                                            <Text style={styles.quickReplyText}>{reply}</Text>
+                                        </Pressable>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+
+                        <View style={styles.inputContainer}>
+                            <View style={{ flex: 1 }}>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        isFocused && styles.inputFocused,
+                                        isGuestLimited && styles.inputDisabled,
+                                        { height: Math.max(48, Math.min(120, inputHeight)) }
+                                    ]}
+                                    value={input}
+                                    onChangeText={setInput}
+                                    onFocus={() => setIsFocused(true)}
+                                    onBlur={() => setIsFocused(false)}
+                                    selectionColor={theme.colors.primary}
+                                    onContentSizeChange={(e) => {
+                                        setInputHeight(e.nativeEvent.contentSize.height);
+                                    }}
+                                    placeholder={!isOnline ? "Support is offline" : isGuestLimited ? "Limit reached..." : "Type your message..."}
+                                    placeholderTextColor={theme.colors.textLight}
+                                    multiline
+                                    maxLength={280}
+                                    editable={!isGuestLimited && isOnline}
+                                    onSubmitEditing={() => {
+                                        if (Platform.OS === 'web' && !isGuestLimited && isOnline) handleSend();
+                                    }}
+                                    onKeyPress={(e) => {
+                                        if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !(e.nativeEvent as any).shiftKey && !isGuestLimited && isOnline) {
+                                            e.preventDefault();
+                                            handleSend();
+                                        }
+                                    }}
+                                />
+                                {!isGuestLimited && (
+                                    <View style={{ alignSelf: 'flex-end', marginTop: 4, marginRight: 16 }}>
+                                        <Text style={[styles.charCountText, input.length >= 280 && styles.charCountTextLimit]}>
+                                            {input.length}/280
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                            <Pressable
+                                style={[
+                                    styles.sendButton,
+                                    (!input.trim() || isGuestLimited || !isOnline) && styles.sendButtonDisabled,
+                                    !isGuestLimited && { marginBottom: 22 }
+                                ]}
+                                onPress={() => handleSend()}
+                                disabled={!input.trim() || isLoading || isGuestLimited || !isOnline}
+                            >
+                                <Send size={20} color="#FFF" />
+                            </Pressable>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </View>
         </SafeAreaView>
     );
 }
@@ -391,12 +534,99 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F9FA', // Subtle background color instead of pure white
+        backgroundColor: '#F8F9FA',
+    },
+    body: {
+        flex: 1,
+        flexDirection: 'row',
+    },
+    sidebarWrapper: {
+        // Holds both the sidebar panel and the pull-tab
+        flexDirection: 'row',
+        position: 'relative',
+    },
+    sidebar: {
+        width: 200,
+        backgroundColor: '#FFFFFF',
+        paddingTop: 14,
+        paddingHorizontal: 10,
+        borderRightWidth: 1,
+        borderRightColor: theme.colors.border,
+    },
+    collapseTab: {
+        width: 18,
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        borderTopRightRadius: 6,
+        borderBottomRightRadius: 6,
+        borderWidth: 1,
+        borderLeftWidth: 0,
+        borderColor: theme.colors.border,
+        alignSelf: 'center',
+        marginLeft: -1,
+    },
+    collapseTabCollapsed: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    sidebarNewBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#F9F9F9',
+        borderRadius: 8,
+        paddingVertical: 9,
+        paddingHorizontal: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    sidebarNewBtnText: {
+        color: theme.colors.text,
+        fontSize: 13,
+        fontWeight: '500',
+        flex: 1,
+    },
+    sidebarHeading: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: theme.colors.textLight,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 8,
+        marginLeft: 4,
+    },
+    sessionItem: {
+        borderRadius: 8,
+        paddingVertical: 9,
+        paddingHorizontal: 10,
+        marginBottom: 3,
+    },
+    sessionItemActive: {
+        backgroundColor: theme.colors.subtle,
+        borderLeftWidth: 2,
+        borderLeftColor: theme.colors.primaryLight,
+    },
+    sessionTitle: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        lineHeight: 18,
+    },
+    sessionTitleActive: {
+        color: theme.colors.text,
+        fontWeight: '600',
+    },
+    sessionDate: {
+        fontSize: 10,
+        color: theme.colors.textLight,
+        marginTop: 3,
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'start',
-        gap: 8,
+        justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
         backgroundColor: '#FFF',
@@ -424,11 +654,13 @@ const styles = StyleSheet.create({
     headerTitleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
+        marginLeft: 4,
     },
+
     brandingCenterContainer: {
         alignItems: 'center',
-        marginBottom: 300,
-        marginTop: 20,
+        paddingVertical: 40,
     },
     brandingLogoRow: {
         flexDirection: 'row',
@@ -511,7 +743,7 @@ const styles = StyleSheet.create({
     },
     chatList: {
         flexGrow: 1,
-        justifyContent: 'flex-end', // Anchors messages to the bottom
+        justifyContent: 'flex-end',
         padding: 16,
         paddingBottom: 24,
     },

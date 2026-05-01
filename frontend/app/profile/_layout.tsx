@@ -2,6 +2,7 @@ import { ProfileMenu } from '@/components/profile/ProfileMenu';
 import { Slot, usePathname } from 'expo-router';
 import React, { useEffect } from 'react';
 import { StyleSheet, View, useWindowDimensions, Platform } from 'react-native';
+import { theme } from '@/constants/theme';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         flexDirection: 'row',
-        backgroundColor: '#F9F9F9',
+        backgroundColor: theme.colors.background,
         maxWidth: 1600,
         marginHorizontal: 'auto',
         width: '100%',
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         borderRightWidth: 1,
         borderRightColor: '#f0f0f0',
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.background,
         zIndex: 10,
     },
     menu: {
@@ -94,6 +95,6 @@ const styles = StyleSheet.create({
     contentContainer: {
         height: '100%',
         overflow: 'hidden',
-        backgroundColor: '#FAFAFA',
+        backgroundColor: theme.colors.background,
     },
 });

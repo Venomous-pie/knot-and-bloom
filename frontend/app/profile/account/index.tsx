@@ -152,16 +152,10 @@ export default function PersonalInfoPage() {
                     {user.sellerId && user.sellerStatus && (
                         <View style={styles.formGroup}>
                             <Text style={styles.label}>Seller Status</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Text style={[styles.value, {
-                                    color: user.sellerStatus === 'ACTIVE' ? 'green' :
-                                        user.sellerStatus === 'PENDING' ? '#B8860B' :
-                                            user.sellerStatus === 'SUSPENDED' ? 'red' : theme.colors.text,
-                                    fontWeight: 'bold'
-                                }]}>
-                                    {user.sellerStatus === 'PENDING' ? 'Pending Approval' : user.sellerStatus.charAt(0) + user.sellerStatus.slice(1).toLowerCase()}
+                            <View style={[styles.statusBadge, { backgroundColor: user.sellerStatus === 'ACTIVE' ? '#E8F5E9' : user.sellerStatus === 'REJECTED' ? theme.colors.errorLight : '#FFF3E0' }]}>
+                                <Text style={[styles.statusText, { color: user.sellerStatus === 'ACTIVE' ? theme.colors.success : user.sellerStatus === 'REJECTED' ? theme.colors.error : theme.colors.warning }]}>
+                                    {user.sellerStatus === 'ACTIVE' ? '✓ Active Seller' : user.sellerStatus === 'REJECTED' ? '❌ Application Rejected' : '⏳ Pending Approval'}
                                 </Text>
-                                {user.sellerStatus === 'PENDING' && <Text>⏳</Text>}
                             </View>
                         </View>
                     )}
@@ -257,6 +251,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: theme.colors.text,
         fontWeight: '500',
+    },
+    statusBadge: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        marginTop: 4,
+    },
+    statusText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
     hint: {
         fontSize: 12,

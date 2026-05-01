@@ -5,6 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Modal,
     Platform,
     Pressable,
     RefreshControl,
@@ -22,7 +23,8 @@ import {
     Package,
     Settings,
     Tag,
-    Trash2
+    Trash2,
+    X
 } from 'lucide-react-native';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -37,6 +39,40 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> 
     system: { bg: '#F3E5F5', text: '#7B1FA2', border: '#E1BEE7' },
 };
 
+const TYPE_LABELS: Record<string, string> = {
+    order: 'Order Update',
+    promo: 'Promotion',
+    system: 'System Message',
+};
+
+// Parse message into formal sections: greeting, subject, body, closing
+function parseFormalMessage(title: string, message: string) {
+    const lines = message.split('\n').filter(l => l.trim().length > 0);
+    
+    // Try to detect a greeting line (starts with Hi, Hello, Dear, Good, Greetings)
+    const greetingRegex = /^(hi|hello|dear|good\s(morning|afternoon|evening)|greetings|salutations)/i;
+    // Try to detect a closing line (ends with regards, sincerely, warm, thank, best)
+    const closingRegex = /(regards|sincerely|warmly|warm regards|thank you|best wishes|respectfully|yours truly)/i;
+
+    let greeting: string | null = null;
+    let closing: string | null = null;
+    let bodyLines: string[] = [...lines];
+
+    if (lines.length > 0 && greetingRegex.test(lines[0])) {
+        greeting = lines[0];
+        bodyLines = bodyLines.slice(1);
+    }
+    if (bodyLines.length > 0 && closingRegex.test(bodyLines[bodyLines.length - 1])) {
+        closing = bodyLines[bodyLines.length - 1];
+        bodyLines = bodyLines.slice(0, -1);
+    }
+
+    // If body is empty but there were no greeting/closing detected, use full message
+    const body = bodyLines.join('\n').trim() || message.trim();
+
+    return { greeting, subject: title, body, closing };
+}
+
 export default function NotificationsPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -45,6 +81,7 @@ export default function NotificationsPage() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -86,7 +123,6 @@ export default function NotificationsPage() {
 
     const handleMarkAllAsRead = async () => {
         if (unreadCount === 0) return;
-
         try {
             await notificationAPI.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
@@ -105,9 +141,19 @@ export default function NotificationsPage() {
             if (deleted && !deleted.isRead) {
                 setUnreadCount(prev => Math.max(0, prev - 1));
             }
+            if (selectedNotification?.uid === notificationId) {
+                setSelectedNotification(null);
+            }
         } catch (error) {
             console.error('Error deleting notification:', error);
             Alert.alert('Error', 'Failed to delete notification');
+        }
+    };
+
+    const handleOpenNotification = (notification: Notification) => {
+        setSelectedNotification(notification);
+        if (!notification.isRead) {
+            handleMarkAsRead(notification.uid);
         }
     };
 
@@ -123,7 +169,14 @@ export default function NotificationsPage() {
         if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
         if (diffDays < 7) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
+        return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    };
+
+    const formatFullDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-PH', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
     };
 
     if (loading || authLoading) {
@@ -133,6 +186,10 @@ export default function NotificationsPage() {
             </View>
         );
     }
+
+    const parsed = selectedNotification
+        ? parseFormalMessage(selectedNotification.title, selectedNotification.message)
+        : null;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -175,11 +232,7 @@ export default function NotificationsPage() {
                                         styles.notificationCard,
                                         !notification.isRead && styles.unreadCard,
                                     ]}
-                                    onPress={() => {
-                                        if (!notification.isRead) {
-                                            handleMarkAsRead(notification.uid);
-                                        }
-                                    }}
+                                    onPress={() => handleOpenNotification(notification)}
                                 >
                                     <View style={[styles.iconContainer, { backgroundColor: typeStyle.bg }]}>
                                         {TYPE_ICONS[notification.type] || <Bell size={20} color="#555" />}
@@ -202,6 +255,9 @@ export default function NotificationsPage() {
                                         </Text>
                                         <View style={styles.footerRow}>
                                             <Text style={styles.time}>{formatTime(notification.createdAt)}</Text>
+                                            <Text style={[styles.typeLabel, { color: typeStyle.text }]}>
+                                                {TYPE_LABELS[notification.type] || 'Notification'}
+                                            </Text>
                                         </View>
                                     </View>
                                     {!notification.isRead && <View style={styles.unreadDot} />}
@@ -221,6 +277,91 @@ export default function NotificationsPage() {
                     <ChevronRight size={20} color="#ccc" />
                 </Pressable>
             </ScrollView>
+
+            {/* Formal Notification Detail Modal */}
+            <Modal
+                visible={!!selectedNotification}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setSelectedNotification(null)}
+            >
+                <Pressable style={styles.modalOverlay} onPress={() => setSelectedNotification(null)}>
+                    <Pressable style={styles.modalSheet} onPress={e => e.stopPropagation()}>
+                        {selectedNotification && parsed && (() => {
+                            const typeStyle = TYPE_COLORS[selectedNotification.type] || TYPE_COLORS.system;
+                            return (
+                                <>
+                                    {/* Modal Header */}
+                                    <View style={styles.modalHeader}>
+                                        <View style={[styles.modalTypeTag, { backgroundColor: typeStyle.bg }]}>
+                                            {TYPE_ICONS[selectedNotification.type] || <Bell size={14} color="#555" />}
+                                            <Text style={[styles.modalTypeText, { color: typeStyle.text }]}>
+                                                {TYPE_LABELS[selectedNotification.type] || 'Notification'}
+                                            </Text>
+                                        </View>
+                                        <Pressable onPress={() => setSelectedNotification(null)} hitSlop={8}>
+                                            <X size={22} color={theme.colors.textLight} />
+                                        </Pressable>
+                                    </View>
+
+                                    <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                                        {/* Letter-style container */}
+                                        <View style={styles.letterContainer}>
+                                            {/* Date stamp */}
+                                            <Text style={styles.letterDate}>
+                                                {formatFullDate(selectedNotification.createdAt)}
+                                            </Text>
+
+                                            <View style={styles.letterDivider} />
+
+                                            {/* Title / Subject line */}
+                                            <Text style={styles.letterSubjectLabel}>Subject</Text>
+                                            <Text style={styles.letterSubject}>{parsed.subject}</Text>
+
+                                            <View style={styles.letterDivider} />
+
+                                            {/* Greeting */}
+                                            {parsed.greeting ? (
+                                                <Text style={styles.letterGreeting}>{parsed.greeting}</Text>
+                                            ) : (
+                                                <Text style={styles.letterGreeting}>
+                                                    {`Dear Valued Customer,`}
+                                                </Text>
+                                            )}
+
+                                            {/* Body */}
+                                            <Text style={styles.letterBody}>{parsed.body}</Text>
+
+                                            {/* Closing */}
+                                            <Text style={styles.letterClosing}>
+                                                {parsed.closing || 'Warm regards,'}
+                                            </Text>
+                                            <Text style={styles.letterSignature}>Knot & Bloom Team</Text>
+                                        </View>
+                                    </ScrollView>
+
+                                    {/* Actions */}
+                                    <View style={styles.modalActions}>
+                                        <Pressable
+                                            style={styles.modalDeleteButton}
+                                            onPress={() => handleDelete(selectedNotification.uid)}
+                                        >
+                                            <Trash2 size={16} color={theme.colors.error} />
+                                            <Text style={styles.modalDeleteText}>Delete</Text>
+                                        </Pressable>
+                                        <Pressable
+                                            style={styles.modalCloseButton}
+                                            onPress={() => setSelectedNotification(null)}
+                                        >
+                                            <Text style={styles.modalCloseText}>Close</Text>
+                                        </Pressable>
+                                    </View>
+                                </>
+                            );
+                        })()}
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -313,7 +454,7 @@ const styles = StyleSheet.create({
     unreadCard: {
         backgroundColor: 'white',
         borderLeftWidth: 3,
-        borderLeftColor: theme.colors.primaryLight, // Pink indicator only
+        borderLeftColor: theme.colors.primaryLight,
         borderColor: 'transparent',
     },
     iconContainer: {
@@ -345,10 +486,6 @@ const styles = StyleSheet.create({
         color: theme.colors.primary,
         fontWeight: '700',
     },
-    time: {
-        fontSize: 11,
-        color: theme.colors.textLight,
-    },
     message: {
         fontSize: 13,
         color: theme.colors.textSecondary,
@@ -358,8 +495,17 @@ const styles = StyleSheet.create({
     },
     footerRow: {
         flexDirection: 'row',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginTop: 4,
+    },
+    time: {
+        fontSize: 11,
+        color: theme.colors.textLight,
+    },
+    typeLabel: {
+        fontSize: 11,
+        fontWeight: '600',
     },
     deleteButton: {
         padding: 4,
@@ -393,5 +539,140 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: theme.colors.text,
         fontFamily: 'Quicksand',
+    },
+
+    // ─── Modal styles ───────────────────────────────────────────────
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'flex-end',
+    },
+    modalSheet: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '85%',
+        ...Platform.select({
+            web: { boxShadow: '0 -4px 30px rgba(0,0,0,0.15)' } as any,
+            default: { elevation: 20 }
+        })
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.subtle,
+    },
+    modalTypeTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    modalTypeText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    modalBody: {
+        maxHeight: '70%',
+    },
+    letterContainer: {
+        padding: 24,
+    },
+    letterDate: {
+        fontSize: 12,
+        color: theme.colors.textLight,
+        textAlign: 'right',
+        marginBottom: 16,
+        fontStyle: 'italic',
+    },
+    letterDivider: {
+        height: 1,
+        backgroundColor: theme.colors.subtle,
+        marginVertical: 14,
+    },
+    letterSubjectLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: theme.colors.textLight,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
+        marginBottom: 6,
+    },
+    letterSubject: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: theme.colors.text,
+        fontFamily: 'Quicksand',
+        lineHeight: 28,
+    },
+    letterGreeting: {
+        fontSize: 15,
+        color: theme.colors.text,
+        lineHeight: 24,
+        marginBottom: 12,
+        fontStyle: 'italic',
+    },
+    letterBody: {
+        fontSize: 15,
+        color: theme.colors.textSecondary,
+        lineHeight: 24,
+        marginBottom: 20,
+    },
+    letterClosing: {
+        fontSize: 15,
+        color: theme.colors.text,
+        marginBottom: 4,
+    },
+    letterSignature: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: theme.colors.primary,
+        fontFamily: 'Quicksand',
+        marginBottom: 8,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        padding: 20,
+        gap: 12,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.subtle,
+        paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+    },
+    modalDeleteButton: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.errorLight || '#FFCDD2',
+        backgroundColor: '#FFF5F5',
+    },
+    modalDeleteText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.error,
+    },
+    modalCloseButton: {
+        flex: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: theme.colors.primary,
+    },
+    modalCloseText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFF',
     },
 });

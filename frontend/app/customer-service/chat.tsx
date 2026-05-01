@@ -11,7 +11,6 @@ import {
     Animated,
     ScrollView,
     Image,
-    Alert
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { Send, User, ArrowLeft, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react-native';

@@ -558,5 +558,15 @@ export const locationAPI = {
     getBarangays: (citymunCode: string) => apiClient.get<{ code: string; name: string }[]>(`/locations/barangays/${citymunCode}`),
 };
 
+// ============================================
+// AI Chat API
+// ============================================
+export const chatAPI = {
+    /**
+     * Send message history to Groq AI
+     */
+    sendAiMessage: (messages: { role: 'user' | 'assistant'; content: string }[]) =>
+        apiClient.post<{ success: boolean; reply: string }>('/chat/ai', { messages }),
+};
 
 export default api;

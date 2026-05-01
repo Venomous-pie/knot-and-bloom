@@ -230,7 +230,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                     <Pressable onPress={() => router.back()} style={{ padding: 5 }}>
                         <ChevronLeft size={24} color={theme.colors.text} />
                     </Pressable>
-                    <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
+                    <Pressable onPress={() => router.push('/customer-service/chat' as RelativePathString)}>
                         <Text style={{ color: theme.colors.primary, fontSize: 14 }}>Need Assistance?</Text>
                     </Pressable>
                 </View>
@@ -258,7 +258,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                         <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>&Bloom</Text>
                     </Pressable>
                 </Link>
-                <Pressable onPress={() => router.push('/customer-service' as RelativePathString)}>
+                <Pressable onPress={() => router.push('/customer-service/chat' as RelativePathString)}>
                     <Text style={{ color: theme.colors.primary, fontSize: 14, textDecorationLine: 'none' }}>Need Assistance?</Text>
                 </Pressable>
             </View>

@@ -636,7 +636,7 @@ export default function BespokeAuthForm({
                                                 placeholder="artisan@gmail.com"
                                                 placeholderTextColor={theme.colors.textLight}
                                                 value={email}
-                                                onChangeText={setEmail}
+                                                onChangeText={(text) => { setEmail(text); setError(""); setFieldErrors({}); }}
                                                 keyboardType="email-address"
                                                 autoCapitalize="none"
                                                 onFocus={() => setFocusedInput("email")}
@@ -676,7 +676,7 @@ export default function BespokeAuthForm({
                                                 placeholder="+63 912 345 6789"
                                                 placeholderTextColor={theme.colors.textLight}
                                                 value={phoneNumber}
-                                                onChangeText={setPhoneNumber}
+                                                onChangeText={(text) => { setPhoneNumber(text); setError(""); setFieldErrors({}); }}
                                                 keyboardType="phone-pad"
                                                 onFocus={() => setFocusedInput("phone")}
                                                 onBlur={() => setFocusedInput(null)}
@@ -737,7 +737,7 @@ export default function BespokeAuthForm({
                                                 placeholderTextColor={theme.colors.textLight}
                                                 secureTextEntry={!showPassword}
                                                 value={password}
-                                                onChangeText={setPassword}
+                                                onChangeText={(text) => { setPassword(text); setError(""); setFieldErrors({}); }}
                                                 onFocus={() => setFocusedInput("password")}
                                                 onBlur={() => setFocusedInput(null)}
                                                 selectionColor={theme.colors.primary}

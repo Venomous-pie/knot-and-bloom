@@ -53,7 +53,7 @@ passport.use(
                     });
                 }
 
-                return done(null, customer);
+                return done(null, customer as any);
             } catch (error) {
                 return done(error as Error, undefined);
             }
@@ -68,7 +68,7 @@ passport.serializeUser((user: any, done) => {
 passport.deserializeUser(async (id: number, done) => {
     try {
         const user = await prisma.customer.findUnique({ where: { uid: id } });
-        done(null, user);
+        done(null, user as unknown as Express.User);
     } catch (error) {
         done(error, null);
     }

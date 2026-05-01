@@ -1,8 +1,8 @@
 import type { AuditLogEntry } from "../types/checkoutTypes.js";
 
 /**
- * Simple audit logging service for order/payment events.
- * Logs to console for now - can be extended to database or external service.
+ * Structured audit logging service for security-sensitive operations.
+ * Logs to console for now - can be extended to database or external service (e.g., Datadog, CloudWatch).
  */
 export const AuditService = {
     log: (entry: AuditLogEntry): void => {
@@ -64,6 +64,70 @@ export const AuditService = {
             data,
             errorMessage: error,
         });
+    },
+
+    /**
+     * Log authentication events (login, registration, logout, token refresh)
+     */
+    logAuth: (action: string, customerId: number, data?: Record<string, any>, error?: string) => {
+        AuditService.log({
+            action,
+            entityType: 'auth',
+            entityId: customerId,
+            customerId,
+            data,
+            errorMessage: error,
+        });
+    },
+
+    /**
+     * Log admin actions (approving sellers, changing product status, etc.)
+     */
+    logAdmin: (action: string, adminId: number, targetId: number, data?: Record<string, any>) => {
+        AuditService.log({
+            action,
+            entityType: 'admin',
+            entityId: targetId,
+            customerId: adminId,
+            data,
+        });
+    },
+
+    /**
+     * Log account lifecycle events (deletion requests, cancellations, profile changes)
+     */
+    logAccount: (action: string, customerId: number, data?: Record<string, any>) => {
+        AuditService.log({
+            action,
+            entityType: 'account',
+            entityId: customerId,
+            customerId,
+            data,
+        });
+    },
+
+    /**
+     * Log seller events (onboarding, application, status changes)
+     */
+    logSeller: (action: string, sellerId: number, customerId: number, data?: Record<string, any>) => {
+        AuditService.log({
+            action,
+            entityType: 'seller',
+            entityId: sellerId,
+            customerId,
+            data,
+        });
+    },
+
+    /**
+     * Log security events (rate limit hits, IDOR attempts, suspicious activity)
+     */
+    logSecurity: (action: string, ip: string, data?: Record<string, any>) => {
+        const timestamp = new Date().toISOString();
+        console.warn(`[SECURITY] ${timestamp} | ${action} | ip:${ip}`);
+        if (data) {
+            console.warn(`[SECURITY DATA]`, JSON.stringify(data, null, 2));
+        }
     },
 };
 

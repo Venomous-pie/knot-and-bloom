@@ -17,7 +17,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as AuthPayload;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload;
         req.user = decoded;
         next();
     } catch (error) {
@@ -39,7 +39,7 @@ export const optionalAuthenticate = (req: Request, res: Response, next: NextFunc
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as AuthPayload;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload;
         req.user = decoded;
         next();
     } catch (error) {

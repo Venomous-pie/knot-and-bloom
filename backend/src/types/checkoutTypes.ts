@@ -41,7 +41,7 @@ interface LockedPriceItem {
 
 interface AuditLogEntry {
     action: string;
-    entityType: 'checkout' | 'payment' | 'order';
+    entityType: 'checkout' | 'payment' | 'order' | 'auth' | 'admin' | 'account' | 'seller';
     entityId: number;
     customerId: number;
     data?: Record<string, any> | undefined;

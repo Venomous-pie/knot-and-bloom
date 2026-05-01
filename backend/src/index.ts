@@ -1,8 +1,16 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// ── Security: Fail fast if critical secrets are missing ──
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    console.error('FATAL: JWT_SECRET is not set or is too short (min 32 chars). Exiting.');
+    process.exit(1);
+}
+
 import cors from 'cors';
 import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import accountRoutes from './routes/accountRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
@@ -26,6 +34,7 @@ import passport from './config/passport.js';
 import { createServer } from 'http';
 import { socketService } from './services/SocketService.js';
 import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
+import { sanitizeInput } from './middleware/sanitize.js';
 import { cronService } from './services/cronService.js';
 
 const app = express();
@@ -37,19 +46,39 @@ app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 3030;
 
-// Middlewares
+// ── Security Middlewares ──
+app.use(helmet()); // Sets security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
+
+// Global rate limiter: 100 requests per minute per IP
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many requests, please try again later.' },
+});
+app.use(globalLimiter);
+
+// CORS: Use CORS_ORIGINS env var in production, fallback to dev origins
+const defaultOrigins = [
+    'http://localhost:8081', // Expo Web
+    'http://localhost:19000', // Expo
+    'http://localhost:19006', // Expo
+    'http://localhost:3000', // React default
+    'http://localhost:3030', // Self (if needed)
+];
+const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : defaultOrigins;
+
 app.use(cors({
-    origin: [
-        'http://localhost:8081', // Expo Web
-        'http://localhost:19000', // Expo
-        'http://localhost:19006', // Expo
-        'http://localhost:3000', // React default
-        'http://localhost:3030', // Self (if needed)
-    ],
+    origin: allowedOrigins,
     credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(sanitizeInput); // Strip HTML/script tags from all user input
 app.use(passport.initialize());
 
 // Healthcheck

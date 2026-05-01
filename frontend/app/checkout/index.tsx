@@ -211,7 +211,7 @@ function CheckoutContent() {
             if (user?.uid && items && typeof items === 'string') {
                 const itemIds = items.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
                 if (itemIds.length > 0) {
-                    const success = await initiateCheckout(user.uid, itemIds);
+                    const success = await initiateCheckout(itemIds);
                     if (success) {
                         // Clear the param to prevent re-initiation on refresh if desired,
                         // OR keep it so refresh works (but idempotency key handles dupes).

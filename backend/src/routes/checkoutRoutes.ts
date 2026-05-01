@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import CheckoutController from '../controllers/CheckoutController.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = Router();
+
+// All checkout operations require authentication
+router.use(authenticate);
 
 // Initiate a new checkout session
 router.post('/initiate', CheckoutController.initiateCheckout);

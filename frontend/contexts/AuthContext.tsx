@@ -79,12 +79,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const login = async (data: any, returnTo?: string) => {
         try {
             const response = await authAPI.login(data);
-            const { token, customer, data: legacyUser } = response.data;
-            // Support both 'customer' key (from updated backend) and 'data' key (legacy or potential interceptor)
+            const { token, refreshToken, customer, data: legacyUser } = response.data;
             const user = customer || legacyUser;
 
             if (token && user) {
                 await AsyncStorage.setItem('authToken', token);
+                if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
                 await AsyncStorage.setItem('authUser', JSON.stringify(user));
                 setUser(user);
                 setToken(token);
@@ -105,11 +105,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const register = async (data: any) => {
         try {
             const response = await authAPI.register(data);
-            const { token, data: user, customer } = response.data;
+            const { token, refreshToken, data: user, customer } = response.data;
             const finalUser = user || customer;
 
             if (token && finalUser) {
                 await AsyncStorage.setItem('authToken', token);
+                if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
                 await AsyncStorage.setItem('authUser', JSON.stringify(finalUser));
                 setUser(finalUser);
                 setToken(token);
@@ -121,8 +122,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const logout = async () => {
-        await AsyncStorage.removeItem('authToken');
-        await AsyncStorage.removeItem('authUser');
+        try {
+            const refreshToken = await AsyncStorage.getItem('refreshToken');
+            if (refreshToken) {
+                // Revoke refresh token server-side (best effort, don't block on failure)
+                authAPI.logout(refreshToken).catch(() => {});
+            }
+        } catch (e) { /* ignore */ }
+        await AsyncStorage.multiRemove(['authToken', 'authUser', 'refreshToken']);
         setUser(null);
         setToken(null);
         router.replace('/auth/login' as RelativePathString);
@@ -153,11 +160,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const loginWithGoogle = async (data: { token?: string, accessToken?: string }, returnTo?: string) => {
         try {
             const response = await authAPI.loginWithGoogle(data);
-            const { token: authToken, customer, data: legacyUser, isNewUser } = response.data;
+            const { token: authToken, refreshToken, customer, data: legacyUser, isNewUser } = response.data;
             const user = customer || legacyUser;
 
             if (authToken && user) {
                 await AsyncStorage.setItem('authToken', authToken);
+                if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
                 await AsyncStorage.setItem('authUser', JSON.stringify(user));
                 setUser(user);
                 setToken(authToken);

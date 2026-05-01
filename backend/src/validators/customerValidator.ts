@@ -1,9 +1,16 @@
 import { z } from "zod";
 
+// Reusable password policy: min 8 chars, 1 uppercase, 1 lowercase, 1 number
+const passwordSchema = z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number");
+
 export const customerSchema = z.object({
     name: z.string().optional(),
     email: z.string().email().optional(),
-    password: z.string(),
+    password: passwordSchema,
     phone: z.string().optional(),
     otp: z.string().optional(), // OTP for phone registration
     address: z.string().optional(),
@@ -34,7 +41,7 @@ export const customerUpdateSchema = z.object({
     email: z.string().optional(),
     phone: z.string().optional(),
     address: z.string().optional(),
-    password: z.string().min(6).optional(),
+    password: passwordSchema.optional(),
 });
 
 export type CustomerUpdateInput = z.infer<typeof customerUpdateSchema>;

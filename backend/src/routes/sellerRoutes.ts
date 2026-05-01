@@ -6,7 +6,7 @@ import { Role } from '../types/authTypes.js';
 const router = express.Router();
 
 // Public / Seller
-router.post('/', sellerController.registerSeller); // Direct Register
+router.post('/', authenticate, sellerController.registerSeller); // Direct Register (requires auth)
 router.post('/onboard', authenticate, sellerController.onboardSeller); // Upgrade User
 router.delete('/me/application', authenticate, sellerController.cancelApplication); // Cancel Pending Application
 router.get('/active', sellerController.listActiveSellers); // Public active sellers list

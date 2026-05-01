@@ -5,10 +5,20 @@ import { generateProductDescription, generateProductSKU, generateVariantSKU } fr
 import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
 import { Role } from '../types/authTypes.js';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
-router.post('/generate-description', async (req, res) => {
+// Dedicated rate limiter for AI/generate endpoints: 10 requests per minute per IP
+const aiRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 10,
+    message: { success: false, error: 'Too many generation requests. Please try again in a minute.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+router.post('/generate-description', authenticate, aiRateLimiter, async (req, res) => {
     try {
         const { name, category, variants, basePrice, discountedPrice } = req.body;
 
@@ -48,7 +58,7 @@ router.post('/generate-description', async (req, res) => {
     }
 });
 
-router.post('/generate-sku', async (req, res) => {
+router.post('/generate-sku', authenticate, aiRateLimiter, async (req, res) => {
     try {
         const { name, category, variants } = req.body;
 
@@ -74,7 +84,7 @@ router.post('/generate-sku', async (req, res) => {
     }
 });
 
-router.post('/generate-variant-sku', async (req, res) => {
+router.post('/generate-variant-sku', authenticate, aiRateLimiter, async (req, res) => {
     try {
         const { baseSKU, variantName } = req.body;
 

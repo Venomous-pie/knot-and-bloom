@@ -48,7 +48,7 @@ export interface CheckoutState {
 }
 
 interface CheckoutContextType extends CheckoutState {
-    initiateCheckout: (customerId: number, selectedItemIds: number[]) => Promise<boolean>;
+    initiateCheckout: (selectedItemIds: number[]) => Promise<boolean>;
     setShippingInfo: (info: ShippingInfo) => void;
     validateAndProceedToPayment: () => Promise<boolean>;
     processPayment: (paymentMethod: string) => Promise<number | null>;
@@ -140,7 +140,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
         setPaymentIdempotencyKey('');
     }, []);
 
-    const initiateCheckout = useCallback(async (customerId: number, selectedItemIds: number[]): Promise<boolean> => {
+    const initiateCheckout = useCallback(async (selectedItemIds: number[]): Promise<boolean> => {
         try {
             setState(prev => ({
                 ...prev,
@@ -152,7 +152,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
             const key = generateIdempotencyKey();
             setCheckoutIdempotencyKey(key);
 
-            const response = await checkoutAPI.initiate(customerId, selectedItemIds, key);
+            const response = await checkoutAPI.initiate(selectedItemIds, key);
             const data = response.data;
 
             if (data.success) {

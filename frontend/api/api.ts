@@ -39,37 +39,78 @@ api.interceptors.request.use(
 );
 
 // Common error handling
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token!);
+        }
+    });
+    failedQueue = [];
+};
+
 api.interceptors.response.use(
     (response: AxiosResponse) => {
-        // Log response for debugging (for dev local)
         if (process.env.NODE_ENV === 'development') {
             console.log('API Response:', response.status, response.config.url);
         }
         return response;
     },
     async (error) => {
+        const originalRequest = error.config;
+
         if (error.response) {
             console.error('API Error:', error.response.status, error.response.data);
 
-            if (error.response.status === 401) {
-                // Check if this is an auth endpoint (login/register) - these return 401 for invalid credentials
-                // and should NOT trigger session error toast or logout
-                const requestUrl = error.config?.url || '';
-                const isAuthEndpoint = ['/customers/login', '/customers/register', '/customers/login/google'].some(
+            if (error.response.status === 401 && !originalRequest._retry) {
+                const requestUrl = originalRequest?.url || '';
+                const isAuthEndpoint = ['/customers/login', '/customers/register', '/customers/login/google', '/auth/refresh'].some(
                     endpoint => requestUrl.includes(endpoint)
                 );
 
                 if (!isAuthEndpoint) {
-                    // Get the error message from backend
-                    const errorMessage = error.response.data?.error || 'Authentication error';
+                    // Try to refresh the token
+                    if (isRefreshing) {
+                        return new Promise((resolve, reject) => {
+                            failedQueue.push({ resolve, reject });
+                        }).then(token => {
+                            originalRequest.headers.Authorization = `Bearer ${token}`;
+                            return api(originalRequest);
+                        }).catch(err => Promise.reject(err));
+                    }
 
-                    // Emit error for toast display
+                    originalRequest._retry = true;
+                    isRefreshing = true;
+
+                    try {
+                        const refreshToken = await AsyncStorage.getItem('refreshToken');
+                        if (refreshToken) {
+                            const response = await api.post('/auth/refresh', { refreshToken });
+                            const { token: newToken, refreshToken: newRefreshToken } = response.data;
+
+                            await AsyncStorage.setItem('authToken', newToken);
+                            await AsyncStorage.setItem('refreshToken', newRefreshToken);
+
+                            processQueue(null, newToken);
+                            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                            return api(originalRequest);
+                        }
+                    } catch (refreshError) {
+                        processQueue(refreshError, null);
+                        await AsyncStorage.removeItem('refreshToken');
+                    } finally {
+                        isRefreshing = false;
+                    }
+
+                    // Refresh failed — logout
+                    const errorMessage = error.response.data?.error || 'Session expired';
                     authEvents.emit('ERROR', { message: errorMessage });
-
-                    // Emit logout event to trigger AuthContext cleanup
                     authEvents.emit('LOGOUT');
                 }
-                // For auth endpoints, just let the error propagate to the form's error handling
             }
         } else if (error.request) {
             console.error('Network Error:', error.message);
@@ -140,6 +181,9 @@ export const authAPI = {
     loginWithGoogle: (data: { token?: string, accessToken?: string }) => apiClient.post('/customers/login/google', data),
     register: (data: any) => apiClient.post('/customers/register', data),
     sendOTP: (phone: string) => apiClient.post('/auth/send-otp', { phone }),
+    exchangeCode: (code: string) => apiClient.post<{ success: boolean; token: string }>('/auth/exchange-code', { code }),
+    refreshToken: (refreshToken: string) => apiClient.post<{ success: boolean; token: string; refreshToken: string }>('/auth/refresh', { refreshToken }),
+    logout: (refreshToken?: string) => apiClient.post('/auth/logout', { refreshToken }),
 };
 
 export const cartAPI = {
@@ -261,9 +305,8 @@ export const checkoutAPI = {
     /**
      * Initiate a checkout session - locks prices and validates stock
      */
-    initiate: (customerId: number, selectedItemIds: number[], idempotencyKey: string) =>
+    initiate: (selectedItemIds: number[], idempotencyKey: string) =>
         apiClient.post<InitiateCheckoutResponse>('/checkout/initiate', {
-            customerId,
             selectedItemIds,
             idempotencyKey,
         }),

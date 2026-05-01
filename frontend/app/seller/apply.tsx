@@ -108,6 +108,7 @@ export default function SellerApplyPage() {
 
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [focusedField, setFocusedField] = useState<string | null>(null);
 
     // Image Upload State
     const [showCropper, setShowCropper] = useState(false);
@@ -294,12 +295,15 @@ export default function SellerApplyPage() {
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Shop Name *</Text>
                 <TextInput
-                    style={[styles.input, errors.shopName && styles.inputError]}
+                    style={[styles.input, focusedField === 'shopName' && styles.inputFocused, errors.shopName && styles.inputError]}
                     value={shopName}
                     onChangeText={setShopName}
                     placeholder="e.g. My Crochet Corner"
                     placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
                     maxLength={50}
+                    onFocus={() => setFocusedField('shopName')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 {errors.shopName && <Text style={styles.fieldError}>{errors.shopName}</Text>}
             </View>
@@ -307,14 +311,17 @@ export default function SellerApplyPage() {
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Description</Text>
                 <TextInput
-                    style={[styles.input, styles.textArea, errors.description && styles.inputError]}
+                    style={[styles.input, styles.textArea, focusedField === 'description' && styles.inputFocused, errors.description && styles.inputError]}
                     value={description}
                     onChangeText={setDescription}
                     placeholder="Tell us about what you make..."
                     placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
                     multiline
                     numberOfLines={4}
                     maxLength={500}
+                    onFocus={() => setFocusedField('description')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 {errors.description && <Text style={styles.fieldError}>{errors.description}</Text>}
             </View>
@@ -346,16 +353,18 @@ export default function SellerApplyPage() {
                 <TextInput
                     style={[
                         styles.input,
+                        focusedField === 'email' && styles.inputFocused,
                         errors.email && styles.inputError,
-                        // If user has verified email, maybe style as read-only or just let them edit?
-                        // User request implies just "add field", so editable is safer.
                     ]}
                     value={email}
                     onChangeText={setEmail}
                     placeholder="e.g. yourname@example.com"
                     placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 {errors.email && <Text style={styles.fieldError}>{errors.email}</Text>}
                 {!errors.email && user?.email && (
@@ -367,12 +376,15 @@ export default function SellerApplyPage() {
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Phone Number *</Text>
                 <TextInput
-                    style={[styles.input, errors.phoneNumber && styles.inputError]}
+                    style={[styles.input, focusedField === 'phoneNumber' && styles.inputFocused, errors.phoneNumber && styles.inputError]}
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     placeholder="e.g. 0912 345 6789"
                     placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
                     keyboardType="phone-pad"
+                    onFocus={() => setFocusedField('phoneNumber')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 <Text style={styles.helperText}>Used for admin contact and logistics notifications.</Text>
                 {errors.phoneNumber && <Text style={styles.fieldError}>{errors.phoneNumber}</Text>}
@@ -381,12 +393,15 @@ export default function SellerApplyPage() {
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Social Media Link (Optional)</Text>
                 <TextInput
-                    style={styles.input}
+                    style={[styles.input, focusedField === 'socialLink' && styles.inputFocused]}
                     value={socialLink}
                     onChangeText={setSocialLink}
                     placeholder="e.g. facebook.com/myshop"
                     placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
                     autoCapitalize="none"
+                    onFocus={() => setFocusedField('socialLink')}
+                    onBlur={() => setFocusedField(null)}
                 />
                 <Text style={styles.helperText}>Used to verify your existing presence.</Text>
             </View>
@@ -480,7 +495,7 @@ export default function SellerApplyPage() {
                             {isDesktop ? (
                                 <>
                                     <Image
-                                        source={require('@/assets/bespoke_seller_onboarding.png')}
+                                        source={require('@/assets/hero-images/Ecommerce.gif')}
                                         style={styles.brandingImage}
                                         resizeMode="cover"
                                     />
@@ -798,6 +813,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         backgroundColor: theme.colors.surface,
         color: theme.colors.text,
+        outlineStyle: "none" as any,
+    },
+    inputFocused: {
+        borderColor: theme.colors.primary,
+        backgroundColor: "white",
     },
     inputError: {
         borderColor: "#e74c3c",

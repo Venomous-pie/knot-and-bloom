@@ -1303,7 +1303,7 @@ const styles = StyleSheet.create({
     authErrorBanner: {
         backgroundColor: theme.colors.surface,
         borderWidth: 1,
-        borderColor: theme.colors.errorBorder,
+        borderColor: theme.colors.error,
         borderRadius: 8,
         padding: 16,
         gap: 10,

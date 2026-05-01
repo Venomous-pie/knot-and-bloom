@@ -1,6 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -8,7 +9,7 @@ const IMAGEKIT_PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY || '';
 
 // @route   GET /api/imagekit/auth
 // @desc    Generate authentication parameters for ImageKit client-side upload
-router.get('/auth', (req, res) => {
+router.get('/auth', authenticate, (req, res) => {
     try {
         if (!IMAGEKIT_PRIVATE_KEY) {
             console.error('ImageKit Auth Error: IMAGEKIT_PRIVATE_KEY is missing');

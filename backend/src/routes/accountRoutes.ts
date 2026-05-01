@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
 import AccountController from '../controllers/AccountController.js';
+import { AuditService } from '../services/AuditService.js';
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.post('/delete-request', authenticate, async (req: Request, res: Response)
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
         const result = await AccountController.requestAccountDeletion(userId, req.body);
+        AuditService.logAccount('ACCOUNT_DELETION_REQUESTED', userId, { reason: req.body?.reason });
         res.json(result);
     } catch (error: any) {
         if (error.statusCode) {
@@ -35,6 +37,7 @@ router.delete('/delete-request', authenticate, async (req: Request, res: Respons
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
         const result = await AccountController.cancelAccountDeletion(userId);
+        AuditService.logAccount('ACCOUNT_DELETION_CANCELLED', userId);
         res.json(result);
     } catch (error: any) {
         if (error.statusCode) {

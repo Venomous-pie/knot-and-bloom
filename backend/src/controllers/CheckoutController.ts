@@ -27,10 +27,12 @@ const STANDARD_SHIPPING_FEE = 60; // Standard shipping fee in PHP
 
 const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { customerId, selectedItemIds, idempotencyKey } = req.body;
+        // Security: Use authenticated user's ID, not a client-supplied customerId
+        const customerId = req.user?.id;
+        const { selectedItemIds, idempotencyKey } = req.body;
 
         if (!customerId || !selectedItemIds || !Array.isArray(selectedItemIds) || selectedItemIds.length === 0) {
-            throw new ErrorHandler.ValidationError([{ message: 'Customer ID and selected items are required.', path: ['customerId', 'selectedItemIds'] }]);
+            throw new ErrorHandler.ValidationError([{ message: 'Authentication and selected items are required.', path: ['selectedItemIds'] }]);
         }
 
         if (!idempotencyKey) {
@@ -130,7 +132,7 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
                 finalPrice,
                 productName: item.product.name,
                 variantName: item.productVariant?.name ?? null,
-                image: item.productVariant?.image ?? item.product.image ?? null,
+                image: item.productVariant?.images?.[0] ?? item.product.image ?? null,
                 sellerId: item.product.sellerId ?? null,
                 sellerName: item.product.seller?.name ?? null,
             };
@@ -234,6 +236,12 @@ const getCheckoutSession = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
+        // Security: Verify session belongs to the requesting user
+        if (session.customerId !== req.user?.id) {
+            res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
+            return;
+        }
+
         // Check if session has expired
         if (session.expiresAt < new Date() && session.status !== CheckoutStatus.COMPLETED) {
             await prisma.checkoutSession.update({
@@ -285,6 +293,12 @@ const validateCheckout = async (req: Request, res: Response): Promise<void> => {
                 error: 'SESSION_NOT_FOUND',
                 message: 'Checkout session not found.',
             });
+            return;
+        }
+
+        // Security: Verify session belongs to the requesting user
+        if (session.customerId !== req.user?.id) {
+            res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
 
@@ -447,6 +461,12 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
                 error: 'SESSION_NOT_FOUND',
                 message: 'Checkout session not found.',
             });
+            return;
+        }
+
+        // Security: Verify session belongs to the requesting user
+        if (session.customerId !== req.user?.id) {
+            res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
 
@@ -619,6 +639,12 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 error: 'SESSION_NOT_FOUND',
                 message: 'Checkout session not found.',
             });
+            return;
+        }
+
+        // Security: Verify session belongs to the requesting user
+        if (session.customerId !== req.user?.id) {
+            res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
 
@@ -872,6 +898,12 @@ const cancelCheckout = async (req: Request, res: Response): Promise<void> => {
                 error: 'SESSION_NOT_FOUND',
                 message: 'Checkout session not found.',
             });
+            return;
+        }
+
+        // Security: Verify session belongs to the requesting user
+        if (session.customerId !== req.user?.id) {
+            res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
 

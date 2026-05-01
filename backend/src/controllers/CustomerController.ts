@@ -8,6 +8,7 @@ import { OAuth2Client } from 'google-auth-library';
 
 import ErrorHandler from "../error/errorHandler.js";
 import { OtpService } from "../services/otpService.js";
+import { RefreshTokenService } from "../services/RefreshTokenService.js";
 
 import {
     customerLoginSchema,
@@ -80,10 +81,16 @@ const customerRegisterController = async (input: unknown) => {
             role: customer.role as any,
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
+        const refreshToken = RefreshTokenService.generate({
+            userId: customer.uid,
+            ...(customer.email && { email: customer.email }),
+            role: customer.role,
+        });
 
         return {
             token,
+            refreshToken,
             customer: {
                 uid: customer.uid,
                 name: customer.name,
@@ -148,10 +155,18 @@ const customerLoginController = async (input: unknown) => {
             ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' }); // 7d expiry for better UX
+        const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' }); // 7d expiry for better UX
+        const refreshToken = RefreshTokenService.generate({
+            userId: customer.uid,
+            ...(customer.email && { email: customer.email }),
+            role: customer.role,
+            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
+            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status }),
+        });
 
         return {
             token,
+            refreshToken,
             customer: {
                 uid: customer.uid,
                 name: customer.name,
@@ -203,7 +218,14 @@ const getCustomerProfile = async (userId: number) => {
         ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
+    const refreshToken = RefreshTokenService.generate({
+        userId: customer.uid,
+        ...(customer.email && { email: customer.email }),
+        role: customer.role,
+        ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
+        ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status }),
+    });
 
     return {
         customer: {
@@ -218,7 +240,8 @@ const getCustomerProfile = async (userId: number) => {
             sellerTotalOrders: customer.sellerProfile?.totalOrders,
             sellerRejectionReason: customer.sellerProfile?.rejectionReason
         },
-        token
+        token,
+        refreshToken,
     };
 };
 
@@ -322,10 +345,18 @@ const googleLoginController = async (input: unknown) => {
             ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),
         };
 
-        const token = jwt.sign(jwtPayload, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
+        const token = jwt.sign(jwtPayload, process.env.JWT_SECRET!, { expiresIn: '7d' });
+        const refreshToken = RefreshTokenService.generate({
+            userId: customer.uid,
+            ...(customer.email && { email: customer.email }),
+            role: customer.role,
+            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
+            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status }),
+        });
 
         return {
             token,
+            refreshToken,
             customer: {
                 uid: customer.uid,
                 name: customer.name,

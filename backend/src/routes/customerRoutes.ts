@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/authMiddleware.js';
 
 import { authRateLimiter } from '../middleware/rateLimiter.js';
 import { loginRateLimiter } from '../services/LoginRateLimiter.js';
+import { AuditService } from '../services/AuditService.js';
 
 const router = Router();
 
@@ -59,6 +60,7 @@ router.post('/register', authRateLimiter, async (req, res) => {
             success: true,
             message: "Customer registered successfully.",
             token: result.token,
+            refreshToken: result.refreshToken,
             data: result.customer
         });
     } catch (error) {
@@ -94,10 +96,13 @@ router.post('/login', loginRateLimiter.middleware, async (req, res) => {
         // Reset rate limit on success
         loginRateLimiter.reset(ip);
 
+        AuditService.logAuth('LOGIN_SUCCESS', result.customer.uid, { method: 'credentials', ip });
+
         res.status(200).json({
             success: true,
             message: "Login successful.",
             token: result.token,
+            refreshToken: result.refreshToken,
             data: result.customer
         });
 
@@ -117,6 +122,7 @@ router.post('/login', loginRateLimiter.middleware, async (req, res) => {
         if (error instanceof AuthenticationError) {
             // Increment rate limit on failed auth
             loginRateLimiter.increment(ip);
+            AuditService.logAuth('LOGIN_FAILED', 0, { ip, code: error.code }, error.message);
             return res.status(error.statusCode).json({
                 success: false,
                 message: error.message,

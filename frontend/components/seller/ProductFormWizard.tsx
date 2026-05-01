@@ -4,7 +4,7 @@ import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift } from 'lucide-react-native';
 import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
@@ -120,6 +120,7 @@ export default function ProductFormWizard({
     const [focusedField, setFocusedField] = useState<string | null>(null);
     const [activeVariantIndex, setActiveVariantIndex] = useState<number | null>(0);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const { settings } = useSellerSettings();
     const router = useRouter();
 
@@ -375,8 +376,12 @@ export default function ProductFormWizard({
                     newErrors.sku = 'Please enter or generate a Base SKU.';
                     isValid = false;
                 }
-                if (!formData.basePrice.trim()) {
-                    newErrors.basePrice = 'Please enter a base price.';
+                if (!formData.basePrice.trim() || isNaN(Number(formData.basePrice)) || Number(formData.basePrice) <= 0) {
+                    newErrors.basePrice = 'Please enter a valid base price greater than 0.';
+                    isValid = false;
+                }
+                if (formData.discountPercentage && (isNaN(Number(formData.discountPercentage)) || Number(formData.discountPercentage) < 0 || Number(formData.discountPercentage) > 100)) {
+                    newErrors.discountPercentage = 'Discount must be between 0 and 100.';
                     isValid = false;
                 }
                 if (!formData.description.trim()) {
@@ -384,17 +389,17 @@ export default function ProductFormWizard({
                     isValid = false;
                 }
 
-                if (formData.isBundle && !formData.bundleQuantity.trim()) {
-                    newErrors.bundleQty = 'Please enter the bundle quantity.';
+                if (formData.isBundle && (!formData.bundleQuantity.trim() || isNaN(Number(formData.bundleQuantity)) || !Number.isInteger(Number(formData.bundleQuantity)) || Number(formData.bundleQuantity) < 2)) {
+                    newErrors.bundleQty = 'Bundle quantity must be a whole number of at least 2.';
                     isValid = false;
                 }
                 break;
             case 3:
                 variants.forEach((v, i) => {
-                    if (!v.stock.trim()) {
+                    if (!v.stock.trim() || isNaN(Number(v.stock)) || !Number.isInteger(Number(v.stock)) || Number(v.stock) < 0) {
                         newErrors[`variant-${i}-stock`] = i === 0
-                            ? 'Stock is required for the main product.'
-                            : 'Stock is required.';
+                            ? 'Main product stock must be a valid number (0 or more).'
+                            : 'Variant stock must be a valid number (0 or more).';
                         isValid = false;
                     }
                     if (i > 0 && !v.name.trim()) {
@@ -514,6 +519,7 @@ export default function ProductFormWizard({
                                 onChangeText={(text: string) => handleChange('name', text)}
                                 placeholder="e.g. Handmade Crochet Bear"
                                 placeholderTextColor={theme.colors.textLight}
+                                autoCapitalize="sentences"
                                 onFocus={() => setFocusedField('name')}
                                 onBlur={() => {
                                     setFocusedField(null);
@@ -558,6 +564,9 @@ export default function ProductFormWizard({
                                 })}
                             </View>
                             {errors.categories && <Text style={styles.errorText}>{errors.categories}</Text>}
+                            <Text style={{ fontSize: 11, color: theme.colors.textLight, marginTop: 4, paddingHorizontal: 4 }}>
+                                Hint: You can select multiple categories.
+                            </Text>
                         </View>
 
                     </View>
@@ -575,6 +584,12 @@ export default function ProductFormWizard({
                                     <ActivityIndicator size="small" color={theme.colors.primary} />
                                 )}
                             </View>
+                            <InfoBox
+                                type="info"
+                                message="A Stock Keeping Unit (SKU) is a unique code used to track your inventory. You can enter your own or let us auto-generate one based on your product category."
+                                style={{ marginBottom: 12 }}
+                                storageKey="product_form_sku_info"
+                            />
                             {/* SKU Requirements Hint */}
                             {!formData.sku && (
                                 <View style={styles.skuRequirements}>
@@ -596,6 +611,7 @@ export default function ProductFormWizard({
                                 onChangeText={(text: string) => handleChange('sku', text.toUpperCase().replace(/\s+/g, '-'))}
                                 placeholder="e.g. BEAR-001"
                                 placeholderTextColor={theme.colors.textLight}
+                                autoCapitalize="sentences"
                                 onFocus={() => setFocusedField('sku')}
                                 onBlur={async () => {
                                     setFocusedField(null);
@@ -636,7 +652,7 @@ export default function ProductFormWizard({
                                 <TextInput
                                     style={[styles.input, focusedField === 'basePrice' && styles.inputFocused, errors.basePrice && styles.inputError]}
                                     value={formData.basePrice}
-                                    onChangeText={(text: string) => handleChange('basePrice', text)}
+                                    onChangeText={(text: string) => handleChange('basePrice', text.replace(/^0+(?=\d)/, ''))}
                                     placeholder="0.00"
                                     placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
@@ -650,7 +666,7 @@ export default function ProductFormWizard({
                                 <TextInput
                                     style={[styles.input, focusedField === 'discount' && styles.inputFocused]}
                                     value={formData.discountPercentage}
-                                    onChangeText={(text: string) => handleChange('discountPercentage', text)}
+                                    onChangeText={(text: string) => handleChange('discountPercentage', text.replace(/^0+(?=\d)/, ''))}
                                     placeholder="0"
                                     placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
@@ -749,7 +765,7 @@ export default function ProductFormWizard({
                                 <TextInput
                                     style={[styles.input, focusedField === 'bundleQty' && styles.inputFocused, errors.bundleQty && styles.inputError]}
                                     value={formData.bundleQuantity}
-                                    onChangeText={(text: string) => handleChange('bundleQuantity', text)}
+                                    onChangeText={(text: string) => handleChange('bundleQuantity', text.replace(/^0+(?=\d)/, '').replace(/[^0-9]/g, ''))}
                                     placeholder="Total number of items in the bundle (e.g. 3)"
                                     placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
@@ -849,14 +865,45 @@ export default function ProductFormWizard({
                                     <Text style={[styles.summaryValue, { color: theme.colors.error }]}>{formData.discountPercentage}% OFF</Text>
                                 </View>
                             )}
-                            <View style={styles.summaryRow}>
+                            {Number(formData.basePrice) >= 200 && (
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryLabelContainer}>
+                                        <Truck size={16} color={theme.colors.textLight} />
+                                        <Text style={styles.summaryLabel}>Cash on Delivery:</Text>
+                                    </View>
+                                    <Text style={styles.summaryValue}>{formData.isCodAllowed ? 'Enabled' : 'Disabled'}</Text>
+                                </View>
+                            )}
+                            {formData.isBundle && (
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryLabelContainer}>
+                                        <Gift size={16} color={theme.colors.textLight} />
+                                        <Text style={styles.summaryLabel}>Bundle Configuration:</Text>
+                                    </View>
+                                    <Text style={styles.summaryValue}>{formData.bundleQuantity} items</Text>
+                                </View>
+                            )}
+                            <View style={[styles.summaryRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
                                 <View style={styles.summaryLabelContainer}>
                                     <FileText size={16} color={theme.colors.textLight} />
                                     <Text style={styles.summaryLabel}>Description:</Text>
                                 </View>
-                                <Text style={styles.summaryValue} numberOfLines={2}>
+                                <Text 
+                                    style={[styles.summaryValue, { marginTop: 4, textAlign: 'left', flex: 0 }]} 
+                                    numberOfLines={isDescriptionExpanded ? undefined : 3}
+                                >
                                     {formData.description || '—'}
                                 </Text>
+                                {formData.description && formData.description.length > 100 && (
+                                    <Pressable 
+                                        onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                                        style={{ alignSelf: 'flex-start', marginTop: 4 }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.primary }}>
+                                            {isDescriptionExpanded ? 'See less' : 'See more'}
+                                        </Text>
+                                    </Pressable>
+                                )}
                             </View>
 
                             <View style={styles.summaryDivider} />
@@ -885,13 +932,27 @@ export default function ProductFormWizard({
                                 </View>
                                 {variants.map((v, i) => (
                                     <View key={i} style={styles.summaryVariantItem}>
-                                        <Text style={styles.summaryVariantName}>
-                                            {v.name || 'Unnamed'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Main)</Text>}
-                                        </Text>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                                            <Text style={styles.summaryVariantName}>
+                                                {v.name || 'Unnamed'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Default)</Text>}
+                                            </Text>
+                                            <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'monospace' }}>
+                                                {v.sku || (i === 0 ? formData.sku : `${formData.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}`)}
+                                            </Text>
+                                        </View>
                                         <Text style={styles.summaryVariantDetail}>
-                                            Stock: {v.stock || '0'} • {v.price ? `₱${v.price}` : `Inherits ₱${formData.basePrice || '0'}`}
-                                            {v.images && v.images.length > 0 ? ` • ${v.images.length} img` : ''}
-                                            {v.materials ? ` • ${v.materials}` : ''}
+                                            <Text style={{ fontWeight: '600', color: theme.colors.text }}>Stock: {v.stock || '0'}</Text>
+                                            {' • '}
+                                            {v.price ? `₱${v.price}` : `Inherits ₱${formData.basePrice || '0'}`}
+                                            {i === 0 && images.length > 0 
+                                                ? ` • ${images.length} base image(s)` 
+                                                : (v.images && v.images.length > 0 ? ` • ${v.images.length} image(s)` : '')}
+                                        </Text>
+                                        <Text style={[styles.summaryVariantDetail, { marginTop: 2 }]}>
+                                            <Text style={{ fontWeight: '500' }}>Materials:</Text>{' '}
+                                            {v.materials 
+                                                ? v.materials 
+                                                : (i === 0 ? 'None specified' : <Text style={{ fontStyle: 'italic' }}>Inherits '{variants[0].materials || 'None'}'</Text>)}
                                         </Text>
                                     </View>
                                 ))}
@@ -1005,6 +1066,7 @@ export default function ProductFormWizard({
                             variants={variants}
                             activeVariantIndex={currentStep === 3 ? activeVariantIndex : null}
                             sellerName={user?.sellerStoreName}
+                            sellerLogo={settings?.logo}
                         />
                     </View>
                 )}
@@ -1075,6 +1137,7 @@ export default function ProductFormWizard({
                         categories={selectedCategories}
                         variants={variants}
                         sellerName={user?.sellerStoreName}
+                        sellerLogo={settings?.logo}
                     />
                     <Pressable
                         style={styles.closePreview}

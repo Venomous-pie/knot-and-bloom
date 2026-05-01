@@ -20,7 +20,10 @@ interface Product {
     discountedPrice?: number | null;
     discountPercentage?: number | null;
     soldCount: number;
+    rating?: number;
+    reviewCount?: number;
     image: string | null;
+    images?: string[];
     description?: string;
     uploaded: string;
     updated: string;
@@ -30,6 +33,7 @@ interface Product {
     seller?: {
         name: string;
         slug: string;
+        logo?: string | null;
     } | null;
 }
 

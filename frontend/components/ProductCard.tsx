@@ -4,7 +4,7 @@ import { findLowestPrice } from "@/utils/pricing";
 import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { RelativePathString, router } from "expo-router";
-import { Pin, ShoppingCart } from "lucide-react-native";
+import { Pin, ShoppingCart, Star, Clock } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
     Animated,
@@ -135,6 +135,9 @@ export default function ProductCard({
     const hasDiscount = discountPct > 0;
     const isAvailable = selectedVariant ? selectedVariant.stock > 0 : true;
     const displayImage = selectedVariant?.image || product.image;
+    const imageList = product.images?.length ? product.images : (displayImage ? [displayImage] : []);
+    const sellerDisplay = product.seller?.name || 'Knot & Bloom';
+    const isKnotAndBloom = sellerDisplay === 'Knot & Bloom';
 
     const handleWishlistPress = () => {
         if (onWishlistToggle) {
@@ -180,6 +183,21 @@ export default function ProductCard({
                         </View>
                     )}
 
+                    {/* Image Dots (Pagination) */}
+                    {imageList.length > 1 && (
+                        <View style={{
+                            position: 'absolute', bottom: s.gap + 4, left: 0, right: 0, 
+                            flexDirection: 'row', justifyContent: 'center', gap: 4 
+                        }}>
+                            {imageList.slice(0, 5).map((_, i) => (
+                                <View key={i} style={{
+                                    width: 4, height: 4, borderRadius: 2,
+                                    backgroundColor: i === 0 ? theme.colors.primary : 'rgba(255,255,255,0.6)'
+                                }} />
+                            ))}
+                        </View>
+                    )}
+
                     {/* Pending Badge — top-left */}
                     {product.status === 'PENDING' && (
                         <View style={[styles.badge, {
@@ -221,20 +239,6 @@ export default function ProductCard({
                                 }]}>
                                     <Ionicons name="flame" size={s.badgeFont} color="white" />
                                     <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>Popular</Text>
-                                </View>
-                            );
-                        if (isAvailable && selectedVariant?.stock && selectedVariant.stock < 5)
-                            return (
-                                <View style={[styles.badge, {
-                                    backgroundColor: theme.colors.badgeLowStock,
-                                    top: s.actionRight,
-                                    left: s.actionRight,
-                                    paddingHorizontal: s.badgePadH,
-                                    paddingVertical: s.badgePadV,
-                                    flexDirection: 'row', alignItems: 'center', gap: 3,
-                                }]}>
-                                    <Ionicons name="flash" size={s.badgeFont} color="white" />
-                                    <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>Last {selectedVariant.stock}</Text>
                                 </View>
                             );
                         if ((Date.now() - new Date(product.uploaded).getTime()) < 1000 * 60 * 60 * 24 * 7)
@@ -350,37 +354,82 @@ export default function ProductCard({
                         {product.name}
                     </Text>
 
-                    {/* Row 3: Seller only */}
-                    {product.seller ? (
+                    {/* Row 3: Seller Avatar & Name */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.gapSm * 1.5 }}>
+                        <View style={{
+                            width: s.sellerFont * 2, height: s.sellerFont * 2, borderRadius: s.sellerFont,
+                            backgroundColor: '#EBE1E3', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
+                        }}>
+                            {product.seller?.logo ? (
+                                <Image source={{ uri: product.seller.logo }} style={{ width: '100%', height: '100%' }} />
+                            ) : (
+                                <Text style={{ fontSize: s.sellerFont * 1.1, fontWeight: '600', color: theme.colors.primary }}>
+                                    {sellerDisplay.charAt(0).toUpperCase()}
+                                </Text>
+                            )}
+                        </View>
                         <Pressable
                             onPress={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                router.push(`/seller/${product.seller?.slug}` as RelativePathString);
+                                if (product.seller) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    router.push(`/seller/${product.seller.slug}` as RelativePathString);
+                                }
                             }}
+                            style={{ flex: 1 }}
                         >
                             <Text style={{ fontSize: s.sellerFont, color: theme.colors.textLight }} numberOfLines={1}>
                                 <Text style={
-                                    product?.seller?.name === 'Knot & Bloom'
+                                    isKnotAndBloom
                                         ? { fontWeight: '600', color: theme.colors.primary }
                                         : { textDecorationLine: 'underline' }
-                                }>{product.seller.name}</Text>
+                                }>{sellerDisplay}</Text>
                             </Text>
                         </Pressable>
-                    ) : (
-                        <Text style={{ fontSize: s.sellerFont, fontWeight: '600', color: theme.colors.primary }} numberOfLines={1}>
-                            Knot & Bloom
-                        </Text>
-                    )}
+                    </View>
 
-                    {/* Row 4: Price */}
+                    {/* Row 4: Star Rating */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.gapSm }}>
+                        <View style={{ flexDirection: 'row', gap: 2 }}>
+                            {[1,2,3,4,5].map(star => {
+                                const rating = product.rating || 0;
+                                const isFilled = star <= Math.round(rating);
+                                return (
+                                    <Star 
+                                        key={star} 
+                                        size={s.ratingFont * 1.2} 
+                                        fill={isFilled ? '#F59E0B' : 'transparent'} 
+                                        color={isFilled ? '#F59E0B' : theme.colors.textLight} 
+                                    />
+                                );
+                            })}
+                        </View>
+                        <Text style={{ fontSize: s.ratingFont, color: theme.colors.textSecondary }}>
+                            {(product.rating || 0).toFixed(1)} ({(product.reviewCount || 0)})
+                        </Text>
+                    </View>
+
+                    {/* Row 5: Low Stock Warning */}
+                    {isAvailable && selectedVariant?.stock && selectedVariant.stock < 10 ? (
+                        <View style={{ 
+                            backgroundColor: '#FFFBEB', paddingVertical: s.padding * 0.5, paddingHorizontal: s.padding * 0.8, 
+                            borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: s.gapSm, alignSelf: 'flex-start' 
+                        }}>
+                            <Clock size={s.ratingFont * 1.1} color="#D97706" />
+                            <Text style={{ fontSize: s.ratingFont, color: "#D97706", fontWeight: '600' }}>
+                                Only {selectedVariant.stock} left in stock!
+                            </Text>
+                        </View>
+                    ) : null}
+
+                    {/* Row 6: Price */}
                     <View style={{ flexDirection: "row", alignItems: "baseline", gap: s.gap }}>
                         <Text style={{ fontSize: s.priceFont, fontWeight: "700", color: theme.colors.primary }}>
-                            ₱{finalPrice.toFixed(2)}
+                            ₱{finalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                         {hasDiscount && (
                             <Text style={{ fontSize: s.origPriceFont, color: theme.colors.textLight, textDecorationLine: "line-through" }}>
-                                ₱{variantPrice.toFixed(2)}
+                                ₱{variantPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Text>
                         )}
                     </View>

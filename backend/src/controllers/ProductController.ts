@@ -276,7 +276,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
             orderBy: orderBy,
             include: {
                 variants: true,
-                seller: { select: { name: true, slug: true } }
+                seller: { select: { name: true, slug: true, logo: true } }
             }
         }),
         prisma.product.count({ where: whereClause }),
@@ -352,7 +352,7 @@ export const getAdminProducts = async (options: { status?: string; limit?: numbe
             orderBy: { uploaded: 'desc' },
             include: {
                 variants: true,
-                seller: { select: { uid: true, name: true, slug: true, email: true } }
+                seller: { select: { uid: true, name: true, slug: true, email: true, logo: true } }
             }
         }),
         prisma.product.count({ where: whereClause }),
@@ -433,7 +433,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
             orderBy: { uploaded: 'desc' },
             include: {
                 variants: true,
-                seller: { select: { name: true, slug: true } }
+                seller: { select: { name: true, slug: true, logo: true } }
             }
         });
         return products;
@@ -455,7 +455,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
         orderBy: { uploaded: 'desc' },
         include: {
             variants: true,
-            seller: { select: { name: true, slug: true } }
+            seller: { select: { name: true, slug: true, logo: true } }
         }
     });
 

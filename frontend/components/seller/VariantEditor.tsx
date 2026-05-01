@@ -190,8 +190,9 @@ export default function VariantEditor({
     };
 
     const handleNumericInput = (index: number, field: keyof VariantData, value: string, allowDecimal = false, max?: number) => {
-        if (validateNumeric(value, allowDecimal)) {
-            if (max !== undefined && Number(value) > max) {
+        let cleanValue = value.replace(/^0+(?=\d)/, '');
+        if (validateNumeric(cleanValue, allowDecimal)) {
+            if (max !== undefined && Number(cleanValue) > max) {
                 setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: `Max ${max}` }));
                 // Still update value but show error? Or prevent?
                 // Let's prevent values > max
@@ -200,7 +201,7 @@ export default function VariantEditor({
             }
             // Clear error if valid
             setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: null }));
-            updateVariant(index, field, value);
+            updateVariant(index, field, cleanValue);
         } else {
             setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: allowDecimal ? "Numbers only" : "Integers only" }));
         }
@@ -393,6 +394,7 @@ export default function VariantEditor({
                                                     onChangeText={(text) => updateVariant(index, 'name', text)}
                                                     placeholder="e.g. Small Red, Blue XL"
                                                     placeholderTextColor={theme.colors.textLight}
+                                                    autoCapitalize="sentences"
                                                     onFocus={() => setFocusedField(getFieldKey(index, 'name'))}
                                                     onBlur={() => {
                                                         setFocusedField(null);
@@ -427,6 +429,7 @@ export default function VariantEditor({
                                                 onChangeText={(text) => updateVariant(index, 'sku', text)}
                                                 placeholder="Auto-generated"
                                                 placeholderTextColor={theme.colors.textLight}
+                                                autoCapitalize="sentences"
                                                 onFocus={() => setFocusedField(getFieldKey(index, 'sku'))}
                                                 onBlur={() => {
                                                     setFocusedField(null);
@@ -504,6 +507,7 @@ export default function VariantEditor({
                                             onChangeText={(text) => setMaterialInputs(prev => ({ ...prev, [index]: text }))}
                                             placeholder="Type and press Enter, or select below..."
                                             placeholderTextColor={theme.colors.textLight}
+                                            autoCapitalize="sentences"
                                             onFocus={() => setFocusedField(getFieldKey(index, 'materials'))}
                                             onBlur={() => setTimeout(() => setFocusedField(null), 200)}
                                             onSubmitEditing={() => {
@@ -538,6 +542,9 @@ export default function VariantEditor({
                                     {variantErrors[`variant-${index}-materials`] && (
                                         <Text style={styles.errorText}>{variantErrors[`variant-${index}-materials`]}</Text>
                                     )}
+                                    <Text style={{ fontSize: 11, color: theme.colors.textLight, marginTop: 4 }}>
+                                        Hint: Type a material and press Enter to add multiple items, or select from the presets below.
+                                    </Text>
                                     
                                     {/* Smart Suggestions */}
                                     {focusedField === getFieldKey(index, 'materials') && (
@@ -602,22 +609,32 @@ export default function VariantEditor({
                                     </View>
                                     <View style={[styles.field, !mobile && { flex: 1 }]}>
                                         <Text style={styles.fieldLabel}>Price (₱)</Text>
-                                        <TextInput
-                                            style={[
-                                                styles.input,
-                                                focusedField === getFieldKey(index, 'price') && styles.inputFocused,
-                                                errors[getFieldKey(index, 'price')] ? styles.inputError : null
-                                            ]}
-                                            value={variant.price}
-                                            onChangeText={(text) => handleNumericInput(index, 'price', text, true)}
-                                            placeholder={basePrice ? `Inherits ${basePrice}` : 'Optional'}
-                                            placeholderTextColor={theme.colors.textLight}
-                                            keyboardType="numeric"
-                                            onFocus={() => setFocusedField(getFieldKey(index, 'price'))}
-                                            onBlur={() => setFocusedField(null)}
-                                        />
-                                        {errors[getFieldKey(index, 'price')] && (
-                                            <Text style={styles.errorText}>{errors[getFieldKey(index, 'price')]}</Text>
+                                        {index === 0 ? (
+                                            <View style={styles.lockedInput}>
+                                                <Lock size={13} color={theme.colors.textLight} />
+                                                <Text style={styles.lockedInputText}>{basePrice || '0'}</Text>
+                                                <Text style={styles.lockedInputHint}>(locked)</Text>
+                                            </View>
+                                        ) : (
+                                            <>
+                                                <TextInput
+                                                    style={[
+                                                        styles.input,
+                                                        focusedField === getFieldKey(index, 'price') && styles.inputFocused,
+                                                        errors[getFieldKey(index, 'price')] ? styles.inputError : null
+                                                    ]}
+                                                    value={variant.price}
+                                                    onChangeText={(text) => handleNumericInput(index, 'price', text, true)}
+                                                    placeholder={basePrice ? `Inherits ${basePrice}` : 'Optional'}
+                                                    placeholderTextColor={theme.colors.textLight}
+                                                    keyboardType="numeric"
+                                                    onFocus={() => setFocusedField(getFieldKey(index, 'price'))}
+                                                    onBlur={() => setFocusedField(null)}
+                                                />
+                                                {errors[getFieldKey(index, 'price')] && (
+                                                    <Text style={styles.errorText}>{errors[getFieldKey(index, 'price')]}</Text>
+                                                )}
+                                            </>
                                         )}
                                     </View>
                                     <View style={[styles.field, !mobile && { flex: 1 }]}>

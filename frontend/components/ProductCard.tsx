@@ -267,7 +267,7 @@ export default function ProductCard({
                             paddingHorizontal: s.badgePadH,
                             paddingVertical: s.badgePadV,
                         }]}>
-                            <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>-{Math.round(discountPct)}%</Text>
+                            <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>-{discountPct % 1 === 0 ? discountPct : discountPct.toFixed(1)}%</Text>
                         </View>
                     )}
 

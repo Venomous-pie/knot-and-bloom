@@ -645,14 +645,16 @@ export default function ProductFormWizard({
                             {errors.sku && <Text style={styles.errorText}>{errors.sku}</Text>}
                         </View>
 
-                        {/* Price Row */}
                         <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
                             <View style={[styles.field, !mobile && { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Base Price (₱) *</Text>
                                 <TextInput
                                     style={[styles.input, focusedField === 'basePrice' && styles.inputFocused, errors.basePrice && styles.inputError]}
                                     value={formData.basePrice}
-                                    onChangeText={(text: string) => handleChange('basePrice', text.replace(/^0+(?=\d)/, ''))}
+                                    onChangeText={(text: string) => {
+                                        const clean = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '');
+                                        handleChange('basePrice', clean);
+                                    }}
                                     placeholder="0.00"
                                     placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
@@ -666,7 +668,10 @@ export default function ProductFormWizard({
                                 <TextInput
                                     style={[styles.input, focusedField === 'discount' && styles.inputFocused]}
                                     value={formData.discountPercentage}
-                                    onChangeText={(text: string) => handleChange('discountPercentage', text.replace(/^0+(?=\d)/, ''))}
+                                    onChangeText={(text: string) => {
+                                        const clean = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '');
+                                        handleChange('discountPercentage', clean);
+                                    }}
                                     placeholder="0"
                                     placeholderTextColor={theme.colors.textLight}
                                     keyboardType="numeric"
@@ -1066,6 +1071,7 @@ export default function ProductFormWizard({
                             variants={variants}
                             activeVariantIndex={currentStep === 3 ? activeVariantIndex : null}
                             sellerName={user?.sellerStoreName}
+                            //@ts-ignore
                             sellerLogo={settings?.logo}
                         />
                     </View>
@@ -1137,6 +1143,7 @@ export default function ProductFormWizard({
                         categories={selectedCategories}
                         variants={variants}
                         sellerName={user?.sellerStoreName}
+                        //@ts-ignore
                         sellerLogo={settings?.logo}
                     />
                     <Pressable

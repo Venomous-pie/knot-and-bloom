@@ -30,15 +30,17 @@ interface CustomOptionsModalProps {
 }
 
 function CustomOptionsModal({ visible, onClose, onGenerate }: CustomOptionsModalProps) {
-    const [option1Name, setOption1Name] = useState('Variation');
-    const [option1Values, setOption1Values] = useState('');
+    const [list1, setList1] = useState('');
+    const [list2, setList2] = useState('');
 
-    const [option2Name, setOption2Name] = useState('');
-    const [option2Values, setOption2Values] = useState('');
-
-    const handleGenerate = () => {
-        const vals1 = option1Values.split(',').map(s => s.trim()).filter(Boolean);
-        const vals2 = option2Values.split(',').map(s => s.trim()).filter(Boolean);
+    const getCombinations = () => {
+        const formatValue = (s: string) => {
+            const trimmed = s.trim();
+            if (!trimmed) return trimmed;
+            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+        };
+        const vals1 = list1.split(',').map(formatValue).filter(Boolean);
+        const vals2 = list2.split(',').map(formatValue).filter(Boolean);
 
         const combinations: string[] = [];
 
@@ -54,81 +56,102 @@ function CustomOptionsModal({ visible, onClose, onGenerate }: CustomOptionsModal
             vals2.forEach(v2 => combinations.push(v2));
         }
 
+        return combinations;
+    };
+
+    const combinations = getCombinations();
+
+    const handleGenerate = () => {
         if (combinations.length > 0) {
             onGenerate(combinations);
         }
 
         onClose();
-        setOption1Name('Variation');
-        setOption1Values('');
-        setOption2Name('');
-        setOption2Values('');
+        setList1('');
+        setList2('');
+    };
+
+    const handleClose = () => {
+        onClose();
+        setList1('');
+        setList2('');
     };
 
     return (
         <Modal
             visible={visible}
             transparent={true}
-            animationType="none"
-            onRequestClose={onClose}
+            animationType="fade"
+            onRequestClose={handleClose}
         >
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Pressable style={styles.modalOverlay} onPress={onClose} />
+                <Pressable style={styles.modalOverlay} onPress={handleClose} />
                 <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Bulk Generate Variants</Text>
-                    <Text style={styles.modalSubtitle}>Create combinations from custom options.</Text>
+                    <Text style={styles.modalTitle}>Quick Add Variants</Text>
+                    <Text style={styles.modalSubtitle}>Create multiple variants at once by listing your options.</Text>
 
-                    <ScrollView style={{ maxHeight: 400 }}>
+                    <ScrollView style={{ maxHeight: 450, width: '100%' }} showsVerticalScrollIndicator={false}>
                         <View style={styles.field}>
-                            <Text style={styles.fieldLabel}>Option 1 Name</Text>
+                            <Text style={styles.fieldLabel}>Primary Options (comma separated)</Text>
                             <TextInput
-                                style={styles.input}
-                                value={option1Name}
-                                onChangeText={setOption1Name}
-                                placeholder="e.g. Flower Count"
+                                style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
+                                value={list1}
+                                onChangeText={setList1}
+                                placeholder="e.g. Red, Blue, White"
                                 placeholderTextColor={theme.colors.textLight}
-                            />
-                            <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Option 1 Values (comma separated)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={option1Values}
-                                onChangeText={setOption1Values}
-                                placeholder="e.g. 3 Stems, 6 Stems, 1 Dozen"
-                                placeholderTextColor={theme.colors.textLight}
+                                autoCapitalize="sentences"
+                                multiline
                             />
                         </View>
 
                         <View style={[styles.field, { marginTop: 16 }]}>
-                            <Text style={styles.fieldLabel}>Option 2 Name (Optional)</Text>
+                            <Text style={styles.fieldLabel}>Secondary Options - Optional</Text>
+                            <Text style={{ fontSize: 12, color: theme.colors.textLight, marginBottom: 8, marginTop: -4 }}>
+                                If provided, we'll combine these with your primary options.
+                            </Text>
                             <TextInput
-                                style={styles.input}
-                                value={option2Name}
-                                onChangeText={setOption2Name}
-                                placeholder="e.g. Wrap Type"
+                                style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
+                                value={list2}
+                                onChangeText={setList2}
+                                placeholder="e.g. Small, Medium, Large"
                                 placeholderTextColor={theme.colors.textLight}
-                            />
-                            <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Option 2 Values (comma separated)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={option2Values}
-                                onChangeText={setOption2Values}
-                                placeholder="e.g. Standard, Premium"
-                                placeholderTextColor={theme.colors.textLight}
+                                autoCapitalize="sentences"
+                                multiline
                             />
                         </View>
+
+                        {combinations.length > 0 && (
+                            <View style={{ marginTop: 20, padding: 16, backgroundColor: theme.colors.backgroundAlt, borderRadius: 12 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.text, marginBottom: 12 }}>
+                                    Preview ({combinations.length} variant{combinations.length !== 1 && 's'} will be created)
+                                </Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                    {combinations.slice(0, 8).map((combo, i) => (
+                                        <View key={i} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+                                            <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '500' }}>{combo}</Text>
+                                        </View>
+                                    ))}
+                                    {combinations.length > 8 && (
+                                        <View style={{ backgroundColor: 'transparent', paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center' }}>
+                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontWeight: '500' }}>+ {combinations.length - 8} more</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        )}
                     </ScrollView>
 
                     <View style={styles.modalActions}>
-                        <Pressable style={styles.modalCancel} onPress={onClose}>
+                        <Pressable style={styles.modalCancel} onPress={handleClose}>
                             <Text style={styles.modalCancelText}>Cancel</Text>
                         </Pressable>
                         <Pressable
-                            style={[styles.modalGenerate, (option1Values.trim() === '' && option2Values.trim() === '') && styles.disabledBtn]}
+                            style={[styles.modalGenerate, combinations.length === 0 && styles.disabledBtn]}
                             onPress={handleGenerate}
-                            disabled={option1Values.trim() === '' && option2Values.trim() === ''}
+                            disabled={combinations.length === 0}
                         >
                             <Sparkles size={16} color="white" />
-                            <Text style={styles.modalGenerateText}>Generate</Text>
+                            <Text style={styles.modalGenerateText}>Create</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -183,28 +206,19 @@ export default function VariantEditor({
     const [errors, setErrors] = useState<Record<string, string | null>>({});
     const [materialInputs, setMaterialInputs] = useState<Record<number, string>>({});
 
-    const validateNumeric = (value: string, allowDecimal = false): boolean => {
-        if (!value) return true; // Allow empty for typing
-        const regex = allowDecimal ? /^\d*\.?\d*$/ : /^\d*$/;
-        return regex.test(value);
-    };
-
     const handleNumericInput = (index: number, field: keyof VariantData, value: string, allowDecimal = false, max?: number) => {
-        let cleanValue = value.replace(/^0+(?=\d)/, '');
-        if (validateNumeric(cleanValue, allowDecimal)) {
-            if (max !== undefined && Number(cleanValue) > max) {
-                setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: `Max ${max}` }));
-                // Still update value but show error? Or prevent?
-                // Let's prevent values > max
-                // updateVariant(index, field, value); 
-                return;
-            }
-            // Clear error if valid
-            setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: null }));
-            updateVariant(index, field, cleanValue);
-        } else {
-            setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: allowDecimal ? "Numbers only" : "Integers only" }));
+        let cleanValue = allowDecimal 
+            ? value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '')
+            : value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
+
+        if (max !== undefined && Number(cleanValue) > max) {
+            setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: `Max ${max}` }));
+            // Let's prevent values > max
+            return;
         }
+        // Clear error if valid
+        setErrors(prev => ({ ...prev, [getFieldKey(index, field as string)]: null }));
+        updateVariant(index, field, cleanValue);
     };
 
     // ----------------------------------------------------------------------
@@ -302,7 +316,7 @@ export default function VariantEditor({
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     <Pressable style={styles.outlineButton} onPress={() => setBulkModalVisible(true)}>
                         <Layers size={16} color={theme.colors.primary} />
-                        <Text style={styles.outlineButtonText}>Bulk Generate</Text>
+                        <Text style={styles.outlineButtonText}>Quick Add</Text>
                     </Pressable>
                     <Pressable style={styles.addButton} onPress={addVariant}>
                         <Plus size={16} color="white" />
@@ -1180,9 +1194,12 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.border,
     },
     helperText: {
+        marginLeft: 16,
+        marginBottom: 8,
         fontSize: 12,
         color: theme.colors.textLight,
         fontFamily: 'Quicksand',
+        fontStyle: 'italic',
     },
     customColorSwatch: {
         backgroundColor: theme.colors.subtle,

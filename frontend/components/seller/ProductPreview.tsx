@@ -209,7 +209,7 @@ export default function ProductPreview({
                                 paddingVertical: s.badgePadV,
                             }]}>
                                 <Text style={[styles.badgeText, { fontSize: s.badgeFont }]}>
-                                    -{Math.round(discountPct)}%
+                                    -{discountPct % 1 === 0 ? discountPct : discountPct.toFixed(1)}%
                                 </Text>
                             </View>
                         )}

@@ -5,8 +5,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Modal,
-    Platform,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -81,7 +79,7 @@ export default function NotificationsPage() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
-    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+    const [expandedId, setExpandedId] = useState<number | null>(null);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -141,8 +139,8 @@ export default function NotificationsPage() {
             if (deleted && !deleted.isRead) {
                 setUnreadCount(prev => Math.max(0, prev - 1));
             }
-            if (selectedNotification?.uid === notificationId) {
-                setSelectedNotification(null);
+            if (expandedId === notificationId) {
+                setExpandedId(null);
             }
         } catch (error) {
             console.error('Error deleting notification:', error);
@@ -150,10 +148,14 @@ export default function NotificationsPage() {
         }
     };
 
-    const handleOpenNotification = (notification: Notification) => {
-        setSelectedNotification(notification);
-        if (!notification.isRead) {
-            handleMarkAsRead(notification.uid);
+    const handleToggleExpand = (notification: Notification) => {
+        if (expandedId === notification.uid) {
+            setExpandedId(null);
+        } else {
+            setExpandedId(notification.uid);
+            if (!notification.isRead) {
+                handleMarkAsRead(notification.uid);
+            }
         }
     };
 
@@ -187,14 +189,10 @@ export default function NotificationsPage() {
         );
     }
 
-    const parsed = selectedNotification
-        ? parseFormalMessage(selectedNotification.title, selectedNotification.message)
-        : null;
-
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
+                <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
                     <Text style={styles.backButtonText}>← Back</Text>
                 </Pressable>
                 <Text style={styles.title}>Notifications</Text>
@@ -225,41 +223,78 @@ export default function NotificationsPage() {
                     <View style={styles.list}>
                         {notifications.map((notification) => {
                             const typeStyle = TYPE_COLORS[notification.type] || TYPE_COLORS.system;
+                            const isExpanded = expandedId === notification.uid;
+                            const parsed = isExpanded ? parseFormalMessage(notification.title, notification.message) : null;
+
                             return (
                                 <Pressable
                                     key={notification.uid}
                                     style={[
                                         styles.notificationCard,
                                         !notification.isRead && styles.unreadCard,
+                                        isExpanded && styles.expandedCard
                                     ]}
-                                    onPress={() => handleOpenNotification(notification)}
+                                    onPress={() => handleToggleExpand(notification)}
                                 >
-                                    <View style={[styles.iconContainer, { backgroundColor: typeStyle.bg }]}>
-                                        {TYPE_ICONS[notification.type] || <Bell size={20} color="#555" />}
-                                    </View>
-                                    <View style={styles.content}>
-                                        <View style={styles.titleRow}>
-                                            <Text style={[styles.notificationTitle, !notification.isRead && styles.unreadTitle]}>
-                                                {notification.title}
-                                            </Text>
-                                            <Pressable
-                                                style={styles.deleteButton}
-                                                onPress={() => handleDelete(notification.uid)}
-                                                hitSlop={10}
-                                            >
-                                                <Trash2 size={16} color="#ccc" />
-                                            </Pressable>
+                                    <View style={styles.cardHeader}>
+                                        <View style={[styles.iconContainer, { backgroundColor: typeStyle.bg }]}>
+                                            {TYPE_ICONS[notification.type] || <Bell size={20} color="#555" />}
                                         </View>
-                                        <Text style={styles.message} numberOfLines={2}>
-                                            {notification.message}
-                                        </Text>
-                                        <View style={styles.footerRow}>
-                                            <Text style={styles.time}>{formatTime(notification.createdAt)}</Text>
-                                            <Text style={[styles.typeLabel, { color: typeStyle.text }]}>
-                                                {TYPE_LABELS[notification.type] || 'Notification'}
-                                            </Text>
+                                        <View style={styles.content}>
+                                            <View style={styles.titleRow}>
+                                                <Text style={[styles.notificationTitle, !notification.isRead && styles.unreadTitle]}>
+                                                    {notification.title}
+                                                </Text>
+                                                <Pressable
+                                                    style={styles.deleteButton}
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(notification.uid);
+                                                    }}
+                                                    hitSlop={10}
+                                                >
+                                                    <Trash2 size={16} color={theme.colors.error} />
+                                                </Pressable>
+                                            </View>
+                                            
+                                            {!isExpanded && (
+                                                <Text style={styles.message} numberOfLines={2}>
+                                                    {notification.message}
+                                                </Text>
+                                            )}
+
+                                            <View style={styles.footerRow}>
+                                                <Text style={styles.time}>{formatTime(notification.createdAt)}</Text>
+                                                <Text style={[styles.typeLabel, { color: typeStyle.text }]}>
+                                                    {TYPE_LABELS[notification.type] || 'Notification'}
+                                                </Text>
+                                            </View>
                                         </View>
                                     </View>
+
+                                    {isExpanded && parsed && (
+                                        <View style={styles.expandedContent}>
+                                            <View style={styles.letterDivider} />
+                                            <Text style={styles.letterDate}>
+                                                {formatFullDate(notification.createdAt)}
+                                            </Text>
+
+                                            {parsed.greeting ? (
+                                                <Text style={styles.letterGreeting}>{parsed.greeting}</Text>
+                                            ) : (
+                                                <Text style={styles.letterGreeting}>
+                                                    {`Dear Valued Customer,`}
+                                                </Text>
+                                            )}
+
+                                            <Text style={styles.letterBody}>{parsed.body}</Text>
+
+                                            <Text style={styles.letterClosing}>
+                                                {parsed.closing || 'Warm regards,'}
+                                            </Text>
+                                            <Text style={styles.letterSignature}>Knot & Bloom Team</Text>
+                                        </View>
+                                    )}
                                     {!notification.isRead && <View style={styles.unreadDot} />}
                                 </Pressable>
                             );
@@ -277,91 +312,6 @@ export default function NotificationsPage() {
                     <ChevronRight size={20} color="#ccc" />
                 </Pressable>
             </ScrollView>
-
-            {/* Formal Notification Detail Modal */}
-            <Modal
-                visible={!!selectedNotification}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setSelectedNotification(null)}
-            >
-                <Pressable style={styles.modalOverlay} onPress={() => setSelectedNotification(null)}>
-                    <Pressable style={styles.modalSheet} onPress={e => e.stopPropagation()}>
-                        {selectedNotification && parsed && (() => {
-                            const typeStyle = TYPE_COLORS[selectedNotification.type] || TYPE_COLORS.system;
-                            return (
-                                <>
-                                    {/* Modal Header */}
-                                    <View style={styles.modalHeader}>
-                                        <View style={[styles.modalTypeTag, { backgroundColor: typeStyle.bg }]}>
-                                            {TYPE_ICONS[selectedNotification.type] || <Bell size={14} color="#555" />}
-                                            <Text style={[styles.modalTypeText, { color: typeStyle.text }]}>
-                                                {TYPE_LABELS[selectedNotification.type] || 'Notification'}
-                                            </Text>
-                                        </View>
-                                        <Pressable onPress={() => setSelectedNotification(null)} hitSlop={8}>
-                                            <X size={22} color={theme.colors.textLight} />
-                                        </Pressable>
-                                    </View>
-
-                                    <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                                        {/* Letter-style container */}
-                                        <View style={styles.letterContainer}>
-                                            {/* Date stamp */}
-                                            <Text style={styles.letterDate}>
-                                                {formatFullDate(selectedNotification.createdAt)}
-                                            </Text>
-
-                                            <View style={styles.letterDivider} />
-
-                                            {/* Title / Subject line */}
-                                            <Text style={styles.letterSubjectLabel}>Subject</Text>
-                                            <Text style={styles.letterSubject}>{parsed.subject}</Text>
-
-                                            <View style={styles.letterDivider} />
-
-                                            {/* Greeting */}
-                                            {parsed.greeting ? (
-                                                <Text style={styles.letterGreeting}>{parsed.greeting}</Text>
-                                            ) : (
-                                                <Text style={styles.letterGreeting}>
-                                                    {`Dear Valued Customer,`}
-                                                </Text>
-                                            )}
-
-                                            {/* Body */}
-                                            <Text style={styles.letterBody}>{parsed.body}</Text>
-
-                                            {/* Closing */}
-                                            <Text style={styles.letterClosing}>
-                                                {parsed.closing || 'Warm regards,'}
-                                            </Text>
-                                            <Text style={styles.letterSignature}>Knot & Bloom Team</Text>
-                                        </View>
-                                    </ScrollView>
-
-                                    {/* Actions */}
-                                    <View style={styles.modalActions}>
-                                        <Pressable
-                                            style={styles.modalDeleteButton}
-                                            onPress={() => handleDelete(selectedNotification.uid)}
-                                        >
-                                            <Trash2 size={16} color={theme.colors.error} />
-                                            <Text style={styles.modalDeleteText}>Delete</Text>
-                                        </Pressable>
-                                        <Pressable
-                                            style={styles.modalCloseButton}
-                                            onPress={() => setSelectedNotification(null)}
-                                        >
-                                            <Text style={styles.modalCloseText}>Close</Text>
-                                        </Pressable>
-                                    </View>
-                                </>
-                            );
-                        })()}
-                    </Pressable>
-                </Pressable>
-            </Modal>
         </SafeAreaView>
     );
 }
@@ -442,7 +392,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 16,
         padding: 16,
-        flexDirection: 'row',
+        flexDirection: 'column',
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
@@ -452,10 +402,15 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     unreadCard: {
-        backgroundColor: 'white',
         borderLeftWidth: 3,
         borderLeftColor: theme.colors.primaryLight,
-        borderColor: 'transparent',
+    },
+    expandedCard: {
+        backgroundColor: 'white',
+        borderColor: theme.colors.primaryLight,
+    },
+    cardHeader: {
+        flexDirection: 'row',
     },
     iconContainer: {
         width: 40,
@@ -509,6 +464,8 @@ const styles = StyleSheet.create({
     },
     deleteButton: {
         padding: 4,
+        marginTop: -4,
+        marginRight: -4,
     },
     unreadDot: {
         width: 8,
@@ -518,6 +475,45 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 16,
         right: 16,
+    },
+    expandedContent: {
+        marginTop: 16,
+        paddingLeft: 56, // Align with text content (40 icon + 16 margin)
+    },
+    letterDivider: {
+        height: 1,
+        backgroundColor: theme.colors.subtle,
+        marginBottom: 16,
+    },
+    letterDate: {
+        fontSize: 12,
+        color: theme.colors.textLight,
+        marginBottom: 12,
+        fontStyle: 'italic',
+    },
+    letterGreeting: {
+        fontSize: 14,
+        color: theme.colors.text,
+        lineHeight: 22,
+        marginBottom: 8,
+        fontStyle: 'italic',
+    },
+    letterBody: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        lineHeight: 22,
+        marginBottom: 16,
+    },
+    letterClosing: {
+        fontSize: 14,
+        color: theme.colors.text,
+        marginBottom: 4,
+    },
+    letterSignature: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: theme.colors.primary,
+        fontFamily: 'Quicksand',
     },
     settingsLink: {
         flexDirection: 'row',
@@ -539,140 +535,5 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: theme.colors.text,
         fontFamily: 'Quicksand',
-    },
-
-    // ─── Modal styles ───────────────────────────────────────────────
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        justifyContent: 'flex-end',
-    },
-    modalSheet: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        maxHeight: '85%',
-        ...Platform.select({
-            web: { boxShadow: '0 -4px 30px rgba(0,0,0,0.15)' } as any,
-            default: { elevation: 20 }
-        })
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.subtle,
-    },
-    modalTypeTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    modalTypeText: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    modalBody: {
-        maxHeight: '70%',
-    },
-    letterContainer: {
-        padding: 24,
-    },
-    letterDate: {
-        fontSize: 12,
-        color: theme.colors.textLight,
-        textAlign: 'right',
-        marginBottom: 16,
-        fontStyle: 'italic',
-    },
-    letterDivider: {
-        height: 1,
-        backgroundColor: theme.colors.subtle,
-        marginVertical: 14,
-    },
-    letterSubjectLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: theme.colors.textLight,
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginBottom: 6,
-    },
-    letterSubject: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: theme.colors.text,
-        fontFamily: 'Quicksand',
-        lineHeight: 28,
-    },
-    letterGreeting: {
-        fontSize: 15,
-        color: theme.colors.text,
-        lineHeight: 24,
-        marginBottom: 12,
-        fontStyle: 'italic',
-    },
-    letterBody: {
-        fontSize: 15,
-        color: theme.colors.textSecondary,
-        lineHeight: 24,
-        marginBottom: 20,
-    },
-    letterClosing: {
-        fontSize: 15,
-        color: theme.colors.text,
-        marginBottom: 4,
-    },
-    letterSignature: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: theme.colors.primary,
-        fontFamily: 'Quicksand',
-        marginBottom: 8,
-    },
-    modalActions: {
-        flexDirection: 'row',
-        padding: 20,
-        gap: 12,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.subtle,
-        paddingBottom: Platform.OS === 'ios' ? 36 : 20,
-    },
-    modalDeleteButton: {
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.errorLight || '#FFCDD2',
-        backgroundColor: '#FFF5F5',
-    },
-    modalDeleteText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: theme.colors.error,
-    },
-    modalCloseButton: {
-        flex: 2,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderRadius: 12,
-        backgroundColor: theme.colors.primary,
-    },
-    modalCloseText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#FFF',
     },
 });

@@ -439,7 +439,7 @@ export default function OrderHistoryPage() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
+                <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
                     <Text style={styles.backButtonText}>← Back</Text>
                 </Pressable>
                 <Text style={styles.title}>My Orders</Text>

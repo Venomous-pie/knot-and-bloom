@@ -42,13 +42,15 @@ const ImageUploadSection = ({
         ? 'Square image, recommended 400x400px'
         : 'Wide image, recommended 1600x900px';
 
+    const maxWidth = type === 'logo' ? 240 : undefined;
+
     return (
         <View style={styles.imageUploadSection}>
             <Text style={styles.label}>{title}</Text>
             <Text style={styles.sublabel}>{subtitle} (Optional)</Text>
 
             {imageUrl ? (
-                <View style={styles.imagePreviewContainer}>
+                <View style={[styles.imagePreviewContainer, maxWidth ? { maxWidth } : {}]}>
                     <Image
                         source={{ uri: imageUrl }}
                         style={[
@@ -68,20 +70,22 @@ const ImageUploadSection = ({
                     </TouchableOpacity>
                 </View>
             ) : (
-                <TouchableOpacity
-                    style={styles.uploadButton}
-                    onPress={onPress}
-                    disabled={isUploading}
-                >
-                    {isUploading ? (
-                        <ActivityIndicator color={theme.colors.primaryLight} />
-                    ) : (
-                        <>
-                            <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.primary} />
-                            <Text style={styles.uploadButtonText}>Upload {title}</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
+                <View style={maxWidth ? { maxWidth } : {}}>
+                    <TouchableOpacity
+                        style={[styles.uploadButton, { aspectRatio }]}
+                        onPress={onPress}
+                        disabled={isUploading}
+                    >
+                        {isUploading ? (
+                            <ActivityIndicator color={theme.colors.primaryLight} />
+                        ) : (
+                            <>
+                                <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.primary} />
+                                <Text style={styles.uploadButtonText}>Upload {title}</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </View>
             )}
         </View>
     );
@@ -341,23 +345,19 @@ export default function SellerApplyPage() {
                 {errors.description && <Text style={styles.fieldError}>{errors.description}</Text>}
             </View>
 
-            <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 16 }}>
-                <View style={{ flex: 1 }}>
-                    <ImageUploadSection
-                        type="logo"
-                        imageUrl={logoUrl}
-                        onPress={() => handlePickImage('logo')}
-                        isUploading={uploadingImage === 'logo'}
-                    />
-                </View>
-                <View style={{ flex: 1 }}>
-                    <ImageUploadSection
-                        type="banner"
-                        imageUrl={bannerUrl}
-                        onPress={() => handlePickImage('banner')}
-                        isUploading={uploadingImage === 'banner'}
-                    />
-                </View>
+            <View style={{ flexDirection: 'column', gap: 16 }}>
+                <ImageUploadSection
+                    type="logo"
+                    imageUrl={logoUrl}
+                    onPress={() => handlePickImage('logo')}
+                    isUploading={uploadingImage === 'logo'}
+                />
+                <ImageUploadSection
+                    type="banner"
+                    imageUrl={bannerUrl}
+                    onPress={() => handlePickImage('banner')}
+                    isUploading={uploadingImage === 'banner'}
+                />
             </View>
         </Animated.View>
     );
@@ -514,7 +514,7 @@ export default function SellerApplyPage() {
                 <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
                     <View style={[styles.contentContainer, isDesktop ? styles.row : styles.column]}>
                         {/* Left Side - Branding (Desktop Only or simplified on Mobile) */}
-                        <View style={[styles.brandingSection, isDesktop ? { width: "50%" } : { width: "100%", paddingVertical: 20, minHeight: 150 }]}>
+                        <View style={[styles.brandingSection, isDesktop ? { width: "40%" } : { width: "100%", paddingVertical: 20, minHeight: 150 }]}>
                             {isDesktop ? (
                                 <>
                                     <Image
@@ -543,7 +543,7 @@ export default function SellerApplyPage() {
                         </View>
 
                         {/* Right Side - Wizard Form */}
-                        <View style={[styles.formSection, isDesktop ? { width: "50%" } : { width: "100%" }]}>
+                        <View style={[styles.formSection, isDesktop ? { width: "60%" } : { width: "100%" }]}>
                             <View style={styles.formContent}>
                                 {isAlreadySeller && user?.sellerStatus !== "REJECTED" ? (
                                     <View style={styles.alreadySellerContainer}>
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
     },
     formContent: {
         width: "100%",
-        maxWidth: 500,
+        maxWidth: 600,
         alignSelf: "center",
     },
     alreadySellerContainer: {

@@ -82,7 +82,7 @@ export default function DeleteAccountPage() {
                             Alert.alert(
                                 'Deletion Scheduled',
                                 `Your account is scheduled for deletion on ${new Date(response.data.deletionScheduledFor).toLocaleDateString()}. You can cancel this by logging in before that date.`,
-                                [{ text: 'OK', onPress: () => router.back() }]
+                                [{ text: 'OK', onPress: () => router.navigate('/profile' as RelativePathString) }]
                             );
                         } catch (error: any) {
                             Alert.alert('Error', error.response?.data?.error || 'Failed to request account deletion');
@@ -136,7 +136,7 @@ export default function DeleteAccountPage() {
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
                         <Text style={styles.backButtonText}>← Back</Text>
                     </Pressable>
                     <Text style={styles.title}>Account Deletion</Text>

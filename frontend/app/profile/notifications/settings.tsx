@@ -117,7 +117,7 @@ export default function NotificationSettingsPage() {
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
                         <Text style={styles.backButtonText}>← Back</Text>
                     </Pressable>
                     <Text style={styles.title}>Notification Settings</Text>

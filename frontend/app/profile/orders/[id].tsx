@@ -145,7 +145,7 @@ export default function OrderDetailsPage() {
         } catch (error) {
             console.error("Failed to fetch order details", error);
             Alert.alert("Error", "Failed to load order details");
-            router.back();
+            router.navigate('/profile' as RelativePathString);
         } finally {
             setLoading(false);
         }
@@ -269,7 +269,7 @@ export default function OrderDetailsPage() {
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
                         <Text style={styles.backButtonText}>← Back to Orders</Text>
                     </Pressable>
                 </View>

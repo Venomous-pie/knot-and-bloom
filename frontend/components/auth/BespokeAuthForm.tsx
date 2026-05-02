@@ -168,25 +168,16 @@ export default function BespokeAuthForm({
                     return;
                 }
 
-                if (authMethod === 'phone') {
-                    try {
-                        await authAPI.sendOTP(phoneNumber);
-                        setShowOtpModal(true);
-                        setResendCooldown(60);
-                    } catch (err: any) {
-                        setAuthError({ message: err.response?.data?.message || "Failed to send OTP. Please try again." });
-                    }
-                    setIsLoading(false);
-                    return;
+                try {
+                    const target = authMethod === 'email' ? email : phoneNumber;
+                    await authAPI.sendOTP(target);
+                    setShowOtpModal(true);
+                    setResendCooldown(60);
+                } catch (err: any) {
+                    setAuthError({ message: err.response?.data?.message || "Failed to send OTP. Please try again." });
                 }
-
-                const randomName = generateRandomName();
-                const payload = {
-                    name: randomName,
-                    password,
-                    ...(authMethod === 'email' ? { email } : { phone: phoneNumber })
-                };
-                await register(payload);
+                setIsLoading(false);
+                return;
             } else {
                 const payload = {
                     password,
@@ -295,7 +286,8 @@ export default function BespokeAuthForm({
 
         setAuthError(null);
         try {
-            await authAPI.sendOTP(phoneNumber);
+            const target = authMethod === 'email' ? email : phoneNumber;
+            await authAPI.sendOTP(target);
             setResendCooldown(60);
             setOtpCode("");
         } catch (err: any) {
@@ -311,7 +303,7 @@ export default function BespokeAuthForm({
             const payload = {
                 name: randomName,
                 password,
-                phone: phoneNumber,
+                ...(authMethod === 'email' ? { email } : { phone: phoneNumber }),
                 otp: otpCode
             };
             await register(payload);
@@ -892,7 +884,7 @@ export default function BespokeAuthForm({
             {/* OTP Modal Overlay - Full Screen with Boxed Inputs */}
             <Modal
                 visible={showOtpModal}
-                animationType="slide"
+                animationType="none"
                 presentationStyle="fullScreen"
                 onRequestClose={() => setShowOtpModal(false)}
             >

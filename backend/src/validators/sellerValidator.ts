@@ -8,9 +8,18 @@ export const sellerSchema = z.object({
     banner: z.string().optional(),
     location: z.string().optional(),
     phone: z.string().optional(),
-    socialMediaLink: z.string().optional(),
+    socialMediaLink: z.string().min(1, "Social media link is required to verify identity"),
     email: z.string().email().optional(),
     termsAccepted: z.boolean().optional(),
+    businessType: z.string().optional(),
+    productCategories: z.string().optional(),
+    isHandmade: z.boolean().optional(),
+    hasPriorExperience: z.boolean().optional(),
+    legalName: z.string().min(2, "Legal name is required").optional(), // Making optional in schema to not break existing calls, but will be enforced in frontend
+    businessAddress: z.string().min(5, "Full address is required").optional(),
+    portfolioLink: z.string().optional(),
+    idType: z.string().optional(),
+    idNumber: z.string().optional(),
 });
 
 // Validator for Direct Registration (Customer + Seller)

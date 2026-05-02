@@ -115,11 +115,11 @@ router.post('/exchange-code', (req, res) => {
 // @desc    Send OTP for registration
 router.post('/send-otp', async (req, res, next) => {
     try {
-        const { phone } = req.body;
-        if (!phone) {
-            throw new ErrorHandler.ValidationError([{ message: "Phone number is required", path: ["phone"] }]);
+        const { target } = req.body;
+        if (!target) {
+            throw new ErrorHandler.ValidationError([{ message: "Email or Phone number is required", path: ["target"] }]);
         }
-        await OtpService.generateAndSendOTP(phone, 'REGISTRATION');
+        await OtpService.generateAndSendOTP(target, 'REGISTRATION');
         res.status(200).json({ message: "OTP sent successfully" });
     } catch (error) {
         next(error);

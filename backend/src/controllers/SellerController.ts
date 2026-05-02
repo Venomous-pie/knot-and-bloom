@@ -52,6 +52,15 @@ export const sellerController = {
                         description: data.description ?? null,
                         logo: data.logo ?? null,
                         banner: data.banner ?? null,
+                        businessType: data.businessType ?? null,
+                        productCategories: data.productCategories ?? null,
+                        isHandmade: data.isHandmade ?? false,
+                        hasPriorExperience: data.hasPriorExperience ?? false,
+                        legalName: data.legalName ?? null,
+                        businessAddress: data.businessAddress ?? null,
+                        portfolioLink: data.portfolioLink ?? null,
+                        idType: data.idType ?? null,
+                        idNumber: data.idNumber ?? null,
                         status: SellerStatus.PENDING
                     }
                 });
@@ -129,6 +138,15 @@ export const sellerController = {
                             banner: data.banner ?? null,
                             phone: req.body.contactNumber ?? data.phone ?? null,
                             socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
+                            businessType: data.businessType ?? null,
+                            productCategories: data.productCategories ?? null,
+                            isHandmade: data.isHandmade ?? false,
+                            hasPriorExperience: data.hasPriorExperience ?? false,
+                            legalName: data.legalName ?? null,
+                            businessAddress: data.businessAddress ?? null,
+                            portfolioLink: data.portfolioLink ?? null,
+                            idType: data.idType ?? null,
+                            idNumber: data.idNumber ?? null,
                             status: SellerStatus.PENDING,
                             rejectionReason: null, // Clear previous rejection reason
                             termsAccepted: data.termsAccepted ?? false,
@@ -173,6 +191,15 @@ export const sellerController = {
                     // Map contactNumber (frontend) to phone (schema)
                     phone: req.body.contactNumber ?? data.phone ?? null,
                     socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
+                    businessType: data.businessType ?? null,
+                    productCategories: data.productCategories ?? null,
+                    isHandmade: data.isHandmade ?? false,
+                    hasPriorExperience: data.hasPriorExperience ?? false,
+                    legalName: data.legalName ?? null,
+                    businessAddress: data.businessAddress ?? null,
+                    portfolioLink: data.portfolioLink ?? null,
+                    idType: data.idType ?? null,
+                    idNumber: data.idNumber ?? null,
                     status: SellerStatus.PENDING,
                     termsAccepted: data.termsAccepted ?? false,
                     termsAcceptedAt: data.termsAccepted ? new Date() : null

@@ -9,11 +9,14 @@ export class OtpService {
     static async generateAndSendOTP(target: string, type: 'REGISTRATION' | 'PASSWORD_RESET'): Promise<void> {
         // 1. Check if user exists (for REGISTRATION)
         if (type === 'REGISTRATION') {
+            const isEmail = target.includes('@');
             const existingCustomer = await prisma.customer.findFirst({
-                where: { phone: target }
+                where: isEmail ? { email: target } : { phone: target }
             });
             if (existingCustomer) {
-                throw new ErrorHandler.ConflictError("Phone number already registered.");
+                throw new ErrorHandler.ConflictError(
+                    isEmail ? "Email already registered." : "Phone number already registered."
+                );
             }
         }
 

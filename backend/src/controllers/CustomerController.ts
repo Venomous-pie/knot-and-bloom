@@ -50,15 +50,18 @@ const customerRegisterController = async (input: unknown) => {
             }
         }
 
-        // Verify OTP if phone is provided
-        if (parsedInput.phone) {
-            if (!parsedInput.otp) {
-                throw new ErrorHandler.ValidationError([{ message: "OTP is required for phone registration", path: ["otp"] }]);
-            }
-            const isValid = await OtpService.verifyOTP(parsedInput.phone, parsedInput.otp, 'REGISTRATION');
-            if (!isValid) {
-                throw new ErrorHandler.AuthenticationError("Invalid or expired OTP");
-            }
+        // Verify OTP for all registrations (email or phone)
+        const target = parsedInput.email || parsedInput.phone;
+        if (!target) {
+            throw new ErrorHandler.ValidationError([{ message: "Email or phone is required", path: ["email", "phone"] }]);
+        }
+        
+        if (!parsedInput.otp) {
+            throw new ErrorHandler.ValidationError([{ message: "OTP is required for registration", path: ["otp"] }]);
+        }
+        const isValid = await OtpService.verifyOTP(target, parsedInput.otp, 'REGISTRATION');
+        if (!isValid) {
+            throw new ErrorHandler.AuthenticationError("Invalid or expired OTP");
         }
 
         const hashedPassword = await bcrypt.hash(parsedInput.password, 10);
@@ -134,6 +137,10 @@ const customerLoginController = async (input: unknown) => {
 
         if (!customer) {
             throw new ErrorHandler.AuthenticationError("No account found with those credentials.", 'USER_NOT_FOUND');
+        }
+
+        if (customer.deletedAt) {
+            throw new ErrorHandler.AuthenticationError("This account has been deleted.", 'USER_DELETED');
         }
 
         if (!customer.password) {
@@ -312,6 +319,10 @@ const googleLoginController = async (input: unknown) => {
         });
 
         if (customer) {
+            if (customer.deletedAt) {
+                throw new ErrorHandler.AuthenticationError("This account has been deleted.", 'USER_DELETED');
+            }
+
             // Link googleId if not linked yet, or update avatar if missing
             if (!customer.googleId || (!customer.avatar && picture)) {
                 customer = await prisma.customer.update({

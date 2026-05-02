@@ -83,6 +83,7 @@ model Customer {
   notifications         Notification[]
 
   // Account deletion
+  deletedAt            DateTime?
   deletionRequestedAt  DateTime?
   deletionScheduledFor DateTime?
 }
@@ -256,6 +257,20 @@ model Seller {
   socialMediaLink  String?
   rejectionReason  String?
   location         String?
+  
+  // Seller Application Questions
+  businessType       String?
+  productCategories  String?
+  isHandmade         Boolean @default(false)
+  hasPriorExperience Boolean @default(false)
+
+  // KYC Fields
+  legalName          String?
+  businessAddress    String?
+  portfolioLink      String?
+  idType             String?
+  idNumber           String?
+  
   rating           Decimal      @default(0)
   pinnedProductIds Int[]
   status           SellerStatus @default(PENDING)

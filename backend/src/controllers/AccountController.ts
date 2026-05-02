@@ -38,32 +38,95 @@ const requestAccountDeletion = async (userId: number, input: unknown) => {
         throw new ErrorHandler.NotFoundError("Customer", String(userId));
     }
 
+    if (!customer.password) {
+        throw new ErrorHandler.BadRequestError("This account uses Google Sign-In and cannot be verified with a password. Please contact support.");
+    }
+
     // Verify password
     const isPasswordValid = await bcrypt.compare(parsedInput.password, customer.password);
     if (!isPasswordValid) {
         throw new ErrorHandler.BadRequestError("Incorrect password");
     }
 
-    // Check if deletion is already requested
-    if (customer.deletionRequestedAt) {
-        throw new ErrorHandler.BadRequestError("Deletion already requested. Cancel before requesting again.");
-    }
+    // Execute the privacy-focused soft delete in a transaction
+    await prisma.$transaction(async (tx) => {
+        // 1. Delete sensitive PII-heavy sub-records completely
+        await tx.address.deleteMany({ where: { customerId: userId } });
+        await tx.paymentMethod.deleteMany({ where: { customerId: userId } });
+        await tx.notification.deleteMany({ where: { customerId: userId } });
+        await tx.notificationSettings.deleteMany({ where: { customerId: userId } });
+        await tx.checkoutSession.deleteMany({ where: { customerId: userId } });
 
-    // Schedule deletion for 7 days from now
-    const deletionScheduledFor = new Date(Date.now() + DELETION_DELAY_MS);
+        // Delete Cart
+        const cart = await tx.cart.findUnique({ where: { customerId: userId } });
+        if (cart) {
+            await tx.cartItem.deleteMany({ where: { cartId: cart.uid } });
+            await tx.cart.delete({ where: { uid: cart.uid } });
+        }
 
-    await prisma.customer.update({
-        where: { uid: userId },
-        data: {
-            deletionRequestedAt: new Date(),
-            deletionScheduledFor,
+        // Delete Wishlist
+        const wishlist = await tx.wishlist.findUnique({ where: { customerId: userId } });
+        if (wishlist) {
+            await tx.wishlistItem.deleteMany({ where: { wishlistId: wishlist.uid } });
+            await tx.wishlist.delete({ where: { uid: wishlist.uid } });
+        }
+
+        // 2. Soft delete and anonymize Customer
+        const anonymizedEmail = `deleted_${userId}_${Date.now()}@anonymized.com`;
+        await tx.customer.update({
+            where: { uid: userId },
+            data: {
+                name: "Deleted User",
+                email: anonymizedEmail,
+                phone: null,
+                googleId: null,
+                address: null,
+                avatar: null,
+                deletedAt: new Date(),
+                password: "deleted", // overwrite password hash
+            }
+        });
+
+        // 3. Soft delete and anonymize Seller (if exists)
+        const seller = await tx.seller.findUnique({ where: { customerId: userId } });
+        if (seller) {
+            const sellerAnonymizedEmail = `deleted_seller_${seller.uid}_${Date.now()}@anonymized.com`;
+            await tx.seller.update({
+                where: { uid: seller.uid },
+                data: {
+                    name: "Deleted Shop",
+                    slug: `deleted-shop-${seller.uid}`,
+                    email: sellerAnonymizedEmail,
+                    phone: null,
+                    description: null,
+                    logo: null,
+                    banner: null,
+                    socialMediaLink: null,
+                    location: null,
+                    legalName: null,
+                    businessAddress: null,
+                    portfolioLink: null,
+                    idType: null,
+                    idNumber: null,
+                    deletedAt: new Date(),
+                    status: "BANNED" // Change status to prevent appearing in listings
+                }
+            });
+
+            // 4. Soft delete all Products owned by the seller
+            await tx.product.updateMany({
+                where: { sellerId: seller.uid },
+                data: {
+                    deletedAt: new Date(),
+                    status: "SUSPENDED"
+                }
+            });
         }
     });
 
     return {
         success: true,
-        message: "Account deletion scheduled",
-        deletionScheduledFor,
+        message: "Account has been successfully deleted.",
         reason: parsedInput.reason,
     };
 };

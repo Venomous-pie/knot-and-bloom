@@ -66,27 +66,32 @@ export default function DeleteAccountPage() {
 
         Alert.alert(
             'Confirm Account Deletion',
-            'Your account will be scheduled for deletion in 7 days. You can cancel this by logging in again before the deletion date.',
+            'Are you sure? Your account and personal data will be permanently deleted IMMEDIATELY. This action cannot be undone.',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'Request Deletion',
+                    text: 'Delete Account',
                     style: 'destructive',
                     onPress: async () => {
                         setSubmitting(true);
                         try {
-                            const response = await accountAPI.requestDeletion({
+                            await accountAPI.requestDeletion({
                                 reason: selectedReason || undefined,
                                 password: password.trim(),
                             });
                             Alert.alert(
-                                'Deletion Scheduled',
-                                `Your account is scheduled for deletion on ${new Date(response.data.deletionScheduledFor).toLocaleDateString()}. You can cancel this by logging in before that date.`,
-                                [{ text: 'OK', onPress: () => router.navigate('/profile' as RelativePathString) }]
+                                'Account Deleted',
+                                'Your account has been successfully deleted.',
+                                [{ 
+                                    text: 'OK', 
+                                    onPress: async () => {
+                                        await logout();
+                                        router.replace('/auth/login' as RelativePathString);
+                                    } 
+                                }]
                             );
                         } catch (error: any) {
                             Alert.alert('Error', error.response?.data?.error || 'Failed to request account deletion');
-                        } finally {
                             setSubmitting(false);
                         }
                     },
@@ -193,21 +198,21 @@ export default function DeleteAccountPage() {
                         <View style={styles.warningBanner}>
                             <Text style={styles.warningBannerIcon}>⚠️</Text>
                             <Text style={styles.warningBannerText}>
-                                Account deletion is permanent and cannot be undone after 7 days.
+                                Account deletion is permanent and takes effect immediately. This action cannot be undone.
                             </Text>
                         </View>
 
                         <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Request Account Deletion</Text>
+                            <Text style={styles.cardTitle}>Delete Account</Text>
                             <Text style={styles.cardDescription}>
                                 We're sorry to see you go. Before you delete your account, please note:
                             </Text>
 
                             <View style={styles.infoBox}>
-                                <Text style={styles.infoItem}>• Your account will be scheduled for deletion in 7 days</Text>
-                                <Text style={styles.infoItem}>• You can cancel the deletion by logging in within 7 days</Text>
-                                <Text style={styles.infoItem}>• All your personal data will be permanently deleted</Text>
-                                <Text style={styles.infoItem}>• Order history will be kept but anonymized</Text>
+                                <Text style={styles.infoItem}>• Your personal data will be permanently deleted</Text>
+                                <Text style={styles.infoItem}>• Your order history will be anonymized but kept for store records</Text>
+                                <Text style={styles.infoItem}>• You will lose access to all your purchases and seller data</Text>
+                                <Text style={styles.infoItem}>• This action is immediate and cannot be reversed</Text>
                             </View>
 
                             <Text style={styles.formLabel}>Why are you leaving? (Optional)</Text>
@@ -242,7 +247,7 @@ export default function DeleteAccountPage() {
                                 {submitting ? (
                                     <ActivityIndicator color="white" />
                                 ) : (
-                                    <Text style={styles.deleteButtonText}>Request Account Deletion</Text>
+                                    <Text style={styles.deleteButtonText}>Permanently Delete Account</Text>
                                 )}
                             </Pressable>
                         </View>

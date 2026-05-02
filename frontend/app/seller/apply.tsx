@@ -18,78 +18,12 @@ import {
     KeyboardAvoidingView
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from 'expo-image-picker';
-import { uploadToImageKit } from '@/lib/imagekit';
-import ImageCropperModal from '@/components/seller/ImageCropperModal';
+// Removed image upload imports
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from '@/constants/theme';
 import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
 
-const ImageUploadSection = ({
-    type,
-    imageUrl,
-    onPress,
-    isUploading,
-}: {
-    type: 'logo' | 'banner';
-    imageUrl: string;
-    onPress: () => void;
-    isUploading: boolean;
-}) => {
-    const aspectRatio = type === 'logo' ? 1 : 16 / 9;
-    const title = type === 'logo' ? 'Shop Logo' : 'Shop Banner';
-    const subtitle = type === 'logo'
-        ? 'Square image, recommended 400x400px'
-        : 'Wide image, recommended 1600x900px';
-
-    const maxWidth = type === 'logo' ? 240 : undefined;
-
-    return (
-        <View style={styles.imageUploadSection}>
-            <Text style={styles.label}>{title}</Text>
-            <Text style={styles.sublabel}>{subtitle} (Optional)</Text>
-
-            {imageUrl ? (
-                <View style={[styles.imagePreviewContainer, maxWidth ? { maxWidth } : {}]}>
-                    <Image
-                        source={{ uri: imageUrl }}
-                        style={[
-                            styles.imagePreview,
-                            { aspectRatio }
-                        ]}
-                        resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                        style={styles.changeImageButton}
-                        onPress={onPress}
-                        disabled={isUploading}
-                    >
-                        <Text style={styles.changeImageButtonText}>
-                            {isUploading ? 'Uploading...' : 'Change Image'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <View style={maxWidth ? { maxWidth } : {}}>
-                    <TouchableOpacity
-                        style={[styles.uploadButton, { aspectRatio }]}
-                        onPress={onPress}
-                        disabled={isUploading}
-                    >
-                        {isUploading ? (
-                            <ActivityIndicator color={theme.colors.primaryLight} />
-                        ) : (
-                            <>
-                                <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.primary} />
-                                <Text style={styles.uploadButtonText}>Upload {title}</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            )}
-        </View>
-    );
-};
+// ImageUploadSection removed
 
 export default function SellerApplyPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
@@ -104,22 +38,30 @@ export default function SellerApplyPage() {
     // Form State
     const [shopName, setShopName] = useState("");
     const [description, setDescription] = useState("");
-    const [logoUrl, setLogoUrl] = useState("");
-    const [bannerUrl, setBannerUrl] = useState("");
+    const [businessType, setBusinessType] = useState("Individual");
+    const [productCategories, setProductCategories] = useState<string[]>([]);
+    const [isBusinessTypeOpen, setIsBusinessTypeOpen] = useState(false);
+    const [isHandmade, setIsHandmade] = useState(false);
+    const [hasPriorExperience, setHasPriorExperience] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [email, setEmail] = useState(""); // Add email state
     const [socialLink, setSocialLink] = useState("");
+    
+    // KYC Fields
+    const [legalName, setLegalName] = useState("");
+    const [businessAddress, setBusinessAddress] = useState("");
+    const [portfolioLink, setPortfolioLink] = useState("");
+    const [idType, setIdType] = useState("");
+    const [idNumber, setIdNumber] = useState("");
+    const [isIdTypeOpen, setIsIdTypeOpen] = useState(false);
+
     const [termsAccepted, setTermsAccepted] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [focusedField, setFocusedField] = useState<string | null>(null);
 
-    // Image Upload State
-    const [showCropper, setShowCropper] = useState(false);
-    const [cropImageUri, setCropImageUri] = useState<string | null>(null);
-    const [cropImageType, setCropImageType] = useState<'logo' | 'banner'>('logo');
-    const [uploadingImage, setUploadingImage] = useState<'logo' | 'banner' | null>(null);
+
 
     // Redirect if not logged in
     useEffect(() => {
@@ -139,52 +81,7 @@ export default function SellerApplyPage() {
     // Check if already a seller
     const isAlreadySeller = user?.sellerId || user?.role === "SELLER";
 
-    const handlePickImage = async (type: 'logo' | 'banner') => {
-        try {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-                alert('Please grant photo library access to upload images.');
-                return;
-            }
 
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false,
-                quality: 1,
-            });
-
-            if (!result.canceled && result.assets[0]) {
-                setCropImageUri(result.assets[0].uri);
-                setCropImageType(type);
-                setShowCropper(true);
-            }
-        } catch (error) {
-            console.error('Error picking image:', error);
-            alert('Failed to pick image. Please try again.');
-        }
-    };
-
-    const handleCropComplete = async (croppedUri: string) => {
-        setShowCropper(false);
-        setUploadingImage(cropImageType);
-
-        try {
-            const uploadResult = await uploadToImageKit({ uri: croppedUri });
-
-            if (cropImageType === 'logo') {
-                setLogoUrl(uploadResult.url);
-            } else {
-                setBannerUrl(uploadResult.url);
-            }
-
-            setCropImageUri(null);
-        } catch (error) {
-            console.error('Error uploading image:', error);
-            alert('Could not upload image. Please try again.');
-        } finally {
-            setUploadingImage(null);
-        }
-    };
 
     const validateStep1 = () => {
         const newErrors: Record<string, string> = {};
@@ -194,6 +91,8 @@ export default function SellerApplyPage() {
         else if (trimmedName.length > 50) newErrors.shopName = "Shop name must be 50 characters or less";
 
         if (description.length > 500) newErrors.description = "Description must be 500 characters or less";
+        
+        if (productCategories.length === 0) newErrors.productCategories = "At least one category is required";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -217,11 +116,27 @@ export default function SellerApplyPage() {
         }
 
         const trimmedSocial = socialLink.trim();
-        if (trimmedSocial) {
+        if (!trimmedSocial) {
+            newErrors.socialLink = "Social media link is required to verify identity.";
+        } else {
             const urlRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
             if (!urlRegex.test(trimmedSocial)) {
                 newErrors.socialLink = "Please enter a valid URL";
             }
+        }
+
+        const trimmedLegalName = legalName.trim();
+        if (!trimmedLegalName) {
+            newErrors.legalName = "Legal name is required.";
+        } else if (trimmedLegalName.length < 2) {
+            newErrors.legalName = "Legal name must be at least 2 characters.";
+        }
+
+        const trimmedAddress = businessAddress.trim();
+        if (!trimmedAddress) {
+            newErrors.businessAddress = "Full business address is required.";
+        } else if (trimmedAddress.length < 5) {
+            newErrors.businessAddress = "Please provide a complete address.";
         }
 
         setErrors(newErrors);
@@ -267,11 +182,18 @@ export default function SellerApplyPage() {
                     body: JSON.stringify({
                         name: shopName.trim(),
                         description: description.trim() || undefined,
-                        logo: logoUrl.trim() || undefined,
-                        banner: bannerUrl.trim() || undefined,
+                        businessType: businessType,
+                        productCategories: productCategories.length > 0 ? productCategories.join(", ") : undefined,
+                        isHandmade: isHandmade,
+                        hasPriorExperience: hasPriorExperience,
                         phone: phoneNumber.trim(),
-                        socialMediaLink: socialLink.trim() || undefined,
+                        socialMediaLink: socialLink.trim(),
                         email: email.trim(),
+                        legalName: legalName.trim(),
+                        businessAddress: businessAddress.trim(),
+                        portfolioLink: portfolioLink.trim() || undefined,
+                        idType: idType.trim() || undefined,
+                        idNumber: idNumber.trim() || undefined,
                         termsAccepted: termsAccepted,
                     }),
                 }
@@ -293,9 +215,9 @@ export default function SellerApplyPage() {
                 return;
             }
 
-            // Success - refresh user context and redirect
+            // Success - refresh user context and redirect to their new storefront settings
             await refreshUser();
-            router.replace("/seller/application-submitted" as RelativePathString);
+            router.replace("/seller-dashboard/settings" as RelativePathString);
         } catch (error) {
             console.error(error);
             setErrors({ general: "Network error. Please check your connection." });
@@ -345,27 +267,135 @@ export default function SellerApplyPage() {
                 {errors.description && <Text style={styles.fieldError}>{errors.description}</Text>}
             </View>
 
-            <View style={{ flexDirection: 'column', gap: 16 }}>
-                <ImageUploadSection
-                    type="logo"
-                    imageUrl={logoUrl}
-                    onPress={() => handlePickImage('logo')}
-                    isUploading={uploadingImage === 'logo'}
-                />
-                <ImageUploadSection
-                    type="banner"
-                    imageUrl={bannerUrl}
-                    onPress={() => handlePickImage('banner')}
-                    isUploading={uploadingImage === 'banner'}
-                />
+            <View style={[styles.formGroup, { zIndex: 10 }]}>
+                <Text style={styles.label}>Business Type</Text>
+                <TouchableOpacity 
+                    style={styles.input} 
+                    onPress={() => setIsBusinessTypeOpen(!isBusinessTypeOpen)}
+                    activeOpacity={0.8}
+                >
+                    <Text style={{ color: theme.colors.text }}>{businessType}</Text>
+                    <Ionicons 
+                        name={isBusinessTypeOpen ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color={theme.colors.textLight} 
+                        style={{ position: 'absolute', right: 14, top: 14 }} 
+                    />
+                </TouchableOpacity>
+                {isBusinessTypeOpen && (
+                    <View style={styles.dropdownList}>
+                        {["Individual", "Registered Business"].map((opt, idx) => (
+                            <TouchableOpacity 
+                                key={opt} 
+                                style={[
+                                    styles.dropdownItem, 
+                                    idx === 0 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+                                ]} 
+                                onPress={() => { setBusinessType(opt); setIsBusinessTypeOpen(false); }}
+                            >
+                                <Text style={{ color: theme.colors.text }}>{opt}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
             </View>
+
+            <View style={[styles.formGroup, { zIndex: 1 }]}>
+                <Text style={styles.label}>Product Categories *</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                    {[
+                        "Jewelry", "Ceramics", "Digital Art", "Clothing", 
+                        "Home Decor", "Stationery", "Accessories", "Art & Collectibles"
+                    ].map(cat => {
+                        const isSelected = productCategories.includes(cat);
+                        return (
+                            <TouchableOpacity 
+                                key={cat} 
+                                style={{ 
+                                    paddingHorizontal: 12, 
+                                    paddingVertical: 8, 
+                                    borderRadius: 20, 
+                                    backgroundColor: isSelected ? theme.colors.primary : theme.colors.subtle, 
+                                    borderWidth: 1, 
+                                    borderColor: isSelected ? theme.colors.primaryDark : theme.colors.border 
+                                }} 
+                                onPress={() => {
+                                    if (isSelected) {
+                                        setProductCategories(prev => prev.filter(c => c !== cat));
+                                    } else {
+                                        setProductCategories(prev => [...prev, cat]);
+                                    }
+                                }}
+                            >
+                                <Text style={{ color: isSelected ? 'white' : theme.colors.textSecondary, fontSize: 13, fontWeight: isSelected ? '600' : '400' }}>
+                                    {cat}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+                {errors.productCategories && <Text style={styles.fieldError}>{errors.productCategories}</Text>}
+            </View>
+
+            <Pressable
+                style={styles.termsContainer}
+                onPress={() => setIsHandmade(!isHandmade)}
+            >
+                <View style={[styles.checkbox, isHandmade && styles.checkboxChecked]}>
+                    {isHandmade && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.termsText}>I make these products by hand</Text>
+            </Pressable>
+
+            <Pressable
+                style={styles.termsContainer}
+                onPress={() => setHasPriorExperience(!hasPriorExperience)}
+            >
+                <View style={[styles.checkbox, hasPriorExperience && styles.checkboxChecked]}>
+                    {hasPriorExperience && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.termsText}>I have prior experience selling online</Text>
+            </Pressable>
         </Animated.View>
     );
 
     const renderStep2 = () => (
-        <Animated.View entering={FadeIn.duration(400)}>
-            <Text style={styles.stepTitle}>Contact Details</Text>
-            <Text style={styles.stepSubtitle}>How can we reach you?</Text>
+        <Animated.View entering={FadeIn.duration(400)} style={{ zIndex: 10 }}>
+            <Text style={styles.stepTitle}>Identity & Contact Details</Text>
+            <Text style={styles.stepSubtitle}>Help us verify your identity and business.</Text>
+
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Full Legal Name *</Text>
+                <TextInput
+                    style={[styles.input, focusedField === 'legalName' && styles.inputFocused, errors.legalName && styles.inputError]}
+                    value={legalName}
+                    onChangeText={setLegalName}
+                    placeholder="e.g. Jane Doe"
+                    placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
+                    onFocus={() => setFocusedField('legalName')}
+                    onBlur={() => setFocusedField(null)}
+                />
+                <Text style={styles.helperText}>Used for verification and payouts. Not visible to customers.</Text>
+                {errors.legalName && <Text style={styles.fieldError}>{errors.legalName}</Text>}
+            </View>
+
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Full Business / Pickup Address *</Text>
+                <TextInput
+                    style={[styles.input, styles.textArea, focusedField === 'businessAddress' && styles.inputFocused, errors.businessAddress && styles.inputError]}
+                    value={businessAddress}
+                    onChangeText={setBusinessAddress}
+                    placeholder="e.g. 123 Craft St, Arts District, City, Province, 1000"
+                    placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
+                    multiline
+                    numberOfLines={3}
+                    onFocus={() => setFocusedField('businessAddress')}
+                    onBlur={() => setFocusedField(null)}
+                />
+                {errors.businessAddress && <Text style={styles.fieldError}>{errors.businessAddress}</Text>}
+            </View>
 
             {/* Email Field */}
             <View style={styles.formGroup}>
@@ -411,12 +441,12 @@ export default function SellerApplyPage() {
             </View>
 
             <View style={styles.formGroup}>
-                <Text style={styles.label}>Social Media Link (Optional)</Text>
+                <Text style={styles.label}>Social Media Link *</Text>
                 <TextInput
-                    style={[styles.input, focusedField === 'socialLink' && styles.inputFocused]}
+                    style={[styles.input, focusedField === 'socialLink' && styles.inputFocused, errors.socialLink && styles.inputError]}
                     value={socialLink}
                     onChangeText={setSocialLink}
-                    placeholder="e.g. facebook.com/myshop"
+                    placeholder="e.g. instagram.com/myshop"
                     placeholderTextColor={theme.colors.textLight}
                     selectionColor={theme.colors.primary}
                     autoCapitalize="none"
@@ -424,15 +454,86 @@ export default function SellerApplyPage() {
                     onBlur={() => setFocusedField(null)}
                 />
                 {errors.socialLink && <Text style={styles.fieldError}>{errors.socialLink}</Text>}
-                <Text style={styles.helperText}>Used to verify your existing presence.</Text>
+                <Text style={styles.helperText}>Required to verify your existing presence and authenticity.</Text>
             </View>
 
-            <View style={styles.infoBox}>
-                <Ionicons name="information-circle-outline" size={24} color="#0066CC" />
-                <Text style={styles.infoBoxText}>
-                    Note: You can add your pickup address and bank details later in your Seller Dashboard after approval.
-                </Text>
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Portfolio / Website Link (Optional)</Text>
+                <TextInput
+                    style={[styles.input, focusedField === 'portfolioLink' && styles.inputFocused]}
+                    value={portfolioLink}
+                    onChangeText={setPortfolioLink}
+                    placeholder="e.g. myportfolio.com"
+                    placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
+                    autoCapitalize="none"
+                    onFocus={() => setFocusedField('portfolioLink')}
+                    onBlur={() => setFocusedField(null)}
+                />
             </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.infoBox}>
+                <Ionicons name="shield-checkmark" size={24} color="#0066CC" />
+                <View style={{ flex: 1 }}>
+                    <Text style={[styles.infoBoxText, { fontWeight: 'bold', marginBottom: 4 }]}>
+                        Faster Approval (Super Optional)
+                    </Text>
+                    <Text style={styles.infoBoxText}>
+                        Providing a Government ID is completely optional, but it helps our team verify your application faster. You can totally skip this!
+                    </Text>
+                </View>
+            </View>
+
+            <View style={[styles.formGroup, { zIndex: 9, marginTop: 16 }]}>
+                <Text style={styles.label}>ID Type (Optional)</Text>
+                <TouchableOpacity 
+                    style={styles.input} 
+                    onPress={() => setIsIdTypeOpen(!isIdTypeOpen)}
+                    activeOpacity={0.8}
+                >
+                    <Text style={{ color: idType ? theme.colors.text : theme.colors.textLight }}>
+                        {idType || "Select ID Type"}
+                    </Text>
+                    <Ionicons 
+                        name={isIdTypeOpen ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color={theme.colors.textLight} 
+                        style={{ position: 'absolute', right: 14, top: 14 }} 
+                    />
+                </TouchableOpacity>
+                {isIdTypeOpen && (
+                    <View style={styles.dropdownList}>
+                        {["Passport", "Driver's License", "National ID", "Postal ID", "Other"].map((opt) => (
+                            <TouchableOpacity 
+                                key={opt} 
+                                style={[styles.dropdownItemIdType, { borderBottomWidth: 1, borderBottomColor: theme.colors.border} ]} 
+                                onPress={() => { setIdType(opt); setIsIdTypeOpen(false); }}
+                            >
+                                <Text style={{ color: theme.colors.text }}>{opt}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+            </View>
+
+            {idType ? (
+                <View style={[styles.formGroup, { zIndex: 1 }]}>
+                    <Text style={styles.label}>ID Number (Optional)</Text>
+                    <TextInput
+                        style={[styles.input, focusedField === 'idNumber' && styles.inputFocused]}
+                        value={idNumber}
+                        onChangeText={setIdNumber}
+                        placeholder="Enter your ID Number"
+                        placeholderTextColor={theme.colors.textLight}
+                        selectionColor={theme.colors.primary}
+                        onFocus={() => setFocusedField('idNumber')}
+                        onBlur={() => setFocusedField(null)}
+                    />
+                </View>
+            ) : null}
+            
         </Animated.View>
     );
 
@@ -447,8 +548,28 @@ export default function SellerApplyPage() {
             </View>
 
             <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>Description:</Text>
-                <Text style={styles.reviewValue}>{description || "N/A"}</Text>
+                <Text style={styles.reviewLabel}>Legal Name:</Text>
+                <Text style={styles.reviewValue}>{legalName}</Text>
+            </View>
+
+            <View style={styles.reviewSection}>
+                <Text style={styles.reviewLabel}>Email:</Text>
+                <Text style={styles.reviewValue}>{email}</Text>
+            </View>
+
+            <View style={styles.reviewSection}>
+                <Text style={styles.reviewLabel}>Phone:</Text>
+                <Text style={styles.reviewValue}>{phoneNumber}</Text>
+            </View>
+
+            <View style={styles.reviewSection}>
+                <Text style={styles.reviewLabel}>Social Link:</Text>
+                <Text style={styles.reviewValue}>{socialLink}</Text>
+            </View>
+
+            <View style={styles.reviewSection}>
+                <Text style={styles.reviewLabel}>ID Provided:</Text>
+                <Text style={styles.reviewValue}>{idType ? `${idType} (Hidden)` : "None (Skipped)"}</Text>
             </View>
 
             <View style={styles.reviewSection}>
@@ -467,13 +588,23 @@ export default function SellerApplyPage() {
             </View>
 
             <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>Logo:</Text>
-                <Text style={styles.reviewValue}>{logoUrl ? "Uploaded" : "Not Provided"}</Text>
+                <Text style={styles.reviewLabel}>Business Type:</Text>
+                <Text style={styles.reviewValue}>{businessType}</Text>
             </View>
 
             <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>Banner:</Text>
-                <Text style={styles.reviewValue}>{bannerUrl ? "Uploaded" : "Not Provided"}</Text>
+                <Text style={styles.reviewLabel}>Categories:</Text>
+                <Text style={styles.reviewValue}>{productCategories.length > 0 ? productCategories.join(", ") : "N/A"}</Text>
+            </View>
+
+            <View style={styles.reviewSection}>
+                <Text style={styles.reviewLabel}>Handmade:</Text>
+                <Text style={styles.reviewValue}>{isHandmade ? "Yes" : "No"}</Text>
+            </View>
+
+            <View style={styles.reviewSection}>
+                <Text style={styles.reviewLabel}>Prior Experience:</Text>
+                <Text style={styles.reviewValue}>{hasPriorExperience ? "Yes" : "No"}</Text>
             </View>
 
             <View style={styles.divider} />
@@ -511,39 +642,10 @@ export default function SellerApplyPage() {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1 }}
             >
-                <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-                    <View style={[styles.contentContainer, isDesktop ? styles.row : styles.column]}>
-                        {/* Left Side - Branding (Desktop Only or simplified on Mobile) */}
-                        <View style={[styles.brandingSection, isDesktop ? { width: "40%" } : { width: "100%", paddingVertical: 20, minHeight: 150 }]}>
-                            {isDesktop ? (
-                                <>
-                                    <Image
-                                        source={require('@/assets/bespoke_seller_onboarding.png')}
-                                        style={styles.brandingImage}
-                                        resizeMode="cover"
-                                    />
-                                    <View style={styles.brandingOverlay} />
-                                    <View style={styles.brandingTextContainer}>
-                                        <Text style={styles.brandingTagline}>Focus on Creating</Text>
-                                        <Text style={styles.brandingSubtagline}>
-                                            We handle the audience, marketing, and platform hassles—so you can do what you love.
-                                        </Text>
-                                        <Text style={styles.brandingHighlight}>
-                                            No fees. No stress. Just your craft.
-                                        </Text>
-                                    </View>
-                                </>
-                            ) : (
-                                <View style={styles.brandingContent}>
-                                    <Text style={styles.brandEmoji}>🏪</Text>
-                                    <Text style={styles.brandTitle}>Become a Seller</Text>
-                                    <Text style={styles.brandSubtitle}>Step {currentStep} of {totalSteps}</Text>
-                                </View>
-                            )}
-                        </View>
-
-                        {/* Right Side - Wizard Form */}
-                        <View style={[styles.formSection, isDesktop ? { width: "60%" } : { width: "100%" }]}>
+                <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+                    <View style={[styles.contentContainer, styles.column]}>
+                        {/* Centered Wizard Form */}
+                        <View style={[styles.formSection, { width: "100%" }]}>
                             <View style={styles.formContent}>
                                 {isAlreadySeller && user?.sellerStatus !== "REJECTED" ? (
                                     <View style={styles.alreadySellerContainer}>
@@ -617,11 +719,9 @@ export default function SellerApplyPage() {
                                                 <TouchableOpacity
                                                     style={[
                                                         styles.nextButton, 
-                                                        currentStep === 1 && styles.fullWidthButton,
-                                                        uploadingImage && styles.submitButtonDisabled
+                                                        currentStep === 1 && styles.fullWidthButton
                                                     ]}
                                                     onPress={handleNext}
-                                                    disabled={!!uploadingImage}
                                                 >
                                                     <Text style={styles.nextButtonText}>Next Step →</Text>
                                                 </TouchableOpacity>
@@ -629,10 +729,10 @@ export default function SellerApplyPage() {
                                                 <TouchableOpacity
                                                     style={[
                                                         styles.submitButton,
-                                                        (loading || !termsAccepted || !!uploadingImage) && styles.submitButtonDisabled
+                                                        (loading || !termsAccepted) && styles.submitButtonDisabled
                                                     ]}
                                                     onPress={handleSubmit}
-                                                    disabled={loading || !termsAccepted || !!uploadingImage}
+                                                    disabled={loading || !termsAccepted}
                                                 >
                                                     {loading ? (
                                                         <ActivityIndicator color="white" />
@@ -650,19 +750,7 @@ export default function SellerApplyPage() {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            <ImageCropperModal
-                visible={showCropper}
-                imageUri={cropImageUri}
-                onCrop={handleCropComplete}
-                onSkip={() => {
-                    setShowCropper(false);
-                    setCropImageUri(null);
-                }}
-                onCancel={() => {
-                    setShowCropper(false);
-                    setCropImageUri(null);
-                }}
-            />
+
         </SafeAreaView>
     );
 }
@@ -883,6 +971,33 @@ const styles = StyleSheet.create({
     inputError: {
         borderColor: "#e74c3c",
     },
+    dropdownList: {
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: 8,
+        marginTop: 4,
+        backgroundColor: "white",
+        position: 'absolute',
+        top: 80,
+        left: 0,
+        right: 0,
+        ...theme.shadows.md,
+    },
+    dropdownItemIdType: {
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: 8,
+        marginTop: 4,
+        backgroundColor: "white",
+        position: 'absolute',
+        bottom: 80,
+        left: 0,
+        right: 0,
+        ...theme.shadows.md,
+    },
+    dropdownItem: {
+        padding: 16,
+    },
     textArea: {
         height: 100,
         textAlignVertical: "top",
@@ -1082,7 +1197,7 @@ const styles = StyleSheet.create({
     termsContainer: {
         flexDirection: "row",
         alignItems: "center",
-        marginVertical: 16,
+        marginVertical: 8,
         gap: 10,
     },
     checkbox: {

@@ -1,9 +1,27 @@
 import type { NextFunction, Request, Response } from "express";
+import { CustomError, ValidationError } from "../error/errorHandler.js";
 
 export const errorHandlingMiddleware = (err: Error, req: Request, res: Response, next: NextFunction) => {
     console.error("Error:", err.stack);
 
     const isDev = process.env.NODE_ENV === 'development';
+
+    if (err instanceof ValidationError) {
+        return res.status(err.statusCode).json({
+            message: err.message,
+            error: err.message,
+            code: err.code,
+            issues: err.issues,
+        });
+    }
+
+    if (err instanceof CustomError) {
+        return res.status(err.statusCode).json({
+            message: err.message,
+            error: err.message,
+            code: err.code,
+        });
+    }
 
     res.status(500).json({
         message: "Internal server error.",

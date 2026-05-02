@@ -7,6 +7,7 @@ import { SellerSettingsProvider } from "@/contexts/SellerSettingsContext";
 import AuthToast from "@/components/AuthToast";
 import CartAnimationOverlay from "@/components/CartAnimationOverlay";
 import OnboardingManager from "@/components/OnboardingManager";
+import GlobalAIChat from "@/shared/GlobalAIChat";
 import { fonts } from "@/constants/fonts";
 import NavBar from "@/shared/Navbar";
 import CustomSplashScreen from "@/shared/SplashScreen";
@@ -91,6 +92,7 @@ export default function RootLayout() {
                   <CartAnimationOverlay />
                   <OnboardingManager />
                   <AuthToast />
+                  <GlobalAIChat />
                 </View>
               </SellerSettingsProvider>
             </DialogProvider>

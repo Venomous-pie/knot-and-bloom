@@ -1,13 +1,26 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { sellerController } from '../controllers/SellerController.js';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
 import { Role } from '../types/authTypes.js';
 
 const router = express.Router();
 
+// Rate limiter for seller application endpoints
+const sellerOnboardLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5,
+    message: {
+        success: false,
+        error: 'Too many application attempts. Please try again later.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Public / Seller
-router.post('/', authenticate, sellerController.registerSeller); // Direct Register (requires auth)
-router.post('/onboard', authenticate, sellerController.onboardSeller); // Upgrade User
+router.post('/', authenticate, sellerOnboardLimiter, sellerController.registerSeller); // Direct Register (requires auth)
+router.post('/onboard', authenticate, sellerOnboardLimiter, sellerController.onboardSeller); // Upgrade User
 router.delete('/me/application', authenticate, sellerController.cancelApplication); // Cancel Pending Application
 router.get('/active', sellerController.listActiveSellers); // Public active sellers list
 router.get('/:slug', sellerController.getSellerBySlug); // Public Profile

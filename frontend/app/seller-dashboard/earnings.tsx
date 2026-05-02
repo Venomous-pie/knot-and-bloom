@@ -48,6 +48,18 @@ export default function SellerEarnings() {
     const [withdrawDetails, setWithdrawDetails] = useState(''); // Number/Account Name
     const [submitting, setSubmitting] = useState(false);
 
+    // Auth guard: only ACTIVE sellers or admins can access
+    useEffect(() => {
+        if (!user) {
+            router.replace('/auth/login' as any);
+            return;
+        }
+        const isAuthorized = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+        if (!isAuthorized) {
+            router.replace('/' as any);
+        }
+    }, [user]);
+
     useEffect(() => {
         fetchEarnings();
     }, [token]);

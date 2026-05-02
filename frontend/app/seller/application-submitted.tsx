@@ -20,6 +20,13 @@ export default function ApplicationSubmittedPage() {
     const { width } = useWindowDimensions();
     const isDesktop = width > 768;
 
+    // Guard: only accessible if user has a PENDING application
+    React.useEffect(() => {
+        if (user && user.sellerStatus !== "PENDING") {
+            router.replace("/" as any);
+        }
+    }, [user]);
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={[styles.contentContainer, isDesktop ? styles.row : styles.column]}>

@@ -1,7 +1,8 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { sellerAPI } from "@/api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, RelativePathString, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -30,6 +31,8 @@ export default function SellerApplyPage() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isDesktop = width > 768;
+    const scrollViewRef = useRef<ScrollView>(null);
+    const isSubmittingRef = useRef(false);
 
     // Wizard State
     const [currentStep, setCurrentStep] = useState(1);
@@ -61,7 +64,60 @@ export default function SellerApplyPage() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [focusedField, setFocusedField] = useState<string | null>(null);
 
+    const DRAFT_KEY = "seller_application_draft";
 
+    // Load Draft
+    useEffect(() => {
+        const loadDraft = async () => {
+            try {
+                const draftStr = await AsyncStorage.getItem(DRAFT_KEY);
+                if (draftStr) {
+                    const draft = JSON.parse(draftStr);
+                    if (draft.currentStep) setCurrentStep(draft.currentStep);
+                    if (draft.shopName) setShopName(draft.shopName);
+                    if (draft.description) setDescription(draft.description);
+                    if (draft.businessType) setBusinessType(draft.businessType);
+                    if (draft.productCategories) setProductCategories(draft.productCategories);
+                    if (draft.isHandmade !== undefined) setIsHandmade(draft.isHandmade);
+                    if (draft.hasPriorExperience !== undefined) setHasPriorExperience(draft.hasPriorExperience);
+                    if (draft.phoneNumber) setPhoneNumber(draft.phoneNumber);
+                    if (draft.email) setEmail(draft.email);
+                    if (draft.socialLink) setSocialLink(draft.socialLink);
+                    if (draft.legalName) setLegalName(draft.legalName);
+                    if (draft.businessAddress) setBusinessAddress(draft.businessAddress);
+                    if (draft.portfolioLink) setPortfolioLink(draft.portfolioLink);
+                    if (draft.idType) setIdType(draft.idType);
+                    if (draft.idNumber) setIdNumber(draft.idNumber);
+                    if (draft.termsAccepted !== undefined) setTermsAccepted(draft.termsAccepted);
+                }
+            } catch (e) {
+                console.error("Failed to load draft", e);
+            }
+        };
+        loadDraft();
+    }, []);
+
+    // Auto-save Draft
+    useEffect(() => {
+        const saveDraft = async () => {
+            try {
+                const draft = {
+                    currentStep, shopName, description, businessType, productCategories,
+                    isHandmade, hasPriorExperience, phoneNumber, email, socialLink,
+                    legalName, businessAddress, portfolioLink, idType, idNumber, termsAccepted
+                };
+                await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            } catch (e) {
+                // Ignore save errors
+            }
+        };
+        const timeoutId = setTimeout(saveDraft, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [
+        currentStep, shopName, description, businessType, productCategories,
+        isHandmade, hasPriorExperience, phoneNumber, email, socialLink,
+        legalName, businessAddress, portfolioLink, idType, idNumber, termsAccepted
+    ]);
 
     // Redirect if not logged in
     useEffect(() => {
@@ -104,6 +160,8 @@ export default function SellerApplyPage() {
         const trimmedPhone = phoneNumber.trim();
         if (!trimmedPhone) {
             newErrors.phoneNumber = "Phone number is required";
+        } else if (/[a-zA-Z]/.test(trimmedPhone)) {
+            newErrors.phoneNumber = "Phone number must only contain numbers";
         } else if (trimmedPhone.replace(/[^0-9]/g, '').length < 10) {
             newErrors.phoneNumber = "Phone number must be at least 10 digits";
         }
@@ -139,6 +197,10 @@ export default function SellerApplyPage() {
             newErrors.businessAddress = "Please provide a complete address.";
         }
 
+        if (idType && !idNumber.trim()) {
+            newErrors.idNumber = "ID Number is required when an ID Type is selected.";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -158,71 +220,68 @@ export default function SellerApplyPage() {
         if (isValid) {
             setCurrentStep(prev => prev + 1);
             setErrors({});
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         }
     };
 
     const handleBack = () => {
-        if (currentStep > 1) setCurrentStep(prev => prev - 1);
+        if (currentStep > 1) {
+            setCurrentStep(prev => prev - 1);
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
     };
 
     const handleSubmit = async () => {
         if (!validateStep3()) return;
+        if (isSubmittingRef.current) return;
 
+        isSubmittingRef.current = true;
         setLoading(true);
         try {
-            const token = await AsyncStorage.getItem("authToken");
-            const response = await fetch(
-                `${process.env.EXPO_PUBLIC_API_URL || "http://localhost:3030"}/api/sellers/onboard`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        name: shopName.trim(),
-                        description: description.trim() || undefined,
-                        businessType: businessType,
-                        productCategories: productCategories.length > 0 ? productCategories.join(", ") : undefined,
-                        isHandmade: isHandmade,
-                        hasPriorExperience: hasPriorExperience,
-                        phone: phoneNumber.trim(),
-                        socialMediaLink: socialLink.trim(),
-                        email: email.trim(),
-                        legalName: legalName.trim(),
-                        businessAddress: businessAddress.trim(),
-                        portfolioLink: portfolioLink.trim() || undefined,
-                        idType: idType.trim() || undefined,
-                        idNumber: idNumber.trim() || undefined,
-                        termsAccepted: termsAccepted,
-                    }),
-                }
-            );
+            await sellerAPI.onboard({
+                name: shopName.trim(),
+                description: description.trim() || undefined,
+                businessType: businessType,
+                productCategories: productCategories.length > 0 ? productCategories.join(", ") : undefined,
+                isHandmade: isHandmade,
+                hasPriorExperience: hasPriorExperience,
+                phone: phoneNumber.trim(),
+                socialMediaLink: socialLink.trim(),
+                email: email.trim(),
+                legalName: legalName.trim(),
+                businessAddress: businessAddress.trim(),
+                portfolioLink: portfolioLink.trim() || undefined,
+                idType: idType.trim() || undefined,
+                idNumber: idNumber.trim() || undefined,
+                termsAccepted: termsAccepted,
+            });
 
-            if (response.status === 401) {
-                router.replace("/auth/login" as RelativePathString);
-                return;
-            }
-
-            if (response.status === 409) {
-                setErrors({ general: "You've already applied as a seller" });
-                return;
-            }
-
-            if (!response.ok) {
-                const data = await response.json();
-                setErrors({ general: data.error || "Something went wrong. Please try again." });
-                return;
-            }
-
-            // Success - refresh user context and redirect to their new storefront settings
+            // Success - refresh user context and redirect to application-submitted
+            await AsyncStorage.removeItem(DRAFT_KEY);
             await refreshUser();
-            router.replace("/seller-dashboard/settings" as RelativePathString);
-        } catch (error) {
-            console.error(error);
-            setErrors({ general: "Network error. Please check your connection." });
+            router.replace("/seller/application-submitted" as RelativePathString);
+        } catch (error: any) {
+            const status = error?.response?.status;
+            const data = error?.response?.data;
+
+            if (status === 409) {
+                setErrors({ general: "You've already applied as a seller" });
+            } else if (status === 400 && Array.isArray(data?.error)) {
+                // Zod validation errors from backend
+                const fieldErrors: Record<string, string> = {};
+                data.error.forEach((issue: any) => {
+                    const field = issue.path?.[0];
+                    if (field) fieldErrors[field] = issue.message;
+                });
+                setErrors(fieldErrors);
+            } else if (status === 429) {
+                setErrors({ general: "Too many attempts. Please try again later." });
+            } else {
+                setErrors({ general: data?.error || "Something went wrong. Please try again." });
+            }
         } finally {
             setLoading(false);
+            isSubmittingRef.current = false;
         }
     };
 
@@ -264,6 +323,7 @@ export default function SellerApplyPage() {
                     onFocus={() => setFocusedField('description')}
                     onBlur={() => setFocusedField(null)}
                 />
+                <Text style={[styles.helperText, { textAlign: 'right' }]}>{description.length}/500</Text>
                 {errors.description && <Text style={styles.fieldError}>{errors.description}</Text>}
             </View>
 
@@ -394,6 +454,7 @@ export default function SellerApplyPage() {
                     onFocus={() => setFocusedField('businessAddress')}
                     onBlur={() => setFocusedField(null)}
                 />
+                <Text style={styles.helperText}>Used for courier pickup and admin correspondence.</Text>
                 {errors.businessAddress && <Text style={styles.fieldError}>{errors.businessAddress}</Text>}
             </View>
 
@@ -504,11 +565,11 @@ export default function SellerApplyPage() {
                     />
                 </TouchableOpacity>
                 {isIdTypeOpen && (
-                    <View style={styles.dropdownList}>
+                    <View style={styles.dropdownItemIdType}>
                         {["Passport", "Driver's License", "National ID", "Postal ID", "Other"].map((opt) => (
                             <TouchableOpacity 
                                 key={opt} 
-                                style={[styles.dropdownItemIdType, { borderBottomWidth: 1, borderBottomColor: theme.colors.border} ]} 
+                                style={[styles.dropdownItem, { borderBottomWidth: 1, borderBottomColor: theme.colors.border} ]} 
                                 onPress={() => { setIdType(opt); setIsIdTypeOpen(false); }}
                             >
                                 <Text style={{ color: theme.colors.text }}>{opt}</Text>
@@ -520,9 +581,9 @@ export default function SellerApplyPage() {
 
             {idType ? (
                 <View style={[styles.formGroup, { zIndex: 1 }]}>
-                    <Text style={styles.label}>ID Number (Optional)</Text>
+                    <Text style={styles.label}>ID Number *</Text>
                     <TextInput
-                        style={[styles.input, focusedField === 'idNumber' && styles.inputFocused]}
+                        style={[styles.input, focusedField === 'idNumber' && styles.inputFocused, errors.idNumber && styles.inputError]}
                         value={idNumber}
                         onChangeText={setIdNumber}
                         placeholder="Enter your ID Number"
@@ -531,6 +592,7 @@ export default function SellerApplyPage() {
                         onFocus={() => setFocusedField('idNumber')}
                         onBlur={() => setFocusedField(null)}
                     />
+                    {errors.idNumber && <Text style={styles.fieldError}>{errors.idNumber}</Text>}
                 </View>
             ) : null}
             
@@ -564,27 +626,12 @@ export default function SellerApplyPage() {
 
             <View style={styles.reviewSection}>
                 <Text style={styles.reviewLabel}>Social Link:</Text>
-                <Text style={styles.reviewValue}>{socialLink}</Text>
+                <Text style={styles.reviewValue}>{socialLink || "N/A"}</Text>
             </View>
 
             <View style={styles.reviewSection}>
                 <Text style={styles.reviewLabel}>ID Provided:</Text>
                 <Text style={styles.reviewValue}>{idType ? `${idType} (Hidden)` : "None (Skipped)"}</Text>
-            </View>
-
-            <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>Email:</Text>
-                <Text style={styles.reviewValue}>{email}</Text>
-            </View>
-
-            <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>Phone:</Text>
-                <Text style={styles.reviewValue}>{phoneNumber}</Text>
-            </View>
-
-            <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>Social Link:</Text>
-                <Text style={styles.reviewValue}>{socialLink || "N/A"}</Text>
             </View>
 
             <View style={styles.reviewSection}>
@@ -642,7 +689,7 @@ export default function SellerApplyPage() {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1 }}
             >
-                <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+                <ScrollView ref={scrollViewRef} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
                     <View style={[styles.contentContainer, styles.column]}>
                         {/* Centered Wizard Form */}
                         <View style={[styles.formSection, { width: "100%" }]}>
@@ -650,7 +697,9 @@ export default function SellerApplyPage() {
                                 {isAlreadySeller && user?.sellerStatus !== "REJECTED" ? (
                                     <View style={styles.alreadySellerContainer}>
                                         <Text style={{ fontSize: 48, marginBottom: 20 }}>✅</Text>
-                                        <Text style={styles.welcomeTitle}>Already Applied!</Text>
+                                        <Text style={styles.welcomeTitle}>
+                                            {user?.sellerStatus === "PENDING" ? "Application Pending" : "Already a Seller!"}
+                                        </Text>
                                         <Text style={styles.welcomeSubtitle}>
                                             {user?.sellerStatus === "PENDING"
                                                 ? "Your application is pending review. We'll notify you once approved."
@@ -658,33 +707,45 @@ export default function SellerApplyPage() {
                                         </Text>
                                         <Pressable
                                             style={styles.submitButton}
-                                            onPress={() => router.push("/seller-dashboard/orders" as RelativePathString)}
+                                            onPress={() => router.push(
+                                                user?.sellerStatus === "PENDING"
+                                                    ? "/seller/application-status" as RelativePathString
+                                                    : "/seller-dashboard" as RelativePathString
+                                            )}
                                         >
-                                            <Text style={styles.submitButtonText}>Go to Seller Dashboard →</Text>
+                                            <Text style={styles.submitButtonText}>
+                                                {user?.sellerStatus === "PENDING" ? "View Application Status" : "Go to Seller Dashboard →"}
+                                            </Text>
                                         </Pressable>
                                     </View>
                                 ) : (
                                     <>
                                         {/* Step Indicator */}
                                         <View style={styles.stepIndicatorContainer}>
-                                            {[1, 2, 3].map((step) => (
+                                            {[{ num: 1, label: 'Shop Info' }, { num: 2, label: 'Identity' }, { num: 3, label: 'Review' }].map(({ num: step, label }) => (
                                                 <React.Fragment key={step}>
-                                                    <View style={[
-                                                        styles.stepCircle,
-                                                        currentStep >= step && styles.stepCircleActive
-                                                    ]}>
-                                                        {currentStep > step ? (
-                                                            <Ionicons name="checkmark" size={16} color="white" />
-                                                        ) : (
-                                                            <Text style={[styles.stepNumber, currentStep >= step && styles.stepNumberActive]}>
-                                                                {step}
-                                                            </Text>
-                                                        )}
+                                                    <View style={{ alignItems: 'center' }}>
+                                                        <View style={[
+                                                            styles.stepCircle,
+                                                            currentStep >= step && styles.stepCircleActive
+                                                        ]}>
+                                                            {currentStep > step ? (
+                                                                <Ionicons name="checkmark" size={16} color="white" />
+                                                            ) : (
+                                                                <Text style={[styles.stepNumber, currentStep >= step && styles.stepNumberActive]}>
+                                                                    {step}
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                        <Text style={{ fontSize: 10, color: currentStep >= step ? theme.colors.primary : theme.colors.textLight, marginTop: 4, fontWeight: currentStep >= step ? '600' : '400' }}>
+                                                            {label}
+                                                        </Text>
                                                     </View>
                                                     {step < 3 && (
                                                         <View style={[
                                                             styles.stepLine,
-                                                            currentStep > step && styles.stepLineActive
+                                                            currentStep > step && styles.stepLineActive,
+                                                            { marginBottom: 16 }
                                                         ]} />
                                                     )}
                                                 </React.Fragment>
@@ -699,7 +760,7 @@ export default function SellerApplyPage() {
                                         <View style={styles.navigationButtons}>
                                             <TouchableOpacity
                                                 style={styles.backButton}
-                                                onPress={() => router.back()}
+                                                onPress={() => router.replace("/" as RelativePathString)}
                                                 disabled={loading}
                                             >
                                                 <Text style={styles.backButtonText}>Cancel</Text>
@@ -990,7 +1051,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
         backgroundColor: "white",
         position: 'absolute',
-        bottom: 80,
+        bottom: 60,
         left: 0,
         right: 0,
         ...theme.shadows.md,

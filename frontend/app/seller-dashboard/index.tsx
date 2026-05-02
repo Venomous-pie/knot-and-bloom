@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { sellerAPI } from '@/api/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { AlertCircle, Package, TrendingUp, Users, DollarSign, Calendar, Bell } from 'lucide-react-native';
 
@@ -34,6 +35,21 @@ export default function SellerDashboardHome() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    // Auth guard: only ACTIVE sellers or admins can access
+    const { user, loading: authLoading } = useAuth();
+    React.useEffect(() => {
+        if (!authLoading) {
+            if (!user) {
+                router.replace('/auth/login' as any);
+                return;
+            }
+            const isAuthorized = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+            if (!isAuthorized) {
+                router.replace('/' as any);
+            }
+        }
+    }, [user, authLoading]);
 
     const fetchStats = async () => {
         try {

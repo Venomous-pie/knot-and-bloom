@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
     Pressable,
     ScrollView,
@@ -12,10 +12,26 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Sparkles, Lock } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SellerSettingsPage() {
     const router = useRouter();
     const { settings, updateSetting } = useSellerSettings();
+    const { user, loading: authLoading } = useAuth();
+
+    // Auth guard: only ACTIVE sellers or admins can access
+    useEffect(() => {
+        if (!authLoading) {
+            if (!user) {
+                router.replace('/auth/login' as any);
+                return;
+            }
+            const isAuthorized = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+            if (!isAuthorized) {
+                router.replace('/' as any);
+            }
+        }
+    }, [user, authLoading]);
 
     return (
         <SafeAreaView style={styles.container}>

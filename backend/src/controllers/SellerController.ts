@@ -221,6 +221,9 @@ export const sellerController = {
 
             res.status(201).json(seller);
         } catch (error) {
+            if (error instanceof ZodError) {
+                return res.status(400).json({ error: error.issues });
+            }
             console.error(error);
             res.status(500).json({ error: "Failed to onboard seller" });
         }

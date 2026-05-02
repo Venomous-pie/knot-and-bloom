@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// Validator for Upgrade (Just Store Info)
-export const sellerSchema = z.object({
+// Base shape (no refinements — safe to extend)
+const sellerBaseSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     description: z.string().optional(),
     logo: z.string().optional(),
@@ -15,19 +15,30 @@ export const sellerSchema = z.object({
     productCategories: z.string().optional(),
     isHandmade: z.boolean().optional(),
     hasPriorExperience: z.boolean().optional(),
-    legalName: z.string().min(2, "Legal name is required").optional(), // Making optional in schema to not break existing calls, but will be enforced in frontend
-    businessAddress: z.string().min(5, "Full address is required").optional(),
+    legalName: z.string().min(2, "Legal name is required"),
+    businessAddress: z.string().min(5, "Full address is required"),
     portfolioLink: z.string().optional(),
     idType: z.string().optional(),
     idNumber: z.string().optional(),
 });
 
+// Conditional refinement: idNumber required when idType is provided
+const idNumberRefinement = (data: any) =>
+    !data.idType || (data.idNumber && data.idNumber.trim().length > 0);
+const idNumberRefinementConfig = {
+    message: "ID Number is required when an ID Type is selected",
+    path: ["idNumber"] as [string],
+};
+
+// Validator for Upgrade (Just Store Info)
+export const sellerSchema = sellerBaseSchema.refine(idNumberRefinement, idNumberRefinementConfig);
+
 // Validator for Direct Registration (Customer + Seller)
-export const registerSellerSchema = sellerSchema.extend({
+export const registerSellerSchema = sellerBaseSchema.extend({
     email: z.string().email(),
     password: z.string().min(6, "Password must be at least 6 characters"),
     phone: z.string().optional(),
-});
+}).refine(idNumberRefinement, idNumberRefinementConfig);
 
 export type SellerInput = z.infer<typeof sellerSchema>;
 export type RegisterSellerInput = z.infer<typeof registerSellerSchema>;

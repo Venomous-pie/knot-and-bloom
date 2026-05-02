@@ -170,7 +170,8 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
     useEffect(() => {
         if (!socket) return;
         
-        const handleNewNotification = () => {
+        const handleNewNotification = (data?: any) => {
+            console.log('[Socket] notification:new event received', data);
             fetchNotifications();
         };
 

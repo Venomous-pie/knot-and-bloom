@@ -1,4 +1,5 @@
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SocketProvider } from "@/contexts/SocketContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
 import { DialogProvider } from "@/contexts/DialogContext";
@@ -80,20 +81,22 @@ export default function RootLayout() {
   // App Ready
   return (
     <AuthProvider>
-      <CartProvider>
-        <WishlistProvider>
-          <DialogProvider>
-            <SellerSettingsProvider>
-              <View style={styles.container} onLayout={onLayoutRootView}>
-                <NavBar />
-                <CartAnimationOverlay />
-                <OnboardingManager />
-                <AuthToast />
-              </View>
-            </SellerSettingsProvider>
-          </DialogProvider>
-        </WishlistProvider>
-      </CartProvider>
+      <SocketProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <DialogProvider>
+              <SellerSettingsProvider>
+                <View style={styles.container} onLayout={onLayoutRootView}>
+                  <NavBar />
+                  <CartAnimationOverlay />
+                  <OnboardingManager />
+                  <AuthToast />
+                </View>
+              </SellerSettingsProvider>
+            </DialogProvider>
+          </WishlistProvider>
+        </CartProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 }

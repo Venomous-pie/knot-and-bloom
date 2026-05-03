@@ -119,20 +119,17 @@ export default function SellerNotifications() {
         <View style={styles.container}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <ChevronLeft size={24} color={TEXT} />
-                    </TouchableOpacity>
-                    <View style={{ width: 12 }} />
+            <View style={styles.headerContainer}>
+                <View style={styles.headerRow}>
                     <Text style={styles.title}>Notifications</Text>
+                    <TouchableOpacity onPress={markAllRead}>
+                        <Text style={styles.linkText}>Mark all read</Text>
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={markAllRead}>
-                    <Text style={styles.linkText}>Mark all read</Text>
-                </TouchableOpacity>
             </View>
 
-            <View style={styles.tabs}>
+            <View style={{ flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
+                <View style={styles.tabs}>
                 <TouchableOpacity
                     style={[styles.tab, filter === 'ALL' && styles.tabActive]}
                     onPress={() => setFilter('ALL')}
@@ -166,23 +163,17 @@ export default function SellerNotifications() {
                     }
                 />
             )}
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: BG },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-    },
-    headerLeft: { flexDirection: 'row', alignItems: 'center' },
-    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
-    title: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    linkText: { color: P, fontWeight: '600', fontSize: 14, fontFamily: 'Quicksand' },
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1280, width: '100%', alignSelf: 'center' },
+    title: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    linkText: { color: P, fontWeight: '600', fontFamily: 'Quicksand' },
 
     tabs: { flexDirection: 'row', padding: 16, gap: 12 },
     tab: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD },

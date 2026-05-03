@@ -70,6 +70,7 @@ interface ProductFormWizardProps {
         selectedCategories: string[];
         variants: VariantData[];
     }) => void;
+    productStatus?: string;
 }
 
 const STEPS = [
@@ -88,6 +89,7 @@ export default function ProductFormWizard({
     submitLabel,
     isEditing = false,
     onDataChange,
+    productStatus,
 }: ProductFormWizardProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
@@ -987,20 +989,54 @@ export default function ProductFormWizard({
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Pressable onPress={onBack} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.colors.text} />
-                </Pressable>
-                <Text style={styles.headerTitle}>
-                    {isEditing ? 'Edit Product' : 'New Product'}
-                </Text>
-                <View style={{ width: 40 }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Pressable onPress={() => {
+                        if (onBack) onBack();
+                        else router.back();
+                    }} style={styles.backButton}>
+                        <ArrowLeft size={20} color={theme.colors.text} />
+                    </Pressable>
+                    <Text style={styles.headerTitle}>
+                        {isEditing ? 'Edit Product' : 'New Product'}
+                    </Text>
+                    
+                    {/* Status Badge */}
+                    {isEditing && productStatus && (
+                        <View style={[
+                            styles.statusBadge, 
+                            { 
+                                backgroundColor: productStatus === 'ACTIVE' ? '#10B98120' : 
+                                                 productStatus === 'PENDING' ? '#F59E0B20' : 
+                                                 productStatus === 'SUSPENDED' ? '#EF444420' : '#6B728020'
+                            }
+                        ]}>
+                            <Text style={[
+                                styles.statusText, 
+                                { 
+                                    color: productStatus === 'ACTIVE' ? '#10B981' : 
+                                           productStatus === 'PENDING' ? '#F59E0B' : 
+                                           productStatus === 'SUSPENDED' ? '#EF4444' : '#6B7280'
+                                }
+                            ]}>
+                                Status: {productStatus}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+                
+                {!isEditing && (
+                    <Pressable
+                        style={styles.resetButtonIcon}
+                        onPress={handleReset}
+                    >
+                        <RefreshCcw size={16} color={theme.colors.textSecondary} />
+                        {!mobile && <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600' }}>Start Over</Text>}
+                    </Pressable>
+                )}
             </View>
 
             {/* Step Indicator */}
             <View style={styles.stepIndicator}>
-                {/* Spacer to balance the right button */}
-                <View style={{ width: mobile ? 40 : 100 }} />
-                
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
                     {STEPS.map((step, index) => (
                         <React.Fragment key={step.id}>
@@ -1039,36 +1075,71 @@ export default function ProductFormWizard({
                         </React.Fragment>
                     ))}
                 </View>
-
-                <Pressable
-                    style={styles.resetButtonIcon}
-                    onPress={handleReset}
-                >
-                    <RefreshCcw size={16} color={theme.colors.textSecondary} />
-                    {!mobile && <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontWeight: '600' }}>Start Over</Text>}
-                </Pressable>
             </View>
 
             {/* Main Content Area */}
             <View style={styles.mainContent}>
-                {/* Form Area */}
-                {currentStep === 3 ? (
-                    // Step 3: sticky title + dynamic-height variant list
-                    <View style={[styles.formArea, !mobile && showPreview && { flex: 1 }, { flex: 1 }]}>
-                        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 }}>
-                            <Text style={styles.stepTitle}>Variants & Stock</Text>
+                <View style={{ flex: 1, flexDirection: 'column' }}>
+                    {/* Form Area */}
+                    {currentStep === 3 ? (
+                        <View style={[styles.formArea, !mobile && showPreview && { flex: 1 }, { flex: 1 }]}>
+                            <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 }}>
+                                <Text style={styles.stepTitle}>Variants & Stock</Text>
+                            </View>
+                            {renderStepContent()}
                         </View>
-                        {renderStepContent()}
+                    ) : (
+                        <ScrollView
+                            style={[styles.formArea, !mobile && showPreview && { flex: 1 }]}
+                            contentContainerStyle={styles.formAreaContent}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {renderStepContent()}
+                        </ScrollView>
+                    )}
+
+                    {/* Navigation Footer */}
+                    <View style={styles.footer}>
+                        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
+                            {currentStep > 1 ? (
+                                <Pressable
+                                    style={styles.secondaryButton}
+                                    onPress={() => setCurrentStep(currentStep - 1)}
+                                >
+                                    <ArrowLeft size={18} color={theme.colors.primary} />
+                                    <Text style={styles.secondaryButtonText}>Previous</Text>
+                                </Pressable>
+                            ) : (
+                                <View />
+                            )}
+
+                            {currentStep < 4 ? (
+                                <Pressable
+                                    style={styles.primaryButton}
+                                    onPress={() => goToStep(currentStep + 1)}
+                                >
+                                    <Text style={styles.primaryButtonText}>Next</Text>
+                                    <ArrowRight size={18} color="white" />
+                                </Pressable>
+                            ) : (
+                                <Pressable
+                                    style={[styles.primaryButton, loading && styles.buttonDisabled]}
+                                    onPress={handleSubmit}
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator color="white" />
+                                    ) : (
+                                        <>
+                                            <Check size={18} color="white" />
+                                            <Text style={styles.primaryButtonText}>{submitLabel}</Text>
+                                        </>
+                                    )}
+                                </Pressable>
+                            )}
+                        </View>
                     </View>
-                ) : (
-                    <ScrollView
-                        style={[styles.formArea, !mobile && showPreview && { flex: 1 }]}
-                        contentContainerStyle={styles.formAreaContent}
-                        showsVerticalScrollIndicator={false}
-                    >
-                        {renderStepContent()}
-                    </ScrollView>
-                )}
+                </View>
 
                 {/* Preview Panel - Desktop Only */}
                 {!mobile && showPreview && (
@@ -1088,46 +1159,6 @@ export default function ProductFormWizard({
                             sellerLogo={settings?.logo}
                         />
                     </View>
-                )}
-            </View>
-
-            {/* Navigation Footer */}
-            <View style={styles.footer}>
-                {currentStep > 1 ? (
-                    <Pressable
-                        style={styles.secondaryButton}
-                        onPress={() => setCurrentStep(currentStep - 1)}
-                    >
-                        <ArrowLeft size={18} color={theme.colors.primary} />
-                        <Text style={styles.secondaryButtonText}>Previous</Text>
-                    </Pressable>
-                ) : (
-                    <View />
-                )}
-
-                {currentStep < 4 ? (
-                    <Pressable
-                        style={styles.primaryButton}
-                        onPress={() => goToStep(currentStep + 1)}
-                    >
-                        <Text style={styles.primaryButtonText}>Next</Text>
-                        <ArrowRight size={18} color="white" />
-                    </Pressable>
-                ) : (
-                    <Pressable
-                        style={[styles.primaryButton, loading && styles.buttonDisabled]}
-                        onPress={handleSubmit}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="white" />
-                        ) : (
-                            <>
-                                <Check size={18} color="white" />
-                                <Text style={styles.primaryButtonText}>{submitLabel}</Text>
-                            </>
-                        )}
-                    </Pressable>
                 )}
             </View>
 
@@ -1196,6 +1227,18 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: theme.colors.text,
         fontFamily: 'Quicksand',
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginLeft: 8,
+    },
+    statusText: {
+        fontWeight: '700',
+        fontSize: 11,
+        fontFamily: 'Quicksand',
+        letterSpacing: 0.5,
     },
     stepIndicator: {
         flexDirection: 'row',

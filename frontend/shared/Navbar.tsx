@@ -19,11 +19,14 @@ export default function NavBar() {
         pathname?.includes('/seller/apply') ||
         pathname?.includes('/seller/application-');
 
+    const isSellerDashboard = pathname?.includes('/seller-dashboard');
+
     return (
         <View style={{ flex: 1 }}>
             <Stack
                 screenOptions={{
                     headerTitleAlign: 'center',
+                    headerShown: !isSellerDashboard,
                     header: () => (
                         <GlobalHeaderUI 
                             setIsMenuOpen={setIsMenuOpen} 

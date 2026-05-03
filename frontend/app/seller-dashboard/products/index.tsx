@@ -5,7 +5,8 @@ import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSh
 import { sellerProductsAPI } from '../../../api/api';
 import InfoBox from '../../../shared/InfoBox';
 import Tooltip from '../../../shared/Tooltip';
-import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter } from 'lucide-react-native';
+import DropdownMenu from '../../../shared/DropdownMenu';
+import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter, Clock, History, TrendingDown, TrendingUp } from 'lucide-react-native';
 
 const P       = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -51,10 +52,10 @@ const STATUS_TABS = [
 ];
 
 const SORT_OPTIONS = [
-    { label: 'Newest', value: 'newest' },
-    { label: 'Oldest', value: 'oldest' },
-    { label: 'Price: High-Low', value: 'price_high' },
-    { label: 'Price: Low-High', value: 'price_low' },
+    { label: 'Newest', value: 'newest', icon: Clock },
+    { label: 'Oldest', value: 'oldest', icon: History },
+    { label: 'Price: High-Low', value: 'price_high', icon: TrendingDown },
+    { label: 'Price: Low-High', value: 'price_low', icon: TrendingUp },
 ];
 
 function StatCard({ label, value, icon, color, tooltip }: {
@@ -416,19 +417,22 @@ export default function SellerProducts() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Inventory</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <TouchableOpacity style={styles.exportBtn} onPress={exportToCSV}>
-                        <Download size={18} color={TEXT} />
-                        {isDesktop && <Text style={styles.exportBtnText}>Export CSV</Text>}
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/seller-dashboard/products/form')}>
-                        <Ionicons name="add" size={20} color="#FFF" />
-                        <Text style={styles.addBtnText}>Add Product</Text>
-                    </TouchableOpacity>
+            <View style={styles.headerContainer}>
+                <View style={styles.header}>
+                    <Text style={styles.title}>Inventory</Text>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity style={styles.exportBtn} onPress={exportToCSV}>
+                            <Download size={18} color={TEXT} />
+                            {isDesktop && <Text style={styles.exportBtnText}>Export CSV</Text>}
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/seller-dashboard/products/form')}>
+                            <Ionicons name="add" size={20} color="#FFF" />
+                            <Text style={styles.addBtnText}>Add Product</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
 
             {/* Stat Bar */}
             {stats && (
@@ -468,7 +472,7 @@ export default function SellerProducts() {
             </View>
 
             {/* Status Tabs & Filters Dropdown */}
-            <View style={[styles.secondaryFilterBar, { justifyContent: 'space-between' }]}>
+            <View style={[styles.secondaryFilterBar, { justifyContent: 'space-between', zIndex: 100 }]}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
                     {STATUS_TABS.map(tab => (
                         <Pressable
@@ -484,13 +488,19 @@ export default function SellerProducts() {
                 </ScrollView>
 
                 <View style={styles.controlsRight}>
-                    {/* Funnel Icon */}
-                    <TouchableOpacity 
-                        onPress={() => setShowFilters(!showFilters)} 
+                    {/* Sort Dropdown */}
+                    <DropdownMenu
+                        isOpen={showFilters}
+                        onOpenChange={setShowFilters}
                         style={[styles.filterBtn, showFilters && styles.filterBtnActive]}
+                        items={SORT_OPTIONS.map(opt => ({
+                            title: opt.label,
+                            icon: <opt.icon size={16} color={sortBy === opt.value ? P : SUB} />,
+                            onPress: () => setSortBy(opt.value),
+                        }))}
                     >
                         <Filter size={18} color={showFilters ? P : SUB} />
-                    </TouchableOpacity>
+                    </DropdownMenu>
 
                     {/* View Toggle */}
                     <View style={styles.viewToggle}>
@@ -503,26 +513,6 @@ export default function SellerProducts() {
                     </View>
                 </View>
             </View>
-
-            {/* Expanded Sort/Filter Options */}
-            {showFilters && (
-                <View style={styles.expandedFilters}>
-                    <Text style={styles.expandedFiltersLabel}>Sort By:</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                        {SORT_OPTIONS.map(opt => (
-                            <Pressable
-                                key={opt.value}
-                                style={[styles.sortChip, sortBy === opt.value && styles.sortChipActive]}
-                                onPress={() => setSortBy(opt.value)}
-                            >
-                                <Text style={[styles.sortChipText, sortBy === opt.value && styles.sortChipTextActive]}>
-                                    {opt.label}
-                                </Text>
-                            </Pressable>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
 
             {/* Info Banner for Pending Products */}
             {hasPendingProducts && statusFilter !== 'ACTIVE' && (
@@ -591,14 +581,16 @@ export default function SellerProducts() {
                     </View>
                 </View>
             )}
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: BG },
+    container: { flex: 1, backgroundColor: BG },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1280, width: '100%', alignSelf: 'center' },
     title: { fontSize: 24, fontWeight: 'bold', color: TEXT, fontFamily: 'Quicksand' },
     addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
     addBtnText: { color: '#FFF', fontWeight: '700', marginLeft: 6, fontFamily: 'Quicksand' },
@@ -629,12 +621,7 @@ const styles = StyleSheet.create({
     tabText: { fontSize: 13, fontWeight: '600', color: SUB, fontFamily: 'Quicksand' },
     tabTextActive: { color: P },
     
-    expandedFilters: { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, padding: 12, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: BORDER },
-    expandedFiltersLabel: { fontSize: 12, fontWeight: '700', color: TEXT, marginRight: 12, fontFamily: 'Quicksand' },
-    sortChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
-    sortChipActive: { backgroundColor: '#EEF2FF', borderColor: INDIGO },
-    sortChipText: { fontSize: 11, fontWeight: '600', color: SUB, fontFamily: 'Quicksand' },
-    sortChipTextActive: { color: INDIGO },
+
 
     listContent: { paddingBottom: 80 },
     

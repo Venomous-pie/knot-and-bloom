@@ -138,14 +138,7 @@ export default function SellerProductForm() {
             <Stack.Screen options={{ headerShown: false }} />
 
 
-            {/* Status Badge for Editing */}
-            {isEditing && productStatus && (
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(productStatus) + '20' }]}>
-                    <Text style={[styles.statusText, { color: getStatusColor(productStatus) }]}>
-                        Status: {productStatus}
-                    </Text>
-                </View>
-            )}
+            {/* Status badge moved to ProductFormWizard header */}
 
             {/* Reuse the Admin ProductForm Component */}
             <ProductFormWizard
@@ -162,6 +155,7 @@ export default function SellerProductForm() {
                     }
                 }}
                 isEditing={isEditing}
+                productStatus={productStatus || undefined}
             />
         </View>
     );
@@ -193,7 +187,6 @@ const styles = StyleSheet.create({
         marginBottom: -10, // Pull up to sit closer to form wizard
         zIndex: 10,
     },
-    statusText: { fontWeight: '700', fontSize: 13, fontFamily: 'Quicksand' },
     scoreCard: {
         backgroundColor: CARD,
         marginHorizontal: 16,

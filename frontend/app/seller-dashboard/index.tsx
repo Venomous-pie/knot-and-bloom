@@ -317,17 +317,20 @@ export default function SellerDashboardHome() {
     );
 
     return (
-        <ScrollView
-            style={s.root} contentContainerStyle={s.scroll}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchStats(); }} colors={[P]} tintColor={P} />
-            }
-        >
-            <View style={isDesktop ? s.desktopContainer : undefined}>
+        <View style={s.root}>
+            <View style={s.headerContainer}>
                 {HeaderComponent}
-                
-                {StatsBar}
+            </View>
+            <ScrollView
+                style={s.root} contentContainerStyle={s.scroll}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchStats(); }} colors={[P]} tintColor={P} />
+                }
+            >
+                <View style={isDesktop ? s.desktopContainer : undefined}>
+                    
+                    {StatsBar}
 
                 {isDesktop ? (
                     <View style={s.desktopGrid}>
@@ -348,8 +351,9 @@ export default function SellerDashboardHome() {
                         {RecentReviewsCard}
                     </>
                 )}
-            </View>
-        </ScrollView>
+                </View>
+            </ScrollView>
+        </View>
     );
 }
 
@@ -364,7 +368,8 @@ const s = StyleSheet.create({
     desktopLeft: { flex: 0.65 },
     desktopRight: { flex: 0.35 },
 
-    header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, gap: 12 },
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
+    header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, maxWidth: 1280, width: '100%', alignSelf: 'center' },
     greeting: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
     dateTxt:  { fontSize: 12, color: SUB, marginTop: 3, fontFamily: 'Quicksand' },
     bellBtn:  { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3, position: 'relative' },

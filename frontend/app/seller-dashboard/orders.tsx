@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import * as Print from 'expo-print';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 const P       = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -587,31 +587,29 @@ export default function SellerOrders() {
     return (
         <View style={styles.container}>
             <Stack.Screen options={{ title: "Seller Orders" }} />
-
-            <View style={styles.headerRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <ChevronLeft size={24} color={TEXT} />
-                    </TouchableOpacity>
-                    <View style={{ width: 12 }} />
+            <View style={styles.headerContainer}>
+                <View style={styles.headerRow}>
                     <Text style={styles.pageTitle}>Orders</Text>
+                    <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={styles.navBtn}>
+                        <Text style={styles.navBtnText}>Manage Products</Text>
+                        <ChevronRight size={16} color={P} />
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={styles.navBtn}>
-                    <Text style={styles.navBtnText}>Manage Products</Text>
-                </TouchableOpacity>
             </View>
 
-            {loading ? (
-                <ActivityIndicator size="large" style={{ marginTop: 20 }} />
-            ) : (
-                <FlatList
-                    data={orders}
-                    keyExtractor={item => String(item.uid)}
-                    renderItem={renderOrder}
-                    contentContainerStyle={styles.list}
-                    ListEmptyComponent={<Text style={styles.empty}>No orders found.</Text>}
-                />
-            )}
+            <View style={{ flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
+                {loading ? (
+                    <ActivityIndicator size="large" style={{ marginTop: 20 }} />
+                ) : (
+                    <FlatList
+                        data={orders}
+                        keyExtractor={item => String(item.uid)}
+                        renderItem={renderOrder}
+                        contentContainerStyle={styles.list}
+                        ListEmptyComponent={<Text style={styles.empty}>No orders found.</Text>}
+                    />
+                )}
+            </View>
 
             {/* Bulk Action Bar */}
             {selectionMode && (
@@ -872,6 +870,12 @@ export default function SellerOrders() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: BG },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1280, width: '100%', alignSelf: 'center' },
+    pageTitle: { fontSize: 24, fontWeight: 'bold', color: TEXT, fontFamily: 'Quicksand' },
+    
     list: { padding: 20 },
     empty: { textAlign: 'center', marginTop: 20, color: SUB, fontFamily: 'Quicksand' },
     card: {
@@ -887,9 +891,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: BORDER
     },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
-    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
-    pageTitle: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
     
     header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'flex-start' },
     orderId: { fontWeight: '700', fontSize: 16, color: TEXT, fontFamily: 'Quicksand' },

@@ -47,15 +47,14 @@ export default function SellerSettingsPage() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={TEXT} />
-                </Pressable>
-                <Text style={styles.headerTitle}>Seller Settings</Text>
-                <View style={{ width: 40 }} />
+            <View style={styles.headerContainer}>
+                <View style={styles.headerRow}>
+                    <Text style={styles.headerTitle}>Seller Settings</Text>
+                </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.content}>
+            <View style={{ flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
+                <ScrollView contentContainerStyle={styles.content}>
 
                 {/* AI Features Section */}
                 <Text style={styles.sectionLabel}>AI Features</Text>
@@ -124,7 +123,8 @@ export default function SellerSettingsPage() {
                     )}
                 </View>
 
-            </ScrollView>
+                </ScrollView>
+            </View>
         </View>
     );
 }
@@ -134,28 +134,10 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: BG,
     },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: CARD,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.07,
-        shadowRadius: 6,
-        elevation: 3
-    },
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1280, width: '100%', alignSelf: 'center' },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '700',
         color: TEXT,
         fontFamily: 'Quicksand',

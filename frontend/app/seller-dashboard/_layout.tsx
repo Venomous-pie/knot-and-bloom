@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { Stack, useRouter, Slot } from 'expo-router';
+import { Stack, useRouter, Slot, usePathname } from 'expo-router';
 import React, { useEffect } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import DashboardSidebar from '@/components/DashboardSidebar';
@@ -30,15 +30,15 @@ export default function SellerDashboardLayout() {
 
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
+    const pathname = usePathname();
+    const isFullWidth = pathname.includes('/products/form');
 
     if (isDesktop) {
         return (
             <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#F4F4F8' }}>
                 <DashboardSidebar />
-                <View style={{ flex: 1, alignItems: 'center' }}>
-                    <View style={{ width: '100%', maxWidth: 1280, flex: 1 }}>
-                        <Slot />
-                    </View>
+                <View style={{ flex: 1 }}>
+                    <Slot />
                 </View>
             </View>
         );

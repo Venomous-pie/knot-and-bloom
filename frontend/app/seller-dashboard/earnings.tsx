@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert, Modal, TextInput, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/api/api';
-import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard, ChevronLeft } from 'lucide-react-native';
+import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard, ChevronLeft, ArrowUpCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const P       = '#B36979';
@@ -169,20 +169,26 @@ export default function SellerEarnings() {
 
     return (
         <View style={styles.container}>
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEarnings(); }} />}
-            >
-                {/* Header */}
+            {/* Page Header */}
+            <View style={styles.headerContainer}>
                 <View style={styles.header}>
-                    <Pressable onPress={() => router.back()} style={styles.backButton}>
-                        <ChevronLeft size={24} color={TEXT} />
-                    </Pressable>
                     <Text style={styles.title}>Earnings & Payouts</Text>
-                    <View style={{ width: 40 }} />
+                    <TouchableOpacity
+                        style={styles.withdrawBtn}
+                        onPress={() => setModalVisible(true)}
+                    >
+                        <ArrowUpCircle size={18} color="#FFF" />
+                        <Text style={styles.withdrawBtnText}>Withdraw</Text>
+                    </TouchableOpacity>
                 </View>
+            </View>
+            <View style={{ flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEarnings(); }} />}
+                >
 
-                {/* Balance Cards */}
+                    {/* Balance Cards */}
                 <View style={styles.cardsContainer}>
                     {/* Available Balance - Main Card */}
                     <LinearGradient colors={['#B36979', '#8F4A5A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.mainCard}>
@@ -288,7 +294,8 @@ export default function SellerEarnings() {
                         ))
                     )}
                 </View>
-            </ScrollView>
+                </ScrollView>
+            </View>
 
             {/* Withdrawal Modal */}
             <Modal
@@ -360,9 +367,11 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: BG },
     content: { flex: 1 },
     scrollContent: { paddingBottom: 40 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
-    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
-    title: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1280, width: '100%', alignSelf: 'center' },
+    title: { fontSize: 22, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    withdrawBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
+    withdrawBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14, fontFamily: 'Quicksand' },
 
     cardsContainer: { paddingHorizontal: 20, gap: 16 },
     mainCard: {

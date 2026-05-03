@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
-import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, Store, LogOut, AlertTriangle } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useRouter, usePathname, Link } from 'expo-router';
+import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, Store, LogOut, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { sellerAPI } from '@/api/api';
 
@@ -25,18 +25,32 @@ export default function DashboardSidebar() {
         { label: 'Products', route: '/seller-dashboard/products', icon: Package, badge: sidebarStats.lowStockCount > 0 ? { type: 'alert', count: sidebarStats.lowStockCount } : null },
         { label: 'Orders', route: '/seller-dashboard/orders', icon: ShoppingBag },
         { label: 'Earnings', route: '/seller-dashboard/earnings', icon: DollarSign },
+        { label: 'Custom Orders', route: '/seller-dashboard/custom-orders', icon: PenTool },
+    ];
+
+    const analyticsItems = [
+        { label: 'Sales Trends', route: '/seller-dashboard/sales-trends', icon: TrendingUp },
+        { label: 'Product Performance', route: '/seller-dashboard/product-performance', icon: BarChart2 },
+        { label: 'Reviews & Ratings', route: '/seller-dashboard/reviews', icon: Star },
     ];
 
     const globalItems = [
-        { label: 'Notifications', route: '/profile/notifications', icon: Bell, badge: sidebarStats.unreadNotifications > 0 ? { type: 'count', count: sidebarStats.unreadNotifications } : null },
-        { label: 'Storefront', route: '/', icon: Store },
+        { label: 'Notifications', route: '/seller-dashboard/notifications', icon: Bell, badge: sidebarStats.unreadNotifications > 0 ? { type: 'count', count: sidebarStats.unreadNotifications } : null },
+        { label: 'Shop Home', route: '/', icon: Home },
+        { label: 'Store Settings', route: '/seller-dashboard/settings', icon: Settings },
     ];
 
     return (
         <View style={s.sidebar}>
             {/* Branding */}
             <View style={s.brandArea}>
-                <Text style={s.brandLogo}>Knot & Bloom</Text>
+                <Link href='/' asChild>
+                    <TouchableOpacity style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
+                        <Image source={require('../assets/yarn.png')} style={{ width: 44, height: 44 }} resizeMode='contain' />
+                        <Text style={{ fontFamily: 'Lovingly', color: '#B36979', marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>Knot</Text>
+                        <Text style={{ fontFamily: 'Lovingly', color: '#6B7280', marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>&Bloom</Text>
+                    </TouchableOpacity>
+                </Link>
                 <Text style={s.brandSub}>Seller Control Center</Text>
             </View>
 
@@ -66,37 +80,52 @@ export default function DashboardSidebar() {
                 })}
             </View>
 
+            {/* Analytics */}
+            <View style={s.menuSection}>
+                <Text style={s.sectionTitle}>Analytics</Text>
+                {analyticsItems.map((item, idx) => {
+                    const isActive = pathname === item.route || (item.route !== '/seller-dashboard' && pathname.startsWith(item.route));
+                    return (
+                        <TouchableOpacity
+                            key={idx}
+                            style={[s.menuItem, isActive && s.menuItemActive]}
+                            onPress={() => router.push(item.route as any)}
+                        >
+                            <item.icon size={20} color={isActive ? '#B36979' : '#6B7280'} />
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Text style={[s.menuText, isActive && s.menuTextActive]}>{item.label}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+
             {/* Global Actions */}
             <View style={s.menuSection}>
                 <Text style={s.sectionTitle}>Global</Text>
-                {globalItems.map((item, idx) => (
-                    <TouchableOpacity
-                        key={idx}
-                        style={s.menuItem}
-                        onPress={() => router.push(item.route as any)}
-                    >
-                        <item.icon size={20} color="#6B7280" />
-                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text style={s.menuText}>{item.label}</Text>
-                            {item.badge?.type === 'count' && (
-                                <View style={s.countBadge}>
-                                    <Text style={s.countBadgeTxt}>{item.badge.count > 9 ? '9+' : item.badge.count}</Text>
-                                </View>
-                            )}
-                        </View>
-                    </TouchableOpacity>
-                ))}
+                {globalItems.map((item, idx) => {
+                    const isActive = pathname === item.route || (item.route !== '/' && pathname.startsWith(item.route));
+                    return (
+                        <TouchableOpacity
+                            key={idx}
+                            style={[s.menuItem, isActive && s.menuItemActive]}
+                            onPress={() => router.push(item.route as any)}
+                        >
+                            <item.icon size={20} color={isActive ? '#B36979' : '#6B7280'} />
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Text style={[s.menuText, isActive && s.menuTextActive]}>{item.label}</Text>
+                                {item.badge?.type === 'count' && (
+                                    <View style={s.countBadge}>
+                                        <Text style={s.countBadgeTxt}>{item.badge.count > 9 ? '9+' : item.badge.count}</Text>
+                                    </View>
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })}
             </View>
 
             <View style={{ flex: 1 }} />
-
-            {/* Footer / Logout */}
-            <View style={s.footer}>
-                <TouchableOpacity style={s.menuItem} onPress={logout}>
-                    <LogOut size={20} color="#EF4444" />
-                    <Text style={[s.menuText, { color: '#EF4444' }]}>Sign Out</Text>
-                </TouchableOpacity>
-            </View>
         </View>
     );
 }
@@ -113,12 +142,6 @@ const s = StyleSheet.create({
     brandArea: {
         paddingHorizontal: 24,
         marginBottom: 32,
-    },
-    brandLogo: {
-        fontSize: 22,
-        fontWeight: '800',
-        color: '#B36979',
-        fontFamily: 'Quicksand',
     },
     brandSub: {
         fontSize: 12,
@@ -164,9 +187,25 @@ const s = StyleSheet.create({
     },
     footer: {
         paddingHorizontal: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        paddingTop: 16,
+        paddingBottom: 24,
+    },
+    logoutBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: '#FEF2F2',
+        borderWidth: 1,
+        borderColor: '#FECACA',
+        gap: 8,
+    },
+    logoutTxt: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#EF4444',
+        fontFamily: 'Quicksand',
     },
     alertBadge: {
         flexDirection: 'row',

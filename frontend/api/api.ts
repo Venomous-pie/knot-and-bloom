@@ -438,8 +438,8 @@ export const sellerAPI = {
 };
 
 export const sellerProductsAPI = {
-    getMyProducts: (params?: { page?: number; limit?: number; status?: string }) =>
-        apiClient.get<{ products: any[]; pagination: any }>('/sellers/me/products', { params }).then(res => res.data),
+    getMyProducts: (params?: { page?: number; limit?: number; status?: string; search?: string; sortBy?: string }) =>
+        apiClient.get<{ products: any[]; pagination: any; stats?: any }>('/sellers/me/products', { params }).then(res => res.data),
     createProduct: (data: any) => apiClient.post('/products/post-product', data).then(res => res.data),
     updateProduct: (id: string | number, data: any) => apiClient.put(`/products/${id}`, data).then(res => res.data),
     deleteProduct: (id: string | number) => apiClient.delete(`/products/${id}`).then(res => res.data),

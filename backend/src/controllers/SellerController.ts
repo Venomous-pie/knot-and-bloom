@@ -486,6 +486,9 @@ export const sellerController = {
 
             if (!sellerId) return res.status(403).json({ error: "Seller profile not found" });
 
+            const search = req.query.search as string;
+            const sortBy = req.query.sortBy as string;
+
             const whereClause: any = {
                 sellerId,
                 deletedAt: null
@@ -495,21 +498,68 @@ export const sellerController = {
                 whereClause.status = status;
             }
 
-            const [products, total] = await Promise.all([
+            if (search) {
+                whereClause.OR = [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { sku: { contains: search, mode: 'insensitive' } }
+                ];
+            }
+
+            let orderBy: any = { uploaded: 'desc' };
+            if (sortBy === 'oldest') orderBy = { uploaded: 'asc' };
+            else if (sortBy === 'price_high') orderBy = { basePrice: 'desc' };
+            else if (sortBy === 'price_low') orderBy = { basePrice: 'asc' };
+
+            const globalWhere = { sellerId, deletedAt: null };
+            
+            const [products, total, allProducts] = await Promise.all([
                 prisma.product.findMany({
                     where: whereClause,
-                    include: {
-                        variants: true,
-                    },
-                    orderBy: { uploaded: 'desc' },
-                    skip,
-                    take: limit
+                    include: { variants: true },
+                    orderBy,
+                    skip, take: limit
                 }),
-                prisma.product.count({ where: whereClause })
+                prisma.product.count({ where: whereClause }),
+                prisma.product.findMany({
+                    where: globalWhere,
+                    include: { variants: true }
+                })
             ]);
+
+            let totalOptScore = 0;
+            let lowStockCount = 0;
+            let pendingCount = 0;
+
+            allProducts.forEach(p => {
+                // Optimization Score Calculation
+                let score = 0;
+                if (p.image) score += 20;
+                if (p.name && p.name.length >= 20) score += 20;
+                if (p.description && p.description.length >= 50) score += 20;
+                const hasVariants = p.variants && p.variants.length > 0;
+                if (hasVariants && p.variants.some(v => v.stock > 0)) score += 20;
+                score += 20; // competitiveness
+                totalOptScore += score;
+
+                // Low Stock Calculation
+                if (hasVariants && p.variants.some(v => v.stock <= 5)) {
+                    lowStockCount++;
+                }
+
+                // Pending Count
+                if (p.status === 'PENDING') pendingCount++;
+            });
+
+            const avgOptimizationScore = allProducts.length > 0 ? Math.round(totalOptScore / allProducts.length) : 0;
 
             res.json({
                 products,
+                stats: {
+                    totalProducts: allProducts.length,
+                    avgOptimizationScore,
+                    lowStockCount,
+                    pendingCount
+                },
                 pagination: {
                     page,
                     limit,

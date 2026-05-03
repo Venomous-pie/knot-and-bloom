@@ -12,6 +12,7 @@ import {
     Package, ShoppingBag, DollarSign, Bell, RefreshCw,
     TrendingUp, TrendingDown, Star, CheckCircle, Clock, XCircle, Settings
 } from 'lucide-react-native';
+import Tooltip from '../../shared/Tooltip';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const P       = '#B36979';
@@ -48,33 +49,40 @@ interface DashboardStats {
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon, color, sub, trend }: {
+function StatCard({ label, value, icon, color, sub, trend, tooltip }: {
     label: string; value: string; icon: React.ReactNode;
-    color: string; sub?: string; trend?: 'up' | 'down' | null;
+    color: string; sub?: string; trend?: 'up' | 'down' | null; tooltip?: string;
 }) {
     const scale = useRef(new Animated.Value(1)).current;
     return (
-        <Pressable style={{ flex: 1, minWidth: 140 }} onPress={() => {
-            Animated.sequence([
-                Animated.timing(scale, { toValue: 0.95, duration: 70, useNativeDriver: true }),
-                Animated.timing(scale, { toValue: 1,    duration: 70, useNativeDriver: true }),
-            ]).start();
-        }}>
-            <Animated.View style={[s.statCard, { transform: [{ scale }] }]}>
-                <View style={s.statCardHeader}>
-                    <View style={[s.statIcon, { backgroundColor: color + '18' }]}>{icon}</View>
-                    {trend && (
-                        <View style={[s.trendBadge, { backgroundColor: trend === 'up' ? '#DCFCE7' : '#FEE2E2' }]}>
-                            {trend === 'up'   && <TrendingUp   size={10} color={GREEN} />}
-                            {trend === 'down' && <TrendingDown size={10} color={RED}   />}
+        <View style={{ flex: 1, minWidth: 140, zIndex: 99, overflow: 'visible' }}>
+            <Pressable onPress={() => {
+                Animated.sequence([
+                    Animated.timing(scale, { toValue: 0.95, duration: 70, useNativeDriver: true }),
+                    Animated.timing(scale, { toValue: 1,    duration: 70, useNativeDriver: true }),
+                ]).start();
+            }} style={{ zIndex: 99, overflow: 'visible' }}>
+                <View style={{ position: 'relative', zIndex: 99, overflow: 'visible' }}>
+                    <Animated.View style={[s.statCard, { transform: [{ scale }] }]}>
+                        <View style={s.statCardHeader}>
+                            <View style={[s.statIcon, { backgroundColor: color + '18' }]}>{icon}</View>
+                            {tooltip && <Tooltip content={tooltip} iconColor={P} iconSize={18} position="right" />}
                         </View>
-                    )}
+                        <Text style={s.statVal}>{value}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'nowrap' }}>
+                            <Text style={[s.statLbl, { marginTop: 0, lineHeight: 20 }]}>{label}</Text>
+                            {trend && (
+                                <View style={[s.trendBadge, { backgroundColor: trend === 'up' ? '#DCFCE7' : '#FEE2E2' }]}>
+                                    {trend === 'up'   && <TrendingUp   size={10} color={GREEN} />}
+                                    {trend === 'down' && <TrendingDown size={10} color={RED}   />}
+                                </View>
+                            )}
+                        </View>
+                        {sub && <Text style={[s.statSub, { marginTop: 4 }]}>{sub}</Text>}
+                    </Animated.View>
                 </View>
-                <Text style={s.statVal}>{value}</Text>
-                <Text style={s.statLbl}>{label}</Text>
-                {sub && <Text style={[s.statSub, { marginTop: 4 }]}>{sub}</Text>}
-            </Animated.View>
-        </Pressable>
+            </Pressable>
+        </View>
     );
 }
 
@@ -155,27 +163,31 @@ export default function SellerDashboardHome() {
     );
 
     const StatsBar = (
-        <View style={[s.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap' }]}>
+        <View style={[s.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 100, overflow: 'visible' }]}>
             <StatCard
                 label="Total Revenue" value={fmtK(stats.quickStats.thisMonthSales)}
                 icon={<DollarSign size={17} color={P} />} color={P}
                 sub={delta !== 0 ? `${delta >= 0 ? '+' : ''}${fmtK(Math.abs(delta))} vs last month` : 'Same as last month'}
                 trend={trend}
+                tooltip="Total sales revenue generated from your store this month."
             />
             <StatCard
                 label="Orders" value={String(stats.quickStats.thisMonthOrders)}
                 icon={<ShoppingBag size={17} color={INDIGO} />} color={INDIGO}
                 sub="This month"
+                tooltip="Total number of orders placed in your store this month."
             />
             <StatCard
                 label="Completed" value={String(COMPLETED)}
                 icon={<Package size={17} color={GREEN} />} color={GREEN}
                 sub="All time"
+                tooltip="Orders that have been fully delivered and confirmed by the customer."
             />
             <StatCard
                 label="Earnings" value={fmtK(stats.quickStats.thisMonthEarnings)}
                 icon={<DollarSign size={17} color={TEAL} />} color={TEAL}
                 sub="After platform fees"
+                tooltip="Your net earnings this month after Knot & Bloom platform fees are deducted."
             />
         </View>
     );
@@ -224,16 +236,18 @@ export default function SellerDashboardHome() {
             </View>
             <View style={s.pipelineContainer}>
                 {[
-                    { label: 'Pending', count: PENDING, icon: Clock, color: AMBER },
-                    { label: 'Processing', count: PROCESSING, icon: Settings, color: INDIGO },
-                    { label: 'Completed', count: COMPLETED, icon: CheckCircle, color: GREEN },
-                    { label: 'Cancelled', count: CANCELLED, icon: XCircle, color: RED },
+                    { label: 'Pending', count: PENDING, icon: Clock, color: AMBER, tip: 'Orders awaiting your confirmation.' },
+                    { label: 'Processing', count: PROCESSING, icon: Settings, color: INDIGO, tip: 'Orders currently being prepared or shipped.' },
+                    { label: 'Completed', count: COMPLETED, icon: CheckCircle, color: GREEN, tip: 'Successfully delivered orders.' },
+                    { label: 'Cancelled', count: CANCELLED, icon: XCircle, color: RED, tip: 'Orders cancelled by you or the customer.' },
                 ].map((step, idx, arr) => (
                     <React.Fragment key={step.label}>
                         <View style={s.pipelineStep}>
-                            <View style={[s.pipelineIcon, { backgroundColor: step.color + '15' }]}>
-                                <step.icon size={20} color={step.color} />
-                            </View>
+                            <Tooltip content={step.tip}>
+                                <View style={[s.pipelineIcon, { backgroundColor: step.color + '15' }]}>
+                                    <step.icon size={20} color={step.color} />
+                                </View>
+                            </Tooltip>
                             <Text style={s.pipelineCount}>{step.count}</Text>
                             <Text style={s.pipelineLabel}>{step.label}</Text>
                         </View>
@@ -358,9 +372,9 @@ const s = StyleSheet.create({
 
     statRow:  { gap: 16, marginBottom: 24 },
     statCard: { backgroundColor: CARD, borderRadius: 20, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
-    statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+    statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    trendBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 8 },
+    trendBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, height: 20 },
     statVal:  { fontSize: 24, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
     statLbl:  { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4, fontWeight: '500' },
     statSub:  { fontSize: 11, color: SUB, fontFamily: 'Quicksand' },

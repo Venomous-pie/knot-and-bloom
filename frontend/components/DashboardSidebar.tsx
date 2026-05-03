@@ -4,6 +4,7 @@ import { useRouter, usePathname, Link } from 'expo-router';
 import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, Store, LogOut, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { sellerAPI } from '@/api/api';
+import { theme } from '@/constants/theme';
 
 export default function DashboardSidebar() {
     const router = useRouter();
@@ -47,8 +48,8 @@ export default function DashboardSidebar() {
                 <Link href='/' asChild>
                     <TouchableOpacity style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
                         <Image source={require('../assets/yarn.png')} style={{ width: 44, height: 44 }} resizeMode='contain' />
-                        <Text style={{ fontFamily: 'Lovingly', color: '#B36979', marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>Knot</Text>
-                        <Text style={{ fontFamily: 'Lovingly', color: '#6B7280', marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>&Bloom</Text>
+                        <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>Knot</Text>
+                        <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>&Bloom</Text>
                     </TouchableOpacity>
                 </Link>
                 <Text style={s.brandSub}>Seller Control Center</Text>

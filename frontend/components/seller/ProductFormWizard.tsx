@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '@/api/api';
 import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';
 import InfoBox from '@/shared/InfoBox';
@@ -166,7 +167,7 @@ export default function ProductFormWizard({
             const saved = await AsyncStorage.getItem(DRAFT_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
-                setFormData(parsed.formData);
+                setFormData({ tags: [], metaTitle: '', metaDescription: '', ...parsed.formData });
                 setSelectedCategories(parsed.selectedCategories);
                 setVariants(parsed.variants);
                 if (parsed.images && parsed.images.length > 0) {
@@ -200,7 +201,7 @@ export default function ProductFormWizard({
     useEffect(() => {
         if (initialData && !initializedRef.current) {
             initializedRef.current = true;
-            setFormData(initialData.formData);
+            setFormData({ tags: [], metaTitle: '', metaDescription: '', ...initialData.formData });
             setSelectedCategories(initialData.selectedCategories);
             setVariants(initialData.variants.length > 0
                 ? initialData.variants
@@ -242,16 +243,12 @@ export default function ProductFormWizard({
                 const autoGenerateSku = async () => {
                     setGeneratingSku(true);
                     try {
-                        const response = await fetch(`${API_URL}/api/products/generate-sku`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                category: selectedCategories[0],
-                                variants: variants.map(v => v.name).filter(Boolean)
-                            })
+                        const response = await api.post('/products/generate-sku', {
+                            category: selectedCategories[0],
+                            variants: variants.map(v => v.name).filter(Boolean)
                         });
 
-                        const data = await response.json();
+                        const data = response.data;
                         if (data.success && data.sku) {
                             setFormData(prev => ({ ...prev, sku: data.sku }));
                             setVariants(prevVariants => prevVariants.map(v => ({
@@ -310,18 +307,14 @@ export default function ProductFormWizard({
 
         setGeneratingDescription(true);
         try {
-            const response = await fetch(`${API_URL}/api/products/generate-description`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: formData.name,
-                    category: selectedCategories[0],
-                    variants: variants.map(v => v.name).filter(Boolean),
-                    basePrice: formData.basePrice ? parseFloat(formData.basePrice) : undefined,
-                })
+            const response = await api.post('/products/generate-description', {
+                name: formData.name,
+                category: selectedCategories[0],
+                variants: variants.map(v => v.name).filter(Boolean),
+                basePrice: formData.basePrice ? parseFloat(formData.basePrice) : undefined,
             });
 
-            const data = await response.json();
+            const data = response.data;
             if (data.success && data.description) {
                 setFormData(prev => ({ ...prev, description: data.description }));
             } else {
@@ -346,16 +339,12 @@ export default function ProductFormWizard({
         }
 
         try {
-            const response = await fetch(`${API_URL}/api/products/generate-variant-sku`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    baseSKU: formData.sku,
-                    variantName: variant.name
-                })
+            const response = await api.post('/products/generate-variant-sku', {
+                baseSKU: formData.sku,
+                variantName: variant.name
             });
 
-            const data = await response.json();
+            const data = response.data;
             if (data.success && data.sku) {
                 const updated = [...variants];
                 updated[index] = { ...updated[index], sku: data.sku };
@@ -522,7 +511,7 @@ export default function ProductFormWizard({
                                     onImagesChange={(newImages) => {
                                         setImages(newImages);
                                         if (errors.images) {
-                                            setErrors(prev => { const n = {...prev}; delete n.images; return n; });
+                                            setErrors(prev => { const n = { ...prev }; delete n.images; return n; });
                                         }
                                     }}
                                     maxImages={5}
@@ -553,8 +542,13 @@ export default function ProductFormWizard({
 
                         {/* Categories */}
                         <View style={styles.field}>
-                            <Text style={styles.fieldLabel}>Categories *</Text>
-                            <View style={[styles.categoryList, errors.categories && styles.fieldErrorContainer]}>
+                            <View style={styles.fieldLabelRow}>
+                                <Text style={styles.fieldLabel}>Categories*</Text>
+                                <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                    {selectedCategories.length}/3
+                                </Text>
+                            </View>
+                            <View style={styles.categoryList}>
                                 {categories.map((cat) => {
                                     const isSelected = selectedCategories.includes(cat);
                                     return (
@@ -566,12 +560,16 @@ export default function ProductFormWizard({
                                             ]}
                                             onPress={() => {
                                                 if (errors.categories) {
-                                                    setErrors(prev => { const n = {...prev}; delete n.categories; return n; });
+                                                    setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
                                                 }
                                                 if (isSelected) {
                                                     setSelectedCategories(selectedCategories.filter(c => c !== cat));
                                                 } else {
-                                                    setSelectedCategories([...selectedCategories, cat]);
+                                                    if (selectedCategories.length >= 3) {
+                                                        setErrors(prev => ({ ...prev, categories: 'You can only select up to 3 categories.' }));
+                                                    } else {
+                                                        setSelectedCategories([...selectedCategories, cat]);
+                                                    }
                                                 }
                                             }}
                                         >
@@ -583,9 +581,13 @@ export default function ProductFormWizard({
                                     );
                                 })}
                             </View>
-                            {errors.categories && <Text style={styles.errorText}>{errors.categories}</Text>}
-                            <Text style={{ fontSize: 11, color: theme.colors.textLight, marginTop: 4, paddingHorizontal: 4 }}>
-                                Hint: You can select multiple categories.
+                            <View style={{ minHeight: 18, justifyContent: 'center' }}>
+                                <Text style={[styles.errorText, { marginTop: 0, opacity: errors.categories ? 1 : 0 }]}>
+                                    {errors.categories || ' '}
+                                </Text>
+                            </View>
+                            <Text style={{ fontSize: 11, color: theme.colors.textLight, paddingHorizontal: 2 }}>
+                                Hint: You can select multiple categories (Up to 3).
                             </Text>
                         </View>
 
@@ -600,31 +602,21 @@ export default function ProductFormWizard({
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
                                 <Text style={styles.fieldLabel}>SKU (Stock Keeping Unit)</Text>
-                                {generatingSku && (
-                                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                                )}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    {!formData.sku && (
+                                        <Text style={[styles.skuReqText, selectedCategories.length > 0 && styles.skuReqTextDone, { fontSize: 11 }]}>
+                                            {selectedCategories.length > 0 ? '✓ Auto-generating...' : 'Select category to auto-gen'}
+                                        </Text>
+                                    )}
+                                    {generatingSku && <ActivityIndicator size="small" color={theme.colors.primary} />}
+                                </View>
                             </View>
                             <InfoBox
                                 type="info"
                                 message="A Stock Keeping Unit (SKU) is a unique code used to track your inventory. You can enter your own or let us auto-generate one based on your product category."
-                                style={{ marginBottom: 12 }}
+                                style={{ marginBottom: 12, marginTop: 8 }}
                                 storageKey="product_form_sku_info"
                             />
-                            {/* SKU Requirements Hint */}
-                            {!formData.sku && (
-                                <View style={styles.skuRequirements}>
-                                    <View style={styles.skuReqItem}>
-                                        <Text style={[styles.skuReqIcon, selectedCategories.length > 0 && styles.skuReqIconDone]}>
-                                            {selectedCategories.length > 0 ? '✓' : '○'}
-                                        </Text>
-                                        <Text style={[styles.skuReqText, selectedCategories.length > 0 && styles.skuReqTextDone]}>
-                                            {selectedCategories.length > 0 
-                                                ? 'Category selected for auto-generation'
-                                                : 'Select a category in Step 1 to auto-generate SKU'}
-                                        </Text>
-                                    </View>
-                                </View>
-                            )}
                             <TextInput
                                 style={[styles.input, focusedField === 'sku' && styles.inputFocused, errors.sku && styles.inputError]}
                                 value={formData.sku}
@@ -638,15 +630,11 @@ export default function ProductFormWizard({
                                     if (!formData.sku.trim() && selectedCategories.length > 0) {
                                         setGeneratingSku(true);
                                         try {
-                                            const response = await fetch(`${API_URL}/api/products/generate-sku`, {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                    category: selectedCategories[0],
-                                                    variants: variants.map(v => v.name).filter(Boolean)
-                                                })
+                                            const response = await api.post('/products/generate-sku', {
+                                                category: selectedCategories[0],
+                                                variants: variants.map(v => v.name).filter(Boolean)
                                             });
-                                            const data = await response.json();
+                                            const data = response.data;
                                             if (data.success && data.sku) {
                                                 setFormData(prev => ({ ...prev, sku: data.sku }));
                                                 setVariants(prevVariants => prevVariants.map(v => ({
@@ -766,8 +754,8 @@ export default function ProductFormWizard({
                         </View>
 
 
-                        
-                        
+
+
                         {/* Bundle / Giftbox Toggle */}
                         <View style={styles.switchContainer}>
                             <View style={{ flex: 1 }}>
@@ -783,7 +771,7 @@ export default function ProductFormWizard({
                                 value={formData.isBundle}
                             />
                         </View>
-                        
+
                         {/* Bundle Quantity - Conditional */}
                         {formData.isBundle && (
                             <View style={styles.field}>
@@ -960,7 +948,7 @@ export default function ProductFormWizard({
                         <Text style={styles.stepDescription}>
                             Review your product details before submitting.
                         </Text>
-                        
+
                         {!isEditing && (
                             <InfoBox
                                 message="New products require admin approval before they appear in the shop."
@@ -971,7 +959,7 @@ export default function ProductFormWizard({
 
                         <View style={styles.summaryCard}>
                             <Text style={styles.summaryTitle}>Product Summary</Text>
-                            
+
                             {/* Basic Info */}
                             <Text style={styles.summarySectionTitle}>Basic Info</Text>
                             <View style={styles.summaryRow}>
@@ -1039,14 +1027,14 @@ export default function ProductFormWizard({
                                     <FileText size={16} color={theme.colors.textLight} />
                                     <Text style={styles.summaryLabel}>Description:</Text>
                                 </View>
-                                <Text 
-                                    style={[styles.summaryValue, { marginTop: 4, textAlign: 'left', flex: 0 }]} 
+                                <Text
+                                    style={[styles.summaryValue, { marginTop: 4, textAlign: 'left', flex: 0 }]}
                                     numberOfLines={isDescriptionExpanded ? undefined : 2}
                                 >
                                     {formData.description || '—'}
                                 </Text>
                                 {formData.description && formData.description.length > 100 && (
-                                    <Pressable 
+                                    <Pressable
                                         onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                                         style={{ alignSelf: 'flex-start', marginTop: 4 }}
                                     >
@@ -1097,14 +1085,14 @@ export default function ProductFormWizard({
                                             <Text style={{ fontWeight: '600', color: theme.colors.text }}>Stock: {v.stock || '0'}</Text>
                                             {' • '}
                                             {v.price ? `₱${v.price}` : `Inherits ₱${formData.basePrice || '0'}`}
-                                            {i === 0 && images.length > 0 
-                                                ? ` • ${images.length} base image(s)` 
+                                            {i === 0 && images.length > 0
+                                                ? ` • ${images.length} base image(s)`
                                                 : (v.images && v.images.length > 0 ? ` • ${v.images.length} image(s)` : '')}
                                         </Text>
                                         <Text style={[styles.summaryVariantDetail, { marginTop: 2 }]}>
                                             <Text style={{ fontWeight: '500' }}>Materials:</Text>{' '}
-                                            {v.materials 
-                                                ? v.materials 
+                                            {v.materials
+                                                ? v.materials
                                                 : (i === 0 ? 'None specified' : <Text style={{ fontStyle: 'italic' }}>Inherits '{variants[0].materials || 'None'}'</Text>)}
                                         </Text>
                                     </View>
@@ -1132,7 +1120,7 @@ export default function ProductFormWizard({
                             return (
                                 <View style={[styles.summaryCard, { marginTop: 16, borderColor: scoreColor + '40', borderWidth: 1.5 }]}>
                                     <Text style={styles.summaryTitle}>Listing Optimization Score</Text>
-                                    
+
                                     {/* Score circle */}
                                     <View style={{ alignItems: 'center', marginVertical: 16 }}>
                                         <View style={{
@@ -1216,23 +1204,23 @@ export default function ProductFormWizard({
                     <Text style={styles.headerTitle}>
                         {isEditing ? 'Edit Product' : 'New Product'}
                     </Text>
-                    
+
                     {/* Status Badge */}
                     {isEditing && productStatus && (
                         <View style={[
-                            styles.statusBadge, 
-                            { 
-                                backgroundColor: productStatus === 'ACTIVE' ? '#10B98120' : 
-                                                 productStatus === 'PENDING' ? '#F59E0B20' : 
-                                                 productStatus === 'SUSPENDED' ? '#EF444420' : '#6B728020'
+                            styles.statusBadge,
+                            {
+                                backgroundColor: productStatus === 'ACTIVE' ? '#10B98120' :
+                                    productStatus === 'PENDING' ? '#F59E0B20' :
+                                        productStatus === 'SUSPENDED' ? '#EF444420' : '#6B728020'
                             }
                         ]}>
                             <Text style={[
-                                styles.statusText, 
-                                { 
-                                    color: productStatus === 'ACTIVE' ? '#10B981' : 
-                                           productStatus === 'PENDING' ? '#F59E0B' : 
-                                           productStatus === 'SUSPENDED' ? '#EF4444' : '#6B7280'
+                                styles.statusText,
+                                {
+                                    color: productStatus === 'ACTIVE' ? '#10B981' :
+                                        productStatus === 'PENDING' ? '#F59E0B' :
+                                            productStatus === 'SUSPENDED' ? '#EF4444' : '#6B7280'
                                 }
                             ]}>
                                 Status: {productStatus}
@@ -1240,7 +1228,7 @@ export default function ProductFormWizard({
                         </View>
                     )}
                 </View>
-                
+
                 {!isEditing && (
                     <Pressable
                         style={styles.resetButtonIcon}

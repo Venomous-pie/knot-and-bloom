@@ -531,14 +531,32 @@ export const sellerController = {
             let pendingCount = 0;
 
             allProducts.forEach(p => {
-                // Optimization Score Calculation
+                // Weighted Optimization Score Calculation
                 let score = 0;
-                if (p.image) score += 20;
-                if (p.name && p.name.length >= 20) score += 20;
-                if (p.description && p.description.length >= 50) score += 20;
                 const hasVariants = p.variants && p.variants.length > 0;
-                if (hasVariants && p.variants.some(v => v.stock > 0)) score += 20;
-                score += 20; // competitiveness
+
+                // Images (25 pts): main image +15, variant images +10
+                if (p.image) score += 15;
+                if (hasVariants && p.variants.some(v => v.images && v.images.length > 0)) score += 10;
+
+                // Title & SEO (25 pts): name >= 30 chars +10, has tags +8, has metaTitle +7
+                if (p.name && p.name.length >= 30) score += 10;
+                if ((p as any).tags && (p as any).tags.length > 0) score += 8;
+                if ((p as any).metaTitle) score += 7;
+
+                // Description (20 pts): >= 100 chars +10, >= 200 chars +5, has materials +5
+                if (p.description && p.description.length >= 100) score += 10;
+                if (p.description && p.description.length >= 200) score += 5;
+                if ((p as any).materials) score += 5;
+
+                // Inventory (15 pts): has stock +8, no low-stock variants +7
+                if (hasVariants && p.variants.some(v => v.stock > 0)) score += 8;
+                if (hasVariants && !p.variants.some(v => v.stock > 0 && v.stock <= 5)) score += 7;
+
+                // Pricing (15 pts): has discount +8, price set +7
+                if (p.discountPercentage && p.discountPercentage > 0) score += 8;
+                if (p.basePrice && Number(p.basePrice) > 0) score += 7;
+
                 totalOptScore += score;
 
                 // Low Stock Calculation

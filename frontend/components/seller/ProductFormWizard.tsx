@@ -4,7 +4,8 @@ import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift, Search, Hash, Type, AlignLeft } from 'lucide-react-native';
+import { calculateOptimizationScore, type OptimizationResult, type ScoreCategory } from '@/utils/optimizationScore';
 import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
@@ -43,6 +44,9 @@ export interface ProductFormData {
     isCodAllowed: boolean;
     isBundle: boolean;
     description: string;
+    tags: string[];
+    metaTitle: string;
+    metaDescription: string;
 }
 
 interface ProductFormWizardProps {
@@ -109,7 +113,11 @@ export default function ProductFormWizard({
         bundleQuantity: '1',
         isCodAllowed: true,
         isBundle: false,
+        tags: [],
+        metaTitle: '',
+        metaDescription: '',
     });
+    const [tagInput, setTagInput] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [variants, setVariants] = useState<VariantData[]>([
         { name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }
@@ -268,6 +276,7 @@ export default function ProductFormWizard({
         setFormData({
             name: '', sku: '', basePrice: '', discountPercentage: '', image: '',
             description: '', materials: '', bundleQuantity: '1', isCodAllowed: true, isBundle: false,
+            tags: [], metaTitle: '', metaDescription: '',
         });
         setSelectedCategories([]);
         setVariants([{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]);
@@ -792,6 +801,131 @@ export default function ProductFormWizard({
                                 {errors.bundleQty && <Text style={styles.errorText}>{errors.bundleQty}</Text>}
                             </View>
                         )}
+
+                        {/* ─── SEO & Discoverability ─────────────────────────── */}
+                        <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                                <Search size={18} color={theme.colors.primary} />
+                                <Text style={[styles.stepTitle, { marginBottom: 0, fontSize: 16 }]}>SEO & Discoverability</Text>
+                            </View>
+                            <Text style={[styles.stepDescription, { marginBottom: 16 }]}>
+                                Improve how customers find your product in search results.
+                            </Text>
+
+                            {/* Tags */}
+                            <View style={styles.field}>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>Tags</Text>
+                                    <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                        {formData.tags.length}/10
+                                    </Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: formData.tags.length > 0 ? 8 : 0 }}>
+                                    {formData.tags.map((tag, i) => (
+                                        <Pressable
+                                            key={i}
+                                            onPress={() => setFormData(prev => ({ ...prev, tags: prev.tags.filter((_, idx) => idx !== i) }))}
+                                            style={{
+                                                flexDirection: 'row', alignItems: 'center', gap: 4,
+                                                backgroundColor: theme.colors.primary + '15',
+                                                paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+                                            }}
+                                        >
+                                            <Hash size={12} color={theme.colors.primary} />
+                                            <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: '600', fontFamily: 'Quicksand' }}>{tag}</Text>
+                                            <Text style={{ fontSize: 14, color: theme.colors.primary, marginLeft: 2, fontWeight: '700' }}>×</Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'tags' && styles.inputFocused]}
+                                    value={tagInput}
+                                    onChangeText={setTagInput}
+                                    placeholder="Type a tag and press Enter (e.g. handmade, crochet, gift)"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    selectionColor={theme.colors.primary}
+                                    onFocus={() => setFocusedField('tags')}
+                                    onBlur={() => {
+                                        setFocusedField(null);
+                                        if (tagInput.trim() && formData.tags.length < 10) {
+                                            const newTag = tagInput.trim().toLowerCase();
+                                            if (!formData.tags.includes(newTag)) {
+                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, newTag] }));
+                                            }
+                                            setTagInput('');
+                                        }
+                                    }}
+                                    onSubmitEditing={() => {
+                                        if (tagInput.trim() && formData.tags.length < 10) {
+                                            const newTag = tagInput.trim().toLowerCase();
+                                            if (!formData.tags.includes(newTag)) {
+                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, newTag] }));
+                                            }
+                                            setTagInput('');
+                                        }
+                                    }}
+                                />
+                            </View>
+
+                            {/* Materials (product-level) */}
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Materials</Text>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'materials' && styles.inputFocused]}
+                                    value={formData.materials}
+                                    onChangeText={(text: string) => handleChange('materials', text)}
+                                    placeholder="e.g. 100% Cotton Yarn, Polyester Stuffing"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    selectionColor={theme.colors.primary}
+                                    onFocus={() => setFocusedField('materials')}
+                                    onBlur={() => setFocusedField(null)}
+                                />
+                            </View>
+
+                            {/* Meta Title */}
+                            <View style={styles.field}>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>SEO Title</Text>
+                                    <Text style={{ fontSize: 11, color: (formData.metaTitle?.length || 0) > 70 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                        {formData.metaTitle?.length || 0}/70
+                                    </Text>
+                                </View>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'metaTitle' && styles.inputFocused]}
+                                    value={formData.metaTitle}
+                                    onChangeText={(text: string) => handleChange('metaTitle', text)}
+                                    placeholder="Custom title for search engines (defaults to product name)"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    selectionColor={theme.colors.primary}
+                                    maxLength={70}
+                                    onFocus={() => setFocusedField('metaTitle')}
+                                    onBlur={() => setFocusedField(null)}
+                                />
+                            </View>
+
+                            {/* Meta Description */}
+                            <View style={styles.field}>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>SEO Description</Text>
+                                    <Text style={{ fontSize: 11, color: (formData.metaDescription?.length || 0) > 160 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                        {formData.metaDescription?.length || 0}/160
+                                    </Text>
+                                </View>
+                                <TextInput
+                                    style={[styles.input, styles.textArea, focusedField === 'metaDescription' && styles.inputFocused, { minHeight: 72 }]}
+                                    value={formData.metaDescription}
+                                    onChangeText={(text: string) => handleChange('metaDescription', text)}
+                                    placeholder="Brief description for search engine results"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    selectionColor={theme.colors.primary}
+                                    multiline
+                                    numberOfLines={3}
+                                    maxLength={160}
+                                    onFocus={() => setFocusedField('metaDescription')}
+                                    onBlur={() => setFocusedField(null)}
+                                />
+                            </View>
+                        </View>
                     </View>
                 );
 
@@ -977,6 +1111,89 @@ export default function ProductFormWizard({
                                 ))}
                             </View>
                         </View>
+
+                        {/* ─── Optimization Score ──────────────────────────── */}
+                        {(() => {
+                            const scoreResult = calculateOptimizationScore({
+                                image: formData.image,
+                                name: formData.name,
+                                description: formData.description,
+                                tags: formData.tags,
+                                materials: formData.materials,
+                                metaTitle: formData.metaTitle,
+                                metaDescription: formData.metaDescription,
+                                basePrice: formData.basePrice,
+                                discountPercentage: formData.discountPercentage,
+                                variants: variants.map(v => ({ stock: v.stock, images: v.images })),
+                            });
+                            const scoreColor = scoreResult.totalScore > 80 ? '#10B981' : scoreResult.totalScore > 50 ? '#F59E0B' : '#EF4444';
+                            const scoreLabel = scoreResult.totalScore > 80 ? 'Excellent' : scoreResult.totalScore > 50 ? 'Good' : 'Needs Work';
+
+                            return (
+                                <View style={[styles.summaryCard, { marginTop: 16, borderColor: scoreColor + '40', borderWidth: 1.5 }]}>
+                                    <Text style={styles.summaryTitle}>Listing Optimization Score</Text>
+                                    
+                                    {/* Score circle */}
+                                    <View style={{ alignItems: 'center', marginVertical: 16 }}>
+                                        <View style={{
+                                            width: 100, height: 100, borderRadius: 50,
+                                            borderWidth: 6, borderColor: scoreColor,
+                                            justifyContent: 'center', alignItems: 'center',
+                                            backgroundColor: scoreColor + '10',
+                                        }}>
+                                            <Text style={{ fontSize: 28, fontWeight: '800', color: scoreColor, fontFamily: 'Quicksand' }}>
+                                                {scoreResult.totalScore}
+                                            </Text>
+                                            <Text style={{ fontSize: 10, fontWeight: '600', color: scoreColor, fontFamily: 'Quicksand', marginTop: -2 }}>
+                                                / 100
+                                            </Text>
+                                        </View>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: scoreColor, marginTop: 8, fontFamily: 'Quicksand' }}>
+                                            {scoreLabel}
+                                        </Text>
+                                    </View>
+
+                                    {/* Category breakdown */}
+                                    {scoreResult.categories.map((cat, catIdx) => {
+                                        const catColor = cat.score === cat.maxScore ? '#10B981' : cat.score > 0 ? '#F59E0B' : '#EF4444';
+                                        return (
+                                            <View key={catIdx} style={{ marginBottom: catIdx < scoreResult.categories.length - 1 ? 12 : 0 }}>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                                    <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.text, fontFamily: 'Quicksand' }}>
+                                                        {cat.name}
+                                                    </Text>
+                                                    <Text style={{ fontSize: 12, fontWeight: '700', color: catColor, fontFamily: 'Quicksand' }}>
+                                                        {cat.score}/{cat.maxScore}
+                                                    </Text>
+                                                </View>
+                                                {/* Progress bar */}
+                                                <View style={{ height: 4, backgroundColor: theme.colors.border, borderRadius: 2, marginBottom: 6 }}>
+                                                    <View style={{ height: 4, borderRadius: 2, backgroundColor: catColor, width: `${(cat.score / cat.maxScore) * 100}%` }} />
+                                                </View>
+                                                {/* Criteria checklist */}
+                                                {cat.criteria.map((c, cIdx) => (
+                                                    <View key={cIdx} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingLeft: 4, marginBottom: 4 }}>
+                                                        <Text style={{ fontSize: 12, color: c.passed ? '#10B981' : '#EF4444' }}>
+                                                            {c.passed ? '✓' : '○'}
+                                                        </Text>
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={{ fontSize: 12, color: c.passed ? theme.colors.textLight : theme.colors.text, fontFamily: 'Quicksand', textDecorationLine: c.passed ? 'line-through' : 'none' }}>
+                                                                {c.label}
+                                                            </Text>
+                                                            {!c.passed && (
+                                                                <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand', marginTop: 1 }}>
+                                                                    💡 {c.tip}
+                                                                </Text>
+                                                            )}
+                                                        </View>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            );
+                        })()}
                     </View>
                 );
 

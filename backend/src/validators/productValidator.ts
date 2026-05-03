@@ -21,6 +21,10 @@ export const productSchema = z.object({
     stock: z.number().int().min(0).optional(),
     image: z.string().nullish(),
     description: z.string().nullish(),
+    tags: z.array(z.string()).optional(),
+    materials: z.string().nullish(),
+    metaTitle: z.string().max(70, "Meta title must be 70 characters or fewer").nullish(),
+    metaDescription: z.string().max(160, "Meta description must be 160 characters or fewer").nullish(),
     sellerId: z.number().int().optional(),
     version: z.number().int().optional(),
 });

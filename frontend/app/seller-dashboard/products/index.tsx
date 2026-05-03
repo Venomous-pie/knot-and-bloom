@@ -7,6 +7,7 @@ import InfoBox from '../../../shared/InfoBox';
 import Tooltip from '../../../shared/Tooltip';
 import DropdownMenu from '../../../shared/DropdownMenu';
 import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter, Clock, History, TrendingDown, TrendingUp } from 'lucide-react-native';
+import { calculateOptimizationScore } from '../../../utils/optimizationScore';
 
 const P       = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -30,18 +31,11 @@ type Product = {
     stock?: number;
     variants?: any[];
     description?: string;
+    tags?: string[];
+    materials?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
     views?: number;
-};
-
-const calculateOptimizationScore = (product: Product) => {
-    let score = 0;
-    if (product.image) score += 20;
-    if (product.name && product.name.length >= 20) score += 20;
-    if (product.description && product.description.length >= 50) score += 20;
-    const hasVariants = product.variants && product.variants.length > 0;
-    if (hasVariants && product.variants!.some(v => v.stock > 0)) score += 20;
-    score += 20; // competitiveness
-    return score;
 };
 
 const STATUS_TABS = [
@@ -254,7 +248,7 @@ export default function SellerProducts() {
         const rows = products.map(p => {
             const totalStock = p.variants && p.variants.length > 0
                 ? p.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : 0;
-            const score = calculateOptimizationScore(p);
+            const score = calculateOptimizationScore(p).totalScore;
             return [
                 p.uid, `"${p.name.replace(/"/g, '""')}"`, p.basePrice,
                 p.status || 'LEGACY', totalStock, score
@@ -295,7 +289,7 @@ export default function SellerProducts() {
             ? item.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : 0;
         const hasLowStock = item.variants && item.variants.length > 0 
             ? item.variants.some(v => v.stock <= 5) : false;
-        const optScore = calculateOptimizationScore(item);
+        const optScore = calculateOptimizationScore(item).totalScore;
         const isSelected = selectedIds.has(item.uid);
 
         if (viewMode === 'grid') {

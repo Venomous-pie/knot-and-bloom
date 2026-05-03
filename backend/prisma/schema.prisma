@@ -34,6 +34,12 @@ model Product {
 
   isCodAllowed Boolean @default(true) // Seller toggle (Only effective if price > 200)
 
+  // SEO & Optimization
+  tags            String[]
+  materials       String?           // Product-level materials (e.g. "100% Acrylic Yarn")
+  metaTitle       String?           // SEO title override (max 70 chars)
+  metaDescription String?           // SEO description override (max 160 chars)
+
   orderItems OrderItem[]
   wishlistItems WishlistItem[]
 }

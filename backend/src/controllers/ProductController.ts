@@ -124,6 +124,10 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                         discountPercentage: parsedInput.discountPercentage ?? null,
                         image: parsedInput.image ?? null,
                         description: parsedInput.description ?? null,
+                        tags: parsedInput.tags || [],
+                        materials: parsedInput.materials ?? null,
+                        metaTitle: parsedInput.metaTitle ?? null,
+                        metaDescription: parsedInput.metaDescription ?? null,
                         sellerId: sellerId ?? null,
                         status: status,
                     },
@@ -547,6 +551,10 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                     discountPercentage: parsedInput.discountPercentage ?? null,
                     image: parsedInput.image ?? null,
                     description: parsedInput.description ?? null,
+                    tags: parsedInput.tags || [],
+                    materials: parsedInput.materials ?? null,
+                    metaTitle: parsedInput.metaTitle ?? null,
+                    metaDescription: parsedInput.metaDescription ?? null,
                     version: { increment: 1 }
                 }
             });
@@ -572,6 +580,10 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                     discountPercentage: parsedInput.discountPercentage ?? null,
                     image: parsedInput.image ?? null,
                     description: parsedInput.description ?? null,
+                    tags: parsedInput.tags || [],
+                    materials: parsedInput.materials ?? null,
+                    metaTitle: parsedInput.metaTitle ?? null,
+                    metaDescription: parsedInput.metaDescription ?? null,
                     version: { increment: 1 }
                 }
             });

@@ -61,6 +61,9 @@ export default function SellerProductForm() {
                         bundleQuantity: p.bundleQuantity ? String(p.bundleQuantity) : '1',
                         isCodAllowed: p.isCodAllowed ?? true,
                         isBundle: p.isBundle ?? false,
+                        tags: Array.isArray(p.tags) ? p.tags : [],
+                        metaTitle: p.metaTitle || '',
+                        metaDescription: p.metaDescription || '',
                     },
                     selectedCategories: Array.isArray(p.categories) ? p.categories : [],
                     variants: p.variants && p.variants.length > 0
@@ -96,6 +99,10 @@ export default function SellerProductForm() {
                 discountPercentage: data.formData.discountPercentage ? parseFloat(data.formData.discountPercentage) : undefined,
                 categories: data.selectedCategories,
                 image: data.formData.image,
+                tags: data.formData.tags || [],
+                materials: data.formData.materials || undefined,
+                metaTitle: data.formData.metaTitle || undefined,
+                metaDescription: data.formData.metaDescription || undefined,
                 variants: data.variants.map(v => ({
                     uid: v.uid,
                     name: v.name,

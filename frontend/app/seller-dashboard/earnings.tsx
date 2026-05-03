@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert, Modal, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/api/api';
 import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard } from 'lucide-react-native';
 import Navbar from '@/shared/Navbar';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 
 interface EarningsData {
     balance: {
@@ -35,7 +34,7 @@ interface EarningsData {
 
 export default function SellerEarnings() {
     const router = useRouter();
-    const { token, user } = useAuth();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [data, setData] = useState<EarningsData | null>(null);
@@ -62,22 +61,15 @@ export default function SellerEarnings() {
 
     useEffect(() => {
         fetchEarnings();
-    }, [token]);
+    }, []);
 
     const fetchEarnings = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/earnings/seller`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const json = await response.json();
-            if (response.ok) {
-                setData(json);
-            } else {
-                Alert.alert("Error", json.error || "Failed to load earnings");
-            }
-        } catch (error) {
+            const res = await apiClient.get('/earnings/seller');
+            setData(res.data);
+        } catch (error: any) {
             console.error(error);
-            Alert.alert("Error", "Network connection failed");
+            Alert.alert('Error', error?.response?.data?.error || 'Failed to load earnings');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -86,45 +78,32 @@ export default function SellerEarnings() {
 
     const handleWithdraw = async () => {
         if (!withdrawAmount || !withdrawDetails) {
-            Alert.alert("Missing Info", "Please enter amount and account details");
+            Alert.alert('Missing Info', 'Please enter amount and account details');
             return;
         }
         const amount = parseFloat(withdrawAmount);
         if (isNaN(amount) || amount <= 0) {
-            Alert.alert("Invalid Amount", "Please enter a valid positive number");
+            Alert.alert('Invalid Amount', 'Please enter a valid positive number');
             return;
         }
         if (amount > (data?.balance.available || 0)) {
-            Alert.alert("Insufficient Funds", "You cannot withdraw more than your available balance");
+            Alert.alert('Insufficient Funds', 'You cannot withdraw more than your available balance');
             return;
         }
-
         setSubmitting(true);
         try {
-            const response = await fetch(`${API_URL}/api/earnings/withdraw`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    amount,
-                    method: withdrawMethod,
-                    details: withdrawDetails
-                })
+            await apiClient.post('/earnings/withdraw', {
+                amount,
+                method: withdrawMethod,
+                details: withdrawDetails,
             });
-            const json = await response.json();
-            if (response.ok) {
-                Alert.alert("Success", "Withdrawal request submitted for approval.");
-                setModalVisible(false);
-                setWithdrawAmount('');
-                setWithdrawDetails('');
-                fetchEarnings(); // Refresh balance
-            } else {
-                Alert.alert("Error", json.error || "Withdrawal failed");
-            }
-        } catch (error) {
-            Alert.alert("Error", "Network request failed");
+            Alert.alert('Success', 'Withdrawal request submitted for approval.');
+            setModalVisible(false);
+            setWithdrawAmount('');
+            setWithdrawDetails('');
+            fetchEarnings();
+        } catch (error: any) {
+            Alert.alert('Error', error?.response?.data?.error || 'Withdrawal failed');
         } finally {
             setSubmitting(false);
         }

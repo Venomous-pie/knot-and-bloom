@@ -158,12 +158,30 @@ export default function BespokeAuthForm({
                 setIsLoading(false);
                 return;
             }
+        } else {
+            if (!phoneNumber || phoneNumber.trim() === '') {
+                setFieldErrors({ phone: "Please enter a valid phone number." });
+                setIsLoading(false);
+                return;
+            }
         }
 
         try {
             if (isSignUp) {
                 if (!agreeToTerms) {
                     setAuthError({ message: "You must agree to the Terms & Conditions to continue." });
+                    setIsLoading(false);
+                    return;
+                }
+
+                const newFieldErrors: Record<string, string> = {};
+                if (password.length < 8) newFieldErrors.password = "Password must be at least 8 characters";
+                else if (!/[A-Z]/.test(password)) newFieldErrors.password = "Password must contain at least one uppercase letter";
+                else if (!/[a-z]/.test(password)) newFieldErrors.password = "Password must contain at least one lowercase letter";
+                else if (!/[0-9]/.test(password)) newFieldErrors.password = "Password must contain at least one number";
+
+                if (Object.keys(newFieldErrors).length > 0) {
+                    setFieldErrors(newFieldErrors);
                     setIsLoading(false);
                     return;
                 }
@@ -312,7 +330,18 @@ export default function BespokeAuthForm({
             console.error(err);
             if (err.response?.data?.issues) {
                 const otpError = err.response.data.issues.find((i: any) => i.path.includes('otp'));
-                setAuthError({ message: otpError ? otpError.message : "Registration failed. Please check your details." });
+                const passwordError = err.response.data.issues.find((i: any) => i.path.includes('password'));
+                
+                if (otpError) {
+                    setAuthError({ message: otpError.message });
+                } else if (passwordError) {
+                    setAuthError({ message: passwordError.message });
+                    setShowOtpModal(false);
+                    setFieldErrors({ password: passwordError.message });
+                } else {
+                    setAuthError({ message: "Registration failed. Please check your details." });
+                    setShowOtpModal(false);
+                }
             } else {
                 setAuthError({ message: err.response?.data?.message || "Invalid or expired OTP. Please try again." });
             }

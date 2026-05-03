@@ -14,8 +14,9 @@ import CustomSplashScreen from "@/shared/SplashScreen";
 import { Asset } from 'expo-asset';
 import { useFonts } from "expo-font";
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
@@ -81,25 +82,25 @@ export default function RootLayout() {
 
   // App Ready
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <DialogProvider>
-              <SellerSettingsProvider>
-                <View style={styles.container} onLayout={onLayoutRootView}>
+    <GestureHandlerRootView style={styles.container} onLayout={onLayoutRootView}>
+      <AuthProvider>
+        <SocketProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <DialogProvider>
+                <SellerSettingsProvider>
                   <NavBar />
                   <CartAnimationOverlay />
                   <OnboardingManager />
                   <AuthToast />
                   <GlobalAIChat />
-                </View>
-              </SellerSettingsProvider>
-            </DialogProvider>
-          </WishlistProvider>
-        </CartProvider>
-      </SocketProvider>
-    </AuthProvider>
+                </SellerSettingsProvider>
+              </DialogProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </SocketProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 

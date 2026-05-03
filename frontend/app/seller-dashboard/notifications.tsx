@@ -1,7 +1,7 @@
+import { notificationAPI } from '@/api/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/shared/Navbar';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { Bell, Box, Info, ShoppingBag } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -16,14 +16,11 @@ import {
     View,
 } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
-
-interface Notification {
-    id: number;
-    userId: number;
+interface SellerNotification {
+    uid: number;
     title: string;
     message: string;
-    type: string; // 'ORDER', 'SYSTEM', 'STOCK', etc.
+    type: string;
     isRead: boolean;
     createdAt: string;
     data?: any;
@@ -31,10 +28,10 @@ interface Notification {
 
 export default function SellerNotifications() {
     const router = useRouter();
-    const { token, user } = useAuth();
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notifications, setNotifications] = useState<SellerNotification[]>([]);
     const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
 
     useEffect(() => {
@@ -43,57 +40,33 @@ export default function SellerNotifications() {
 
     const fetchNotifications = async () => {
         try {
-            const query = filter === 'UNREAD' ? '?unreadOnly=true' : '';
-            const res = await fetch(`${API_URL}/api/notifications${query}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) {
-                // Handle pagination struct if necessary, but assuming array or { items }
-                // Controller returns result directly? Let's assume result is { notifications: [], total: ... } or just []
-                // Based on standard controllers it's often paginated { rows, count }
-                // I'll handle both just incase or inspect controller. 
-                // Defaulting to array check
-                if (Array.isArray(data)) {
-                    setNotifications(data);
-                } else if (data.notifications) {
-                    setNotifications(data.notifications);
-                } else if (data.rows) {
-                    setNotifications(data.rows);
-                } else {
-                    setNotifications([]);
-                }
-            }
+            const res = await notificationAPI.getNotifications(
+                filter === 'UNREAD' ? { unreadOnly: true } : {}
+            );
+            setNotifications(res.data.notifications as SellerNotification[]);
         } catch (error) {
-            console.error(error);
+            console.error('Failed to fetch seller notifications', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     };
 
-    const markAsRead = async (id: number) => {
+    const markAsRead = async (uid: number) => {
         try {
-            await fetch(`${API_URL}/api/notifications/${id}/read`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+            await notificationAPI.markAsRead(uid);
+            setNotifications(prev => prev.map(n => n.uid === uid ? { ...n, isRead: true } : n));
         } catch (error) {
-            console.error("Failed to mark read");
+            console.error('Failed to mark notification as read', error);
         }
     };
 
     const markAllRead = async () => {
         try {
-            await fetch(`${API_URL}/api/notifications/read-all`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            await notificationAPI.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-            Alert.alert("Success", "All notifications marked as read.");
         } catch (error) {
-            Alert.alert("Error", "Failed to update notifications");
+            Alert.alert('Error', 'Failed to update notifications');
         }
     };
 
@@ -111,10 +84,10 @@ export default function SellerNotifications() {
         }
     };
 
-    const renderItem = ({ item }: { item: Notification }) => (
+    const renderItem = ({ item }: { item: SellerNotification }) => (
         <TouchableOpacity
             style={[styles.card, !item.isRead && styles.unreadCard]}
-            onPress={() => !item.isRead && markAsRead(item.id)}
+            onPress={() => !item.isRead && markAsRead(item.uid)}
             activeOpacity={0.7}
         >
             <View style={styles.iconBox}>
@@ -170,10 +143,10 @@ export default function SellerNotifications() {
             ) : (
                 <FlatList
                     data={notifications}
-                    keyExtractor={item => String(item.id)}
+                    keyExtractor={item => String(item.uid)}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} tintColor="#B36979" colors={['#B36979']} />}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Bell size={48} color="#D1D5DB" />

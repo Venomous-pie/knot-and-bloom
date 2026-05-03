@@ -695,6 +695,7 @@ export default function SellerOrders() {
                                             value={trackingNumber}
                                             onChangeText={detectCourier}
                                         />
+                                        {/* OCR Scanner on hold for later iteration
                                         <TouchableOpacity
                                             style={[styles.scanBtn, { marginLeft: 8 }, scanning && { opacity: 0.7 }]}
                                             onPress={handleScanWaybill}
@@ -706,6 +707,7 @@ export default function SellerOrders() {
                                                 <Ionicons name="camera" size={24} color="white" />
                                             )}
                                         </TouchableOpacity>
+                                        */}
                                     </View>
                                     <Text style={styles.label}>Courier Name (Optional)</Text>
                                     <TextInput

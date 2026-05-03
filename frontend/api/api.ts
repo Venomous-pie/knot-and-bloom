@@ -433,6 +433,7 @@ export const sellerAPI = {
     markWelcomeSeen: () => apiClient.patch<{ success: boolean; token: string; customer: any }>('/sellers/me/welcome-seen', {}),
     cancelApplication: () => apiClient.delete('/sellers/me/application'),
     getDashboardStats: () => apiClient.get<any>('/sellers/me/dashboard-stats').then(res => res.data),
+    getSidebarStats: () => apiClient.get<any>('/sellers/me/sidebar-stats').then(res => res.data),
     onboard: (data: any) => apiClient.post('/sellers/onboard', data),
 };
 

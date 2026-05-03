@@ -7,6 +7,19 @@ import ProductFormWizard, { ProductFormData } from '../../../components/seller/P
 import { VariantData } from '../../../components/seller/VariantEditor';
 import InfoBox from '../../../shared/InfoBox';
 
+const P       = '#B36979';
+const P_LIGHT = '#FDEEF1';
+const BG      = '#F4F4F8';
+const CARD    = '#FFFFFF';
+const TEXT    = '#1A1A2E';
+const SUB     = '#6B7280';
+const BORDER  = '#F0F0F5';
+const GREEN   = '#10B981';
+const AMBER   = '#F59E0B';
+const RED     = '#EF4444';
+const INDIGO  = '#6366F1';
+const TEAL    = '#14B8A6';
+
 export default function SellerProductForm() {
     const router = useRouter();
     const { id } = useLocalSearchParams();
@@ -156,36 +169,38 @@ export default function SellerProductForm() {
 
 const getStatusColor = (status: string) => {
     switch (status) {
-        case 'ACTIVE': return '#10B981';
-        case 'PENDING': return '#F59E0B';
-        case 'SUSPENDED': return '#EF4444';
-        case 'DRAFT': return '#6B7280';
-        default: return '#6B7280';
+        case 'ACTIVE': return GREEN;
+        case 'PENDING': return AMBER;
+        case 'SUSPENDED': return RED;
+        case 'DRAFT': return SUB;
+        default: return SUB;
     }
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFF' },
+    container: { flex: 1, backgroundColor: BG },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: BORDER },
     backBtn: { marginRight: 16 },
-    title: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
+    title: { fontSize: 20, fontWeight: 'bold', color: TEXT, fontFamily: 'Quicksand' },
     statusBadge: {
         alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        marginHorizontal: 16,
-        marginTop: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginHorizontal: 20,
+        marginTop: 20,
+        marginBottom: -10, // Pull up to sit closer to form wizard
+        zIndex: 10,
     },
-    statusText: { fontWeight: '600', fontSize: 13 },
+    statusText: { fontWeight: '700', fontSize: 13, fontFamily: 'Quicksand' },
     scoreCard: {
-        backgroundColor: '#FFF',
+        backgroundColor: CARD,
         marginHorizontal: 16,
         marginTop: 12,
-        borderRadius: 8,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: BORDER,
         overflow: 'hidden',
     },
     scoreHeader: {
@@ -193,7 +208,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 12,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: BG,
     },
     scoreTitleRow: {
         flexDirection: 'row',
@@ -203,7 +218,8 @@ const styles = StyleSheet.create({
     scoreTitle: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#374151',
+        color: TEXT,
+        fontFamily: 'Quicksand',
     },
     scoreValueRow: {
         flexDirection: 'row',
@@ -213,11 +229,12 @@ const styles = StyleSheet.create({
     scoreValue: {
         fontSize: 16,
         fontWeight: 'bold',
+        fontFamily: 'Quicksand',
     },
     checklist: {
         padding: 12,
         borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
+        borderTopColor: BORDER,
     },
     checklistItem: {
         flexDirection: 'row',
@@ -227,10 +244,11 @@ const styles = StyleSheet.create({
     },
     checklistText: {
         fontSize: 13,
-        color: '#6B7280',
+        color: SUB,
+        fontFamily: 'Quicksand',
     },
     checklistTextDone: {
-        color: '#111827',
+        color: TEXT,
         textDecorationLine: 'line-through',
     },
 });

@@ -3,6 +3,9 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/api/api';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthSuccess() {
     const { code, token, error } = useLocalSearchParams<{ code: string, token: string, error: string }>();
@@ -11,6 +14,8 @@ export default function AuthSuccess() {
 
     useEffect(() => {
         const exchangeCode = async () => {
+            // Wait a moment to see if WebBrowser closes this window
+            await new Promise(resolve => setTimeout(resolve, 500));
             try {
                 if (code) {
                     // Security: Exchange one-time auth code for JWT via POST

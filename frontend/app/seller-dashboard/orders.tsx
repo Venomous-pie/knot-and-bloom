@@ -8,6 +8,20 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import * as Print from 'expo-print';
+import { ChevronLeft } from 'lucide-react-native';
+
+const P       = '#B36979';
+const P_LIGHT = '#FDEEF1';
+const BG      = '#F4F4F8';
+const CARD    = '#FFFFFF';
+const TEXT    = '#1A1A2E';
+const SUB     = '#6B7280';
+const BORDER  = '#F0F0F5';
+const GREEN   = '#10B981';
+const AMBER   = '#F59E0B';
+const RED     = '#EF4444';
+const INDIGO  = '#6366F1';
+const TEAL    = '#14B8A6';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const LATE_THRESHOLD_DAYS = 3;
@@ -574,7 +588,14 @@ export default function SellerOrders() {
         <View style={styles.container}>
             <Stack.Screen options={{ title: "Seller Orders" }} />
 
-            <View style={styles.navRow}>
+            <View style={styles.headerRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <ChevronLeft size={24} color={TEXT} />
+                    </TouchableOpacity>
+                    <View style={{ width: 12 }} />
+                    <Text style={styles.pageTitle}>Orders</Text>
+                </View>
                 <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={styles.navBtn}>
                     <Text style={styles.navBtnText}>Manage Products</Text>
                 </TouchableOpacity>
@@ -850,136 +871,139 @@ export default function SellerOrders() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f9fafb' },
-    list: { padding: 16 },
-    empty: { textAlign: 'center', marginTop: 20, color: '#666' },
+    container: { flex: 1, backgroundColor: BG },
+    list: { padding: 20 },
+    empty: { textAlign: 'center', marginTop: 20, color: SUB, fontFamily: 'Quicksand' },
     card: {
-        backgroundColor: 'white',
-        padding: 16,
-        borderRadius: 12,
+        backgroundColor: CARD,
+        padding: 20,
+        borderRadius: 24,
         marginBottom: 16,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
         borderWidth: 1,
-        borderColor: '#f0f0f0'
+        borderColor: BORDER
     },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
+    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
+    pageTitle: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    
     header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'flex-start' },
-    orderId: { fontWeight: '700', fontSize: 16, color: '#111' },
-    date: { color: '#666', fontSize: 13, marginTop: 2 },
-    statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    orderId: { fontWeight: '700', fontSize: 16, color: TEXT, fontFamily: 'Quicksand' },
+    date: { color: SUB, fontSize: 13, marginTop: 2, fontFamily: 'Quicksand' },
+    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
     statusText: { fontWeight: '700', fontSize: 12 },
 
-    customerInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingBottom: 12 },
-    customerConfig: { color: '#4b5563', fontSize: 14 },
-    totalAmount: { fontWeight: '700', fontSize: 15, color: '#111' },
+    customerInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: BORDER, paddingBottom: 12 },
+    customerConfig: { color: SUB, fontSize: 14, fontFamily: 'Quicksand' },
+    totalAmount: { fontWeight: '700', fontSize: 15, color: TEXT, fontFamily: 'Quicksand' },
 
-    escrowNote: { backgroundColor: '#FFFBEB', padding: 8, borderRadius: 6, marginBottom: 12, borderWidth: 1, borderColor: '#FEF3C7' },
-    escrowText: { fontSize: 12, color: '#92400E', fontWeight: '600' },
+    escrowNote: { backgroundColor: '#FEF3C7', padding: 8, borderRadius: 6, marginBottom: 12, borderWidth: 1, borderColor: '#FDE68A' },
+    escrowText: { fontSize: 12, color: '#92400E', fontWeight: '600', fontFamily: 'Quicksand' },
 
     itemsList: { marginBottom: 16 },
     itemRow: { flexDirection: 'row', marginBottom: 12 },
-    image: { width: 48, height: 48, borderRadius: 6, marginRight: 12, backgroundColor: '#f3f4f6' },
+    image: { width: 48, height: 48, borderRadius: 12, marginRight: 12, backgroundColor: BG },
     itemDetails: { flex: 1, justifyContent: 'center' },
-    productName: { fontWeight: '600', fontSize: 14, color: '#374151', marginBottom: 2 },
-    qtyText: { fontSize: 13, color: '#6b7280' },
+    productName: { fontWeight: '600', fontSize: 14, color: TEXT, marginBottom: 2, fontFamily: 'Quicksand' },
+    qtyText: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
 
     // Financial Styles
-    subText: { fontSize: 12, color: '#6b7280', marginBottom: 2 },
-    earningsText: { fontSize: 14, fontWeight: '700', color: '#059669', marginTop: 2 },
-    divider: { height: 1, backgroundColor: '#E5E7EB', width: '100%', marginVertical: 4 },
+    subText: { fontSize: 12, color: SUB, marginBottom: 2, fontFamily: 'Quicksand' },
+    earningsText: { fontSize: 14, fontWeight: '700', color: GREEN, marginTop: 2, fontFamily: 'Quicksand' },
+    divider: { height: 1, backgroundColor: BORDER, width: '100%', marginVertical: 4 },
 
-    actions: { borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 16, alignItems: 'flex-end' },
+    actions: { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16, alignItems: 'flex-end' },
     actionRow: { flexDirection: 'row', gap: 12 },
-    btn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, minWidth: 100, alignItems: 'center' },
-    primaryBtn: { backgroundColor: '#5A4A42' },
-    primaryBtnText: { color: 'white', fontWeight: '600', fontSize: 14 },
-    rejectBtn: { backgroundColor: 'white', borderWidth: 1, borderColor: '#EF4444' },
-    rejectBtnText: { color: '#EF4444', fontWeight: '600', fontSize: 14 },
+    btn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, minWidth: 100, alignItems: 'center' },
+    primaryBtn: { backgroundColor: P },
+    primaryBtnText: { color: 'white', fontWeight: '700', fontSize: 14, fontFamily: 'Quicksand' },
+    rejectBtn: { backgroundColor: CARD, borderWidth: 1, borderColor: RED },
+    rejectBtnText: { color: RED, fontWeight: '600', fontSize: 14, fontFamily: 'Quicksand' },
 
-    navRow: { flexDirection: 'row', padding: 16, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-    navBtn: { marginRight: 16 },
-    navBtnText: { color: '#5A4A42', fontWeight: '600' },
+    navBtn: { marginRight: 16, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER },
+    navBtnText: { color: TEXT, fontWeight: '600', fontFamily: 'Quicksand' },
 
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { backgroundColor: 'white', width: '90%', maxWidth: 1000, maxHeight: '90%', padding: 24, borderRadius: 16, elevation: 5 },
-    modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 8, color: '#333', fontFamily: 'Quicksand' },
-    subTitle: { fontSize: 14, color: '#666', marginBottom: 20, fontFamily: 'Quicksand' },
+    modalContent: { backgroundColor: CARD, width: '90%', maxWidth: 1000, maxHeight: '90%', padding: 32, borderRadius: 24, elevation: 5 },
+    modalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 8, color: TEXT, fontFamily: 'Quicksand' },
+    subTitle: { fontSize: 14, color: SUB, marginBottom: 20, fontFamily: 'Quicksand' },
 
     // Matched styles from ProductFormWizard
-    label: { fontSize: 14, fontWeight: '600', color: '#555', fontFamily: 'Quicksand', marginBottom: 8 },
-    input: { borderWidth: 2, borderColor: '#EEE', borderRadius: 12, padding: 14, fontSize: 15, backgroundColor: '#FAFAFA', color: '#333', fontFamily: 'Quicksand', marginBottom: 24, outlineStyle: 'none' as any },
-    inputError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
-    scanBtn: { backgroundColor: '#B36979', padding: 14, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', width: 50 },
+    label: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand', marginBottom: 8 },
+    input: { borderWidth: 2, borderColor: BORDER, borderRadius: 12, padding: 14, fontSize: 15, backgroundColor: BG, color: TEXT, fontFamily: 'Quicksand', marginBottom: 24, outlineStyle: 'none' as any },
+    inputError: { borderColor: RED, backgroundColor: P_LIGHT },
+    scanBtn: { backgroundColor: P, padding: 14, borderRadius: 12, height: 50, justifyContent: 'center', alignItems: 'center', width: 50 },
 
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 32 },
-    cancelBtn: { padding: 12, borderRadius: 8 },
-    confirmBtn: { backgroundColor: '#B36979', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
-    btnText: { color: '#4b5563', fontWeight: '600' },
-    confirmBtnText: { color: 'white', fontWeight: '600', fontSize: 15 },
+    cancelBtn: { padding: 14, borderRadius: 12, justifyContent: 'center' },
+    confirmBtn: { backgroundColor: P, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16, justifyContent: 'center' },
+    btnText: { color: SUB, fontWeight: '700', fontFamily: 'Quicksand' },
+    confirmBtnText: { color: 'white', fontWeight: '700', fontSize: 15, fontFamily: 'Quicksand' },
 
     // Legacy mapping (keep just to be safe if reused)
-    trackingInfo: { backgroundColor: '#f9f9f9', padding: 8, borderRadius: 4, marginBottom: 12 },
-    trackingLabel: { fontSize: 12, color: '#666', marginBottom: 2 },
-    trackingText: { fontWeight: '600', color: '#333' },
+    trackingInfo: { backgroundColor: BG, padding: 8, borderRadius: 8, marginBottom: 12 },
+    trackingLabel: { fontSize: 12, color: SUB, marginBottom: 2 },
+    trackingText: { fontWeight: '600', color: TEXT },
 
     // New Styles for Revamped Modal
-    // New Styles for Revamped Modal
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginTop: 20, marginBottom: 12, fontFamily: 'Quicksand' },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginTop: 20, marginBottom: 12, fontFamily: 'Quicksand' },
     photoRow: { flexDirection: 'row', gap: 16, marginBottom: 20 },
-    photoBox: { width: 250, height: 250, backgroundColor: '#f3f4f6', borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: '#eee', alignItems: 'center', justifyContent: 'center' },
-    photoBoxError: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+    photoBox: { width: 250, height: 250, backgroundColor: BG, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: BORDER, alignItems: 'center', justifyContent: 'center' },
+    photoBoxError: { borderColor: RED, backgroundColor: P_LIGHT },
 
-    photoBoxFull: { width: '40%', height: 250, backgroundColor: '#f3f4f6', borderRadius: 12, overflow: 'hidden', borderWidth: 2, borderColor: '#eee', alignItems: 'center', justifyContent: 'center', marginBottom: 12, marginHorizontal: 'auto', },
+    photoBoxFull: { width: '40%', height: 250, backgroundColor: BG, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: BORDER, alignItems: 'center', justifyContent: 'center', marginBottom: 12, marginHorizontal: 'auto', },
 
     // Placeholder style from ImageUploader
-    photoAddPlaceholder: { width: 250, height: 250, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fafafa', gap: 6 },
-    photoAddText: { fontSize: 13, color: 'rgba(179, 105, 121, 0.6)', fontWeight: '600', fontFamily: 'Quicksand' },
-    photoAddHint: { fontSize: 11, color: '#CCC', fontFamily: 'Quicksand' },
+    photoAddPlaceholder: { width: 250, height: 250, borderRadius: 16, borderWidth: 2, borderColor: BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: BG, gap: 6 },
+    photoAddText: { fontSize: 13, color: P, fontWeight: '600', fontFamily: 'Quicksand' },
+    photoAddHint: { fontSize: 11, color: SUB, fontFamily: 'Quicksand' },
 
     photoPreview: { width: '100%', height: '100%' },
     photoPlaceholder: { alignItems: 'center', padding: 8 },
-    photoLabel: { fontSize: 13, fontWeight: '600', color: '#5A4A42', textAlign: 'center', opacity: 0.6 },
-    photoSub: { fontSize: 11, color: '#9ca3af', textAlign: 'center', opacity: 0.5 },
+    photoLabel: { fontSize: 13, fontWeight: '600', color: TEXT, textAlign: 'center', opacity: 0.6 },
+    photoSub: { fontSize: 11, color: SUB, textAlign: 'center', opacity: 0.5 },
 
     methodRow: { flexDirection: 'row', gap: 16, marginBottom: 20 },
-    methodBtn: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 2, borderColor: '#e5e7eb', alignItems: 'flex-start' },
-    methodBtnActive: { backgroundColor: '#fff8faff', borderColor: '#B36979' },
-    methodText: { fontSize: 14, color: '#374151', fontWeight: '600', marginBottom: 2 },
-    methodTextActive: { color: '#B36979' },
-    methodSub: { fontSize: 11, color: '#6b7280', marginBottom: 6 },
-    methodBadge: { fontSize: 10, color: '#374151', backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, overflow: 'hidden' },
+    methodBtn: { flex: 1, padding: 16, borderRadius: 16, borderWidth: 2, borderColor: BORDER, alignItems: 'flex-start', backgroundColor: CARD },
+    methodBtnActive: { backgroundColor: P_LIGHT, borderColor: P },
+    methodText: { fontSize: 14, color: TEXT, fontWeight: '600', marginBottom: 2, fontFamily: 'Quicksand' },
+    methodTextActive: { color: P },
+    methodSub: { fontSize: 11, color: SUB, marginBottom: 6, fontFamily: 'Quicksand' },
+    methodBadge: { fontSize: 10, color: SUB, backgroundColor: BG, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, overflow: 'hidden', fontFamily: 'Quicksand' },
 
     infoBox: { padding: 12, borderRadius: 12, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', marginTop: 4, marginBottom: 8, },
-    infoText: { fontSize: 13, color: '#1E40AF' },
+    infoText: { fontSize: 13, color: '#1E40AF', fontFamily: 'Quicksand' },
 
     // Late & Selection Styles
     cardLate: {
         borderLeftWidth: 4,
-        borderLeftColor: '#EF4444',
+        borderLeftColor: RED,
     },
     cardSelected: {
-        borderColor: '#B36979',
+        borderColor: P,
         borderWidth: 2,
-        backgroundColor: '#FFF1F2'
+        backgroundColor: P_LIGHT
     },
     lateBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
         marginBottom: 8,
-        backgroundColor: '#FEF2F2',
-        padding: 4,
-        borderRadius: 4,
+        backgroundColor: P_LIGHT,
+        padding: 6,
+        borderRadius: 8,
         alignSelf: 'flex-start',
     },
     lateText: {
         fontSize: 12,
-        color: '#B91C1C',
+        color: RED,
         fontWeight: 'bold',
+        fontFamily: 'Quicksand'
     },
     checkboxOverlay: {
         position: 'absolute',
@@ -990,40 +1014,41 @@ const styles = StyleSheet.create({
     checkbox: {
         width: 24,
         height: 24,
-        borderRadius: 6,
+        borderRadius: 8,
         borderWidth: 2,
-        borderColor: '#B36979',
-        backgroundColor: 'white',
+        borderColor: P,
+        backgroundColor: CARD,
         alignItems: 'center',
         justifyContent: 'center',
     },
     checkboxSelected: {
-        backgroundColor: '#B36979',
+        backgroundColor: P,
     },
     bulkBar: {
         position: 'absolute',
-        bottom: 20,
+        bottom: 24,
         left: 20,
         right: 20,
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        padding: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 24,
+        padding: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowRadius: 16,
         elevation: 10,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: BORDER,
     },
     bulkCount: {
         fontWeight: 'bold',
         fontSize: 16,
-        color: '#111827',
+        color: TEXT,
         marginLeft: 8,
+        fontFamily: 'Quicksand'
     },
     bulkActions: {
         flexDirection: 'row',
@@ -1033,14 +1058,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: BG,
+        borderRadius: 12,
     },
     bulkBtnText: {
         fontWeight: '600',
         fontSize: 13,
-        color: '#374151'
+        color: TEXT,
+        fontFamily: 'Quicksand'
     }
 });

@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { productAPI } from '../../api/api';
-import { useAuth } from '../auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Product } from '../../types/products';
 
 const STATUS_TABS = [
@@ -56,7 +56,7 @@ export default function AdminProducts() {
             await productAPI.updateProductStatus(id, status, reason);
             // Optimistic update
             setProducts(prev => prev.map(p =>
-                p.uid === id ? { ...p, status } : p
+                p.uid === id ? { ...p, status: status as Product['status'] } : p
             ));
             Alert.alert("Success", `Product ${status === 'ACTIVE' ? 'approved' : 'suspended'} successfully`);
 
@@ -80,7 +80,7 @@ export default function AdminProducts() {
         setRejectModalVisible(false);
     };
 
-    const getStatusColor = (status: string | null) => {
+    const getStatusColor = (status: string | null | undefined) => {
         switch (status) {
             case 'ACTIVE': return '#10B981';
             case 'PENDING': return '#F59E0B';

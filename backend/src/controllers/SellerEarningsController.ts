@@ -6,11 +6,22 @@ import type { AuthPayload } from '../types/authTypes.js';
 const getEarnings = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user = req.user as AuthPayload | undefined;
-        if (!user || user.role !== 'SELLER' || !user.sellerId) {
+        if (!user || (user.role !== 'SELLER' && user.role !== 'ADMIN')) {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
         const sellerId = user.sellerId;
+        
+        if (!sellerId && user.role === 'ADMIN') {
+            return res.json({
+                balance: { pending: 0, available: 0, withdrawn: 0, gmv: 0 },
+                history: { orders: [], withdrawals: [] }
+            });
+        }
+        
+        if (!sellerId) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
 
         // Fetch Seller Balance
         const seller = await prisma.seller.findUnique({
@@ -59,11 +70,15 @@ const getEarnings = async (req: Request, res: Response, next: NextFunction) => {
 const requestWithdrawal = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const user = req.user as AuthPayload | undefined;
-        if (!user || user.role !== 'SELLER' || !user.sellerId) {
+        if (!user || (user.role !== 'SELLER' && user.role !== 'ADMIN')) {
             return res.status(401).json({ error: "Unauthorized" });
         }
         const { amount, method, details } = req.body;
         const sellerId = user.sellerId;
+
+        if (!sellerId) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
 
         if (!amount || amount <= 0) return res.status(400).json({ error: "Invalid amount" });
         if (!method || !details) return res.status(400).json({ error: "Missing payment details" });

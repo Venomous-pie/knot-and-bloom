@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Svg, Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
+import { apiClient } from '@/api/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -47,6 +48,11 @@ export default function GoogleAuthButton({ text = "Continue with Google", style,
     const handleGoogleLogin = async () => {
         try {
             setLoading(true);
+            if (Platform.OS === 'web') {
+                window.location.href = `${API_URL}/auth/google`;
+                return;
+            }
+
             const callbackUrl = Linking.createURL('/auth/success');
 
             const result = await WebBrowser.openAuthSessionAsync(
@@ -56,16 +62,26 @@ export default function GoogleAuthButton({ text = "Continue with Google", style,
 
             if (result.type === 'success') {
                 const url = result.url;
+                let code: string | null = null;
                 let token: string | null = null;
+                
                 try {
                     const parsedUrl = new URL(url);
+                    code = parsedUrl.searchParams.get('code');
                     token = parsedUrl.searchParams.get('token');
                 } catch (e) {
-                    const match = url.match(/token=([^&]*)/);
-                    if (match) token = match[1];
+                    const codeMatch = url.match(/code=([^&]*)/);
+                    if (codeMatch) code = codeMatch[1];
+                    const tokenMatch = url.match(/token=([^&]*)/);
+                    if (tokenMatch) token = tokenMatch[1];
                 }
 
-                if (token) {
+                if (code) {
+                    const response = await apiClient.post('/auth/exchange-code', { code });
+                    if (response.data?.token) {
+                        await loginWithToken(response.data.token, returnTo);
+                    }
+                } else if (token) {
                     await loginWithToken(token, returnTo);
                 }
             }

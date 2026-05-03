@@ -7,10 +7,21 @@ import {
     Text,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Sparkles, Lock } from 'lucide-react-native';
-import { theme } from '@/constants/theme';
+
+const P       = '#B36979';
+const P_LIGHT = '#FDEEF1';
+const BG      = '#F4F4F8';
+const CARD    = '#FFFFFF';
+const TEXT    = '#1A1A2E';
+const SUB     = '#6B7280';
+const BORDER  = '#F0F0F5';
+const GREEN   = '#10B981';
+const AMBER   = '#F59E0B';
+const RED     = '#EF4444';
+const INDIGO  = '#6366F1';
+const TEAL    = '#14B8A6';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -34,11 +45,11 @@ export default function SellerSettingsPage() {
     }, [user, authLoading]);
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={24} color={theme.colors.text} />
+                    <ChevronLeft size={24} color={TEXT} />
                 </Pressable>
                 <Text style={styles.headerTitle}>Seller Settings</Text>
                 <View style={{ width: 40 }} />
@@ -52,7 +63,7 @@ export default function SellerSettingsPage() {
                     {/* AI Description Toggle */}
                     <View style={styles.settingRow}>
                         <View style={styles.settingIcon}>
-                            <Sparkles size={20} color={theme.colors.primary} />
+                            <Sparkles size={20} color={P} />
                         </View>
                         <View style={styles.settingInfo}>
                             <View style={styles.settingTitleRow}>
@@ -67,7 +78,7 @@ export default function SellerSettingsPage() {
                             </Text>
                         </View>
                         <Switch
-                            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                            trackColor={{ false: BORDER, true: P }}
                             thumbColor="#fff"
                             onValueChange={(val) => updateSetting('aiDescriptionEnabled', val)}
                             value={settings.aiDescriptionEnabled}
@@ -114,35 +125,39 @@ export default function SellerSettingsPage() {
                 </View>
 
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: BG,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingVertical: 14,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
     },
     backButton: {
         width: 40,
         height: 40,
-        justifyContent: 'center',
+        borderRadius: 20,
+        backgroundColor: CARD,
         alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.07,
+        shadowRadius: 6,
+        elevation: 3
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
-        color: theme.colors.text,
+        color: TEXT,
         fontFamily: 'Quicksand',
     },
     content: {
@@ -155,36 +170,38 @@ const styles = StyleSheet.create({
     sectionLabel: {
         fontSize: 12,
         fontWeight: '600',
-        color: theme.colors.textLight,
+        color: SUB,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
         marginBottom: 12,
         marginLeft: 4,
     },
     card: {
-        backgroundColor: 'white',
-        borderRadius: 16,
+        backgroundColor: CARD,
+        borderRadius: 24,
         overflow: 'hidden',
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 2,
+        shadowRadius: 12,
+        elevation: 3,
         marginBottom: 24,
+        borderWidth: 1,
+        borderColor: BORDER,
     },
     settingRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
+        padding: 20,
         gap: 12,
         borderBottomWidth: 1,
-        borderBottomColor: theme.colors.subtle,
+        borderBottomColor: BORDER,
     },
     settingIcon: {
         width: 40,
         height: 40,
-        borderRadius: 12,
-        backgroundColor: theme.colors.primaryLight,
+        borderRadius: 20,
+        backgroundColor: P_LIGHT,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -200,14 +217,14 @@ const styles = StyleSheet.create({
     settingTitle: {
         fontSize: 15,
         fontWeight: '600',
-        color: theme.colors.text,
+        color: TEXT,
         fontFamily: 'Quicksand',
     },
     premiumBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: theme.colors.primary,
+        backgroundColor: P,
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 20,
@@ -220,26 +237,27 @@ const styles = StyleSheet.create({
     },
     settingSubtitle: {
         fontSize: 12,
-        color: theme.colors.textSecondary,
+        color: SUB,
         lineHeight: 16,
     },
     paywallNotice: {
-        margin: 16,
-        borderRadius: 12,
+        margin: 20,
+        borderRadius: 16,
         padding: 16,
         borderWidth: 1,
-        borderColor: theme.colors.primary + '30',
+        borderColor: P_LIGHT,
+        backgroundColor: CARD,
     },
     paywallTitle: {
         fontSize: 15,
         fontWeight: '700',
-        color: theme.colors.primary,
+        color: P,
         marginBottom: 6,
         fontFamily: 'Quicksand',
     },
     paywallText: {
         fontSize: 13,
-        color: theme.colors.textSecondary,
+        color: SUB,
         lineHeight: 19,
         marginBottom: 12,
     },
@@ -253,22 +271,22 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     paywallCheck: {
-        color: theme.colors.primary,
+        color: P,
         fontWeight: '700',
         fontSize: 14,
     },
     paywallFeatureText: {
         fontSize: 13,
-        color: theme.colors.text,
+        color: TEXT,
     },
     paywallCta: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        backgroundColor: theme.colors.primary,
+        backgroundColor: P,
         paddingVertical: 12,
-        borderRadius: 10,
+        borderRadius: 12,
     },
     paywallCtaText: {
         color: '#fff',
@@ -277,14 +295,14 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
     enabledNotice: {
-        margin: 16,
-        backgroundColor: '#E8F5E9',
-        borderRadius: 10,
+        margin: 20,
+        backgroundColor: GREEN + '20',
+        borderRadius: 12,
         padding: 12,
     },
     enabledNoticeText: {
         fontSize: 13,
-        color: '#2E7D32',
-        fontWeight: '500',
+        color: GREEN,
+        fontWeight: '600',
     },
 });

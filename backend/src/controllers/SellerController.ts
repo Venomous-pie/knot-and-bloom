@@ -694,7 +694,7 @@ export const sellerController = {
                     sellerId,
                     uploaded: { gte: startOfMonth }
                 },
-                _sum: { total: true },
+                _sum: { total: true, sellerEarnings: true },
                 _count: { uid: true }
             });
 
@@ -716,14 +716,16 @@ export const sellerController = {
             // Map distribution to handy object
             const orderCounts = {
                 PENDING: 0,
-                TO_SHIP: 0, // In Production + Ready to Ship
-                COMPLETED: 0
+                PROCESSING: 0, // In Production + Ready to Ship
+                COMPLETED: 0,
+                CANCELLED: 0
             };
 
             totalOrdersDistribution.forEach(group => {
                 if (group.status === 'PENDING') orderCounts.PENDING += group._count.uid;
-                else if (['IN_PRODUCTION', 'READY_TO_SHIP'].includes(group.status)) orderCounts.TO_SHIP += group._count.uid;
+                else if (['IN_PRODUCTION', 'READY_TO_SHIP'].includes(group.status)) orderCounts.PROCESSING += group._count.uid;
                 else if (group.status === 'COMPLETED') orderCounts.COMPLETED += group._count.uid;
+                else if (['CANCELLED', 'REJECTED'].includes(group.status)) orderCounts.CANCELLED += group._count.uid;
             });
 
             // 4. Sales Graph (Last 7 Days)
@@ -756,6 +758,54 @@ export const sellerController = {
                 });
             }
 
+            // 5. Top Products (by revenue)
+            // Fetch all COMPLETED order items for the seller and calculate revenue per product in memory
+            const completedOrders = await prisma.order.findMany({
+                where: { sellerId, status: 'COMPLETED' },
+                select: {
+                    items: {
+                        select: { productId: true, price: true, quantity: true }
+                    }
+                }
+            });
+
+            const productRevenue: Record<number, number> = {};
+            completedOrders.forEach(order => {
+                order.items.forEach(item => {
+                    const currentRev = productRevenue[item.productId] || 0;
+                    productRevenue[item.productId] = currentRev + (Number(item.price) * item.quantity);
+                });
+            });
+
+            const sortedProductIds = Object.keys(productRevenue)
+                .map(Number)
+                .sort((a, b) => (productRevenue[b] || 0) - (productRevenue[a] || 0))
+                .slice(0, 3);
+
+            let topProductsData: Array<{ id: number, name: string, image: string | null, revenue: number }> = [];
+            if (sortedProductIds.length > 0) {
+                const products = await prisma.product.findMany({
+                    where: { uid: { in: sortedProductIds } },
+                    select: { uid: true, name: true, image: true }
+                });
+                
+                topProductsData = sortedProductIds.map(pid => {
+                    const prod = products.find(p => p.uid === pid);
+                    return {
+                        id: pid,
+                        name: prod?.name || 'Unknown Product',
+                        image: prod?.image || null,
+                        revenue: productRevenue[pid] || 0
+                    };
+                });
+            }
+
+            // 6. Recent Reviews (Mocked for now)
+            const recentReviews = [
+                { id: 1, customerName: "Maria D.", rating: 5, comment: "Beautifully crafted bouquet, my sister loved it!", date: new Date().toISOString() },
+                { id: 2, customerName: "Sarah M.", rating: 4, comment: "Great quality, but shipping was a bit delayed.", date: new Date(Date.now() - 86400000).toISOString() },
+            ];
+
             res.json({
                 performanceSnapshot: {
                     todayRevenue,
@@ -765,16 +815,59 @@ export const sellerController = {
                 },
                 quickStats: {
                     thisMonthSales: Number(thisMonthMetrics._sum.total || 0),
+                    thisMonthOrders: Number(thisMonthMetrics._count.uid || 0),
+                    thisMonthEarnings: Number(thisMonthMetrics._sum.sellerEarnings || 0),
                     lastMonthSales: Number(lastMonthMetrics._sum.total || 0),
                     totalOrders: orderCounts,
                     conversionRate: 0 // Placeholder
                 },
-                performanceGraph: salesGraph
+                performanceGraph: salesGraph,
+                topProducts: topProductsData,
+                recentReviews
             });
 
         } catch (error) {
             console.error('Dashboard Stats Error:', error);
             res.status(500).json({ error: "Failed to fetch dashboard stats" });
+        }
+    },
+
+    // Sidebar Stats (lightweight)
+    async getSidebarStats(req: Request, res: Response) {
+        try {
+            if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+            const user = req.user as AuthPayload;
+
+            let sellerId = user.sellerId;
+            if (!sellerId) {
+                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                sellerId = seller?.uid;
+            }
+
+            if (!sellerId) return res.status(404).json({ error: "Seller profile not found" });
+
+            const unreadNotifications = await prisma.notification.count({
+                where: {
+                    customerId: user.id,
+                    isRead: false
+                }
+            });
+
+            const lowStockCount = await prisma.productVariant.count({
+                where: {
+                    product: { sellerId, deletedAt: null },
+                    stock: { lt: 5 }
+                }
+            });
+
+            res.json({
+                unreadNotifications,
+                lowStockCount
+            });
+
+        } catch (error) {
+            console.error('Sidebar Stats Error:', error);
+            res.status(500).json({ error: "Failed to fetch sidebar stats" });
         }
     }
 };

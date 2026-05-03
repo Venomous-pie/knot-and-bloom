@@ -1,9 +1,7 @@
 import { notificationAPI } from '@/api/api';
 import { useAuth } from '@/contexts/AuthContext';
-import Navbar from '@/shared/Navbar';
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { Bell, Box, Info, ShoppingBag } from 'lucide-react-native';
+import { Bell, Box, Info, ShoppingBag, ChevronLeft } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -15,6 +13,19 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+
+const P       = '#B36979';
+const P_LIGHT = '#FDEEF1';
+const BG      = '#F4F4F8';
+const CARD    = '#FFFFFF';
+const TEXT    = '#1A1A2E';
+const SUB     = '#6B7280';
+const BORDER  = '#F0F0F5';
+const GREEN   = '#10B981';
+const AMBER   = '#F59E0B';
+const RED     = '#EF4444';
+const INDIGO  = '#6366F1';
+const TEAL    = '#14B8A6';
 
 interface SellerNotification {
     uid: number;
@@ -36,7 +47,7 @@ export default function SellerNotifications() {
 
     useEffect(() => {
         fetchNotifications();
-    }, [token, filter]);
+    }, [filter]);
 
     const fetchNotifications = async () => {
         try {
@@ -106,14 +117,14 @@ export default function SellerNotifications() {
 
     return (
         <View style={styles.container}>
-            <Navbar />
             <Stack.Screen options={{ headerShown: false }} />
 
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                    <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
-                        <Ionicons name="arrow-back" size={24} color="#333" />
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <ChevronLeft size={24} color={TEXT} />
                     </TouchableOpacity>
+                    <View style={{ width: 12 }} />
                     <Text style={styles.title}>Notifications</Text>
                 </View>
                 <TouchableOpacity onPress={markAllRead}>
@@ -138,7 +149,7 @@ export default function SellerNotifications() {
 
             {loading ? (
                 <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <ActivityIndicator size="large" color="#B36979" />
+                    <ActivityIndicator size="large" color={P} />
                 </View>
             ) : (
                 <FlatList
@@ -146,10 +157,10 @@ export default function SellerNotifications() {
                     keyExtractor={item => String(item.uid)}
                     renderItem={renderItem}
                     contentContainerStyle={styles.list}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} tintColor="#B36979" colors={['#B36979']} />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchNotifications(); }} tintColor={P} colors={[P]} />}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Bell size={48} color="#D1D5DB" />
+                            <Bell size={48} color={SUB} />
                             <Text style={styles.emptyText}>No notifications here.</Text>
                         </View>
                     }
@@ -160,62 +171,61 @@ export default function SellerNotifications() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F9FAFB' },
+    container: { flex: 1, backgroundColor: BG },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6'
+        paddingHorizontal: 20,
+        paddingVertical: 14,
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center' },
-    title: { fontSize: 20, fontWeight: '700', color: '#111827', fontFamily: 'Quicksand' },
-    linkText: { color: '#B36979', fontWeight: '600', fontSize: 14 },
+    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
+    title: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    linkText: { color: P, fontWeight: '600', fontSize: 14, fontFamily: 'Quicksand' },
 
     tabs: { flexDirection: 'row', padding: 16, gap: 12 },
-    tab: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', backgroundColor: 'white' },
-    tabActive: { backgroundColor: '#B36979', borderColor: '#B36979' },
-    tabText: { color: '#6B7280', fontSize: 13, fontWeight: '600' },
+    tab: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: BORDER, backgroundColor: CARD },
+    tabActive: { backgroundColor: P, borderColor: P },
+    tabText: { color: SUB, fontSize: 13, fontWeight: '600', fontFamily: 'Quicksand' },
     tabTextActive: { color: 'white' },
 
     list: { padding: 16 },
     card: {
         flexDirection: 'row',
-        padding: 16,
-        backgroundColor: 'white',
-        borderRadius: 12,
-        marginBottom: 12,
+        padding: 20,
+        backgroundColor: CARD,
+        borderRadius: 24,
+        marginBottom: 16,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
         borderWidth: 1,
-        borderColor: 'transparent'
+        borderColor: BORDER
     },
     unreadCard: {
-        borderColor: '#B36979',
-        backgroundColor: '#FFF1F2'
+        borderColor: P,
+        backgroundColor: P_LIGHT
     },
     iconBox: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: BG,
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16
     },
     content: { flex: 1 },
     row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-    cardTitle: { fontSize: 14, fontWeight: '700', color: '#111827', fontFamily: 'Quicksand' },
-    cardBody: { fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand' },
-    date: { fontSize: 11, color: '#9CA3AF' },
-    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#B36979', marginLeft: 8 },
+    cardTitle: { fontSize: 14, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    cardBody: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
+    date: { fontSize: 11, color: SUB, fontFamily: 'Quicksand' },
+    dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: P, marginLeft: 8 },
 
     emptyContainer: { alignItems: 'center', marginTop: 100, gap: 12 },
-    emptyText: { color: '#9CA3AF', fontSize: 16, fontFamily: 'Quicksand' },
+    emptyText: { color: SUB, fontSize: 16, fontFamily: 'Quicksand' },
 });

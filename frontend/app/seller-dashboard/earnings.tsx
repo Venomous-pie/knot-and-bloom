@@ -3,8 +3,21 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, 
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/api/api';
-import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard } from 'lucide-react-native';
-import Navbar from '@/shared/Navbar';
+import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard, ChevronLeft } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const P       = '#B36979';
+const P_LIGHT = '#FDEEF1';
+const BG      = '#F4F4F8';
+const CARD    = '#FFFFFF';
+const TEXT    = '#1A1A2E';
+const SUB     = '#6B7280';
+const BORDER  = '#F0F0F5';
+const GREEN   = '#10B981';
+const AMBER   = '#F59E0B';
+const RED     = '#EF4444';
+const INDIGO  = '#6366F1';
+const TEAL    = '#14B8A6';
 
 interface EarningsData {
     balance: {
@@ -120,9 +133,8 @@ export default function SellerEarnings() {
     if (loading && !refreshing) {
         return (
             <View style={styles.container}>
-                <Navbar />
                 <View style={[styles.content, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="large" color="#B36979" />
+                    <ActivityIndicator size="large" color={P} />
                 </View>
             </View>
         );
@@ -157,7 +169,6 @@ export default function SellerEarnings() {
 
     return (
         <View style={styles.container}>
-            <Navbar />
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEarnings(); }} />}
@@ -165,7 +176,7 @@ export default function SellerEarnings() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Pressable onPress={() => router.back()} style={styles.backButton}>
-                        <ArrowLeft size={24} color="#333" />
+                        <ChevronLeft size={24} color={TEXT} />
                     </Pressable>
                     <Text style={styles.title}>Earnings & Payouts</Text>
                     <View style={{ width: 40 }} />
@@ -174,7 +185,7 @@ export default function SellerEarnings() {
                 {/* Balance Cards */}
                 <View style={styles.cardsContainer}>
                     {/* Available Balance - Main Card */}
-                    <View style={styles.mainCard}>
+                    <LinearGradient colors={['#B36979', '#8F4A5A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.mainCard}>
                         <View>
                             <Text style={styles.mainCardLabel}>Available Balance</Text>
                             <Text style={styles.mainCardValue}>{formatCurrency(data?.balance.available || 0)}</Text>
@@ -186,7 +197,7 @@ export default function SellerEarnings() {
                         >
                             <Text style={styles.withdrawButtonText}>Withdraw</Text>
                         </Pressable>
-                    </View>
+                    </LinearGradient>
 
                     {/* Pending & GMV Row */}
                     <View style={styles.statsRow}>
@@ -346,78 +357,77 @@ export default function SellerEarnings() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F9FAFB' },
+    container: { flex: 1, backgroundColor: BG },
     content: { flex: 1 },
     scrollContent: { paddingBottom: 40 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
-    backButton: { padding: 8 },
-    title: { fontSize: 20, fontWeight: '700', color: '#111827', fontFamily: 'Quicksand' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
+    backButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
+    title: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
 
     cardsContainer: { paddingHorizontal: 20, gap: 16 },
     mainCard: {
-        backgroundColor: '#B36979',
-        borderRadius: 16,
+        borderRadius: 24,
         padding: 24,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         shadowColor: '#B36979',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 10,
     },
-    mainCardLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginBottom: 4, fontFamily: 'Quicksand' },
-    mainCardValue: { color: 'white', fontSize: 32, fontWeight: '700', fontFamily: 'Quicksand' },
-    withdrawButton: { backgroundColor: 'white', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
-    withdrawButtonText: { color: '#B36979', fontWeight: '600', fontSize: 14 },
+    mainCardLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginBottom: 4, fontFamily: 'Quicksand', fontWeight: '500' },
+    mainCardValue: { color: 'white', fontSize: 34, fontWeight: '800', fontFamily: 'Quicksand' },
+    withdrawButton: { backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
+    withdrawButtonText: { color: P, fontWeight: '600', fontSize: 14 },
 
-    statsRow: { flexDirection: 'row', gap: 12 },
-    statCard: { flex: 1, backgroundColor: 'white', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', gap: 8 },
-    statIconContainer: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' },
-    statValue: { fontSize: 18, fontWeight: '700', color: '#111827', fontFamily: 'Quicksand' },
-    statLabel: { fontSize: 12, color: '#6B7280', fontFamily: 'Quicksand' },
+    statsRow: { flexDirection: 'row', gap: 16 },
+    statCard: { flex: 1, backgroundColor: CARD, padding: 20, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER, gap: 8 },
+    statIconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' },
+    statValue: { fontSize: 18, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    statLabel: { fontSize: 12, color: SUB, fontFamily: 'Quicksand' },
 
     historySection: { padding: 20, marginTop: 10 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 16, fontFamily: 'Quicksand' },
-    historyItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'white', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#F3F4F6' },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 16, fontFamily: 'Quicksand' },
+    historyItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: CARD, padding: 20, borderRadius: 24, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
     historyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     historyIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    historyTitle: { fontSize: 14, fontWeight: '600', color: '#374151', fontFamily: 'Quicksand' },
-    historyDate: { fontSize: 12, color: '#9CA3AF', fontFamily: 'Quicksand' },
+    historyTitle: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' },
+    historyDate: { fontSize: 12, color: SUB, fontFamily: 'Quicksand' },
     historyAmount: { fontSize: 16, fontWeight: '600', fontFamily: 'Quicksand' },
-    emptyText: { textAlign: 'center', color: '#9CA3AF', marginTop: 20 },
+    emptyText: { textAlign: 'center', color: SUB, marginTop: 20 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: 'white', borderRadius: 20, padding: 24, gap: 16 },
-    modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', fontFamily: 'Quicksand' },
-    modalSub: { fontSize: 14, color: '#6B7280', marginBottom: 8 },
-    inputLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
-    input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 16, fontFamily: 'Quicksand' },
+    modalContent: { backgroundColor: CARD, borderRadius: 24, padding: 24, gap: 16 },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    modalSub: { fontSize: 14, color: SUB, marginBottom: 8 },
+    inputLabel: { fontSize: 14, fontWeight: '600', color: TEXT },
+    input: { borderWidth: 1, borderColor: BORDER, borderRadius: 12, padding: 12, fontSize: 16, fontFamily: 'Quicksand', backgroundColor: BG },
     methodRow: { flexDirection: 'row', gap: 12 },
-    methodChip: { flex: 1, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' },
-    methodChipActive: { borderColor: '#B36979', backgroundColor: '#FFF5F7' },
-    methodText: { color: '#6B7280', fontWeight: '600' },
-    methodTextActive: { color: '#B36979' },
+    methodChip: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: BORDER, alignItems: 'center' },
+    methodChipActive: { borderColor: P, backgroundColor: P_LIGHT },
+    methodText: { color: SUB, fontWeight: '600' },
+    methodTextActive: { color: P },
     modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
-    cancelButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#F3F4F6', alignItems: 'center' },
-    confirmButton: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#B36979', alignItems: 'center' },
-    cancelButtonText: { color: '#374151', fontWeight: '600' },
+    cancelButton: { flex: 1, padding: 14, borderRadius: 16, backgroundColor: BG, alignItems: 'center' },
+    confirmButton: { flex: 1, padding: 14, borderRadius: 16, backgroundColor: P, alignItems: 'center' },
+    cancelButtonText: { color: TEXT, fontWeight: '600' },
     confirmButtonText: { color: 'white', fontWeight: '600' },
 
     // Chart & Filters
     chartSection: { paddingHorizontal: 20, marginTop: 10 },
-    chartCard: { backgroundColor: 'white', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
-    barContainer: { flexDirection: 'row', height: 24, width: '100%', marginBottom: 12 },
+    chartCard: { backgroundColor: CARD, padding: 20, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
+    barContainer: { flexDirection: 'row', height: 24, width: '100%', marginBottom: 16 },
     barPart: { height: '100%' },
     legendContainer: { flexDirection: 'row', justifyContent: 'center', gap: 24 },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     dot: { width: 10, height: 10, borderRadius: 5 },
-    legendText: { fontSize: 13, color: '#4B5563', fontFamily: 'Quicksand' },
+    legendText: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
 
     filterRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 24, marginBottom: 8 },
-    filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
-    filterChipActive: { backgroundColor: '#FFF1F2', borderColor: '#B36979' },
-    filterText: { fontSize: 13, color: '#6B7280', fontWeight: '600' },
-    filterTextActive: { color: '#B36979' },
+    filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
+    filterChipActive: { backgroundColor: P_LIGHT, borderColor: P },
+    filterText: { fontSize: 13, color: SUB, fontWeight: '600' },
+    filterTextActive: { color: P },
 });

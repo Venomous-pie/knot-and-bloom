@@ -5,6 +5,19 @@ import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSh
 import { sellerProductsAPI } from '../../../api/api';
 import InfoBox from '../../../shared/InfoBox';
 
+const P       = '#B36979';
+const P_LIGHT = '#FDEEF1';
+const BG      = '#F4F4F8';
+const CARD    = '#FFFFFF';
+const TEXT    = '#1A1A2E';
+const SUB     = '#6B7280';
+const BORDER  = '#F0F0F5';
+const GREEN   = '#10B981';
+const AMBER   = '#F59E0B';
+const RED     = '#EF4444';
+const INDIGO  = '#6366F1';
+const TEAL    = '#14B8A6';
+
 type Product = {
     uid: number;
     id: string;
@@ -207,13 +220,13 @@ export default function SellerProducts() {
                             onPress={() => router.push({ pathname: '/seller-dashboard/products/form', params: { id: item.uid } })}
                             style={styles.actionBtn}
                         >
-                            <Ionicons name="create-outline" size={20} color="#4B5563" />
+                            <Ionicons name="create-outline" size={20} color={SUB} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => handleDelete(item.uid)}
                             style={[styles.actionBtn, styles.deleteBtn]}
                         >
-                            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                            <Ionicons name="trash-outline" size={20} color={RED} />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -292,19 +305,19 @@ export default function SellerProducts() {
                     <Text style={styles.bulkCount}>{selectedIds.size} Selected</Text>
                     <View style={styles.bulkActions}>
                         <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('PUBLISH')}>
-                            <Ionicons name="eye" size={20} color="#10B981" />
+                            <Ionicons name="eye" size={20} color={GREEN} />
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('UNPUBLISH')}>
-                            <Ionicons name="eye-off" size={20} color="#F59E0B" />
+                            <Ionicons name="eye-off" size={20} color={AMBER} />
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('DELETE')}>
-                            <Ionicons name="trash" size={20} color="#EF4444" />
+                            <Ionicons name="trash" size={20} color={RED} />
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.bulkBtn} onPress={() => {
                             setSelectionMode(false);
                             setSelectedIds(new Set());
                         }}>
-                            <Ionicons name="close" size={20} color="#6B7280" />
+                            <Ionicons name="close" size={20} color={SUB} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -316,8 +329,8 @@ export default function SellerProducts() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
         padding: 20,
+        backgroundColor: BG,
     },
     center: {
         flex: 1,
@@ -333,59 +346,65 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#111827',
+        color: TEXT,
+        fontFamily: 'Quicksand',
     },
     addBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#000',
+        backgroundColor: P,
         paddingHorizontal: 16,
         paddingVertical: 10,
-        borderRadius: 8,
+        borderRadius: 20,
     },
     addBtnText: {
         color: '#FFF',
-        fontWeight: '600',
+        fontWeight: '700',
         marginLeft: 4,
+        fontFamily: 'Quicksand'
     },
     listContent: {
         paddingBottom: 20,
     },
     card: {
         flexDirection: 'row',
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
+        backgroundColor: CARD,
+        borderRadius: 24,
+        padding: 20,
+        marginBottom: 16,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: BORDER
     },
     image: {
         width: 80,
         height: 80,
-        borderRadius: 8,
-        backgroundColor: '#E5E7EB',
+        borderRadius: 12,
+        backgroundColor: BG,
     },
     info: {
         flex: 1,
-        marginLeft: 12,
+        marginLeft: 16,
         justifyContent: 'center',
     },
     name: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#1F2937',
+        color: TEXT,
         marginBottom: 4,
+        fontFamily: 'Quicksand'
     },
     price: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#111827',
+        color: TEXT,
         marginBottom: 8,
+        fontFamily: 'Quicksand'
     },
     metaRow: {
         flexDirection: 'row',
@@ -394,16 +413,18 @@ const styles = StyleSheet.create({
     badge: {
         paddingHorizontal: 8,
         paddingVertical: 2,
-        borderRadius: 4,
+        borderRadius: 12,
         marginRight: 8,
     },
     badgeText: {
         fontSize: 12,
         fontWeight: '600',
+        fontFamily: 'Quicksand'
     },
     stock: {
         fontSize: 12,
-        color: '#6B7280',
+        color: SUB,
+        fontFamily: 'Quicksand'
     },
     actions: {
         flexDirection: 'column',
@@ -417,13 +438,14 @@ const styles = StyleSheet.create({
         // marginBottom: 0
     },
     errorText: {
-        color: '#EF4444',
+        color: RED,
         marginBottom: 10,
+        fontFamily: 'Quicksand',
     },
     retryBtn: {
         padding: 10,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 6,
+        backgroundColor: BG,
+        borderRadius: 12,
     },
     emptyState: {
         alignItems: 'center',
@@ -432,11 +454,13 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#374151',
+        color: TEXT,
         marginBottom: 8,
+        fontFamily: 'Quicksand',
     },
     emptySubtext: {
-        color: '#6B7280',
+        color: SUB,
+        fontFamily: 'Quicksand',
     },
     tabsContainer: {
         flexDirection: 'row',
@@ -447,35 +471,40 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: BG,
+        borderWidth: 1,
+        borderColor: BORDER
     },
     tabActive: {
-        backgroundColor: '#111827',
+        backgroundColor: P_LIGHT,
+        borderColor: P
     },
     tabText: {
         fontSize: 13,
-        fontWeight: '500',
-        color: '#4B5563',
+        fontWeight: '600',
+        color: SUB,
+        fontFamily: 'Quicksand',
     },
     tabTextActive: {
-        color: '#FFF',
+        color: P,
     },
     statusInfo: {
         fontSize: 11,
-        color: '#6B7280',
+        color: SUB,
         fontStyle: 'italic',
+        fontFamily: 'Quicksand',
     },
     cardSelected: {
-        borderColor: '#B36979',
+        borderColor: P,
         borderWidth: 2,
-        backgroundColor: '#FFF1F2'
+        backgroundColor: P_LIGHT
     },
     checkbox: {
         width: 20,
         height: 20,
-        borderRadius: 4,
-        backgroundColor: '#B36979',
-        marginRight: 10,
+        borderRadius: 6,
+        backgroundColor: P,
+        marginRight: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -486,49 +515,52 @@ const styles = StyleSheet.create({
     },
     scoreLabel: {
         fontSize: 10,
-        color: '#6B7280',
+        color: SUB,
         marginRight: 4,
+        fontFamily: 'Quicksand',
     },
     scoreBarBg: {
         flex: 1,
-        height: 4,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 2,
-        marginRight: 4,
+        height: 6,
+        backgroundColor: BORDER,
+        borderRadius: 3,
+        marginRight: 6,
     },
     scoreBarFill: {
         height: '100%',
-        borderRadius: 2,
+        borderRadius: 3,
     },
     scoreValue: {
         fontSize: 10,
         fontWeight: 'bold',
-        color: '#4B5563',
+        color: SUB,
+        fontFamily: 'Quicksand',
     },
     bulkBar: {
         position: 'absolute',
-        bottom: 20,
+        bottom: 24,
         left: 20,
         right: 20,
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        padding: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: 24,
+        padding: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 10,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: BORDER,
     },
     bulkCount: {
         fontWeight: 'bold',
         fontSize: 16,
-        color: '#111827',
+        color: TEXT,
         marginLeft: 8,
+        fontFamily: 'Quicksand',
     },
     bulkActions: {
         flexDirection: 'row',

@@ -29,6 +29,7 @@ router.get('/:slug', sellerController.getSellerBySlug); // Public Profile
 router.get('/', authenticate, authorize([Role.ADMIN]), sellerController.listSellers);
 router.put('/:id', authenticate, authorize([Role.ADMIN, Role.SELLER]), sellerController.updateSeller);
 router.get('/me/dashboard-stats', authenticate, authorize([Role.SELLER, Role.ADMIN]), sellerController.getDashboardStats);
+router.get('/me/sidebar-stats', authenticate, authorize([Role.SELLER, Role.ADMIN]), sellerController.getSidebarStats);
 router.get('/me/products', authenticate, sellerController.getOwnProducts);
 router.patch('/me/welcome-seen', authenticate, sellerController.markWelcomeSeen);
 

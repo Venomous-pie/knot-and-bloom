@@ -77,21 +77,12 @@ export default function ProductPreview({
 
     const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
-    // Mirror real ProductCard pricing logic: use lowest variant price
+    // Mirror real ProductCard pricing logic: always show the main product's base price
     const baseNum = parseFloat(basePrice) || 0;
-    const lowestVariant = variants.reduce<{ price: string; discountPercentage: string; stock: string } | null>((acc, v) => {
-        if (!acc) return v;
-        const vp = parseFloat(v.price) || baseNum;
-        const ap = parseFloat(acc.price) || baseNum;
-        return vp < ap ? v : acc;
-    }, null);
-
-    const variantPrice = lowestVariant?.price ? parseFloat(lowestVariant.price) : baseNum;
-    const discountPct = lowestVariant?.discountPercentage
-        ? parseFloat(lowestVariant.discountPercentage)
-        : parseFloat(discountPercentage) || 0;
-    const finalPrice = variantPrice * (1 - discountPct / 100);
+    const discountPct = parseFloat(discountPercentage) || 0;
+    const finalPrice = baseNum * (1 - discountPct / 100);
     const hasDiscount = discountPct > 0;
+    const totalStock = variants.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
 
     // Get display image — primary image just like real card
     const displayImages = images.length > 0 ? images : (image ? [{ uri: image }] : []);
@@ -296,14 +287,14 @@ export default function ProductPreview({
                         </View>
 
                         {/* Row 5: Low Stock Warning */}
-                        {lowestVariant?.stock && Number(lowestVariant.stock) > 0 && Number(lowestVariant.stock) < 10 ? (
+                        {totalStock > 0 && totalStock < 10 ? (
                             <View style={{ 
                                 backgroundColor: '#FFFBEB', paddingVertical: s.padding * 0.5, paddingHorizontal: s.padding * 0.8, 
                                 borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: s.gapSm, alignSelf: 'flex-start' 
                             }}>
                                 <Clock size={s.ratingFont * 1.1} color="#D97706" />
                                 <Text style={{ fontSize: s.ratingFont, color: "#D97706", fontWeight: '600' }}>
-                                    Only {lowestVariant.stock} left in stock!
+                                    Only {totalStock} left in stock!
                                 </Text>
                             </View>
                         ) : null}
@@ -315,16 +306,15 @@ export default function ProductPreview({
                             </Text>
                             {hasDiscount && (
                                 <Text style={{ fontSize: s.origPriceFont, color: theme.colors.textLight, textDecorationLine: 'line-through' }}>
-                                    ₱{variantPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ₱{baseNum.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </Text>
                             )}
                         </View>
                     </View>
                 </View>
 
-                {/* Caption */}
                 <Text style={styles.caption}>
-                    Showing lowest variant price · {variants.length} variant{variants.length !== 1 ? 's' : ''} total
+                    Showing main product price · {variants.length} variant{variants.length !== 1 ? 's' : ''} total
                 </Text>
             </ScrollView>
         </View>

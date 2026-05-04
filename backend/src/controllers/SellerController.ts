@@ -540,22 +540,42 @@ export const sellerController = {
                 if (hasVariants && p.variants.some(v => v.images && v.images.length > 0)) score += 10;
 
                 // Title & SEO (25 pts): name >= 30 chars +10, has tags +8, has metaTitle +7
-                if (p.name && p.name.length >= 30) score += 10;
-                if ((p as any).tags && (p as any).tags.length > 0) score += 8;
-                if ((p as any).metaTitle) score += 7;
+                const nameLength = p.name ? p.name.length : 0;
+                const metaTitleLength = (p as any).metaTitle ? (p as any).metaTitle.trim().length : 0;
+                const hasLongName = nameLength >= 30 || metaTitleLength >= 30;
+                const hasTags = (p as any).tags && (p as any).tags.length > 0;
+                const hasMetaTitle = metaTitleLength > 0;
+                
+                if (hasLongName) score += 10;
+                if (hasTags) score += 8;
+                if (hasMetaTitle) score += 7;
 
                 // Description (20 pts): >= 100 chars +10, >= 200 chars +5, has materials +5
-                if (p.description && p.description.length >= 100) score += 10;
-                if (p.description && p.description.length >= 200) score += 5;
-                if ((p as any).materials) score += 5;
+                const descLength = p.description ? p.description.length : 0;
+                const hasGoodDesc = descLength >= 100;
+                const hasGreatDesc = descLength >= 200;
+                const hasMaterials = (p as any).materials && (p as any).materials.trim().length > 0;
+                
+                if (hasGoodDesc) score += 10;
+                if (hasGreatDesc) score += 5;
+                if (hasMaterials) score += 5;
 
                 // Inventory (15 pts): has stock +8, no low-stock variants +7
-                if (hasVariants && p.variants.some(v => v.stock > 0)) score += 8;
-                if (hasVariants && !p.variants.some(v => v.stock > 0 && v.stock <= 5)) score += 7;
+                const hasStock = hasVariants && p.variants.some(v => Number(v.stock || 0) > 0);
+                const hasLowStock = hasVariants && p.variants.some(v => {
+                    const s = Number(v.stock || 0);
+                    return s > 0 && s <= 5;
+                });
+                
+                if (hasStock) score += 8;
+                if (hasStock && !hasLowStock) score += 7;
 
                 // Pricing (15 pts): has discount +8, price set +7
-                if (p.discountPercentage && p.discountPercentage > 0) score += 8;
-                if (p.basePrice && Number(p.basePrice) > 0) score += 7;
+                const hasDiscount = p.discountPercentage && Number(p.discountPercentage) > 0;
+                const hasPrice = p.basePrice && Number(p.basePrice) > 0;
+                
+                if (hasDiscount) score += 8;
+                if (hasPrice) score += 7;
 
                 totalOptScore += score;
 

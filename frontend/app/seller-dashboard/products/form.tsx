@@ -76,6 +76,7 @@ export default function SellerProductForm() {
                             price: v.price ? String(v.price) : '',
                             discountPercentage: v.discountPercentage ? String(v.discountPercentage) : '',
                             images: v.images || (v.image ? [v.image] : []),
+                            materials: v.materials || '',
                         }))
                         : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]
                 });
@@ -102,7 +103,7 @@ export default function SellerProductForm() {
                 image: data.formData.image,
                 images: data.formData.images || [],
                 tags: data.formData.tags || [],
-                materials: data.formData.materials || undefined,
+                materials: data.formData.materials || data.variants[0]?.materials || undefined,
                 metaTitle: data.formData.metaTitle || undefined,
                 metaDescription: data.formData.metaDescription || undefined,
                 variants: data.variants.map(v => ({
@@ -113,6 +114,7 @@ export default function SellerProductForm() {
                     price: v.price ? parseFloat(v.price) : undefined,
                     discountPercentage: v.discountPercentage ? parseFloat(v.discountPercentage) : undefined,
                     images: v.images,
+                    materials: v.materials || undefined,
                 })),
                 status: isDraft ? 'DRAFT' : undefined,
             };

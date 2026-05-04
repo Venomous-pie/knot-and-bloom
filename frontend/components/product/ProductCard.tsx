@@ -1,6 +1,5 @@
 import { Product } from "@/types/products";
 import { useWishlist } from "@/contexts/WishlistContext";
-import { findLowestPrice } from "@/utils/pricing";
 import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { RelativePathString, router } from "expo-router";
@@ -125,16 +124,14 @@ export default function ProductCard({
         actionRight:   scale(cardWidth, SCALE.actionRight,  7,  14),
     };
 
-    // Pricing logic
-    const { lowestPriceVariant } = findLowestPrice(product);
-    const selectedVariant = lowestPriceVariant;
+    // Pricing logic — always show the main product's base price
     const basePrice = parseFloat(product.basePrice);
-    const variantPrice = selectedVariant?.price ? parseFloat(selectedVariant.price.toString()) : basePrice;
-    const discountPct = selectedVariant?.discountPercentage || product.discountPercentage || 0;
-    const finalPrice = variantPrice * (1 - discountPct / 100);
+    const discountPct = product.discountPercentage || 0;
+    const finalPrice = basePrice * (1 - discountPct / 100);
     const hasDiscount = discountPct > 0;
-    const isAvailable = selectedVariant ? selectedVariant.stock > 0 : true;
-    const displayImage = selectedVariant?.image || product.image;
+    const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) ?? 0;
+    const isAvailable = totalStock > 0;
+    const displayImage = product.image;
     const imageList = product.images?.length ? product.images : (displayImage ? [displayImage] : []);
     const sellerDisplay = product.seller?.name || 'Knot & Bloom';
     const isKnotAndBloom = sellerDisplay === 'Knot & Bloom';
@@ -410,14 +407,14 @@ export default function ProductCard({
                     </View>
 
                     {/* Row 5: Low Stock Warning */}
-                    {isAvailable && selectedVariant?.stock && selectedVariant.stock < 10 ? (
+                    {isAvailable && totalStock < 10 ? (
                         <View style={{ 
                             backgroundColor: '#FFFBEB', paddingVertical: s.padding * 0.5, paddingHorizontal: s.padding * 0.8, 
                             borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: s.gapSm, alignSelf: 'flex-start' 
                         }}>
                             <Clock size={s.ratingFont * 1.1} color="#D97706" />
                             <Text style={{ fontSize: s.ratingFont, color: "#D97706", fontWeight: '600' }}>
-                                Only {selectedVariant.stock} left in stock!
+                                Only {totalStock} left in stock!
                             </Text>
                         </View>
                     ) : null}
@@ -429,7 +426,7 @@ export default function ProductCard({
                         </Text>
                         {hasDiscount && (
                             <Text style={{ fontSize: s.origPriceFont, color: theme.colors.textLight, textDecorationLine: "line-through" }}>
-                                ₱{variantPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                ₱{basePrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Text>
                         )}
                     </View>

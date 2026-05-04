@@ -254,7 +254,8 @@ export default function ProductDetailPage() {
     const selectedVariantObj = selectedVariant
         ? product.variants.find(v => v.name === selectedVariant)
         : null;
-    const priceCalc = calculatePrice(product, selectedVariantObj);
+    // Always display the main product's base price
+    const priceCalc = calculatePrice(product, null);
 
     const renderSellerInfo = () => (
         <View style={styles.sectionContainer}>

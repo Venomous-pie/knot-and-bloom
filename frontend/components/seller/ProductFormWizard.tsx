@@ -213,7 +213,10 @@ export default function ProductFormWizard({
                 ? initialData.variants
                 : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]
             );
-            if (initialData.formData.image) {
+            // Restore full images array; fall back to single cover image if no array
+            if (initialData.formData.images && initialData.formData.images.length > 0) {
+                setImages(initialData.formData.images.map(uri => ({ uri, isUrl: true })));
+            } else if (initialData.formData.image) {
                 setImages([{ uri: initialData.formData.image, isUrl: true }]);
             }
         } else if (!isEditing && !initializedRef.current) {
@@ -949,10 +952,15 @@ export default function ProductFormWizard({
 
                                 {/* Tag suggestions */}
                                 {showTagSuggestions && formData.tags.length < 10 && (() => {
-                                    // Build suggestion list from selected categories + universal
+                                    // Build suggestion list from selected categories + universal (case-insensitive lookup)
                                     const allSuggestions = new Set<string>();
+                                    const lowerCatTags = Object.fromEntries(
+                                        Object.entries(TAG_SUGGESTIONS).map(([k, v]) => [k.toLowerCase(), v])
+                                    );
+                                    
                                     selectedCategories.forEach(cat => {
-                                        (TAG_SUGGESTIONS[cat] || []).forEach(t => allSuggestions.add(t));
+                                        const catKey = cat.toLowerCase();
+                                        (lowerCatTags[catKey] || []).forEach(t => allSuggestions.add(t));
                                     });
                                     UNIVERSAL_TAGS.forEach(t => allSuggestions.add(t));
                                     // Filter out already-added tags
@@ -1208,7 +1216,7 @@ export default function ProductFormWizard({
                                     <View key={i} style={styles.summaryVariantItem}>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                                             <Text style={styles.summaryVariantName}>
-                                                {v.name || 'Unnamed'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Default)</Text>}
+                                                {v.name || 'Unnamed'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Main)</Text>}
                                             </Text>
                                             <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'monospace' }}>
                                                 {v.sku || (i === 0 ? formData.sku : `${formData.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}`)}

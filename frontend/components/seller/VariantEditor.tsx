@@ -580,10 +580,15 @@ export default function VariantEditor({
                                     
                                     {/* Smart Suggestions */}
                                     {focusedField === getFieldKey(index, 'materials') && (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5 && (() => {
-                                        // Build context-aware suggestions
+                                        // Build context-aware suggestions (case-insensitive lookup)
                                         const allSuggestions = new Set<string>();
+                                        const lowerCatMaterials = Object.fromEntries(
+                                            Object.entries(MATERIAL_SUGGESTIONS).map(([k, v]) => [k.toLowerCase(), v])
+                                        );
+                                        
                                         categories.forEach(cat => {
-                                            (MATERIAL_SUGGESTIONS[cat] || []).forEach(m => allSuggestions.add(m));
+                                            const catKey = cat.toLowerCase();
+                                            (lowerCatMaterials[catKey] || []).forEach(m => allSuggestions.add(m));
                                         });
                                         if (allSuggestions.size === 0) {
                                             UNIVERSAL_MATERIALS.forEach(m => allSuggestions.add(m));

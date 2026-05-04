@@ -533,7 +533,7 @@ export default function BespokeAuthForm({
                                 <View style={styles.separator}>
                                     <View style={styles.separatorLine} />
                                     <Image
-                                        source={require("../../assets/yarn.png")}
+                                        source={require("@/assets/yarn.png")}
                                         style={{ width: 30, height: 30, marginHorizontal: 10 }}
                                         resizeMode="contain"
                                         onError={(e) =>
@@ -610,7 +610,7 @@ export default function BespokeAuthForm({
                                     }}
                                 >
                                     <Image
-                                        source={require("../../assets/yarn.png")}
+                                        source={require("@/assets/yarn.png")}
                                         style={{ width: 40, height: 40, marginRight: 8 }}
                                         resizeMode="contain"
                                     />

@@ -6,7 +6,7 @@
 
 ---
 
-## 💰 Revenue Model
+## Revenue Model
 
 | Revenue Stream         | Status         | Details                                              |
 | ---------------------- | -------------- | ---------------------------------------------------- |
@@ -26,7 +26,7 @@
 
 ---
 
-## 👥 User Types
+## User Types
 
 | Role         | Description                                                                              |
 | ------------ | ---------------------------------------------------------------------------------------- |
@@ -36,7 +36,7 @@
 
 ---
 
-## 🔄 User Lifecycle
+## User Lifecycle
 
 ```
 Visitor → Register → OTP Verification → Customer → Seller Application (PENDING) → Admin Approval (APPROVED) → Onboarding Completion → Active Seller
@@ -87,7 +87,7 @@ REJECTED (can re-apply)
 
 ---
 
-## 📦 Order & Payment Flow
+## Order & Payment Flow
 
 1. **Cart → Checkout Session** (15 min expiry with price locking)
 2. **Stock Validation** (re-verified before payment via optimistic locking)
@@ -121,7 +121,7 @@ REJECTED (can re-apply)
 
 ---
 
-## 🏪 Seller Economics
+## Seller Economics
 
 | Metric              | Status         | Description                                 |
 | ------------------- | -------------- | ------------------------------------------- |
@@ -147,7 +147,7 @@ REJECTED (can re-apply)
 
 ---
 
-## 🛒 Customer Features
+## Customer Features
 
 | Feature                  | Status         | Details                                      |
 | ------------------------ | -------------- | -------------------------------------------- |
@@ -167,7 +167,7 @@ REJECTED (can re-apply)
 
 ---
 
-## 🖥️ Seller Dashboard
+## Seller Dashboard
 
 | Feature                   | Status         | Details                                        |
 | ------------------------- | -------------- | ---------------------------------------------- |
@@ -185,7 +185,7 @@ REJECTED (can re-apply)
 
 ---
 
-## 🔧 Admin Panel
+## Admin Panel
 
 | Feature                    | Status         | Details                                    |
 | -------------------------- | -------------- | ------------------------------------------ |
@@ -196,7 +196,7 @@ REJECTED (can re-apply)
 
 ---
 
-## 📊 Order Lifecycle
+## Order Lifecycle
 
 ```
 PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVERED → COMPLETED
@@ -220,7 +220,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 
 ---
 
-## 🔒 Quality Control & Security
+## Quality Control & Security
 
 | Mechanism                | Status         | Purpose                                              |
 | ------------------------ | -------------- | ---------------------------------------------------- |
@@ -242,7 +242,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 
 ---
 
-## 🛠️ Technical Stack
+## Technical Stack
 
 ### Backend
 
@@ -308,7 +308,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 
 ---
 
-## 💡 Future Revenue Opportunities
+## Future Revenue Opportunities
 
 - [ ] Featured/Promoted Listings
 - [ ] Premium Seller Subscriptions
@@ -319,7 +319,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 
 ---
 
-## 📈 Platform Metrics Tracked
+## Platform Metrics Tracked
 
 | Metric                  | Level                           |
 | ----------------------- | ------------------------------- |
@@ -336,7 +336,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 
 ---
 
-## 🗺️ Frontend Route Map
+## Frontend Route Map
 
 | Route                     | Access    | Description                           |
 | ------------------------- | --------- | ------------------------------------- |
@@ -358,7 +358,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 
 ---
 
-## 🧩 Component Architecture
+## Component Architecture
 
 ```
 components/

@@ -1,4 +1,4 @@
-import ProductCard from '@/components/ProductCard';
+import ProductCard from '@/components/product/ProductCard';
 import { getCategorySlug } from '@/constants/categories';
 import { Product } from '@/types/products';
 import { useRouter } from 'expo-router';

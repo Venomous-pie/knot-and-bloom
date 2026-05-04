@@ -441,7 +441,7 @@ export default function ChatScreen() {
                                     messages.length === 1 ? (
                                         <View style={styles.brandingCenterContainer}>
                                             <View style={styles.brandingLogoRow}>
-                                                <Image source={require('../../assets/yarn.png')} style={styles.brandingYarn} resizeMode='contain' />
+                                                <Image source={require('@/assets/yarn.png')} style={styles.brandingYarn} resizeMode='contain' />
                                                 <Text style={styles.brandingKnot}>Knot</Text>
                                                 <Text style={styles.brandingBloom}>&Bloom</Text>
                                             </View>

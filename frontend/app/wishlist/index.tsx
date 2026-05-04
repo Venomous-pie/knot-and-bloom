@@ -1,7 +1,7 @@
 import { wishlistAPI } from '@/api/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWishlist } from '@/contexts/WishlistContext';
-import ProductCard from '@/components/ProductCard';
+import ProductCard from '@/components/product/ProductCard';
 import { theme } from '@/constants/theme';
 import { Product } from '@/types/products';
 import { Ionicons } from '@expo/vector-icons';

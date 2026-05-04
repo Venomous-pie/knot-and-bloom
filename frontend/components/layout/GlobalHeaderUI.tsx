@@ -277,7 +277,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
             <View style={[styles.headerDesktop, { paddingHorizontal: width * navMargin }]}>
                 <Link href='/' asChild>
                     <Pressable style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
-                        <Image source={require('../assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
+                        <Image source={require('@/assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
                         <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>Knot</Text>
                         <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>&Bloom</Text>
                     </Pressable>
@@ -295,7 +295,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                 {/* Left: Logo */}
                 <Link href='/' asChild>
                     <Pressable style={{ flexDirection: 'row', gap: 0, alignItems: 'center', position: 'relative', zIndex: 10 }}>
-                        <Image source={require('../assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
+                        <Image source={require('@/assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
                         <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>Knot</Text>
                         <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>&Bloom</Text>
                     </Pressable>

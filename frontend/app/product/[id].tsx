@@ -1,7 +1,7 @@
 import { cartAPI, productAPI, sellerAPI } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/product/ProductCard";
 import type { Product } from "@/types/products";
 import { calculatePrice } from "@/utils/pricing";
 import { router, useLocalSearchParams, Stack, Link } from "expo-router";

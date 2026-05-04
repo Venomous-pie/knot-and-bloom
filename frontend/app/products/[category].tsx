@@ -1,8 +1,8 @@
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/product/ProductCard";
 import { categoryTitles } from "@/constants/categories";
 import { useProducts } from "@/hooks/useProducts";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, ChevronDown, SlidersHorizontal, Check } from "lucide-react-native";
+import { ChevronDown, SlidersHorizontal, Check } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
     ActivityIndicator,

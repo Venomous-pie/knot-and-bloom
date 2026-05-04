@@ -66,7 +66,7 @@ const TypingIndicator = () => {
     return (
         <View style={styles.typingContainer}>
             <View style={styles.avatarAssistant}>
-                <Image source={require('../assets/bot.png')} style={styles.botImage} />
+                <Image source={require('../../assets/bot.png')} style={styles.botImage} />
             </View>
             <View style={styles.typingBubble}>
                 <Animated.View style={[styles.dot, getDotStyle(dot1)]} />
@@ -283,7 +283,7 @@ export default function GlobalAIChat() {
             <View style={[styles.messageRow, isUser ? styles.messageRowUser : styles.messageRowAssistant]}>
                 {!isUser && (
                     <View style={styles.avatarAssistant}>
-                        <Image source={require('../assets/bot.png')} style={styles.botImage} />
+                        <Image source={require('../../assets/bot.png')} style={styles.botImage} />
                     </View>
                 )}
 
@@ -349,7 +349,7 @@ export default function GlobalAIChat() {
                     <View style={styles.header}>
                         <View style={styles.headerTitleContainer}>
                             <View style={styles.statusIndicatorContainer}>
-                                <Image source={require('../assets/bot.png')} style={styles.botImage} />
+                                <Image source={require('../../assets/bot.png')} style={styles.botImage} />
                                 <View style={[styles.statusDot, !isOnline && { backgroundColor: '#DC3545' }]} />
                             </View>
                             <View>

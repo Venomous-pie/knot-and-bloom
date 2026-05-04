@@ -47,7 +47,7 @@ export default function DashboardSidebar() {
             <View style={s.brandArea}>
                 <Link href='/' asChild>
                     <TouchableOpacity style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
-                        <Image source={require('../assets/yarn.png')} style={{ width: 44, height: 44 }} resizeMode='contain' />
+                        <Image source={require('@/assets/yarn.png')} style={{ width: 44, height: 44 }} resizeMode='contain' />
                         <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>Knot</Text>
                         <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 18 }}>&Bloom</Text>
                     </TouchableOpacity>

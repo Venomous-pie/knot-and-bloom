@@ -306,7 +306,7 @@ export default function ProductDetailPage() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <Stack.Screen options={{ title: product.name || 'Product Details' }} />
+            <Stack.Screen options={{ title: product.metaTitle || product.name || 'Product Details' }} />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {renderBreadcrumbs()}

@@ -1,10 +1,11 @@
 import { categoryTitles } from '@/constants/categories';
+import { TAG_SUGGESTIONS, UNIVERSAL_TAGS, validateTag } from '@/constants/tagSuggestions';
 import { isMobile } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift, Search, Hash, Type, AlignLeft } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift, Search, Hash, Type, AlignLeft, AlertTriangle } from 'lucide-react-native';
 import { calculateOptimizationScore, type OptimizationResult, type ScoreCategory } from '@/utils/optimizationScore';
 import React, { useEffect, useState, useRef } from 'react';
 import {
@@ -27,8 +28,10 @@ import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';
 import InfoBox from '@/components/ui/InfoBox';
 import VariantEditor, { VariantData } from './VariantEditor';
+import OptimizationScoreCircle from '@/components/ui/OptimizationScoreCircle';
+import Tooltip from '@/components/ui/Tooltip';
 import { toTitleCase, toSentenceCase } from '@/utils/textUtils';
-import { PRESET_MATERIALS } from '@/constants/materials';
+
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
 
@@ -119,6 +122,8 @@ export default function ProductFormWizard({
         metaDescription: '',
     });
     const [tagInput, setTagInput] = useState('');
+    const [tagError, setTagError] = useState<string | null>(null);
+    const [showTagSuggestions, setShowTagSuggestions] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [variants, setVariants] = useState<VariantData[]>([
         { name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }
@@ -201,7 +206,7 @@ export default function ProductFormWizard({
     useEffect(() => {
         if (initialData && !initializedRef.current) {
             initializedRef.current = true;
-            setFormData({ tags: [], metaTitle: '', metaDescription: '', ...initialData.formData });
+            setFormData({ ...initialData.formData, tags: initialData.formData.tags || [], metaTitle: initialData.formData.metaTitle || '', metaDescription: initialData.formData.metaDescription || '' });
             setSelectedCategories(initialData.selectedCategories);
             setVariants(initialData.variants.length > 0
                 ? initialData.variants
@@ -493,12 +498,50 @@ export default function ProductFormWizard({
         }
     };
 
+    const optimizationScoreResult = React.useMemo(() => calculateOptimizationScore({
+        image: images[0]?.uri || null,
+        name: formData.name,
+        description: formData.description,
+        tags: formData.tags,
+        materials: variants[0]?.materials || '',
+        metaTitle: formData.metaTitle,
+        metaDescription: formData.metaDescription,
+        basePrice: formData.basePrice,
+        discountPercentage: formData.discountPercentage,
+        variants: variants.map(v => ({ stock: v.stock, images: v.images })),
+    }), [images, formData, variants]);
+
+    const SectionTitleWithScore = ({ title, description, style }: { title: string, description?: string, style?: any }) => (
+        <View style={[style, { marginBottom: 20 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[styles.stepTitle, { marginBottom: 0 }]}>{title}</Text>
+                <Tooltip content="Listing Optimization Score: Higher scores lead to better visibility." position="left">
+                    <OptimizationScoreCircle score={optimizationScoreResult.totalScore} size={36} strokeWidth={3} />
+                </Tooltip>
+            </View>
+            {description ? (
+                <Text style={[styles.stepDescription, { marginBottom: 0 }]}>
+                    {description}
+                </Text>
+            ) : null}
+        </View>
+    );
+
+    const getStepData = () => {
+        switch (currentStep) {
+            case 1: return { title: "Basic Information & Media", description: "Start by providing the essential details and photos for your product." };
+            case 2: return { title: "Product Details", description: "Add specifics like SKU, pricing, and SEO tags to boost discoverability." };
+            case 3: return { title: "Variants & Stock", description: "Manage product variations (e.g., size, color) and track your inventory." };
+            case 4: return { title: "Review & Submit", description: "Review your product details before submitting." };
+            default: return { title: "", description: "" };
+        }
+    };
+
     const renderStepContent = () => {
         switch (currentStep) {
             case 1:
                 return (
                     <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Basic Information & Media</Text>
                         {/* Product Images */}
                         <View style={styles.field}>
                             <Text style={styles.fieldLabel}>Product Images</Text>
@@ -551,31 +594,35 @@ export default function ProductFormWizard({
                             <View style={styles.categoryList}>
                                 {categories.map((cat) => {
                                     const isSelected = selectedCategories.includes(cat);
+                                    const isMaxed = selectedCategories.length >= 3;
+                                    const isDisabled = isMaxed && !isSelected;
                                     return (
                                         <Pressable
                                             key={cat}
                                             style={[
                                                 styles.categoryChip,
-                                                isSelected && styles.categoryChipSelected
+                                                isSelected && styles.categoryChipSelected,
+                                                isDisabled && { opacity: 0.5, backgroundColor: theme.colors.subtle }
                                             ]}
                                             onPress={() => {
+                                                if (isDisabled) {
+                                                    setErrors(prev => ({ ...prev, categories: 'Maximum of 3 categories reached.' }));
+                                                    return;
+                                                }
                                                 if (errors.categories) {
                                                     setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
                                                 }
                                                 if (isSelected) {
                                                     setSelectedCategories(selectedCategories.filter(c => c !== cat));
                                                 } else {
-                                                    if (selectedCategories.length >= 3) {
-                                                        setErrors(prev => ({ ...prev, categories: 'You can only select up to 3 categories.' }));
-                                                    } else {
-                                                        setSelectedCategories([...selectedCategories, cat]);
-                                                    }
+                                                    setSelectedCategories([...selectedCategories, cat]);
                                                 }
                                             }}
                                         >
                                             <Text style={[
                                                 styles.categoryText,
-                                                isSelected && styles.categoryTextSelected
+                                                isSelected && styles.categoryTextSelected,
+                                                isDisabled && { color: theme.colors.textLight }
                                             ]}>{cat}</Text>
                                         </Pressable>
                                     );
@@ -597,7 +644,6 @@ export default function ProductFormWizard({
             case 2:
                 return (
                     <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Product Details</Text>
                         {/* SKU */}
                         <View style={styles.field}>
                             <View style={styles.fieldLabelRow}>
@@ -804,7 +850,7 @@ export default function ProductFormWizard({
                             <View style={styles.field}>
                                 <View style={styles.fieldLabelRow}>
                                     <Text style={styles.fieldLabel}>Tags</Text>
-                                    <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                    <Text style={{ fontSize: 11, color: formData.tags.length >= 10 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
                                         {formData.tags.length}/10
                                     </Text>
                                 </View>
@@ -826,49 +872,114 @@ export default function ProductFormWizard({
                                     ))}
                                 </View>
                                 <TextInput
-                                    style={[styles.input, focusedField === 'tags' && styles.inputFocused]}
+                                    style={[styles.input, focusedField === 'tags' && styles.inputFocused, tagError && styles.inputError]}
                                     value={tagInput}
-                                    onChangeText={setTagInput}
-                                    placeholder="Type a tag and press Enter (e.g. handmade, crochet, gift)"
+                                    onChangeText={(text) => {
+                                        setTagInput(text);
+                                        if (tagError) setTagError(null);
+                                    }}
+                                    placeholder={formData.tags.length >= 10 ? 'Maximum tags reached' : 'Type a tag and press Enter (e.g. handmade, crochet)'}
                                     placeholderTextColor={theme.colors.textLight}
                                     selectionColor={theme.colors.primary}
-                                    onFocus={() => setFocusedField('tags')}
+                                    editable={formData.tags.length < 10}
+                                    maxLength={35}
+                                    onFocus={() => {
+                                        if (formData.tags.length < 10) {
+                                            setFocusedField('tags');
+                                            setShowTagSuggestions(true);
+                                        }
+                                    }}
                                     onBlur={() => {
                                         setFocusedField(null);
-                                        if (tagInput.trim() && formData.tags.length < 10) {
-                                            const newTag = tagInput.trim().toLowerCase();
-                                            if (!formData.tags.includes(newTag)) {
-                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, newTag] }));
+                                        // Delay hiding suggestions so tap events fire
+                                        setTimeout(() => setShowTagSuggestions(false), 200);
+                                        if (tagInput.trim()) {
+                                            const result = validateTag(tagInput, formData.tags);
+                                            if (result.valid) {
+                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, result.cleaned] }));
+                                                setTagInput('');
+                                                setTagError(null);
+                                            } else {
+                                                setTagError(result.reason);
                                             }
-                                            setTagInput('');
                                         }
                                     }}
                                     onSubmitEditing={() => {
-                                        if (tagInput.trim() && formData.tags.length < 10) {
-                                            const newTag = tagInput.trim().toLowerCase();
-                                            if (!formData.tags.includes(newTag)) {
-                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, newTag] }));
+                                        if (tagInput.trim()) {
+                                            const result = validateTag(tagInput, formData.tags);
+                                            if (result.valid) {
+                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, result.cleaned] }));
+                                                setTagInput('');
+                                                setTagError(null);
+                                            } else {
+                                                setTagError(result.reason);
                                             }
-                                            setTagInput('');
                                         }
                                     }}
                                 />
+                                {/* Tag validation error */}
+                                {!!tagError && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                        <AlertTriangle size={12} color={theme.colors.error} />
+                                        <Text style={[styles.errorText, { marginTop: 0 }]}>{tagError}</Text>
+                                    </View>
+                                )}
+
+                                {/* Tag suggestions */}
+                                {showTagSuggestions && formData.tags.length < 10 && (() => {
+                                    // Build suggestion list from selected categories + universal
+                                    const allSuggestions = new Set<string>();
+                                    selectedCategories.forEach(cat => {
+                                        (TAG_SUGGESTIONS[cat] || []).forEach(t => allSuggestions.add(t));
+                                    });
+                                    UNIVERSAL_TAGS.forEach(t => allSuggestions.add(t));
+                                    // Filter out already-added tags
+                                    const available = Array.from(allSuggestions).filter(t => !formData.tags.includes(t));
+                                    // If input is typed, filter by prefix
+                                    const filtered = tagInput.trim()
+                                        ? available.filter(t => t.includes(tagInput.trim().toLowerCase()))
+                                        : available;
+
+                                    if (filtered.length === 0) return null;
+
+                                    return (
+                                        <View style={{ marginTop: 8 }}>
+                                            <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 6 }}>
+                                                💡 Suggested tags {tagInput.trim() ? 'matching your input' : 'for your categories'}:
+                                            </Text>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                                {filtered.slice(0, 12).map((suggestion) => (
+                                                    <Pressable
+                                                        key={suggestion}
+                                                        onPress={() => {
+                                                            if (formData.tags.length < 10 && !formData.tags.includes(suggestion)) {
+                                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, suggestion] }));
+                                                                setTagError(null);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            flexDirection: 'row', alignItems: 'center', gap: 3,
+                                                            backgroundColor: theme.colors.background,
+                                                            borderWidth: 1,
+                                                            borderColor: theme.colors.border,
+                                                            borderStyle: 'dashed',
+                                                            paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 12, color: theme.colors.textLight, fontWeight: '500', fontFamily: 'Quicksand' }}>+ {suggestion}</Text>
+                                                    </Pressable>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    );
+                                })()}
+
+                                {/* Helper text */}
+                                <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand', marginTop: 6, paddingHorizontal: 2 }}>
+                                    Tags help customers find your product. Use lowercase words or short phrases (e.g. "handmade", "crochet bear").
+                                </Text>
                             </View>
 
-                            {/* Materials (product-level) */}
-                            <View style={styles.field}>
-                                <Text style={styles.fieldLabel}>Materials</Text>
-                                <TextInput
-                                    style={[styles.input, focusedField === 'materials' && styles.inputFocused]}
-                                    value={formData.materials}
-                                    onChangeText={(text: string) => handleChange('materials', text)}
-                                    placeholder="e.g. 100% Cotton Yarn, Polyester Stuffing"
-                                    placeholderTextColor={theme.colors.textLight}
-                                    selectionColor={theme.colors.primary}
-                                    onFocus={() => setFocusedField('materials')}
-                                    onBlur={() => setFocusedField(null)}
-                                />
-                            </View>
 
                             {/* Meta Title */}
                             <View style={styles.field}>
@@ -936,19 +1047,18 @@ export default function ProductFormWizard({
                         onExpandedChange={setActiveVariantIndex}
                         productImages={images}
                         variantErrors={errors}
+                        categories={selectedCategories}
                     />
                 );
 
             case 4:
                 const totalStock = variants.reduce((sum, v) => sum + (parseInt(v.stock, 10) || 0), 0);
+                const scoreResult = optimizationScoreResult;
+                const scoreColor = scoreResult.totalScore > 80 ? '#10B981' : scoreResult.totalScore > 50 ? '#F59E0B' : '#EF4444';
+                const scoreLabel = scoreResult.totalScore > 80 ? 'Excellent' : scoreResult.totalScore > 50 ? 'Good' : 'Needs Work';
 
                 return (
                     <View style={styles.stepContent}>
-                        <Text style={styles.stepTitle}>Review & Submit</Text>
-                        <Text style={styles.stepDescription}>
-                            Review your product details before submitting.
-                        </Text>
-
                         {!isEditing && (
                             <InfoBox
                                 message="New products require admin approval before they appear in the shop."
@@ -995,7 +1105,7 @@ export default function ProductFormWizard({
                                 </View>
                                 <Text style={styles.summaryValue}>₱{formData.basePrice || '0'}</Text>
                             </View>
-                            {formData.discountPercentage && parseFloat(formData.discountPercentage) > 0 && (
+                            {!!formData.discountPercentage && parseFloat(formData.discountPercentage) > 0 && (
                                 <View style={styles.summaryRow}>
                                     <View style={styles.summaryLabelContainer}>
                                         <Percent size={16} color={theme.colors.textLight} />
@@ -1033,7 +1143,7 @@ export default function ProductFormWizard({
                                 >
                                     {formData.description || '—'}
                                 </Text>
-                                {formData.description && formData.description.length > 100 && (
+                                {!!formData.description && formData.description.length > 100 && (
                                     <Pressable
                                         onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                                         style={{ alignSelf: 'flex-start', marginTop: 4 }}
@@ -1102,18 +1212,7 @@ export default function ProductFormWizard({
 
                         {/* ─── Optimization Score ──────────────────────────── */}
                         {(() => {
-                            const scoreResult = calculateOptimizationScore({
-                                image: formData.image,
-                                name: formData.name,
-                                description: formData.description,
-                                tags: formData.tags,
-                                materials: formData.materials,
-                                metaTitle: formData.metaTitle,
-                                metaDescription: formData.metaDescription,
-                                basePrice: formData.basePrice,
-                                discountPercentage: formData.discountPercentage,
-                                variants: variants.map(v => ({ stock: v.stock, images: v.images })),
-                            });
+                            const scoreResult = optimizationScoreResult;
                             const scoreColor = scoreResult.totalScore > 80 ? '#10B981' : scoreResult.totalScore > 50 ? '#F59E0B' : '#EF4444';
                             const scoreLabel = scoreResult.totalScore > 80 ? 'Excellent' : scoreResult.totalScore > 50 ? 'Good' : 'Needs Work';
 
@@ -1286,17 +1385,22 @@ export default function ProductFormWizard({
             <View style={styles.mainContent}>
                 <View style={{ flex: 1, flexDirection: 'column' }}>
                     {/* Form Area */}
+                    {/* Sticky Section Title */}
+                    <View style={{ paddingHorizontal: 20, paddingTop: 20, backgroundColor: theme.colors.background, zIndex: 10 }}>
+                        {(() => {
+                            const data = getStepData();
+                            return <SectionTitleWithScore title={data.title} description={data.description} style={{ marginBottom: 12 }} />
+                        })()}
+                    </View>
+
                     {currentStep === 3 ? (
                         <View style={[styles.formArea, !mobile && showPreview && { flex: 1 }, { flex: 1 }]}>
-                            <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 }}>
-                                <Text style={styles.stepTitle}>Variants & Stock</Text>
-                            </View>
                             {renderStepContent()}
                         </View>
                     ) : (
                         <ScrollView
                             style={[styles.formArea, !mobile && showPreview && { flex: 1 }]}
-                            contentContainerStyle={styles.formAreaContent}
+                            contentContainerStyle={[styles.formAreaContent, { paddingTop: 0 }]}
                             showsVerticalScrollIndicator={false}
                         >
                             {renderStepContent()}

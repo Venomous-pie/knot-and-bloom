@@ -21,7 +21,13 @@ export const productSchema = z.object({
     stock: z.number().int().min(0).optional(),
     image: z.string().nullish(),
     description: z.string().nullish(),
-    tags: z.array(z.string()).optional(),
+    tags: z.array(
+        z.string()
+            .min(2, "Each tag must be at least 2 characters")
+            .max(30, "Each tag must be 30 characters or fewer")
+            .regex(/^[a-z0-9\s\-]+$/, "Tags must contain only lowercase letters, numbers, spaces, or hyphens")
+            .refine(val => !/^\d+$/.test(val), "Tags cannot be only numbers")
+    ).max(10, "Maximum of 10 tags allowed").optional(),
     materials: z.string().nullish(),
     metaTitle: z.string().max(70, "Meta title must be 70 characters or fewer").nullish(),
     metaDescription: z.string().max(160, "Meta description must be 160 characters or fewer").nullish(),

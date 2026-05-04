@@ -74,9 +74,10 @@ export function calculateOptimizationScore(product: ProductInput): OptimizationR
 
     // ── Title & SEO (25 pts) ─────────────────────────────────────────
     const nameLength = product.name?.length || 0;
-    const hasLongName = nameLength >= 30;
+    const metaTitleLength = product.metaTitle?.trim().length || 0;
+    const hasLongName = nameLength >= 30 || metaTitleLength >= 30;
     const hasTags = !!product.tags && product.tags.length > 0;
-    const hasMetaTitle = !!product.metaTitle && product.metaTitle.trim().length > 0;
+    const hasMetaTitle = metaTitleLength > 0;
 
     const seoCategory: ScoreCategory = {
         name: 'Title & SEO',
@@ -165,8 +166,8 @@ export function calculateOptimizationScore(product: ProductInput): OptimizationR
             },
             {
                 label: 'Healthy stock levels',
-                passed: !hasLowStock,
-                points: !hasLowStock ? 7 : 0,
+                passed: hasStock && !hasLowStock,
+                points: (hasStock && !hasLowStock) ? 7 : 0,
                 maxPoints: 7,
                 tip: 'Restock variants with 5 or fewer items to avoid missed sales.',
             },

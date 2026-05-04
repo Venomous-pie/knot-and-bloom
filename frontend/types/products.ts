@@ -25,6 +25,8 @@ interface Product {
     image: string | null;
     images?: string[];
     description?: string;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
     uploaded: string;
     updated: string;
     variants: ProductVariant[];

@@ -23,6 +23,7 @@ import {
 } from "../validators/customerValidator.js";
 
 import { generateRandomName } from "../utils/nameGenerator.js";
+import { ensureAdminSellerProfile } from "../utils/sellerUtils.js";
 
 const customerRegisterController = async (input: unknown) => {
     let parsedInput: CustomerInput;
@@ -77,11 +78,18 @@ const customerRegisterController = async (input: unknown) => {
             },
         });
 
+        // Auto-create seller profile for ADMIN if they register as admin (unlikely but possible via manual DB tweak later)
+        let sellerId;
+        if (customer.role === 'ADMIN' && customer.email) {
+            sellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+        }
+
         // Generate token for auto-login
         const payload: AuthPayload = {
             id: customer.uid,
             ...(customer.email ? { email: customer.email } : {}),
             role: customer.role as any,
+            ...(sellerId ? { sellerId } : {})
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
@@ -145,6 +153,12 @@ const customerLoginController = async (input: unknown) => {
 
         if (!customer.password) {
             throw new ErrorHandler.AuthenticationError("This account uses Google Sign-In. Please continue with Google.", 'NO_PASSWORD_SET');
+        }
+
+        if (customer.role === 'ADMIN' && customer.email) {
+            const officialSellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+            const officialSeller = await prisma.seller.findUnique({ where: { uid: officialSellerId } });
+            if (officialSeller) customer.sellerProfile = officialSeller;
         }
 
         const isPasswordValid = await bcrypt.compare(parsedInput.password, customer.password);
@@ -212,6 +226,12 @@ const getCustomerProfile = async (userId: number) => {
 
     if (!customer) {
         throw new ErrorHandler.NotFoundError('Customer', String(userId));
+    }
+
+    if (customer.role === 'ADMIN' && customer.email) {
+        const officialSellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+        const officialSeller = await prisma.seller.findUnique({ where: { uid: officialSellerId } });
+        if (officialSeller) customer.sellerProfile = officialSeller;
     }
 
     const { password, ...customerData } = customer;
@@ -346,6 +366,12 @@ const googleLoginController = async (input: unknown) => {
                 },
                 include: { sellerProfile: true }
             });
+        }
+
+        if (customer.role === 'ADMIN' && customer.email) {
+            const officialSellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+            const officialSeller = await prisma.seller.findUnique({ where: { uid: officialSellerId } });
+            if (officialSeller) customer.sellerProfile = officialSeller;
         }
 
         const jwtPayload: AuthPayload = {

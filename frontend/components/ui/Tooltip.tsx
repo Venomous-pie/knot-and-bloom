@@ -43,24 +43,43 @@ export default function Tooltip({ content, children, iconColor = Dark, iconSize 
 
     const getPositionStyles = () => {
         const offsetTop = coords.top + coords.height + 8;
+        const triggerCenter = coords.left + coords.width / 2;
+        const containerWidth = 220;
+
+        let containerLeft = 0;
+
         switch (position) {
-            case 'right':
-                return { 
-                    container: { top: offsetTop, left: coords.left - 180, position: 'absolute' as any, opacity: coords.ready ? 1 : 0 }, 
-                    arrow: { right: 28, transform: [{ rotate: '45deg' }] as any } 
-                };
             case 'left':
-                return { 
-                    container: { top: offsetTop, left: coords.left - 8, position: 'absolute' as any, opacity: coords.ready ? 1 : 0 }, 
-                    arrow: { left: 12, transform: [{ rotate: '45deg' }] as any } 
-                };
+                // Tooltip extends to the left (aligns its right edge with the trigger's right edge)
+                containerLeft = (coords.left + coords.width) - containerWidth;
+                break;
+            case 'right':
+                // Tooltip extends to the right (aligns its left edge with the trigger's left edge)
+                containerLeft = coords.left;
+                break;
             case 'center':
             default:
-                return { 
-                    container: { top: offsetTop, left: coords.center, transform: [{ translateX: '-50%' }] as any, position: 'absolute' as any, opacity: coords.ready ? 1 : 0 },
-                    arrow: { left: '50%' as any, transform: [{ translateX: '-50%' }, { rotate: '45deg' }] as any }
-                };
+                // Tooltip is centered on the trigger
+                containerLeft = triggerCenter - (containerWidth / 2);
+                break;
         }
+
+        // Optional viewport clamping (if window is available)
+        if (typeof window !== 'undefined') {
+            const screenWidth = window.innerWidth;
+            if (containerLeft < 8) containerLeft = 8;
+            if (containerLeft + containerWidth > screenWidth - 8) {
+                containerLeft = screenWidth - containerWidth - 8;
+            }
+        }
+
+        // The arrow must always point to the trigger center
+        const arrowLeft = triggerCenter - containerLeft - 4; // -4 for half arrow width
+
+        return { 
+            container: { top: offsetTop, left: containerLeft, position: 'absolute' as any, opacity: coords.ready ? 1 : 0 }, 
+            arrow: { left: arrowLeft, transform: [{ rotate: '45deg' }] as any } 
+        };
     };
 
     const pos = getPositionStyles();

@@ -40,6 +40,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
     const [showUrlInput, setShowUrlInput] = useState(false);
     const [urlInput, setUrlInput] = useState('');
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     // Crop modal state
     const [showCropModal, setShowCropModal] = useState(false);
@@ -137,6 +138,72 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
         setUploadProgress('');
     };
 
+    const moveImage = (fromIndex: number, toIndex: number) => {
+        if (toIndex < 0 || toIndex >= images.length) return;
+        const newImages = [...images];
+        const [moved] = newImages.splice(fromIndex, 1);
+        newImages.splice(toIndex, 0, moved);
+        onImagesChange(newImages);
+    };
+
+    const moveImageRef = useRef(moveImage);
+    useEffect(() => {
+        moveImageRef.current = moveImage;
+    }, [moveImage]);
+
+    useEffect(() => {
+        if (Platform.OS !== 'web' || !containerRef.current) return;
+        const container = containerRef.current as any;
+
+        const handleDragStart = (e: any) => {
+            const item = e.target.closest('[data-drag-index]');
+            if (item) {
+                const index = parseInt(item.getAttribute('data-drag-index'), 10);
+                setDraggedIndex(index);
+                if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', index.toString());
+                }
+            }
+        };
+
+        const handleDragOver = (e: any) => {
+            const item = e.target.closest('[data-drag-index]');
+            if (item) {
+                e.preventDefault();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            }
+        };
+
+        const handleDrop = (e: any) => {
+            const item = e.target.closest('[data-drag-index]');
+            if (item) {
+                e.preventDefault();
+                const toIndex = parseInt(item.getAttribute('data-drag-index'), 10);
+                setDraggedIndex(prev => {
+                    if (prev !== null && prev !== toIndex) {
+                        moveImageRef.current(prev, toIndex);
+                    }
+                    return null;
+                });
+            }
+        };
+
+        const handleDragEnd = () => setDraggedIndex(null);
+
+        container.addEventListener('dragstart', handleDragStart);
+        container.addEventListener('dragover', handleDragOver);
+        container.addEventListener('drop', handleDrop);
+        container.addEventListener('dragend', handleDragEnd);
+
+        return () => {
+            container.removeEventListener('dragstart', handleDragStart);
+            container.removeEventListener('dragover', handleDragOver);
+            container.removeEventListener('drop', handleDrop);
+            container.removeEventListener('dragend', handleDragEnd);
+        };
+    }, []);
+
     const handleCropSkip = () => {
         setShowCropModal(false);
         setPendingImages([]);
@@ -194,14 +261,6 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
         }
     };
 
-    const moveImage = (fromIndex: number, toIndex: number) => {
-        if (toIndex < 0 || toIndex >= images.length) return;
-        const newImages = [...images];
-        const [moved] = newImages.splice(fromIndex, 1);
-        newImages.splice(toIndex, 0, moved);
-        onImagesChange(newImages);
-    };
-
     // Empty state - centered
     const isEmpty = images.length === 0;
 
@@ -250,12 +309,21 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                                     key={index}
                                     style={[
                                         styles.imageWrapper,
-                                        isPrimary ? styles.primaryImageWrapper : styles.secondaryImageWrapper
+                                        isPrimary ? styles.primaryImageWrapper : styles.secondaryImageWrapper,
+                                        draggedIndex === index && { opacity: 0.5 }
                                     ]}
-                                    {...(Platform.OS === 'web' ? {
-                                        onMouseEnter: () => setHoveredIndex(index),
-                                        onMouseLeave: () => setHoveredIndex(null),
-                                    } : {})}
+                                    ref={el => {
+                                        if (el && Platform.OS === 'web') {
+                                            const node = el as any;
+                                            if (!node.__dragBound) {
+                                                node.__dragBound = true;
+                                                node.setAttribute('draggable', 'true');
+                                                node.setAttribute('data-drag-index', index.toString());
+                                            }
+                                        }
+                                    }}
+                                    onPointerEnter={() => setHoveredIndex(index)}
+                                    onPointerLeave={() => setHoveredIndex(null)}
                                 >
                                     <Image
                                         source={{ uri: image.uri }}

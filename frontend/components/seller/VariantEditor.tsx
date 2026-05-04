@@ -21,7 +21,7 @@ import { uploadToImageKit } from '@/lib/imagekit';
 import { Layers } from 'lucide-react-native';
 import { useDialog } from '@/contexts/DialogContext';
 import ImageUploader from './ImageUploader';
-import { PRESET_MATERIALS } from '@/constants/materials';
+import { MATERIAL_SUGGESTIONS, UNIVERSAL_MATERIALS } from '@/constants/materials';
 
 interface CustomOptionsModalProps {
     visible: boolean;
@@ -181,6 +181,7 @@ interface VariantEditorProps {
     onExpandedChange?: (index: number | null) => void;
     productImages?: { uri: string; isUrl?: boolean }[];
     variantErrors?: Record<string, string>;
+    categories?: string[];
 }
 
 // VariantImagePicker replaced by ImageUploader in compact mode
@@ -196,6 +197,7 @@ export default function VariantEditor({
     onExpandedChange,
     productImages = [],
     variantErrors = {},
+    categories = [],
 }: VariantEditorProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
@@ -460,9 +462,14 @@ export default function VariantEditor({
                                 {/* Materials Row */}
                                 <View style={[styles.field, { marginTop: 12 }]}>
                                     <View style={{ gap: 2 }}>
-                                        <Text style={styles.fieldLabel}>
-                                            Specific Materials / Inclusions {index === 0 ? '*' : '(Optional)'}
-                                        </Text>
+                                        <View style={styles.fieldLabelRow}>
+                                            <Text style={styles.fieldLabel}>
+                                                Specific Materials / Inclusions {index === 0 ? '*' : '(Optional)'}
+                                            </Text>
+                                            <Text style={{ fontSize: 11, color: (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length >= 5 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                                {(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length}/5
+                                            </Text>
+                                        </View>
                                         {index > 0 && (
                                             <Text style={{ fontSize: 12, color: theme.colors.textLight, fontStyle: 'italic' }}>
                                                 If left empty, this variant will inherit the default materials.
@@ -479,18 +486,21 @@ export default function VariantEditor({
                                             return (
                                                 <View style={[styles.categoryList, { marginBottom: 8 }]}>
                                                     {(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).map((mat, i) => (
-                                                        <View key={i} style={[styles.categoryChip, styles.categoryChipSelected, { paddingRight: 8 }]}>
-                                                            <Text style={styles.categoryTextSelected}>{mat}</Text>
-                                                            <Pressable
-                                                                onPress={() => {
-                                                                    const updated = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s && s !== mat).join(', ');
-                                                                    updateVariant(index, 'materials', updated);
-                                                                }}
-                                                                style={{ marginLeft: 6, backgroundColor: theme.colors.backgroundAlt, borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' }}
-                                                            >
-                                                                <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '700', lineHeight: 14 }}>×</Text>
-                                                            </Pressable>
-                                                        </View>
+                                                        <Pressable
+                                                            key={i}
+                                                            onPress={() => {
+                                                                const updated = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s && s !== mat).join(', ');
+                                                                updateVariant(index, 'materials', updated);
+                                                            }}
+                                                            style={{
+                                                                flexDirection: 'row', alignItems: 'center', gap: 4,
+                                                                backgroundColor: theme.colors.primary + '15',
+                                                                paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+                                                            }}
+                                                        >
+                                                            <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: '600', fontFamily: 'Quicksand' }}>{mat}</Text>
+                                                            <Text style={{ fontSize: 14, color: theme.colors.primary, marginLeft: 2, fontWeight: '700' }}>×</Text>
+                                                        </Pressable>
                                                     ))}
                                                 </View>
                                             );
@@ -520,15 +530,20 @@ export default function VariantEditor({
                                             style={{ flex: 1, paddingVertical: 12, outlineStyle: 'none' } as any}
                                             value={materialInputs[index] || ''}
                                             onChangeText={(text) => setMaterialInputs(prev => ({ ...prev, [index]: text }))}
-                                            placeholder="Type and press Enter, or select below..."
+                                            placeholder={(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length >= 5 ? 'Maximum items reached' : 'Type and press Enter, or select below...'}
                                             placeholderTextColor={theme.colors.textLight}
+                                            editable={(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5}
                                             autoCapitalize="sentences"
-                                            onFocus={() => setFocusedField(getFieldKey(index, 'materials'))}
+                                            onFocus={() => {
+                                                if ((variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5) {
+                                                    setFocusedField(getFieldKey(index, 'materials'));
+                                                }
+                                            }}
                                             onBlur={() => setTimeout(() => setFocusedField(null), 200)}
                                             onSubmitEditing={() => {
                                                 const currentInput = (materialInputs[index] || '').trim();
-                                                if (currentInput) {
-                                                    const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
+                                                const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
+                                                if (currentInput && parts.length < 5) {
                                                     if (!parts.includes(currentInput)) {
                                                         parts.push(currentInput);
                                                         updateVariant(index, 'materials', parts.join(', '));
@@ -537,13 +552,13 @@ export default function VariantEditor({
                                                 }
                                             }}
                                         />
-                                        {(materialInputs[index] || '').trim().length > 0 && (
+                                        {(materialInputs[index] || '').trim().length > 0 && (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5 && (
                                             <Pressable 
                                                 style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginLeft: 8 }}
                                                 onPress={() => {
                                                     const currentInput = (materialInputs[index] || '').trim();
                                                     const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
-                                                    if (!parts.includes(currentInput)) {
+                                                    if (parts.length < 5 && !parts.includes(currentInput)) {
                                                         parts.push(currentInput);
                                                         updateVariant(index, 'materials', parts.join(', '));
                                                     }
@@ -562,40 +577,59 @@ export default function VariantEditor({
                                     </Text>
                                     
                                     {/* Smart Suggestions */}
-                                    {focusedField === getFieldKey(index, 'materials') && (
-                                        <View style={styles.materialSuggestions}>
-                                            <ScrollView
-                                                horizontal
-                                                showsHorizontalScrollIndicator={false}
-                                                contentContainerStyle={styles.materialChipsRow}
-                                            >
-                                                {PRESET_MATERIALS
-                                                    .filter(m => {
-                                                        const currentMaterials = (variant.materials || '').toLowerCase().split(',').map(s => s.trim());
-                                                        const alreadyAdded = currentMaterials.includes(m.toLowerCase());
-                                                        const currentInput = (materialInputs[index] || '').toLowerCase();
-                                                        return !alreadyAdded && (currentInput === '' || m.toLowerCase().includes(currentInput));
-                                                    })
-                                                    .slice(0, 15)
-                                                    .map((material) => (
+                                    {focusedField === getFieldKey(index, 'materials') && (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5 && (() => {
+                                        // Build context-aware suggestions
+                                        const allSuggestions = new Set<string>();
+                                        categories.forEach(cat => {
+                                            (MATERIAL_SUGGESTIONS[cat] || []).forEach(m => allSuggestions.add(m));
+                                        });
+                                        if (allSuggestions.size === 0) {
+                                            UNIVERSAL_MATERIALS.forEach(m => allSuggestions.add(m));
+                                        }
+
+                                        const currentInput = (materialInputs[index] || '').toLowerCase().trim();
+                                        const currentMaterials = (variant.materials || '').toLowerCase().split(',').map(s => s.trim());
+                                        
+                                        const available = Array.from(allSuggestions).filter(m => !currentMaterials.includes(m.toLowerCase()));
+                                        const filtered = currentInput
+                                            ? available.filter(m => m.toLowerCase().includes(currentInput))
+                                            : available;
+
+                                        if (filtered.length === 0) return null;
+
+                                        return (
+                                            <View style={styles.materialSuggestions}>
+                                                <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 6 }}>
+                                                    💡 Suggested materials {currentInput ? 'matching your input' : 'for your categories'}:
+                                                </Text>
+                                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                                    {filtered.slice(0, 5).map((material) => (
                                                         <Pressable
                                                             key={material}
-                                                            style={styles.materialChip}
+                                                            style={{
+                                                                flexDirection: 'row', alignItems: 'center', gap: 3,
+                                                                backgroundColor: theme.colors.background,
+                                                                borderWidth: 1,
+                                                                borderColor: theme.colors.border,
+                                                                borderStyle: 'dashed',
+                                                                paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+                                                            }}
                                                             onPress={() => {
                                                                 const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
-                                                                if (!parts.includes(material)) {
+                                                                if (parts.length < 5 && !parts.includes(material)) {
                                                                     parts.push(material);
                                                                     updateVariant(index, 'materials', parts.join(', '));
                                                                 }
                                                                 setMaterialInputs(prev => ({ ...prev, [index]: '' }));
                                                             }}
                                                         >
-                                                            <Text style={styles.materialChipText}>+ {material}</Text>
+                                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontWeight: '500', fontFamily: 'Quicksand' }}>+ {material}</Text>
                                                         </Pressable>
                                                     ))}
-                                            </ScrollView>
-                                        </View>
-                                    )}
+                                                </View>
+                                            </View>
+                                        );
+                                    })()}
                                 </View>
 
                                 {/* Stock & Price Row */}

@@ -17,6 +17,7 @@ model Product {
   discountPercentage Int?
   soldCount          Int              @default(0)
   image              String?
+  images             String[]
   description        String?
   uploaded           DateTime         @default(now())
   updated            DateTime         @updatedAt

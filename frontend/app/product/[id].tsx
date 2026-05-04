@@ -60,10 +60,35 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [skuCopied, setSkuCopied] = useState(false);
     const [recommendations, setRecommendations] = useState<Product[]>([]);
     const [makers, setMakers] = useState<User[]>([]);
+
+    const allImages = React.useMemo(() => {
+        if (!product) return [];
+        const imgs: string[] = [];
+        if (product.image) imgs.push(product.image);
+        if (product.images) imgs.push(...product.images);
+        product.variants?.forEach(v => {
+            if (v.images && v.images.length > 0) {
+                imgs.push(...v.images);
+            }
+        });
+        return Array.from(new Set(imgs));
+    }, [product]);
+
+    useEffect(() => {
+        if (selectedVariant && product) {
+            const variant = product.variants.find(v => v.name === selectedVariant);
+            if (variant && variant.images && variant.images.length > 0) {
+                setSelectedImage(variant.images[0]);
+            }
+        }
+    }, [selectedVariant, product]);
+
+    const displayImage = selectedImage || product?.image || null;
 
     const { user } = useAuth();
     const { refreshCart, triggerCartAnimation } = useCart();
@@ -318,9 +343,9 @@ export default function ProductDetailPage() {
 
                         {/* Main Product Image */}
                         <View style={[styles.imageContainer, isDesktop && styles.imageContainerDesktop]}>
-                            {product.image ? (
+                            {displayImage ? (
                                 <Image
-                                    source={{ uri: product.image }}
+                                    source={{ uri: displayImage }}
                                     style={styles.productImage}
                                     contentFit="cover"
                                     transition={200}
@@ -332,18 +357,23 @@ export default function ProductDetailPage() {
                             )}
                         </View>
 
-                        {/* Thumbnail Strip (Mock placeholders) */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailStrip}>
-                            {[product.image, null, null, null].map((img, idx) => (
-                                <View key={idx} style={[styles.thumbnailBox, idx === 0 && styles.thumbnailBoxActive]}>
-                                    {img ? (
-                                        <Image source={{ uri: img }} style={styles.thumbnailImage} contentFit="cover" />
-                                    ) : (
-                                        <Ionicons name="image-outline" size={20} color={theme.colors.textLight} />
-                                    )}
-                                </View>
-                            ))}
-                        </ScrollView>
+                        {/* Thumbnail Strip */}
+                        {allImages.length > 1 && (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailStrip}>
+                                {allImages.map((img, idx) => {
+                                    const isActive = displayImage === img;
+                                    return (
+                                        <Pressable 
+                                            key={idx} 
+                                            style={[styles.thumbnailBox, isActive && styles.thumbnailBoxActive]}
+                                            onPress={() => setSelectedImage(img)}
+                                        >
+                                            <Image source={{ uri: img }} style={styles.thumbnailImage} contentFit="cover" />
+                                        </Pressable>
+                                    );
+                                })}
+                            </ScrollView>
+                        )}
 
                         {/* Seller Info (Desktop Only - Mobile handles this below description) */}
                         {isDesktop && renderSellerInfo()}
@@ -473,6 +503,51 @@ export default function ProductDetailPage() {
                                 </View>
                             </View>
                         </View>
+
+                        {/* Product Highlights / Specifications */}
+                        {(product.materials || product.isBundle || (product.tags && product.tags.length > 0)) && (
+                            <View style={styles.sectionContainer}>
+                                <Text style={styles.sectionTitle}>Highlights</Text>
+                                <View style={styles.highlightsContainer}>
+                                    {!!product.materials && (
+                                        <View style={styles.highlightRow}>
+                                            <Ionicons name="color-palette-outline" size={18} color={theme.colors.textSecondary} />
+                                            <Text style={styles.highlightText}>
+                                                <Text style={{ fontWeight: '600' }}>Materials:</Text> {product.materials}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {!!product.isBundle && !!product.bundleQuantity && (
+                                        <View style={styles.highlightRow}>
+                                            <Ionicons name="gift-outline" size={18} color={theme.colors.textSecondary} />
+                                            <Text style={styles.highlightText}>
+                                                <Text style={{ fontWeight: '600' }}>Bundle set:</Text> Includes {product.bundleQuantity} items
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {!!product.isCodAllowed && Number(product.basePrice) >= 200 && (
+                                        <View style={styles.highlightRow}>
+                                            <Ionicons name="cash-outline" size={18} color={theme.colors.textSecondary} />
+                                            <Text style={styles.highlightText}>
+                                                <Text style={{ fontWeight: '600' }}>Payment:</Text> Cash on Delivery eligible
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {product.tags && product.tags.length > 0 && (
+                                        <View style={[styles.highlightRow, { alignItems: 'flex-start' }]}>
+                                            <Ionicons name="pricetags-outline" size={18} color={theme.colors.textSecondary} style={{ marginTop: 2 }} />
+                                            <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                                {product.tags.map(tag => (
+                                                    <View key={tag} style={styles.tagBadge}>
+                                                        <Text style={styles.tagBadgeText}>{tag}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        )}
 
                         {/* Product Description (Collapsible) */}
                         {product.description && (
@@ -1118,5 +1193,34 @@ const styles = StyleSheet.create({
     helpfulText: {
         fontSize: 12,
         color: theme.colors.textSecondary,
+    },
+    highlightsContainer: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        gap: 10,
+    },
+    highlightRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    highlightText: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    tagBadge: {
+        backgroundColor: theme.colors.primaryLight,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+    },
+    tagBadgeText: {
+        fontSize: 12,
+        color: theme.colors.primaryDark,
+        fontWeight: '500',
     },
 });

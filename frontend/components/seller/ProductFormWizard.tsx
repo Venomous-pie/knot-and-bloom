@@ -43,6 +43,7 @@ export interface ProductFormData {
     basePrice: string;
     discountPercentage: string;
     image: string;
+    images?: string[];
     materials: string;
     bundleQuantity: string;
     isCodAllowed: boolean;
@@ -224,11 +225,32 @@ export default function ProductFormWizard({
     // Sync primary image to formData
     useEffect(() => {
         if (images.length > 0) {
-            setFormData(prev => ({ ...prev, image: images[0].uri }));
+            setFormData(prev => ({ 
+                ...prev, 
+                image: images[0].uri,
+                images: images.map(img => img.uri).filter(Boolean)
+            }));
         } else {
-            setFormData(prev => ({ ...prev, image: '' }));
+            setFormData(prev => ({ 
+                ...prev, 
+                image: '',
+                images: []
+            }));
         }
     }, [images]);
+
+    // Keep first variant name in sync with product name
+    useEffect(() => {
+        if (variants.length > 0 && variants[0].name !== formData.name) {
+            const nameToUse = formData.name || 'Default';
+            setVariants(prev => {
+                if (prev[0]?.name === nameToUse) return prev;
+                const updated = [...prev];
+                updated[0] = { ...updated[0], name: nameToUse };
+                return updated;
+            });
+        }
+    }, [formData.name]);
 
     const handleChange = (field: keyof ProductFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -1048,6 +1070,7 @@ export default function ProductFormWizard({
                         productImages={images}
                         variantErrors={errors}
                         categories={selectedCategories}
+                        productName={formData.name}
                     />
                 );
 
@@ -1322,7 +1345,7 @@ export default function ProductFormWizard({
                                             productStatus === 'SUSPENDED' ? '#EF4444' : '#6B7280'
                                 }
                             ]}>
-                                Status: {productStatus}
+                                {productStatus}
                             </Text>
                         </View>
                     )}

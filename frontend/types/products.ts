@@ -9,6 +9,7 @@ interface ProductVariant {
     discountedPrice?: number;
     soldCount: number;
     image?: string;
+    images?: string[];
 }
 
 interface Product {
@@ -25,6 +26,11 @@ interface Product {
     image: string | null;
     images?: string[];
     description?: string;
+    materials?: string;
+    tags?: string[];
+    isBundle?: boolean;
+    bundleQuantity?: number;
+    isCodAllowed?: boolean;
     metaTitle?: string | null;
     metaDescription?: string | null;
     uploaded: string;

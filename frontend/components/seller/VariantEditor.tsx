@@ -182,6 +182,7 @@ interface VariantEditorProps {
     productImages?: { uri: string; isUrl?: boolean }[];
     variantErrors?: Record<string, string>;
     categories?: string[];
+    productName?: string;
 }
 
 // VariantImagePicker replaced by ImageUploader in compact mode
@@ -198,6 +199,7 @@ export default function VariantEditor({
     productImages = [],
     variantErrors = {},
     categories = [],
+    productName = '',
 }: VariantEditorProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
@@ -396,8 +398,8 @@ export default function VariantEditor({
                                         {index === 0 ? (
                                             <View style={styles.lockedInput}>
                                                 <Lock size={13} color={theme.colors.textLight} />
-                                                <Text style={styles.lockedInputText}>Default</Text>
-                                                <Text style={styles.lockedInputHint}>(locked)</Text>
+                                                <Text style={styles.lockedInputText}>{productName || 'Default'}</Text>
+                                                <Text style={styles.lockedInputHint}>(from Step 1)</Text>
                                             </View>
                                         ) : (
                                             <>

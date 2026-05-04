@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, act, waitFor } from '@testing-library/react-native';
-import GoogleAuthButton from '../../components/GoogleAuthButton';
+import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 import * as WebBrowser from 'expo-web-browser';
 
 // ── Mocks ────────────────────────────────────────────────
@@ -116,10 +116,10 @@ describe('GoogleAuthButton', () => {
         // We can't easily assert disabled in RNTL for TouchableOpacity, 
         // but we can verify the mock was called exactly once even if we press twice
         fireEvent.press(getByText('Continue with Google'));
-        
+
         // Try pressing again while loading — second call should be blocked by disabled={loading}
         fireEvent.press(getByText('Continue with Google'));
-        
+
         // Only one call should have gone through
         expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledTimes(1);
 
@@ -130,7 +130,7 @@ describe('GoogleAuthButton', () => {
     }, 10000);
 
     it('should not crash when WebBrowser throws an error', async () => {
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
         (WebBrowser.openAuthSessionAsync as jest.Mock).mockRejectedValueOnce(
             new Error('WebBrowser unavailable')

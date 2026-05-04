@@ -5,20 +5,20 @@ import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } fr
 import { sellerProductsAPI } from '../../../api/api';
 import ProductFormWizard, { ProductFormData } from '../../../components/seller/ProductFormWizard';
 import { VariantData } from '../../../components/seller/VariantEditor';
-import InfoBox from '../../../shared/InfoBox';
+import InfoBox from '../../../components/ui/InfoBox';
 
-const P       = '#B36979';
+const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
-const BG      = '#F4F4F8';
-const CARD    = '#FFFFFF';
-const TEXT    = '#1A1A2E';
-const SUB     = '#6B7280';
-const BORDER  = '#F0F0F5';
-const GREEN   = '#10B981';
-const AMBER   = '#F59E0B';
-const RED     = '#EF4444';
-const INDIGO  = '#6366F1';
-const TEAL    = '#14B8A6';
+const BG = '#F4F4F8';
+const CARD = '#FFFFFF';
+const TEXT = '#1A1A2E';
+const SUB = '#6B7280';
+const BORDER = '#F0F0F5';
+const GREEN = '#10B981';
+const AMBER = '#F59E0B';
+const RED = '#EF4444';
+const INDIGO = '#6366F1';
+const TEAL = '#14B8A6';
 
 export default function SellerProductForm() {
     const router = useRouter();

@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { isMobile } from "@/constants/layout";
 import { theme } from "@/constants/theme";
-import { SidebarNavLinks } from "@/shared/SidebarNavLinks";
+import { SidebarNavLinks } from "@/components/layout/SidebarNavLinks";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
 import { Clock, Facebook, Heart, Instagram, Moon, ShoppingBag, Sun, Sunrise, Sunset, UserRound, UserRoundPlus, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";

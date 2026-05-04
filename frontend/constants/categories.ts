@@ -6,7 +6,6 @@ export const categoryTitles: Record<string, string> = {
     crochet: "Crochet",
     "fuzzy-wire-art": "Fuzzy Wire Art",
     "gift-boxes-sets": "Gift Boxes/Sets",
-    tops: "Tops",
     "hair-tie": "Hair Ties",
     "fuzzy-wire-bouquet": "Fuzzy Wire Bouquets",
     "crochet-flower-bouquet": "Crochet Flower Bouquets",

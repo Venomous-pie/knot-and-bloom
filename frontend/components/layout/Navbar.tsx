@@ -1,6 +1,6 @@
 import { isMobile } from "@/constants/layout";
 import '@/global.css';
-import MenuSideBar from "@/shared/MenuSideBar";
+import MenuSideBar from "@/components/layout/MenuSideBar";
 import { Stack, usePathname } from "expo-router";
 import React, { useState } from "react";
 import { useWindowDimensions, View } from "react-native";
@@ -28,10 +28,10 @@ export default function NavBar() {
                     headerTitleAlign: 'center',
                     headerShown: !isSellerDashboard,
                     header: () => (
-                        <GlobalHeaderUI 
-                            setIsMenuOpen={setIsMenuOpen} 
-                            activeMenu={activeMenu} 
-                            setActiveMenu={setActiveMenu} 
+                        <GlobalHeaderUI
+                            setIsMenuOpen={setIsMenuOpen}
+                            activeMenu={activeMenu}
+                            setActiveMenu={setActiveMenu}
                         />
                     ),
                 }}

@@ -25,7 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '@/api/api';
 import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';
-import InfoBox from '@/shared/InfoBox';
+import InfoBox from '@/components/ui/InfoBox';
 import VariantEditor, { VariantData } from './VariantEditor';
 import { toTitleCase, toSentenceCase } from '@/utils/textUtils';
 import { PRESET_MATERIALS } from '@/constants/materials';

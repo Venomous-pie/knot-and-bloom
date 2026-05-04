@@ -6,15 +6,15 @@ import { useWishlist } from "@/contexts/WishlistContext";
 import { getNavbarMargin, isMobile } from "@/constants/layout";
 import { theme } from "@/constants/theme";
 import '@/global.css';
-import DropdownMenu from "@/shared/DropdownMenu";
-import { NavLinks } from "@/shared/NavLinks";
-import { MobileNavbar } from "@/shared/MobileNavbar";
+import DropdownMenu from "@/components/ui/DropdownMenu";
+import { NavLinks } from "@/components/layout/NavLinks";
+import { MobileNavbar } from "@/components/layout/MobileNavbar";
 import { Product } from "@/types/products";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
 import { ChevronLeft, Handbag, Heart, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
-import SearchBarDropdown from "./SearchResults";
+import SearchBarDropdown from "../ui/SearchResults";
 
 const styles = StyleSheet.create({
     container: {
@@ -169,14 +169,14 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
 
     useEffect(() => {
         if (!socket) return;
-        
+
         const handleNewNotification = (data?: any) => {
             console.log('[Socket] notification:new event received', data);
             fetchNotifications();
         };
 
         socket.on('notification:new', handleNewNotification);
-        
+
         return () => {
             socket.off('notification:new', handleNewNotification);
         };

@@ -13,7 +13,7 @@ import {
     View,
     Platform
 } from "react-native";
-import Confetti from "@/components/Confetti";
+import Confetti from "@/components/ui/Confetti";
 
 const { width } = Dimensions.get('window');
 const MOBILE_BREAKPOINT = 768;

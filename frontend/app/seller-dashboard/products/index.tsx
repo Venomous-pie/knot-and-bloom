@@ -3,23 +3,23 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View, Animated, useWindowDimensions, TextInput, ScrollView } from 'react-native';
 import { sellerProductsAPI } from '../../../api/api';
-import InfoBox from '../../../shared/InfoBox';
-import Tooltip from '../../../shared/Tooltip';
-import DropdownMenu from '../../../shared/DropdownMenu';
+import InfoBox from '../../../components/ui/InfoBox';
+import Tooltip from '../../../components/ui/Tooltip';
+import DropdownMenu from '../../../components/ui/DropdownMenu';
 import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter, Clock, History, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { calculateOptimizationScore } from '../../../utils/optimizationScore';
 
-const P       = '#B36979';
+const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
-const BG      = '#F4F4F8';
-const CARD    = '#FFFFFF';
-const TEXT    = '#1A1A2E';
-const SUB     = '#6B7280';
-const BORDER  = '#F0F0F5';
-const GREEN   = '#10B981';
-const AMBER   = '#F59E0B';
-const RED     = '#EF4444';
-const INDIGO  = '#6366F1';
+const BG = '#F4F4F8';
+const CARD = '#FFFFFF';
+const TEXT = '#1A1A2E';
+const SUB = '#6B7280';
+const BORDER = '#F0F0F5';
+const GREEN = '#10B981';
+const AMBER = '#F59E0B';
+const RED = '#EF4444';
+const INDIGO = '#6366F1';
 
 type Product = {
     uid: number;
@@ -58,11 +58,11 @@ function StatCard({ label, value, icon, color, tooltip }: {
     const scale = useRef(new Animated.Value(1)).current;
     return (
         <View style={{ flex: 1, minWidth: 140, zIndex: 99, overflow: 'visible' }}>
-            <Pressable 
+            <Pressable
                 onPress={() => {
                     Animated.sequence([
                         Animated.timing(scale, { toValue: 0.95, duration: 70, useNativeDriver: true }),
-                        Animated.timing(scale, { toValue: 1,    duration: 70, useNativeDriver: true }),
+                        Animated.timing(scale, { toValue: 1, duration: 70, useNativeDriver: true }),
                     ]).start();
                 }}
                 style={{ zIndex: 99, overflow: 'visible' }}
@@ -94,13 +94,13 @@ export default function SellerProducts() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
-    
+
     const [products, setProducts] = useState<Product[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    
+
     // Filters & Pagination
     const [statusFilter, setStatusFilter] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -144,13 +144,13 @@ export default function SellerProducts() {
             };
 
             const data = await sellerProductsAPI.getMyProducts(params);
-            
+
             if (reset) {
                 setProducts(data.products);
             } else {
                 setProducts(prev => [...prev, ...data.products]);
             }
-            
+
             if (data.stats) setStats(data.stats);
             setHasMore(data.pagination.page < data.pagination.pages);
             setPage(data.pagination.page);
@@ -287,7 +287,7 @@ export default function SellerProducts() {
     const renderItem = ({ item }: { item: Product }) => {
         const totalStock = item.variants && item.variants.length > 0
             ? item.variants.reduce((acc, v) => acc + (v.stock || 0), 0) : 0;
-        const hasLowStock = item.variants && item.variants.length > 0 
+        const hasLowStock = item.variants && item.variants.length > 0
             ? item.variants.some(v => v.stock <= 5) : false;
         const optScore = calculateOptimizationScore(item).totalScore;
         const isSelected = selectedIds.has(item.uid);
@@ -309,8 +309,8 @@ export default function SellerProducts() {
                         <View style={[styles.badgeAbs, { backgroundColor: getStatusColor(item.status) }]}>
                             <Tooltip content={
                                 item.status === 'PENDING' ? 'Awaiting admin approval' :
-                                item.status === 'SUSPENDED' ? 'Hidden from shop by admin' :
-                                item.status === 'ACTIVE' ? 'Visible to customers' : 'Currently a draft'
+                                    item.status === 'SUSPENDED' ? 'Hidden from shop by admin' :
+                                        item.status === 'ACTIVE' ? 'Visible to customers' : 'Currently a draft'
                             }>
                                 <Text style={styles.badgeTextAbs}>{item.status || 'LEGACY'}</Text>
                             </Tooltip>
@@ -319,7 +319,7 @@ export default function SellerProducts() {
                     <View style={styles.gridInfo}>
                         <Text style={styles.gridName} numberOfLines={2}>{item.name}</Text>
                         <Text style={styles.gridPrice}>₱{Number(item.basePrice).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                        
+
                         <View style={styles.stockRow}>
                             <View style={styles.stockChip}>
                                 <Package size={12} color={SUB} />
@@ -349,14 +349,14 @@ export default function SellerProducts() {
                         {isSelected && <Ionicons name="checkmark" size={16} color="#FFF" />}
                     </View>
                 )}
-                
+
                 <View style={styles.imageContainer}>
                     <Image source={{ uri: item.image || 'https://via.placeholder.com/150' }} style={styles.image} />
                     <View style={[styles.badgeAbs, { backgroundColor: getStatusColor(item.status) }]}>
                         <Tooltip content={
                             item.status === 'PENDING' ? 'Awaiting admin approval' :
-                            item.status === 'SUSPENDED' ? 'Hidden from shop by admin' :
-                            item.status === 'ACTIVE' ? 'Visible to customers' : 'Currently a draft'
+                                item.status === 'SUSPENDED' ? 'Hidden from shop by admin' :
+                                    item.status === 'ACTIVE' ? 'Visible to customers' : 'Currently a draft'
                         }>
                             <Text style={styles.badgeTextAbs}>{item.status || 'LEGACY'}</Text>
                         </Tooltip>
@@ -366,7 +366,7 @@ export default function SellerProducts() {
                 <View style={[styles.info, { zIndex: 99, overflow: 'visible' }]}>
                     <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                     <Text style={styles.price}>₱{Number(item.basePrice).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                    
+
                     <View style={[styles.stockRow, { zIndex: 99, overflow: 'visible' }]}>
                         <View style={styles.stockChip}>
                             <Package size={12} color={SUB} />
@@ -428,153 +428,153 @@ export default function SellerProducts() {
             </View>
             <View style={{ paddingHorizontal: 24, paddingTop: 24, flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
 
-            {/* Stat Bar */}
-            {stats && (
-                <View style={[styles.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 10 }]}>
-                    <StatCard 
-                        label="Total Products" value={stats.totalProducts} icon={<Package size={17} color={INDIGO} />} color={INDIGO} 
-                        tooltip="Total count of all your products, including active, drafts, and suspended."
-                    />
-                    <StatCard 
-                        label="Avg. Optimization" value={`${stats.avgOptimizationScore}/100`} icon={<Activity size={17} color={GREEN} />} color={GREEN} 
-                        tooltip="Score based on product details like image quality, description length, and stock health."
-                    />
-                    <StatCard 
-                        label="Low Stock" value={stats.lowStockCount} icon={<AlertTriangle size={17} color={AMBER} />} color={AMBER} 
-                        tooltip="Number of products that have 5 or fewer items remaining in stock."
-                    />
-                    <StatCard 
-                        label="Pending Review" value={stats.pendingCount} icon={<ClipboardList size={17} color={P} />} color={P} 
-                        tooltip="Products waiting for admin approval before they can appear in the shop."
-                    />
-                </View>
-            )}
+                {/* Stat Bar */}
+                {stats && (
+                    <View style={[styles.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 10 }]}>
+                        <StatCard
+                            label="Total Products" value={stats.totalProducts} icon={<Package size={17} color={INDIGO} />} color={INDIGO}
+                            tooltip="Total count of all your products, including active, drafts, and suspended."
+                        />
+                        <StatCard
+                            label="Avg. Optimization" value={`${stats.avgOptimizationScore}/100`} icon={<Activity size={17} color={GREEN} />} color={GREEN}
+                            tooltip="Score based on product details like image quality, description length, and stock health."
+                        />
+                        <StatCard
+                            label="Low Stock" value={stats.lowStockCount} icon={<AlertTriangle size={17} color={AMBER} />} color={AMBER}
+                            tooltip="Number of products that have 5 or fewer items remaining in stock."
+                        />
+                        <StatCard
+                            label="Pending Review" value={stats.pendingCount} icon={<ClipboardList size={17} color={P} />} color={P}
+                            tooltip="Products waiting for admin approval before they can appear in the shop."
+                        />
+                    </View>
+                )}
 
-            {/* Navigation & Filters Row */}
-            <View style={styles.filterBar}>
-                {/* Search */}
-                <View style={styles.searchContainer}>
-                    <Search size={18} color={SUB} style={styles.searchIcon} />
-                    <TextInput 
-                        style={styles.searchInput}
-                        placeholder="Search products or SKUs..."
-                        placeholderTextColor={SUB}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
+                {/* Navigation & Filters Row */}
+                <View style={styles.filterBar}>
+                    {/* Search */}
+                    <View style={styles.searchContainer}>
+                        <Search size={18} color={SUB} style={styles.searchIcon} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Search products or SKUs..."
+                            placeholderTextColor={SUB}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                    </View>
                 </View>
-            </View>
 
-            {/* Status Tabs & Filters Dropdown */}
-            <View style={[styles.secondaryFilterBar, { justifyContent: 'space-between', zIndex: 100 }]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
-                    {STATUS_TABS.map(tab => (
-                        <Pressable
-                            key={tab.key}
-                            style={[styles.tab, statusFilter === tab.key && styles.tabActive]}
-                            onPress={() => setStatusFilter(tab.key)}
+                {/* Status Tabs & Filters Dropdown */}
+                <View style={[styles.secondaryFilterBar, { justifyContent: 'space-between', zIndex: 100 }]}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
+                        {STATUS_TABS.map(tab => (
+                            <Pressable
+                                key={tab.key}
+                                style={[styles.tab, statusFilter === tab.key && styles.tabActive]}
+                                onPress={() => setStatusFilter(tab.key)}
+                            >
+                                <Text style={[styles.tabText, statusFilter === tab.key && styles.tabTextActive]}>
+                                    {tab.label}
+                                </Text>
+                            </Pressable>
+                        ))}
+                    </ScrollView>
+
+                    <View style={styles.controlsRight}>
+                        {/* Sort Dropdown */}
+                        <DropdownMenu
+                            isOpen={showFilters}
+                            onOpenChange={setShowFilters}
+                            style={[styles.filterBtn, showFilters && styles.filterBtnActive]}
+                            items={SORT_OPTIONS.map(opt => ({
+                                title: opt.label,
+                                icon: <opt.icon size={16} color={sortBy === opt.value ? P : SUB} />,
+                                onPress: () => setSortBy(opt.value),
+                            }))}
                         >
-                            <Text style={[styles.tabText, statusFilter === tab.key && styles.tabTextActive]}>
-                                {tab.label}
-                            </Text>
-                        </Pressable>
-                    ))}
-                </ScrollView>
+                            <Filter size={18} color={showFilters ? P : SUB} />
+                        </DropdownMenu>
 
-                <View style={styles.controlsRight}>
-                    {/* Sort Dropdown */}
-                    <DropdownMenu
-                        isOpen={showFilters}
-                        onOpenChange={setShowFilters}
-                        style={[styles.filterBtn, showFilters && styles.filterBtnActive]}
-                        items={SORT_OPTIONS.map(opt => ({
-                            title: opt.label,
-                            icon: <opt.icon size={16} color={sortBy === opt.value ? P : SUB} />,
-                            onPress: () => setSortBy(opt.value),
-                        }))}
-                    >
-                        <Filter size={18} color={showFilters ? P : SUB} />
-                    </DropdownMenu>
-
-                    {/* View Toggle */}
-                    <View style={styles.viewToggle}>
-                        <TouchableOpacity onPress={() => setViewMode('list')} style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
-                            <List size={18} color={viewMode === 'list' ? P : SUB} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
-                            <LayoutGrid size={18} color={viewMode === 'grid' ? P : SUB} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-
-            {/* Info Banner for Pending Products */}
-            {hasPendingProducts && statusFilter !== 'ACTIVE' && (
-                <InfoBox 
-                    message='Products with "Pending" status are awaiting admin approval and won&apos;t appear in the public shop yet.' 
-                    type="info" 
-                    style={{ marginBottom: 16 }} 
-                />
-            )}
-
-            {loading && page === 1 ? (
-                <View style={styles.center}><ActivityIndicator size="large" color={P} /></View>
-            ) : error ? (
-                <View style={styles.center}>
-                    <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity onPress={() => loadProducts(1, true)} style={styles.retryBtn}>
-                        <Text style={{ fontFamily: 'Quicksand', fontWeight: '600' }}>Retry</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <FlatList
-                    data={products}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.uid.toString()}
-                    contentContainerStyle={styles.listContent}
-                    showsVerticalScrollIndicator={false}
-                    key={viewMode === 'grid' ? `grid-${numCols}` : 'list'} // Force re-render on width change
-                    numColumns={numCols}
-                    columnWrapperStyle={viewMode === 'grid' ? { gap: gridGap } : undefined}
-                    onEndReached={loadMore}
-                    onEndReachedThreshold={0.5}
-                    ListFooterComponent={
-                        loadingMore ? <View style={{ padding: 20 }}><ActivityIndicator size="small" color={SUB} /></View> : null
-                    }
-                    ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No products found.</Text>
-                            <Text style={styles.emptySubtext}>
-                                Try adjusting your search or filters.
-                            </Text>
+                        {/* View Toggle */}
+                        <View style={styles.viewToggle}>
+                            <TouchableOpacity onPress={() => setViewMode('list')} style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
+                                <List size={18} color={viewMode === 'list' ? P : SUB} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
+                                <LayoutGrid size={18} color={viewMode === 'grid' ? P : SUB} />
+                            </TouchableOpacity>
                         </View>
-                    }
-                />
-            )}
-
-            {/* Bulk Action Bar */}
-            {selectionMode && (
-                <View style={styles.bulkBar}>
-                    <Text style={styles.bulkCount}>{selectedIds.size} Selected</Text>
-                    <View style={styles.bulkActions}>
-                        <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('PUBLISH')}>
-                            <Ionicons name="eye" size={20} color={GREEN} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('UNPUBLISH')}>
-                            <Ionicons name="eye-off" size={20} color={AMBER} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('DELETE')}>
-                            <Ionicons name="trash" size={20} color={RED} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.bulkBtn} onPress={() => {
-                            setSelectionMode(false);
-                            setSelectedIds(new Set());
-                        }}>
-                            <Ionicons name="close" size={20} color={SUB} />
-                        </TouchableOpacity>
                     </View>
                 </View>
-            )}
+
+                {/* Info Banner for Pending Products */}
+                {hasPendingProducts && statusFilter !== 'ACTIVE' && (
+                    <InfoBox
+                        message='Products with "Pending" status are awaiting admin approval and won&apos;t appear in the public shop yet.'
+                        type="info"
+                        style={{ marginBottom: 16 }}
+                    />
+                )}
+
+                {loading && page === 1 ? (
+                    <View style={styles.center}><ActivityIndicator size="large" color={P} /></View>
+                ) : error ? (
+                    <View style={styles.center}>
+                        <Text style={styles.errorText}>{error}</Text>
+                        <TouchableOpacity onPress={() => loadProducts(1, true)} style={styles.retryBtn}>
+                            <Text style={{ fontFamily: 'Quicksand', fontWeight: '600' }}>Retry</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={products}
+                        renderItem={renderItem}
+                        keyExtractor={(item) => item.uid.toString()}
+                        contentContainerStyle={styles.listContent}
+                        showsVerticalScrollIndicator={false}
+                        key={viewMode === 'grid' ? `grid-${numCols}` : 'list'} // Force re-render on width change
+                        numColumns={numCols}
+                        columnWrapperStyle={viewMode === 'grid' ? { gap: gridGap } : undefined}
+                        onEndReached={loadMore}
+                        onEndReachedThreshold={0.5}
+                        ListFooterComponent={
+                            loadingMore ? <View style={{ padding: 20 }}><ActivityIndicator size="small" color={SUB} /></View> : null
+                        }
+                        ListEmptyComponent={
+                            <View style={styles.emptyState}>
+                                <Text style={styles.emptyText}>No products found.</Text>
+                                <Text style={styles.emptySubtext}>
+                                    Try adjusting your search or filters.
+                                </Text>
+                            </View>
+                        }
+                    />
+                )}
+
+                {/* Bulk Action Bar */}
+                {selectionMode && (
+                    <View style={styles.bulkBar}>
+                        <Text style={styles.bulkCount}>{selectedIds.size} Selected</Text>
+                        <View style={styles.bulkActions}>
+                            <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('PUBLISH')}>
+                                <Ionicons name="eye" size={20} color={GREEN} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('UNPUBLISH')}>
+                                <Ionicons name="eye-off" size={20} color={AMBER} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.bulkBtn} onPress={() => handleBulkAction('DELETE')}>
+                                <Ionicons name="trash" size={20} color={RED} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.bulkBtn} onPress={() => {
+                                setSelectionMode(false);
+                                setSelectedIds(new Set());
+                            }}>
+                                <Ionicons name="close" size={20} color={SUB} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -590,13 +590,13 @@ const styles = StyleSheet.create({
     addBtnText: { color: '#FFF', fontWeight: '700', marginLeft: 6, fontFamily: 'Quicksand' },
     exportBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: BORDER },
     exportBtnText: { color: TEXT, fontWeight: '700', marginLeft: 6, fontFamily: 'Quicksand' },
-    statRow:  { gap: 16, marginBottom: 24, zIndex: 100, overflow: 'visible' },
+    statRow: { gap: 16, marginBottom: 24, zIndex: 100, overflow: 'visible' },
     statCard: { backgroundColor: CARD, borderRadius: 20, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER, overflow: 'visible', zIndex: 99 },
     statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, zIndex: 100, overflow: 'visible' },
     statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    statVal:  { fontSize: 24, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
-    statLbl:  { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4, fontWeight: '500' },
-    
+    statVal: { fontSize: 24, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
+    statLbl: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4, fontWeight: '500' },
+
     filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
     searchContainer: { flex: 1, minWidth: 200, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: BORDER, height: 44 },
     searchIcon: { marginRight: 8 },
@@ -607,18 +607,18 @@ const styles = StyleSheet.create({
     viewToggle: { flexDirection: 'row', backgroundColor: BORDER, borderRadius: 12, padding: 4 },
     viewBtn: { padding: 6, borderRadius: 8 },
     viewBtnActive: { backgroundColor: CARD, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-    
+
     secondaryFilterBar: { flexDirection: 'row', marginBottom: 16, alignItems: 'center' },
     tabsScroll: { flexGrow: 0 },
     tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
     tabActive: { backgroundColor: P_LIGHT, borderColor: P },
     tabText: { fontSize: 13, fontWeight: '600', color: SUB, fontFamily: 'Quicksand' },
     tabTextActive: { color: P },
-    
+
 
 
     listContent: { paddingBottom: 80 },
-    
+
     card: { flexDirection: 'row', backgroundColor: CARD, borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 2, alignItems: 'center', borderWidth: 1, borderColor: '#F9FAFB', overflow: 'visible', zIndex: 99 },
     imageContainer: { position: 'relative', width: 100, height: 100 },
     image: { width: 100, height: 100, borderRadius: 16, backgroundColor: BG },
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
     lowStockTxt: { fontSize: 10, fontWeight: '700', color: '#D97706', fontFamily: 'Quicksand' },
     actions: { flexDirection: 'column', justifyContent: 'center', gap: 12, paddingLeft: 16, zIndex: 1 },
     actionBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-    
+
     gridCard: { backgroundColor: CARD, borderRadius: 12, padding: 8, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F9FAFB', overflow: 'visible', zIndex: 99 },
     gridImageContainer: { position: 'relative', width: '100%', aspectRatio: 1, marginBottom: 8, zIndex: 1, overflow: 'visible' },
     gridImage: { width: '100%', height: '100%', borderRadius: 8, backgroundColor: BG },
@@ -642,22 +642,22 @@ const styles = StyleSheet.create({
     gridName: { fontSize: 12, fontWeight: '700', color: TEXT, marginBottom: 2, fontFamily: 'Quicksand', height: 32 },
     gridPrice: { fontSize: 13, fontWeight: '800', color: TEXT, marginBottom: 6, fontFamily: 'Quicksand' },
     gridCheckbox: { position: 'absolute', top: 4, right: 4, zIndex: 10, width: 20, height: 20, borderRadius: 6, backgroundColor: P, alignItems: 'center', justifyContent: 'center' },
-    
+
     errorText: { color: RED, marginBottom: 10, fontFamily: 'Quicksand' },
     retryBtn: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: BORDER, borderRadius: 12 },
     emptyState: { alignItems: 'center', paddingTop: 50 },
     emptyText: { fontSize: 18, fontWeight: '600', color: TEXT, marginBottom: 8, fontFamily: 'Quicksand' },
     emptySubtext: { color: SUB, fontFamily: 'Quicksand' },
-    
+
     cardSelected: { borderColor: P, borderWidth: 2, backgroundColor: P_LIGHT },
     checkbox: { width: 20, height: 20, borderRadius: 6, backgroundColor: P, marginRight: 16, alignItems: 'center', justifyContent: 'center' },
-    
+
     scoreRow: { flexDirection: 'row', alignItems: 'center' },
     scoreLabel: { fontSize: 10, color: SUB, marginRight: 6, fontWeight: '600', fontFamily: 'Quicksand' },
     scoreBarBg: { flex: 1, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, marginRight: 8 },
     scoreBarFill: { height: '100%', borderRadius: 2 },
     scoreValue: { fontSize: 10, fontWeight: '800', fontFamily: 'Quicksand' },
-    
+
     bulkBar: { position: 'absolute', bottom: 24, left: 20, right: 20, backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: 24, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 10, borderWidth: 1, borderColor: BORDER },
     bulkCount: { fontWeight: 'bold', fontSize: 16, color: TEXT, marginLeft: 8, fontFamily: 'Quicksand' },
     bulkActions: { flexDirection: 'row', gap: 16 },

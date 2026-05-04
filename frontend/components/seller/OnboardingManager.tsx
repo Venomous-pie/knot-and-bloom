@@ -1,6 +1,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import SellerWelcomeModal from "@/components/SellerWelcomeModal";
+import SellerWelcomeModal from "@/components/seller/SellerWelcomeModal";
 import React, { useEffect, useState } from "react";
 
 export default function OnboardingManager() {

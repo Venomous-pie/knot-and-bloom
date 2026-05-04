@@ -1,6 +1,6 @@
 import { navLinks } from "@/constants/categories";
 import { theme } from "@/constants/theme";
-import DropdownMenu, { DropdownItem } from "@/shared/DropdownMenu";
+import DropdownMenu, { DropdownItem } from "@/components/ui/DropdownMenu";
 import { Link, RelativePathString, usePathname } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";

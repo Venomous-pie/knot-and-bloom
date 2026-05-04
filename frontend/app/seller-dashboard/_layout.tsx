@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Stack, useRouter, Slot, usePathname } from 'expo-router';
 import React, { useEffect } from 'react';
 import { View, useWindowDimensions } from 'react-native';
-import DashboardSidebar from '@/components/DashboardSidebar';
+import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
 
 /**
  * Seller Dashboard Layout

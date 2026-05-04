@@ -7,7 +7,7 @@ import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/seller/ImageCropperModal';
 import { apiClient } from "@/api/api";
 import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, interpolate, Extrapolation } from "react-native-reanimated";
-import GlobalHeaderUI from "@/shared/GlobalHeaderUI";
+import GlobalHeaderUI from "@/components/layout/GlobalHeaderUI";
 import {
     ActivityIndicator,
     Image,
@@ -26,7 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { theme } from '@/constants/theme';
 
-import MenuSideBar from "@/shared/MenuSideBar";
+import MenuSideBar from "@/components/layout/MenuSideBar";
 
 interface SellerProfileData {
     uid: number;

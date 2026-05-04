@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensi
 import { theme } from '@/constants/theme';
 import { sellerAPI } from '@/api/api';
 import { User } from '@/types/user';
-import MakerCard from '@/components/MakerCard';
+import MakerCard from '@/components/product/MakerCard';
 import { Palette, SearchX } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -21,7 +21,7 @@ export default function MakersDirectory() {
                 // We expect response.data to be an array of sellers
                 const data = response.data as any;
                 const sellersList = Array.isArray(data) ? data : (data?.sellers || []);
-                
+
                 setMakers(sellersList);
             } catch (error) {
                 console.error("Failed to fetch makers:", error);
@@ -37,7 +37,7 @@ export default function MakersDirectory() {
     const containerWidth = Math.min(width, 1200);
     const padding = theme.spacing.lg * 2;
     const availableWidth = containerWidth - padding;
-    
+
     // Determine columns based on screen width
     let numColumns = 1;
     if (width >= 1024) numColumns = 3;

@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { authAPI } from "@/api/api";
 import { theme } from "@/constants/theme";
-import GoogleAuthButton from "@/components/GoogleAuthButton";
+import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
 import { RelativePathString, useRouter, useLocalSearchParams } from "expo-router";
 import {
     AlertCircle,
@@ -58,7 +58,7 @@ export default function BespokeAuthForm({
     const router = useRouter();
     const params = useLocalSearchParams();
     const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
-    
+
     const { width, height } = useWindowDimensions();
     const isDesktop = width > 1024;
 
@@ -331,7 +331,7 @@ export default function BespokeAuthForm({
             if (err.response?.data?.issues) {
                 const otpError = err.response.data.issues.find((i: any) => i.path.includes('otp'));
                 const passwordError = err.response.data.issues.find((i: any) => i.path.includes('password'));
-                
+
                 if (otpError) {
                     setAuthError({ message: otpError.message });
                 } else if (passwordError) {

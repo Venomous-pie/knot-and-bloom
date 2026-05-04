@@ -12,21 +12,21 @@ import {
     Package, ShoppingBag, DollarSign, Bell, RefreshCw,
     TrendingUp, TrendingDown, Star, CheckCircle, Clock, XCircle, Settings
 } from 'lucide-react-native';
-import Tooltip from '../../shared/Tooltip';
+import Tooltip from '../../components/ui/Tooltip';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
-const P       = '#B36979';
+const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
-const BG      = '#F4F4F8';
-const CARD    = '#FFFFFF';
-const TEXT    = '#1A1A2E';
-const SUB     = '#6B7280';
-const BORDER  = '#F0F0F5';
-const GREEN   = '#10B981';
-const AMBER   = '#F59E0B';
-const RED     = '#EF4444';
-const INDIGO  = '#6366F1';
-const TEAL    = '#14B8A6';
+const BG = '#F4F4F8';
+const CARD = '#FFFFFF';
+const TEXT = '#1A1A2E';
+const SUB = '#6B7280';
+const BORDER = '#F0F0F5';
+const GREEN = '#10B981';
+const AMBER = '#F59E0B';
+const RED = '#EF4444';
+const INDIGO = '#6366F1';
+const TEAL = '#14B8A6';
 
 interface DashboardStats {
     performanceSnapshot: {
@@ -59,7 +59,7 @@ function StatCard({ label, value, icon, color, sub, trend, tooltip }: {
             <Pressable onPress={() => {
                 Animated.sequence([
                     Animated.timing(scale, { toValue: 0.95, duration: 70, useNativeDriver: true }),
-                    Animated.timing(scale, { toValue: 1,    duration: 70, useNativeDriver: true }),
+                    Animated.timing(scale, { toValue: 1, duration: 70, useNativeDriver: true }),
                 ]).start();
             }} style={{ zIndex: 99, overflow: 'visible' }}>
                 <View style={{ position: 'relative', zIndex: 99, overflow: 'visible' }}>
@@ -73,8 +73,8 @@ function StatCard({ label, value, icon, color, sub, trend, tooltip }: {
                             <Text style={[s.statLbl, { marginTop: 0, lineHeight: 20 }]}>{label}</Text>
                             {trend && (
                                 <View style={[s.trendBadge, { backgroundColor: trend === 'up' ? '#DCFCE7' : '#FEE2E2' }]}>
-                                    {trend === 'up'   && <TrendingUp   size={10} color={GREEN} />}
-                                    {trend === 'down' && <TrendingDown size={10} color={RED}   />}
+                                    {trend === 'up' && <TrendingUp size={10} color={GREEN} />}
+                                    {trend === 'down' && <TrendingDown size={10} color={RED} />}
                                 </View>
                             )}
                         </View>
@@ -91,8 +91,8 @@ export default function SellerDashboardHome() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const { width } = useWindowDimensions();
-    const [stats, setStats]         = useState<DashboardStats | null>(null);
-    const [loading, setLoading]     = useState(true);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     React.useEffect(() => {
@@ -110,7 +110,7 @@ export default function SellerDashboardHome() {
     };
     useEffect(() => { fetchStats(); }, []);
 
-    const fmt  = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const fmtK = (n: number) => n >= 1000 ? `₱${(n / 1000).toFixed(1)}k` : `₱${n.toFixed(0)}`;
 
     if (loading) return <View style={s.center}><ActivityIndicator size="large" color={P} /></View>;
@@ -124,9 +124,9 @@ export default function SellerDashboardHome() {
     );
 
     const isDesktop = width >= 1024;
-    
+
     // Calculate dynamic chart width.
-    const CHART_W = isDesktop 
+    const CHART_W = isDesktop
         ? ((Math.min(width - 260, 1280) * 0.65) - 80)
         : Math.min(width - 80, 340);
 
@@ -135,7 +135,7 @@ export default function SellerDashboardHome() {
         return {
             value: d.sales,
             label: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
-            frontColor:    isToday ? P : P + '70',
+            frontColor: isToday ? P : P + '70',
             gradientColor: isToday ? P + 'CC' : P + '30',
             topLabelComponent: d.sales > 0
                 ? () => <Text style={{ color: P, fontSize: 8, fontWeight: '700', marginBottom: 2 }}>{fmtK(d.sales)}</Text>
@@ -329,28 +329,28 @@ export default function SellerDashboardHome() {
                 }
             >
                 <View style={isDesktop ? s.desktopContainer : undefined}>
-                    
+
                     {StatsBar}
 
-                {isDesktop ? (
-                    <View style={s.desktopGrid}>
-                        <View style={s.desktopLeft}>
+                    {isDesktop ? (
+                        <View style={s.desktopGrid}>
+                            <View style={s.desktopLeft}>
+                                {BarChartCard}
+                                {TopProductsCard}
+                            </View>
+                            <View style={s.desktopRight}>
+                                {PipelineCard}
+                                {RecentReviewsCard}
+                            </View>
+                        </View>
+                    ) : (
+                        <>
                             {BarChartCard}
-                            {TopProductsCard}
-                        </View>
-                        <View style={s.desktopRight}>
                             {PipelineCard}
+                            {TopProductsCard}
                             {RecentReviewsCard}
-                        </View>
-                    </View>
-                ) : (
-                    <>
-                        {BarChartCard}
-                        {PipelineCard}
-                        {TopProductsCard}
-                        {RecentReviewsCard}
-                    </>
-                )}
+                        </>
+                    )}
                 </View>
             </ScrollView>
         </View>
@@ -371,26 +371,26 @@ const s = StyleSheet.create({
     headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
     header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, maxWidth: 1280, width: '100%', alignSelf: 'center' },
     greeting: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    dateTxt:  { fontSize: 12, color: SUB, marginTop: 3, fontFamily: 'Quicksand' },
-    bellBtn:  { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3, position: 'relative' },
-    bellDot:  { position: 'absolute', top: 8, right: 8, width: 9, height: 9, borderRadius: 5, backgroundColor: RED, borderWidth: 1.5, borderColor: CARD },
+    dateTxt: { fontSize: 12, color: SUB, marginTop: 3, fontFamily: 'Quicksand' },
+    bellBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3, position: 'relative' },
+    bellDot: { position: 'absolute', top: 8, right: 8, width: 9, height: 9, borderRadius: 5, backgroundColor: RED, borderWidth: 1.5, borderColor: CARD },
 
-    statRow:  { gap: 16, marginBottom: 24 },
+    statRow: { gap: 16, marginBottom: 24 },
     statCard: { backgroundColor: CARD, borderRadius: 20, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
     statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     trendBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, height: 20 },
-    statVal:  { fontSize: 24, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
-    statLbl:  { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4, fontWeight: '500' },
-    statSub:  { fontSize: 11, color: SUB, fontFamily: 'Quicksand' },
+    statVal: { fontSize: 24, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
+    statLbl: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4, fontWeight: '500' },
+    statSub: { fontSize: 11, color: SUB, fontFamily: 'Quicksand' },
 
-    card:      { backgroundColor: CARD, borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, overflow: 'hidden' },
-    cardHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    card: { backgroundColor: CARD, borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, overflow: 'hidden' },
+    cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     cardTitle: { fontSize: 16, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    cardSub:   { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
-    chip:      { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-    chipTxt:   { fontSize: 11, fontWeight: '700', fontFamily: 'Quicksand' },
-    linkTxt:   { fontSize: 13, fontWeight: '600', color: P, fontFamily: 'Quicksand' },
+    cardSub: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
+    chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+    chipTxt: { fontSize: 11, fontWeight: '700', fontFamily: 'Quicksand' },
+    linkTxt: { fontSize: 13, fontWeight: '600', color: P, fontFamily: 'Quicksand' },
 
     pipelineContainer: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: 24, paddingHorizontal: 8 },
     pipelineStep: { alignItems: 'center', width: 60 },

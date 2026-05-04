@@ -22,7 +22,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from 'expo-clipboard';
 import { theme } from "@/constants/theme";
 import { User } from "@/types/user";
-import MakerCard from "@/components/MakerCard";
+import MakerCard from "@/components/product/MakerCard";
 
 const MOCK_REVIEWS = [
     {
@@ -218,7 +218,7 @@ export default function ProductDetailPage() {
 
     const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
     const isInStock = totalStock > 0;
-    
+
     const handleCopySKU = async (sku: string) => {
         if (!sku) return;
         await Clipboard.setStringAsync(sku);
@@ -256,11 +256,11 @@ export default function ProductDetailPage() {
 
     const renderBreadcrumbs = () => {
         if (!product) return null;
-        
+
         const crumbs: { label: string, href: string | null }[] = [
             { label: 'Home', href: '/' }
         ];
-        
+
         if (product.categories && product.categories.length > 0) {
             // We use up to 2 categories so it doesn't get ridiculously long
             const visibleCats = product.categories.slice(0, 2);
@@ -270,7 +270,7 @@ export default function ProductDetailPage() {
         } else {
             crumbs.push({ label: 'Products', href: '/products/All' });
         }
-        
+
         // Truncate product name if it's too long
         let truncatedName = product.name;
         if (truncatedName.length > 25) {
@@ -310,12 +310,12 @@ export default function ProductDetailPage() {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {renderBreadcrumbs()}
-                
+
                 <View style={[styles.mainLayout, isDesktop && styles.mainLayoutDesktop]}>
-                    
+
                     {/* ================= LEFT COLUMN ================= */}
                     <View style={isDesktop ? styles.leftColumnDesktop : styles.leftColumnMobile}>
-                        
+
                         {/* Main Product Image */}
                         <View style={[styles.imageContainer, isDesktop && styles.imageContainerDesktop]}>
                             {product.image ? (
@@ -352,25 +352,25 @@ export default function ProductDetailPage() {
 
                     {/* ================= RIGHT COLUMN ================= */}
                     <View style={isDesktop ? styles.rightColumnDesktop : styles.rightColumnMobile}>
-                        
+
                         {/* Core Details: Name & Price */}
                         <View style={styles.sectionContainer}>
                             <Text style={styles.productName}>{product.name}</Text>
-                            
+
                             {product.sku && (
                                 <Pressable onPress={() => handleCopySKU(product.sku)} style={styles.skuContainer}>
                                     <Text style={styles.skuText}>SKU: {product.sku}</Text>
                                     {skuCopied ? (
-                                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 2}}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 2 }}>
                                             <Ionicons name="checkmark-outline" size={14} color={theme.colors.success} />
-                                            <Text style={{fontSize: 11, color: theme.colors.success, fontWeight: '600'}}>Copied!</Text>
+                                            <Text style={{ fontSize: 11, color: theme.colors.success, fontWeight: '600' }}>Copied!</Text>
                                         </View>
                                     ) : (
                                         <Ionicons name="copy-outline" size={12} color={theme.colors.textLight} />
                                     )}
                                 </Pressable>
                             )}
-                            
+
                             <View style={styles.priceSection}>
                                 {priceCalc.hasDiscount ? (
                                     <View>
@@ -404,7 +404,7 @@ export default function ProductDetailPage() {
                                     <Text style={styles.sectionTitle}>Variant</Text>
                                     <Text style={styles.selectedVariantLabel}>{selectedVariant || 'Select one'}</Text>
                                 </View>
-                                
+
                                 <View style={styles.variantsGrid}>
                                     {product.variants.map((variant) => {
                                         const isSelected = selectedVariant === variant.name;
@@ -465,7 +465,7 @@ export default function ProductDetailPage() {
                                 <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
                             </View>
                             <View style={styles.shippingInfoBlock}>
-                                <Ionicons name="airplane-outline" size={20} color={theme.colors.text} style={{marginTop: 2}} />
+                                <Ionicons name="airplane-outline" size={20} color={theme.colors.text} style={{ marginTop: 2 }} />
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.shippingInfoTitle}>Standard Shipping</Text>
                                     <Text style={styles.shippingInfoDesc}>Estimated Delivery: 3-5 Business Days</Text>
@@ -478,23 +478,23 @@ export default function ProductDetailPage() {
                         {product.description && (
                             <View style={styles.sectionContainer}>
                                 <Text style={styles.sectionTitle}>Product Description</Text>
-                                <Text 
+                                <Text
                                     style={styles.descriptionText}
                                     numberOfLines={isDescriptionExpanded ? undefined : 4}
                                 >
                                     {product.description}
                                 </Text>
-                                <Pressable 
+                                <Pressable
                                     style={styles.readMoreButton}
                                     onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
                                 >
                                     <Text style={styles.readMoreText}>
                                         {isDescriptionExpanded ? 'Show Less' : 'Read More'}
                                     </Text>
-                                    <Ionicons 
-                                        name={isDescriptionExpanded ? "chevron-up" : "chevron-down"} 
-                                        size={16} 
-                                        color={theme.colors.primary} 
+                                    <Ionicons
+                                        name={isDescriptionExpanded ? "chevron-up" : "chevron-down"}
+                                        size={16}
+                                        color={theme.colors.primary}
                                     />
                                 </Pressable>
                             </View>

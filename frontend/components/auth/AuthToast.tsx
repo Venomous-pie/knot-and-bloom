@@ -1,6 +1,5 @@
 import { authEvents } from '@/utils/authEvents';
 import { theme } from '@/constants/theme';
-import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AlertCircle, X } from 'lucide-react-native';

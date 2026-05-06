@@ -93,7 +93,7 @@ const customerRegisterController = async (input: unknown) => {
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
-        const refreshToken = RefreshTokenService.generate({
+        const refreshToken = await RefreshTokenService.generate({
             userId: customer.uid,
             ...(customer.email && { email: customer.email }),
             role: customer.role,
@@ -177,7 +177,7 @@ const customerLoginController = async (input: unknown) => {
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' }); // 7d expiry for better UX
-        const refreshToken = RefreshTokenService.generate({
+        const refreshToken = await RefreshTokenService.generate({
             userId: customer.uid,
             ...(customer.email && { email: customer.email }),
             role: customer.role,
@@ -246,7 +246,7 @@ const getCustomerProfile = async (userId: number) => {
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
-    const refreshToken = RefreshTokenService.generate({
+    const refreshToken = await RefreshTokenService.generate({
         userId: customer.uid,
         ...(customer.email && { email: customer.email }),
         role: customer.role,
@@ -383,7 +383,7 @@ const googleLoginController = async (input: unknown) => {
         };
 
         const token = jwt.sign(jwtPayload, process.env.JWT_SECRET!, { expiresIn: '7d' });
-        const refreshToken = RefreshTokenService.generate({
+        const refreshToken = await RefreshTokenService.generate({
             userId: customer.uid,
             ...(customer.email && { email: customer.email }),
             role: customer.role,

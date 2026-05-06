@@ -83,73 +83,85 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Validate stock availability for all items
-        const stockIssues: string[] = [];
-        for (const item of cart.items) {
-            if (item.productVariant) {
-                if (item.productVariant.stock < item.quantity) {
-                    stockIssues.push(
-                        `"${item.product.name}" (${item.productVariant.name}): Only ${item.productVariant.stock} available, requested ${item.quantity}`
-                    );
+        // Validate stock, calculate prices, and create session in an atomic transaction
+        const sessionResult = await prisma.$transaction(async (tx) => {
+            // Validate stock availability for all items
+            const stockIssues: string[] = [];
+            for (const item of cart.items) {
+                if (item.productVariant) {
+                    const availableStock = item.productVariant.stock - item.productVariant.reservedStock;
+                    if (availableStock < item.quantity) {
+                        stockIssues.push(
+                            `"${item.product.name}" (${item.productVariant.name}): Only ${availableStock} available, requested ${item.quantity}`
+                        );
+                    }
                 }
             }
-        }
 
-        if (stockIssues.length > 0) {
-            res.status(400).json({
-                success: false,
-                error: 'INSUFFICIENT_STOCK',
-                message: 'Some items have insufficient stock.',
-                details: stockIssues,
+            if (stockIssues.length > 0) {
+                throw new ErrorHandler.ValidationError(stockIssues.map(msg => ({ message: msg, path: ['stock'] })));
+            }
+
+            // Reserve stock
+            for (const item of cart.items) {
+                if (item.productVariantId) {
+                    await tx.productVariant.update({
+                        where: { uid: item.productVariantId },
+                        data: { reservedStock: { increment: item.quantity } }
+                    });
+                }
+            }
+
+            // Lock prices and create snapshot
+            let totalAmount = 0;
+            const lockedPrices: LockedPriceItem[] = cart.items.map(item => {
+                const product = {
+                    basePrice: Number(item.product.basePrice),
+                    discountPercentage: item.product.discountPercentage
+                };
+                const variant = item.productVariant ? {
+                    price: item.productVariant.price ? Number(item.productVariant.price) : null,
+                    discountPercentage: item.productVariant.discountPercentage
+                } : null;
+
+                const { effectivePrice, discountPercentage, finalPrice } = Pricing.calculateFinalPrice(product, variant);
+
+                const lineTotal = finalPrice * item.quantity;
+                totalAmount += lineTotal;
+
+                return {
+                    itemUid: item.uid,
+                    productId: item.productId,
+                    variantId: item.productVariantId,
+                    quantity: item.quantity,
+                    unitPrice: effectivePrice,
+                    discountPercentage,
+                    finalPrice,
+                    productName: item.product.name,
+                    variantName: item.productVariant?.name ?? null,
+                    image: item.productVariant?.images?.[0] ?? item.product.image ?? null,
+                    sellerId: item.product.sellerId ?? null,
+                    sellerName: item.product.seller?.name ?? null,
+                };
             });
-            return;
-        }
 
-        // Lock prices and create snapshot
-        let totalAmount = 0;
-        const lockedPrices: LockedPriceItem[] = cart.items.map(item => {
-            const product = {
-                basePrice: Number(item.product.basePrice),
-                discountPercentage: item.product.discountPercentage
-            };
-            const variant = item.productVariant ? {
-                price: item.productVariant.price ? Number(item.productVariant.price) : null,
-                discountPercentage: item.productVariant.discountPercentage
-            } : null;
+            // Create checkout session
+            const session = await tx.checkoutSession.create({
+                data: {
+                    customerId: Number(customerId),
+                    cartSnapshot: JSON.stringify(cart.items),
+                    lockedPrices: JSON.stringify(lockedPrices),
+                    totalAmount,
+                    status: CheckoutStatus.INITIATED,
+                    expiresAt: new Date(Date.now() + SESSION_EXPIRY_MS),
+                    idempotencyKey,
+                },
+            });
 
-            const { effectivePrice, discountPercentage, finalPrice } = Pricing.calculateFinalPrice(product, variant);
-
-            const lineTotal = finalPrice * item.quantity;
-            totalAmount += lineTotal;
-
-            return {
-                itemUid: item.uid,
-                productId: item.productId,
-                variantId: item.productVariantId,
-                quantity: item.quantity,
-                unitPrice: effectivePrice,
-                discountPercentage,
-                finalPrice,
-                productName: item.product.name,
-                variantName: item.productVariant?.name ?? null,
-                image: item.productVariant?.images?.[0] ?? item.product.image ?? null,
-                sellerId: item.product.sellerId ?? null,
-                sellerName: item.product.seller?.name ?? null,
-            };
+            return { session, lockedPrices, totalAmount };
         });
 
-        // Create checkout session
-        const session = await prisma.checkoutSession.create({
-            data: {
-                customerId: Number(customerId),
-                cartSnapshot: JSON.stringify(cart.items),
-                lockedPrices: JSON.stringify(lockedPrices),
-                totalAmount,
-                status: CheckoutStatus.INITIATED,
-                expiresAt: new Date(Date.now() + SESSION_EXPIRY_MS),
-                idempotencyKey,
-            },
-        });
+        const { session, lockedPrices, totalAmount } = sessionResult;
 
         AuditService.logCheckout('CHECKOUT_INITIATED', session.uid, Number(customerId), {
             itemCount: lockedPrices.length,
@@ -718,9 +730,11 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                         where: {
                             uid: item.variantId,
                             stock: { gte: item.quantity },
+                            reservedStock: { gte: item.quantity },
                         },
                         data: {
                             stock: { decrement: item.quantity },
+                            reservedStock: { decrement: item.quantity },
                             soldCount: { increment: item.quantity },
                         },
                     });
@@ -916,9 +930,22 @@ const cancelCheckout = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        await prisma.checkoutSession.update({
-            where: { uid: session.uid },
-            data: { status: CheckoutStatus.CANCELLED },
+        const lockedPrices = JSON.parse(session.lockedPrices);
+
+        await prisma.$transaction(async (tx) => {
+            for (const item of lockedPrices) {
+                if (item.variantId) {
+                    await tx.productVariant.updateMany({
+                        where: { uid: item.variantId, reservedStock: { gte: item.quantity } },
+                        data: { reservedStock: { decrement: item.quantity } },
+                    });
+                }
+            }
+
+            await tx.checkoutSession.update({
+                where: { uid: session.uid },
+                data: { status: CheckoutStatus.CANCELLED },
+            });
         });
 
         AuditService.logCheckout('CHECKOUT_CANCELLED', session.uid, session.customerId);

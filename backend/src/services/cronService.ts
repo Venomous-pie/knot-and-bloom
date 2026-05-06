@@ -13,6 +13,19 @@ class CronService {
             this.processOrderAutoComplete();
             this.processOrderReminders();
         });
+
+        // Run every 5 minutes
+        cron.schedule('*/5 * * * *', () => {
+            console.log('Running Expired Checkout Session Cleanup...');
+            this.processExpiredCheckoutSessions();
+        });
+
+        // Run daily at 3 AM
+        cron.schedule('0 3 * * *', () => {
+            console.log('Running Daily Cleanup Jobs...');
+            this.cleanupExpiredRateLimits();
+            this.cleanupExpiredRefreshTokens();
+        });
     }
 
     private async processOrderAutoComplete() {
@@ -46,8 +59,7 @@ class CronService {
                             orderId: order.uid,
                             status: 'COMPLETED',
                             title: 'Order Completed (Auto)',
-                            message: 'Order automatically marked as completed after guarantee period.',
-                            createdBy: 'SYSTEM'
+                            message: 'Order automatically marked as completed after guarantee period.'
                         }
                     });
 
@@ -165,6 +177,73 @@ class CronService {
 
         } catch (error) {
             console.error("Error in processOrderReminders:", error);
+        }
+    }
+
+    private async processExpiredCheckoutSessions() {
+        try {
+            const now = new Date();
+            const expiredSessions = await prisma.checkoutSession.findMany({
+                where: {
+                    status: { in: ['INITIATED', 'VALIDATING', 'PROCESSING_PAYMENT', 'AWAITING_PAYMENT'] },
+                    expiresAt: { lt: now }
+                }
+            });
+
+            for (const session of expiredSessions) {
+                console.log(`Auto-cancelling expired checkout session #${session.uid}`);
+
+                try {
+                    const lockedPrices = JSON.parse(session.lockedPrices);
+                    await prisma.$transaction(async (tx) => {
+                        // Restore reserved stock
+                        for (const item of lockedPrices) {
+                            if (item.variantId) {
+                                await tx.productVariant.updateMany({
+                                    where: { uid: item.variantId, reservedStock: { gte: item.quantity } },
+                                    data: { reservedStock: { decrement: item.quantity } }
+                                });
+                            }
+                        }
+
+                        // Update Status
+                        await tx.checkoutSession.update({
+                            where: { uid: session.uid },
+                            data: { status: 'EXPIRED' }
+                        });
+                    });
+                } catch (txError) {
+                    console.error(`Failed to cancel session #${session.uid}:`, txError);
+                }
+            }
+        } catch (error) {
+            console.error("Error in processExpiredCheckoutSessions:", error);
+        }
+    }
+
+    private async cleanupExpiredRateLimits() {
+        try {
+            const result = await prisma.rateLimit.deleteMany({
+                where: { expiresAt: { lt: new Date() } }
+            });
+            if (result.count > 0) {
+                console.log(`Cleaned up ${result.count} expired rate limit records.`);
+            }
+        } catch (error) {
+            console.error("Error in cleanupExpiredRateLimits:", error);
+        }
+    }
+
+    private async cleanupExpiredRefreshTokens() {
+        try {
+            const result = await prisma.refreshToken.deleteMany({
+                where: { expiresAt: { lt: new Date() } }
+            });
+            if (result.count > 0) {
+                console.log(`Cleaned up ${result.count} expired refresh tokens.`);
+            }
+        } catch (error) {
+            console.error("Error in cleanupExpiredRefreshTokens:", error);
         }
     }
 }

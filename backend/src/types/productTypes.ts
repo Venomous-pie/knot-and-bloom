@@ -42,6 +42,7 @@ interface GenerateVariantSKUInput {
 interface GenerateSKUInput {
     category: string;
     variants?: Array<{ name: string }>;
+    name?: string;
 }
 
 interface ProductDescriptionInput {

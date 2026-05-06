@@ -36,6 +36,8 @@ import { socketService } from './services/SocketService.js';
 import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
 import { sanitizeInput } from './middleware/sanitize.js';
 import { cronService } from './services/cronService.js';
+import { PrismaRateLimitStore } from './middleware/rateLimitStore.js';
+import { requestLogger } from './middleware/requestLogger.js';
 
 const app = express();
 // Check if cronService.start exists before calling (defensive, though file is created)
@@ -48,6 +50,7 @@ const PORT = process.env.PORT || 3030;
 
 // ── Security Middlewares ──
 app.use(helmet()); // Sets security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
+app.use(requestLogger); // Structured JSON request logging for observability
 
 // Global rate limiter: 100 requests per minute per IP
 const globalLimiter = rateLimit({
@@ -56,6 +59,7 @@ const globalLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'Too many requests, please try again later.' },
+    store: new PrismaRateLimitStore(),
 });
 app.use(globalLimiter);
 

@@ -127,7 +127,7 @@ router.post('/send-otp', async (req, res, next) => {
 });
 // @route   POST /auth/refresh
 // @desc    Exchange a refresh token for a new access token + rotated refresh token
-router.post('/refresh', (req, res) => {
+router.post('/refresh', async (req, res) => {
     try {
         const { refreshToken } = req.body;
 
@@ -136,7 +136,7 @@ router.post('/refresh', (req, res) => {
         }
 
         // Validate and consume the old refresh token (rotation)
-        const payload = RefreshTokenService.validate(refreshToken);
+        const payload = await RefreshTokenService.validate(refreshToken);
         if (!payload) {
             return res.status(401).json({ success: false, error: 'Invalid or expired refresh token.' });
         }
@@ -153,7 +153,7 @@ router.post('/refresh', (req, res) => {
         const newAccessToken = jwt.sign(accessPayload, process.env.JWT_SECRET!, { expiresIn: '7d' });
 
         // Issue a new rotated refresh token
-        const newRefreshToken = RefreshTokenService.generate({
+        const newRefreshToken = await RefreshTokenService.generate({
             userId: payload.userId,
             ...(payload.email && { email: payload.email }),
             role: payload.role,
@@ -176,12 +176,12 @@ router.post('/refresh', (req, res) => {
 
 // @route   POST /auth/logout
 // @desc    Revoke a refresh token (logout)
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
     try {
         const { refreshToken } = req.body;
 
         if (refreshToken && typeof refreshToken === 'string') {
-            RefreshTokenService.revoke(refreshToken);
+            await RefreshTokenService.revoke(refreshToken);
         }
 
         res.status(200).json({ success: true, message: 'Logged out successfully.' });

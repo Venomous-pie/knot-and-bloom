@@ -1,14 +1,5 @@
 import crypto from 'crypto';
-
-/**
- * In-memory refresh token store.
- * 
- * ⚠️ PRODUCTION NOTE: Replace with Redis or a database table for
- * multi-instance deployments. In-memory storage is lost on restart
- * and doesn't work with horizontal scaling.
- * 
- * Each refresh token maps to: { userId, role, expiresAt }
- */
+import prisma from '../utils/prismaUtils.js';
 
 interface RefreshTokenEntry {
     userId: number;
@@ -16,31 +7,29 @@ interface RefreshTokenEntry {
     role: string;
     sellerId?: number;
     sellerStatus?: string;
-    expiresAt: number;
 }
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-const tokenStore = new Map<string, RefreshTokenEntry>();
-
-// Clean up expired tokens every 30 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [token, entry] of tokenStore) {
-        if (entry.expiresAt < now) tokenStore.delete(token);
-    }
-}, 30 * 60 * 1000);
 
 export const RefreshTokenService = {
     /**
      * Generate a new refresh token and store it.
      */
-    generate(payload: Omit<RefreshTokenEntry, 'expiresAt'>): string {
+    async generate(payload: RefreshTokenEntry): Promise<string> {
         const token = crypto.randomBytes(48).toString('hex');
-        tokenStore.set(token, {
-            ...payload,
-            expiresAt: Date.now() + REFRESH_TOKEN_TTL_MS,
+        
+        await prisma.refreshToken.create({
+            data: {
+                token,
+                userId: payload.userId,
+                ...(payload.email && { email: payload.email }),
+                role: payload.role,
+                ...(payload.sellerId && { sellerId: payload.sellerId }),
+                ...(payload.sellerStatus && { sellerStatus: payload.sellerStatus }),
+                expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+            }
         });
+        
         return token;
     },
 
@@ -49,38 +38,48 @@ export const RefreshTokenService = {
      * Returns the stored payload if valid, null otherwise.
      * The old token is deleted (rotation: caller must issue a new one).
      */
-    validate(token: string): Omit<RefreshTokenEntry, 'expiresAt'> | null {
-        const entry = tokenStore.get(token);
+    async validate(token: string): Promise<RefreshTokenEntry | null> {
+        const entry = await prisma.refreshToken.findUnique({
+            where: { token }
+        });
+
         if (!entry) return null;
 
         // Delete the used token (rotation — prevents reuse)
-        tokenStore.delete(token);
+        await prisma.refreshToken.delete({ where: { uid: entry.uid } });
 
-        if (entry.expiresAt < Date.now()) return null;
+        if (entry.expiresAt.getTime() < Date.now()) return null;
 
-        const { expiresAt, ...payload } = entry;
-        return payload;
+        return {
+            userId: entry.userId,
+            ...(entry.email && { email: entry.email }),
+            role: entry.role,
+            ...(entry.sellerId && { sellerId: entry.sellerId }),
+            ...(entry.sellerStatus && { sellerStatus: entry.sellerStatus }),
+        };
     },
 
     /**
      * Revoke a specific refresh token (logout).
      */
-    revoke(token: string): boolean {
-        return tokenStore.delete(token);
+    async revoke(token: string): Promise<boolean> {
+        try {
+            await prisma.refreshToken.delete({ where: { token } });
+            return true;
+        } catch (e) {
+            // Prisma throws if not found, we can just return false
+            return false;
+        }
     },
 
     /**
      * Revoke all refresh tokens for a user (password change, account compromise).
      */
-    revokeAllForUser(userId: number): number {
-        let count = 0;
-        for (const [token, entry] of tokenStore) {
-            if (entry.userId === userId) {
-                tokenStore.delete(token);
-                count++;
-            }
-        }
-        return count;
+    async revokeAllForUser(userId: number): Promise<number> {
+        const result = await prisma.refreshToken.deleteMany({
+            where: { userId }
+        });
+        return result.count;
     },
 };
 

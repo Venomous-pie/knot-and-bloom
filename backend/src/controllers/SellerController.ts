@@ -365,15 +365,31 @@ export const sellerController = {
     async listSellers(req: Request, res: Response) {
         try {
             const { status } = req.query;
+            const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+            const offset = parseInt(req.query.offset as string) || 0;
             const where: any = { deletedAt: null };
             if (status) where.status = String(status);
 
-            const sellers = await prisma.seller.findMany({
-                where,
-                orderBy: { createdAt: 'desc' },
-                take: 50
+            const [sellers, total] = await Promise.all([
+                prisma.seller.findMany({
+                    where,
+                    orderBy: { createdAt: 'desc' },
+                    take: limit,
+                    skip: offset,
+                }),
+                prisma.seller.count({ where }),
+            ]);
+            res.json({
+                sellers,
+                total,
+                pagination: {
+                    limit,
+                    offset,
+                    hasMore: offset + limit < total,
+                    currentPage: Math.floor(offset / limit) + 1,
+                    totalPages: Math.ceil(total / limit),
+                },
             });
-            res.json(sellers);
         } catch (error) {
             res.status(500).json({ error: 'Failed to list sellers' });
         }
@@ -382,15 +398,33 @@ export const sellerController = {
     // Public: List Active Sellers
     async listActiveSellers(req: Request, res: Response) {
         try {
-            const sellers = await prisma.seller.findMany({
-                where: { 
-                    deletedAt: null,
-                    status: SellerStatus.ACTIVE
+            const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+            const offset = parseInt(req.query.offset as string) || 0;
+            const where = {
+                deletedAt: null,
+                status: SellerStatus.ACTIVE,
+            };
+
+            const [sellers, total] = await Promise.all([
+                prisma.seller.findMany({
+                    where,
+                    orderBy: { approvedAt: 'desc' },
+                    take: limit,
+                    skip: offset,
+                }),
+                prisma.seller.count({ where }),
+            ]);
+            res.json({
+                sellers,
+                total,
+                pagination: {
+                    limit,
+                    offset,
+                    hasMore: offset + limit < total,
+                    currentPage: Math.floor(offset / limit) + 1,
+                    totalPages: Math.ceil(total / limit),
                 },
-                orderBy: { approvedAt: 'desc' },
-                take: 50
             });
-            res.json(sellers);
         } catch (error) {
             res.status(500).json({ error: 'Failed to list active sellers' });
         }
@@ -427,20 +461,30 @@ export const sellerController = {
                 return res.status(403).json({ error: "Unauthorized to view these orders" });
             }
 
-            const orders = await prisma.order.findMany({
-                where: { sellerId },
-                include: {
-                    items: {
-                        include: {
-                            product: { select: { name: true, image: true } }
+            const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+            const offset = parseInt(req.query.offset as string) || 0;
+
+            const whereClause = { sellerId };
+
+            const [orders, total] = await Promise.all([
+                prisma.order.findMany({
+                    where: whereClause,
+                    include: {
+                        items: {
+                            include: {
+                                product: { select: { name: true, image: true } }
+                            }
+                        },
+                        customer: {
+                            select: { name: true, email: true }
                         }
                     },
-                    customer: {
-                        select: { name: true, email: true }
-                    }
-                },
-                orderBy: { uploaded: 'desc' }
-            });
+                    orderBy: { uploaded: 'desc' },
+                    take: limit,
+                    skip: offset,
+                }),
+                prisma.order.count({ where: whereClause }),
+            ]);
 
             // Cast Decimal to Number for frontend consumption
             const safeOrders = orders.map(order => ({
@@ -451,7 +495,17 @@ export const sellerController = {
                 sellerEarnings: Number(order.sellerEarnings),
             }));
 
-            res.json(safeOrders);
+            res.json({
+                orders: safeOrders,
+                total,
+                pagination: {
+                    limit,
+                    offset,
+                    hasMore: offset + limit < total,
+                    currentPage: Math.floor(offset / limit) + 1,
+                    totalPages: Math.ceil(total / limit),
+                },
+            });
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: "Failed to fetch orders" });

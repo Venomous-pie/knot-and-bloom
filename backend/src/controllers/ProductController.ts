@@ -6,6 +6,7 @@ import ErrorHandler from "../error/errorHandler.js";
 import { Role } from "../types/authTypes.js";
 import Pricing from "../utils/pricingUtils.js";
 import { ensureAdminSellerProfile } from "../utils/sellerUtils.js";
+import { cache } from "../utils/cacheUtils.js";
 
 import type { AuthPayload } from "../types/authTypes.js";
 import type { GetProductsResult } from "../types/productTypes.js";
@@ -174,6 +175,8 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                 return newProduct;
             });
 
+            // Invalidate product caches
+            cache.deletePattern('product:');
             return product;
 
         } catch (error: any) {
@@ -210,6 +213,10 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
     }
 
     const { category, searchTerm, newArrival = false, limit = 30, offset = 0, sort } = parsedInput;
+
+    const cacheKey = `product:list:${JSON.stringify(parsedInput)}`;
+    const cachedResult = cache.get<GetProductsResult>(cacheKey);
+    if (cachedResult) return cachedResult;
 
     const whereClause: any = {};
 
@@ -287,7 +294,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         prisma.product.count({ where: whereClause }),
     ]);
 
-    return {
+    const result = {
         products,
         total,
         pagination: {
@@ -298,9 +305,15 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
             totalPages: Math.ceil(total / limit),
         },
     };
+
+    cache.set(cacheKey, result, 60); // Cache for 60 seconds
+    return result;
 };
 
 export const getCategoryCounts = async () => {
+    const cacheKey = `product:categories`;
+    const cached = cache.get<Record<string, number>>(cacheKey);
+    if (cached) return cached;
     const baseFilter: any = {
         deletedAt: null,
         status: ProductStatus.ACTIVE,
@@ -333,6 +346,7 @@ export const getCategoryCounts = async () => {
         }
     });
 
+    cache.set(cacheKey, counts, 120); // Cache for 2 minutes
     return counts;
 };
 
@@ -407,10 +421,14 @@ export const updateProductStatus = async (productId: string, status: string, rej
         }
     });
 
+    cache.deletePattern('product:');
     return updated;
 };
 
 export const searchProducts = async (searchTerm: string, limit = 20) => {
+    const cacheKey = `product:search:${searchTerm}:${limit}`;
+    const cached = cache.get<any[]>(cacheKey);
+    if (cached) return cached;
 
     // Only show ACTIVE products - PENDING/SUSPENDED/null are hidden from public
     const baseFilter: any = {
@@ -441,6 +459,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
                 seller: { select: { name: true, slug: true, logo: true } }
             }
         });
+        cache.set(cacheKey, products, 60);
         return products;
     }
 
@@ -464,6 +483,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
         }
     });
 
+    cache.set(cacheKey, products, 60);
     return products;
 };
 
@@ -477,6 +497,10 @@ export const getProductById = async (productId: string) => {
         }]);
     }
 
+    const cacheKey = `product:detail:${parsedId}`;
+    const cached = cache.get<any>(cacheKey);
+    if (cached) return cached;
+
     const product = await prisma.product.findUnique({
         where: { uid: parsedId },
         include: {
@@ -489,6 +513,7 @@ export const getProductById = async (productId: string) => {
         throw new ErrorHandler.NotFoundError('Product', productId);
     }
 
+    cache.set(cacheKey, product, 30);
     return product;
 };
 
@@ -654,6 +679,7 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
 
     // Emit Realtime Update
     socketService.emit('product:updated', { productId: parsedId, version: result.version });
+    cache.deletePattern('product:');
 
     return result;
 };
@@ -692,5 +718,6 @@ export const deleteProduct = async (productId: string, user?: AuthPayload) => {
         });
     });
 
+    cache.deletePattern('product:');
     return result;
 };

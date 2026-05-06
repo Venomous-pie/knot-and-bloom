@@ -37,11 +37,11 @@ model Product {
 
   // SEO & Optimization
   tags            String[]
-  materials       String?           // Product-level materials (e.g. "100% Acrylic Yarn")
-  metaTitle       String?           // SEO title override (max 70 chars)
-  metaDescription String?           // SEO description override (max 160 chars)
+  materials       String? // Product-level materials (e.g. "100% Acrylic Yarn")
+  metaTitle       String? // SEO title override (max 70 chars)
+  metaDescription String? // SEO description override (max 160 chars)
 
-  orderItems OrderItem[]
+  orderItems    OrderItem[]
   wishlistItems WishlistItem[]
 }
 
@@ -52,6 +52,7 @@ model ProductVariant {
   name               String
   sku                String     @unique
   stock              Int        @default(0)
+  reservedStock      Int        @default(0)
   soldCount          Int        @default(0)
   price              Decimal?
   discountPercentage Int?
@@ -88,6 +89,7 @@ model Customer {
   paymentMethods        PaymentMethod[]
   notificationSettings  NotificationSettings?
   notifications         Notification[]
+  refreshTokens         RefreshToken[]
 
   // Account deletion
   deletedAt            DateTime?
@@ -238,8 +240,8 @@ enum Role {
 
 enum SellerStatus {
   PENDING
-  APPROVED  // Admin approved — awaiting user onboarding completion
-  ACTIVE    // Officially a seller (onboarding completed)
+  APPROVED // Admin approved — awaiting user onboarding completion
+  ACTIVE // Officially a seller (onboarding completed)
   SUSPENDED
   BANNED
   REJECTED
@@ -253,18 +255,18 @@ enum ProductStatus {
 }
 
 model Seller {
-  uid              Int          @id @default(autoincrement())
-  name             String
-  slug             String       @unique
-  email            String       @unique
-  phone            String?
-  description      String?
-  logo             String?
-  banner           String?
-  socialMediaLink  String?
-  rejectionReason  String?
-  location         String?
-  
+  uid             Int     @id @default(autoincrement())
+  name            String
+  slug            String  @unique
+  email           String  @unique
+  phone           String?
+  description     String?
+  logo            String?
+  banner          String?
+  socialMediaLink String?
+  rejectionReason String?
+  location        String?
+
   // Seller Application Questions
   businessType       String?
   productCategories  String?
@@ -272,12 +274,12 @@ model Seller {
   hasPriorExperience Boolean @default(false)
 
   // KYC Fields
-  legalName          String?
-  businessAddress    String?
-  portfolioLink      String?
-  idType             String?
-  idNumber           String?
-  
+  legalName       String?
+  businessAddress String?
+  portfolioLink   String?
+  idType          String?
+  idNumber        String?
+
   rating           Decimal      @default(0)
   pinnedProductIds Int[]
   status           SellerStatus @default(PENDING)
@@ -465,4 +467,28 @@ model WishlistItem {
   createdAt  DateTime @default(now())
 
   @@unique([wishlistId, productId])
+}
+
+model RefreshToken {
+  uid          Int      @id @default(autoincrement())
+  token        String   @unique
+  userId       Int
+  customer     Customer @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  email        String?
+  role         String
+  sellerId     Int?
+  sellerStatus String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model RateLimit {
+  key       String   @id
+  hits      Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }

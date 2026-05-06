@@ -1,5 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import jwt from 'jsonwebtoken';
+import type { AuthPayload } from '../types/authTypes.js';
 
 class SocketService {
     private static instance: SocketService;
@@ -20,17 +22,59 @@ class SocketService {
             return;
         }
 
+        const defaultOrigins = [
+            'http://localhost:8081',
+            'http://localhost:19000',
+            'http://localhost:3000',
+        ];
+        const allowedOrigins = process.env.CORS_ORIGINS 
+            ? process.env.CORS_ORIGINS.split(',') 
+            : defaultOrigins;
+
         this.io = new Server(httpServer, {
             cors: {
-                origin: '*', // Configure this appropriately for production
+                origin: allowedOrigins,
                 methods: ['GET', 'POST'],
+                credentials: true,
             },
         });
 
+        // Authentication Middleware
+        this.io.use((socket, next) => {
+            try {
+                const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+                if (!token) {
+                    return next(new Error('Authentication error: No token provided'));
+                }
+                
+                const decoded = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload;
+                // Attach user data to socket
+                (socket as any).user = decoded;
+                next();
+            } catch (err) {
+                return next(new Error('Authentication error: Invalid or expired token'));
+            }
+        });
+
         this.io.on('connection', (socket: Socket) => {
-            console.log(`New client connected: ${socket.id}`);
+            const user = (socket as any).user as AuthPayload;
+            console.log(`New authenticated client connected: ${socket.id} (User: ${user.id})`);
 
             socket.on('join', (room: string) => {
+                // Security: Restrict room joining to prevent unauthorized eavesdropping
+                if (room.startsWith('user_') && room !== `user_${user.id}`) {
+                    console.warn(`User ${user.id} attempted to join unauthorized room: ${room}`);
+                    return;
+                }
+                if (room.startsWith('seller_') && room !== `seller_${user.sellerId}`) {
+                    console.warn(`User ${user.id} attempted to join unauthorized seller room: ${room}`);
+                    return;
+                }
+                if (room === 'admin_dashboard' && user.role !== 'ADMIN') {
+                    console.warn(`User ${user.id} attempted to join admin_dashboard without ADMIN role`);
+                    return;
+                }
+
                 socket.join(room);
                 console.log(`Socket ${socket.id} joined room ${room}`);
             });
@@ -41,7 +85,7 @@ class SocketService {
             });
 
             socket.on('disconnect', () => {
-                console.log(`Client disconnected: ${socket.id}`);
+                console.log(`Client disconnected: ${socket.id} (User: ${user.id})`);
             });
         });
     }

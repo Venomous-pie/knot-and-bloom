@@ -13,16 +13,34 @@ const getOrders = async (req: Request, res: Response, next: NextFunction) => {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const orders = await prisma.order.findMany({
-            where: {
-                customerId: userId
-            },
-            orderBy: {
-                uploaded: 'desc'
-            }
-        });
+        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+        const offset = parseInt(req.query.offset as string) || 0;
+        const status = req.query.status as string;
 
-        res.json(orders);
+        const whereClause: any = { customerId: userId };
+        if (status) whereClause.status = status;
+
+        const [orders, total] = await Promise.all([
+            prisma.order.findMany({
+                where: whereClause,
+                orderBy: { uploaded: 'desc' },
+                take: limit,
+                skip: offset,
+            }),
+            prisma.order.count({ where: whereClause }),
+        ]);
+
+        res.json({
+            orders,
+            total,
+            pagination: {
+                limit,
+                offset,
+                hasMore: offset + limit < total,
+                currentPage: Math.floor(offset / limit) + 1,
+                totalPages: Math.ceil(total / limit),
+            },
+        });
     } catch (error) {
         next(error);
     }

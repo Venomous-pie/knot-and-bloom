@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { sellerProductsAPI } from '../../../api/api';
+import { sellerProductsAPI, productAPI } from '../../../api/api';
 import ProductFormWizard, { ProductFormData } from '../../../components/seller/ProductFormWizard';
 import { VariantData } from '../../../components/seller/VariantEditor';
 import InfoBox from '../../../components/ui/InfoBox';
@@ -44,8 +44,8 @@ export default function SellerProductForm() {
     const loadProduct = async () => {
         try {
             setInitialLoading(true);
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/products/${id}`);
-            const data = await response.json();
+            const response = await productAPI.getProductById(id as string);
+            const data = response.data;
 
             if (data.success) {
                 const p = data.product;
@@ -80,7 +80,7 @@ export default function SellerProductForm() {
                         }))
                         : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]
                 });
-                setProductStatus(p.status);
+                setProductStatus(p.status ?? null);
             }
         } catch (err) {
             Alert.alert("Error", "Failed to load product details");

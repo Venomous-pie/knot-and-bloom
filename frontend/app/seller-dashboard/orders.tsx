@@ -1,6 +1,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { sellerOrdersAPI, servicesAPI } from "@/api/api";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -114,16 +114,8 @@ export default function SellerOrders() {
 
         try {
             setLoading(true);
-            const token = await AsyncStorage.getItem('authToken');
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers/${targetSellerId}/orders`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            if (!res.ok) throw new Error("Failed to fetch");
-            const data = await res.json();
-            setOrders(data);
+            const res = await sellerOrdersAPI.getSellerOrders(targetSellerId);
+            setOrders(res.data);
         } catch (error) {
             console.error(error);
             Alert.alert("Error", "Failed to fetch orders");
@@ -144,20 +136,11 @@ export default function SellerOrders() {
 
         try {
             setSubmitting(true);
-            const token = await AsyncStorage.getItem('authToken');
 
             // Sequential update for MVP (Ideal: Bulk API)
             await Promise.all(targets.map(async (order) => {
-                const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/orders/${order.uid}/status`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ status, message, ...extraData })
-                });
-                if (!res.ok) throw new Error(`Failed to update order #${order.uid}`);
-                const data = await res.json();
+                const res = await sellerOrdersAPI.updateOrderStatus(order.uid, { status, message, ...extraData });
+                const data = res.data;
                 if (data.success) {
                     setOrders(prev => prev.map(o => o.uid === order.uid ? { ...o, ...data.order } : o));
                 }
@@ -351,18 +334,10 @@ export default function SellerOrders() {
             const uploadRes = await uploadToImageKit({ uri, name: `scan_${Date.now()}` });
 
             // 2. Call Backend OCR
-            const token = await AsyncStorage.getItem('authToken');
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/services/ocr`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ imageUrl: uploadRes.url })
-            });
+            const res = await servicesAPI.ocr(uploadRes.url);
 
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error || "OCR Failed");
+            const data = res.data;
+            if (!data.success) throw new Error("OCR Failed");
 
             // 3. Extract Tracking Number from Text
             // Remove spaces/newlines for simpler regex matching on the whole block

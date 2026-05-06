@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { sellerAPI } from "@/api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useDraft } from "@/hooks/useDraft";
 import { Link, RelativePathString, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -64,60 +65,35 @@ export default function SellerApplyPage() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [focusedField, setFocusedField] = useState<string | null>(null);
 
-    const DRAFT_KEY = "seller_application_draft";
-
-    // Load Draft
-    useEffect(() => {
-        const loadDraft = async () => {
-            try {
-                const draftStr = await AsyncStorage.getItem(DRAFT_KEY);
-                if (draftStr) {
-                    const draft = JSON.parse(draftStr);
-                    if (draft.currentStep) setCurrentStep(draft.currentStep);
-                    if (draft.shopName) setShopName(draft.shopName);
-                    if (draft.description) setDescription(draft.description);
-                    if (draft.businessType) setBusinessType(draft.businessType);
-                    if (draft.productCategories) setProductCategories(draft.productCategories);
-                    if (draft.isHandmade !== undefined) setIsHandmade(draft.isHandmade);
-                    if (draft.hasPriorExperience !== undefined) setHasPriorExperience(draft.hasPriorExperience);
-                    if (draft.phoneNumber) setPhoneNumber(draft.phoneNumber);
-                    if (draft.email) setEmail(draft.email);
-                    if (draft.socialLink) setSocialLink(draft.socialLink);
-                    if (draft.legalName) setLegalName(draft.legalName);
-                    if (draft.businessAddress) setBusinessAddress(draft.businessAddress);
-                    if (draft.portfolioLink) setPortfolioLink(draft.portfolioLink);
-                    if (draft.idType) setIdType(draft.idType);
-                    if (draft.idNumber) setIdNumber(draft.idNumber);
-                    if (draft.termsAccepted !== undefined) setTermsAccepted(draft.termsAccepted);
-                }
-            } catch (e) {
-                console.error("Failed to load draft", e);
-            }
-        };
-        loadDraft();
-    }, []);
-
-    // Auto-save Draft
-    useEffect(() => {
-        const saveDraft = async () => {
-            try {
-                const draft = {
-                    currentStep, shopName, description, businessType, productCategories,
-                    isHandmade, hasPriorExperience, phoneNumber, email, socialLink,
-                    legalName, businessAddress, portfolioLink, idType, idNumber, termsAccepted
-                };
-                await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-            } catch (e) {
-                // Ignore save errors
-            }
-        };
-        const timeoutId = setTimeout(saveDraft, 1000);
-        return () => clearTimeout(timeoutId);
-    }, [
+    const draftData = {
         currentStep, shopName, description, businessType, productCategories,
         isHandmade, hasPriorExperience, phoneNumber, email, socialLink,
         legalName, businessAddress, portfolioLink, idType, idNumber, termsAccepted
-    ]);
+    };
+
+    const { clearDraft } = useDraft({
+        key: 'seller_application_draft',
+        data: draftData,
+        enabled: true,
+        onLoad: (draft: any) => {
+            if (draft.currentStep) setCurrentStep(draft.currentStep);
+            if (draft.shopName) setShopName(draft.shopName);
+            if (draft.description) setDescription(draft.description);
+            if (draft.businessType) setBusinessType(draft.businessType);
+            if (draft.productCategories) setProductCategories(draft.productCategories);
+            if (draft.isHandmade !== undefined) setIsHandmade(draft.isHandmade);
+            if (draft.hasPriorExperience !== undefined) setHasPriorExperience(draft.hasPriorExperience);
+            if (draft.phoneNumber) setPhoneNumber(draft.phoneNumber);
+            if (draft.email) setEmail(draft.email);
+            if (draft.socialLink) setSocialLink(draft.socialLink);
+            if (draft.legalName) setLegalName(draft.legalName);
+            if (draft.businessAddress) setBusinessAddress(draft.businessAddress);
+            if (draft.portfolioLink) setPortfolioLink(draft.portfolioLink);
+            if (draft.idType) setIdType(draft.idType);
+            if (draft.idNumber) setIdNumber(draft.idNumber);
+            if (draft.termsAccepted !== undefined) setTermsAccepted(draft.termsAccepted);
+        },
+    });
 
     // Redirect if not logged in
     useEffect(() => {
@@ -257,7 +233,7 @@ export default function SellerApplyPage() {
             });
 
             // Success - refresh user context and redirect to application-submitted
-            await AsyncStorage.removeItem(DRAFT_KEY);
+            await clearDraft();
             await refreshUser();
             router.replace("/seller/application-submitted" as RelativePathString);
         } catch (error: any) {

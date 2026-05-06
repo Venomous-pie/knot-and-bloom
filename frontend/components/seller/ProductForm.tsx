@@ -1,8 +1,7 @@
 import { categoryTitles } from "@/constants/categories";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
+import { productGenerationAPI } from "@/api/api";
 
 export interface ProductFormData {
     name: string;
@@ -78,16 +77,12 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
 
         setGeneratingSku(true);
         try {
-            const response = await fetch(`${API_URL}/api/products/generate-sku`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    category: selectedCategories[0],
-                    variants: variants.map(v => v.name).filter(Boolean)
-                })
+            const response = await productGenerationAPI.generateSku({
+                category: selectedCategories[0],
+                variants: variants.map(v => v.name).filter(Boolean)
             });
 
-            const data = await response.json();
+            const data = response.data;
             if (data.success && data.sku) {
                 setFormData(prev => ({ ...prev, sku: data.sku }));
                 // Auto-generate variant SKUs based on the new product SKU
@@ -119,21 +114,17 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
 
         setGeneratingDescription(true);
         try {
-            const response = await fetch(`${API_URL}/api/products/generate-description`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: formData.name,
-                    category: selectedCategories[0],
-                    variants: variants.map(v => v.name).filter(Boolean),
-                    basePrice: formData.basePrice ? parseFloat(formData.basePrice) : undefined,
-                    discountedPrice: formData.discountPercentage
-                        ? parseFloat(formData.basePrice) * (1 - parseFloat(formData.discountPercentage) / 100)
-                        : undefined
-                })
+            const response = await productGenerationAPI.generateDescription({
+                name: formData.name,
+                category: selectedCategories[0],
+                variants: variants.map(v => v.name).filter(Boolean),
+                basePrice: formData.basePrice ? parseFloat(formData.basePrice) : undefined,
+                discountedPrice: formData.discountPercentage
+                    ? parseFloat(formData.basePrice) * (1 - parseFloat(formData.discountPercentage) / 100)
+                    : undefined
             });
 
-            const data = await response.json();
+            const data = response.data;
             if (data.success && data.description) {
                 setFormData(prev => ({ ...prev, description: data.description }));
             } else {
@@ -159,16 +150,12 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
         }
 
         try {
-            const response = await fetch(`${API_URL}/api/products/generate-variant-sku`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    baseSKU: formData.sku,
-                    variantName: variant.name
-                })
+            const response = await productGenerationAPI.generateVariantSku({
+                baseSKU: formData.sku,
+                variantName: variant.name
             });
 
-            const data = await response.json();
+            const data = response.data;
             if (data.success && data.sku) {
                 updateVariant(index, 'sku', data.sku);
             } else {

@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/seller/ImageCropperModal';
-import { apiClient } from "@/api/api";
+import { apiClient, sellerOrdersAPI } from "@/api/api";
 import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, interpolate, Extrapolation } from "react-native-reanimated";
 import GlobalHeaderUI from "@/components/layout/GlobalHeaderUI";
 import {
@@ -153,17 +153,16 @@ export default function SellerProfile() {
 
         const fetchSeller = async () => {
             try {
-                // Use apiClient or fetch - standard fetch is fine for public GET
-                const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/sellers/${slug}`);
-                if (!response.ok) {
-                    if (response.status === 404) throw new Error("Seller not found");
-                    throw new Error("Failed to fetch seller");
-                }
-                const data = await response.json();
+                const response = await sellerOrdersAPI.getSellerBySlug(slug as string);
+                const data = response.data;
                 setSeller(data);
                 setAboutText(data.description || '');
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "An error occurred");
+            } catch (err: any) {
+                if (err.response?.status === 404) {
+                    setError("Seller not found");
+                } else {
+                    setError(err instanceof Error ? err.message : "An error occurred");
+                }
             } finally {
                 setLoading(false);
             }

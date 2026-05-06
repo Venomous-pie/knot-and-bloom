@@ -614,4 +614,72 @@ export const chatAPI = {
         apiClient.post<{ success: boolean; reply: string }>('/chat/ai', { messages }),
 };
 
+// ============================================
+// Earnings API
+// ============================================
+export const earningsAPI = {
+    /**
+     * Get admin platform stats (revenue, GMV, pending payouts)
+     */
+    getAdminStats: () =>
+        apiClient.get<{ revenue: number; gmv: number; pendingWithdrawals: number }>('/earnings/admin/stats'),
+};
+
+// ============================================
+// Seller Orders API
+// ============================================
+export const sellerOrdersAPI = {
+    /**
+     * Get orders for a specific seller
+     */
+    getSellerOrders: (sellerId: number) =>
+        apiClient.get<any[]>(`/sellers/${sellerId}/orders`),
+
+    /**
+     * Get public seller profile by slug
+     */
+    getSellerBySlug: (slug: string) =>
+        apiClient.get<any>(`/sellers/${slug}`),
+
+    /**
+     * Update order status
+     */
+    updateOrderStatus: (orderId: number, data: { status: string; message?: string;[key: string]: any }) =>
+        apiClient.put<{ success: boolean; order: any }>(`/orders/${orderId}/status`, data),
+};
+
+// ============================================
+// Services API (OCR, etc.)
+// ============================================
+export const servicesAPI = {
+    /**
+     * Run OCR on an image URL
+     */
+    ocr: (imageUrl: string) =>
+        apiClient.post<{ success: boolean; text: string }>('/services/ocr', { imageUrl }),
+};
+
+// ============================================
+// Product Generation API
+// ============================================
+export const productGenerationAPI = {
+    /**
+     * Auto-generate a product SKU based on category and variant names
+     */
+    generateSku: (data: { category: string; variants?: string[] }) =>
+        apiClient.post<{ success: boolean; sku: string; message?: string }>('/products/generate-sku', data),
+
+    /**
+     * Auto-generate a product description using AI
+     */
+    generateDescription: (data: { name: string; category: string; variants?: string[]; basePrice?: number; discountedPrice?: number }) =>
+        apiClient.post<{ success: boolean; description: string; message?: string }>('/products/generate-description', data),
+
+    /**
+     * Auto-generate a variant SKU based on the product's base SKU
+     */
+    generateVariantSku: (data: { baseSKU: string; variantName: string }) =>
+        apiClient.post<{ success: boolean; sku: string; message?: string }>('/products/generate-variant-sku', data),
+};
+
 export default api;

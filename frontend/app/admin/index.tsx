@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { earningsAPI } from "@/api/api";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -14,18 +15,15 @@ import { theme } from '@/constants/theme';
 
 export default function AdminDashboardPage() {
     const router = useRouter();
-    const { user, token, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [stats, setStats] = useState<any>(null);
     const [statsLoading, setStatsLoading] = useState(true);
 
     const fetchStats = async () => {
         try {
             setStatsLoading(true);
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api/earnings/admin/stats`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok) setStats(data);
+            const res = await earningsAPI.getAdminStats();
+            setStats(res.data);
         } catch (e) {
             console.error("Failed to fetch admin stats", e);
         } finally {
@@ -50,7 +48,7 @@ export default function AdminDashboardPage() {
             if (user?.role === 'ADMIN') {
                 fetchStats();
             }
-        }, [user, token])
+        }, [user])
     );
 
     if (authLoading || (user?.role !== 'ADMIN')) {

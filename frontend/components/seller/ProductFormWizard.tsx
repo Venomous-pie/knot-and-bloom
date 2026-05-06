@@ -22,8 +22,8 @@ import {
     Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '@/api/api';
+import { useDraft } from '@/hooks/useDraft';
 import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';
 import InfoBox from '@/components/ui/InfoBox';
@@ -31,10 +31,6 @@ import VariantEditor, { VariantData } from './VariantEditor';
 import OptimizationScoreCircle from '@/components/ui/OptimizationScoreCircle';
 import Tooltip from '@/components/ui/Tooltip';
 import { toTitleCase, toSentenceCase } from '@/utils/textUtils';
-
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030';
-
 
 
 export interface ProductFormData {
@@ -143,66 +139,29 @@ export default function ProductFormWizard({
 
     const categories = Object.values(categoryTitles);
 
-    const DRAFT_KEY = 'product_form_draft';
+    // Centralized draft persistence
+    const { clearDraft } = useDraft({
+        key: 'product_form_draft',
+        data: { formData, selectedCategories, variants, images },
+        enabled: !isEditing,
+        onLoad: (draft: any) => {
+            setFormData({ tags: [], metaTitle: '', metaDescription: '', ...draft.formData });
+            setSelectedCategories(draft.selectedCategories);
+            setVariants(draft.variants);
+            if (draft.images && draft.images.length > 0) {
+                setImages(draft.images);
+            } else if (draft.formData?.image) {
+                setImages([{ uri: draft.formData.image, isUrl: true }]);
+            }
+        },
+    });
 
-    // Load draft on mount if not editing
-    const draftInitializedRef = useRef(false);
-
-    useEffect(() => {
-        if (!isEditing && !draftInitializedRef.current) {
-            loadDraft();
-            draftInitializedRef.current = true;
-        }
-    }, [isEditing]);
-
-    // Save draft on change
+    // Notify parent of data changes
     useEffect(() => {
         if (onDataChange) {
             onDataChange({ formData, selectedCategories, variants });
         }
-        if (!isEditing) {
-            const timer = setTimeout(() => {
-                saveDraft();
-            }, 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [formData, selectedCategories, variants, isEditing, onDataChange]);
-
-    const loadDraft = async () => {
-        try {
-            const saved = await AsyncStorage.getItem(DRAFT_KEY);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                setFormData({ tags: [], metaTitle: '', metaDescription: '', ...parsed.formData });
-                setSelectedCategories(parsed.selectedCategories);
-                setVariants(parsed.variants);
-                if (parsed.images && parsed.images.length > 0) {
-                    setImages(parsed.images);
-                } else if (parsed.formData.image) {
-                    setImages([{ uri: parsed.formData.image, isUrl: true }]);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load draft', error);
-        }
-    };
-
-    const saveDraft = async () => {
-        try {
-            const data = { formData, selectedCategories, variants, images };
-            await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(data));
-        } catch (error) {
-            console.error('Failed to save draft', error);
-        }
-    };
-
-    const clearDraft = async () => {
-        try {
-            await AsyncStorage.removeItem(DRAFT_KEY);
-        } catch (error) {
-            console.error('Failed to clear draft', error);
-        }
-    };
+    }, [formData, selectedCategories, variants, onDataChange]);
 
     useEffect(() => {
         if (initialData && !initializedRef.current) {
@@ -219,9 +178,6 @@ export default function ProductFormWizard({
             } else if (initialData.formData.image) {
                 setImages([{ uri: initialData.formData.image, isUrl: true }]);
             }
-        } else if (!isEditing && !initializedRef.current) {
-            initializedRef.current = true;
-            loadDraft();
         }
     }, [initialData, isEditing]);
 

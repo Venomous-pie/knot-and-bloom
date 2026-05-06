@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
-import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, Store, LogOut, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home } from 'lucide-react-native';
+import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { sellerAPI } from '@/api/api';
 import { theme } from '@/constants/theme';

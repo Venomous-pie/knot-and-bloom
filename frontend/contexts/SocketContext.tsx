@@ -19,13 +19,13 @@ const SocketContext = createContext<SocketContextType>({
 });
 
 export function SocketProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const socketRef = useRef<Socket | null>(null);
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        // Only connect if user is authenticated
-        if (!user) {
+        // Only connect if user is authenticated and we have a token
+        if (!user || !token) {
             if (socketRef.current) {
                 console.log('[SocketProvider] User logged out, disconnecting socket');
                 socketRef.current.disconnect();
@@ -47,6 +47,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             reconnection: true,
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
+            auth: { token },
         });
 
         socketRef.current = socket;
@@ -76,7 +77,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             socketRef.current = null;
             setIsConnected(false);
         };
-    }, [user?.uid]);
+    }, [user?.uid, token]);
 
     const joinRoom = useCallback((room: string) => {
         if (socketRef.current?.connected) {

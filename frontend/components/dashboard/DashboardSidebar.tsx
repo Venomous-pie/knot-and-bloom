@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
-import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home } from 'lucide-react-native';
+import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { sellerAPI } from '@/api/api';
 import { theme } from '@/constants/theme';
+import DropdownMenu, { DropdownItem } from '@/components/ui/DropdownMenu';
 
 export default function DashboardSidebar() {
     const router = useRouter();
@@ -12,6 +13,7 @@ export default function DashboardSidebar() {
     const { user, logout } = useAuth();
     
     const [sidebarStats, setSidebarStats] = useState({ unreadNotifications: 0, lowStockCount: 0 });
+    const [showUserMenu, setShowUserMenu] = useState(false);
 
     useEffect(() => {
         if (user && (user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE'))) {
@@ -127,6 +129,36 @@ export default function DashboardSidebar() {
             </View>
 
             <View style={{ flex: 1 }} />
+            
+            {/* User Menu / Footer */}
+            <View style={s.footer}>
+                <DropdownMenu
+                    items={[
+                        { title: 'Profile', href: '/profile' as any, icon: <User size={16} color="#4B5563" /> },
+                        { title: 'Settings', href: '/seller-dashboard/settings' as any, icon: <Settings size={16} color="#4B5563" /> },
+                        { title: 'Help Center', href: '/customer-service' as any, icon: <HelpCircle size={16} color="#4B5563" /> },
+                        { type: 'separator' },
+                        { title: 'Log Out', onPress: logout, icon: <LogOut size={16} color="#EF4444" /> }
+                    ]}
+                    isOpen={showUserMenu}
+                    onOpenChange={setShowUserMenu}
+                    style={{ width: '100%' }}
+                    placement="top"
+                    align="start"
+                    alignOffset={60}
+                >
+                    <View style={s.userInfo}>
+                        <View style={s.avatarPlaceholder}>
+                            <Text style={s.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'S'}</Text>
+                        </View>
+                        <View style={s.userDetails}>
+                            <Text style={s.userName} numberOfLines={1}>{user?.name || 'Seller'}</Text>
+                            <Text style={s.userEmail} numberOfLines={1}>{user?.email}</Text>
+                        </View>
+                        {showUserMenu ? <ChevronDown size={16} color="#9CA3AF" /> : <ChevronUp size={16} color="#9CA3AF" />}
+                    </View>
+                </DropdownMenu>
+            </View>
         </View>
     );
 }
@@ -139,6 +171,7 @@ const s = StyleSheet.create({
         borderRightColor: '#E5E7EB',
         height: '100%',
         paddingVertical: 24,
+        zIndex: 50,
     },
     brandArea: {
         paddingHorizontal: 24,
@@ -190,22 +223,39 @@ const s = StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 24,
     },
-    logoutBtn: {
+    userInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        backgroundColor: '#FEF2F2',
-        borderWidth: 1,
-        borderColor: '#FECACA',
-        gap: 8,
+        marginBottom: 16,
+        paddingHorizontal: 8,
     },
-    logoutTxt: {
+    avatarPlaceholder: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FDEEF1',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#B36979',
+        fontFamily: 'Quicksand',
+    },
+    userDetails: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    userName: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#EF4444',
+        color: '#1A1A2E',
+        fontFamily: 'Quicksand',
+    },
+    userEmail: {
+        fontSize: 12,
+        color: '#6B7280',
         fontFamily: 'Quicksand',
     },
     alertBadge: {

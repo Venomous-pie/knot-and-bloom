@@ -98,6 +98,9 @@ interface DropdownMenuProps {
     footer?: React.ReactNode;
     /** Custom content rendered inside the panel above the items list */
     body?: React.ReactNode;
+    placement?: 'top' | 'bottom';
+    align?: 'start' | 'center' | 'end';
+    alignOffset?: number;
 }
 
 // ─── Shared item content (icon + label row) ──────────────────────────────────
@@ -115,7 +118,7 @@ function ItemContent({ icon, title, hovered, active }: { icon?: React.ReactNode;
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function DropdownMenu({ items, children, style, isOpen: controlledIsOpen, onOpenChange, footer, body }: DropdownMenuProps) {
+export default function DropdownMenu({ items, children, style, isOpen: controlledIsOpen, onOpenChange, footer, body, placement = 'bottom', align = 'center', alignOffset = 0 }: DropdownMenuProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const pathname = usePathname();
@@ -143,6 +146,17 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
     }, [isOpen]);
 
     const rotate = rotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
+
+    const placementStyle = placement === 'top' ? { bottom: '100%', top: 'auto', marginBottom: 4, marginTop: 0 } : {};
+    
+    let alignStyle: any = {};
+    if (align === 'start') {
+        alignStyle = { left: alignOffset, transform: [] };
+    } else if (align === 'end') {
+        alignStyle = { right: alignOffset, left: 'auto', transform: [] };
+    } else {
+        alignStyle = { left: '50%', transform: [{ translateX: '-50%' }] };
+    }
 
     return (
         <View style={styles.dropdownContainer}>
@@ -173,7 +187,7 @@ export default function DropdownMenu({ items, children, style, isOpen: controlle
             </Pressable>
 
             {isOpen && (
-                <View style={styles.dropdown}>
+                <View style={[styles.dropdown, placementStyle as any, alignStyle]}>
                     {body && <View>{body}</View>}
                     {body && items.length > 0 && (
                         <View style={{ height: 1, backgroundColor: theme.colors.border, marginVertical: 4 }} />

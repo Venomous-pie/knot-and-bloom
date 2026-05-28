@@ -42,7 +42,7 @@ export default function ColorPickerModal({
             const result = await eyeDropper.open();
             setSelectedColor(result.sRGBHex);
         } catch (e) {
-            console.log('Eyedropper cancelled or failed', e);
+            // Eyedropper cancelled or not supported
         }
     };
 

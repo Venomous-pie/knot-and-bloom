@@ -22,8 +22,6 @@ router.get('/auth', authenticate, (req, res) => {
         const token = req.query.token as string || uuidv4();
         const expire = req.query.expire as string || String(Math.floor(Date.now() / 1000) + 2400); // 40 minutes
 
-        console.log(`Generating ImageKit signature. Key length: ${IMAGEKIT_PRIVATE_KEY.length}, Token: ${token}, Expire: ${expire}`);
-
         const signature = crypto
             .createHmac('sha1', IMAGEKIT_PRIVATE_KEY)
             .update(token + expire)

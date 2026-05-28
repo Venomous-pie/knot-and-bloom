@@ -536,9 +536,6 @@ export default function BespokeAuthForm({
                                         source={require("@/assets/yarn.png")}
                                         style={{ width: 30, height: 30, marginHorizontal: 10 }}
                                         resizeMode="contain"
-                                        onError={(e) =>
-                                            console.log("Logo load error", e.nativeEvent.error)
-                                        }
                                     />
                                     <View
                                         style={[

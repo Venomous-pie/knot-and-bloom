@@ -12,7 +12,6 @@ passport.use(
             scope: ['profile', 'email'],
         },
         async (accessToken, refreshToken, profile, done) => {
-            console.log("Google Strategy Initialized with Callback:", process.env.GOOGLE_CALLBACK_URL);
             try {
                 const email = profile.emails?.[0]?.value;
                 const googleId = profile.id;

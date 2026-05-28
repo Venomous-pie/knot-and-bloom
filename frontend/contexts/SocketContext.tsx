@@ -27,7 +27,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         // Only connect if user is authenticated and we have a token
         if (!user || !token) {
             if (socketRef.current) {
-                console.log('[SocketProvider] User logged out, disconnecting socket');
+
                 socketRef.current.disconnect();
                 socketRef.current = null;
                 setIsConnected(false);
@@ -40,7 +40,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        console.log('[SocketProvider] Creating new socket connection');
+
         const socket = io(SOCKET_URL, {
             transports: ['websocket', 'polling'],
             autoConnect: true,
@@ -53,7 +53,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('[SocketProvider] Connected:', socket.id);
+
             setIsConnected(true);
 
             if (user?.uid) {
@@ -62,7 +62,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         });
 
         socket.on('disconnect', (reason) => {
-            console.log('[SocketProvider] Disconnected:', reason);
+
             setIsConnected(false);
         });
 
@@ -71,7 +71,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         });
 
         return () => {
-            console.log('[SocketProvider] Cleanup - disconnecting socket');
+
             socket.removeAllListeners();
             socket.disconnect();
             socketRef.current = null;

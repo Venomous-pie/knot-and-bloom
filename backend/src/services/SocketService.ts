@@ -58,7 +58,6 @@ class SocketService {
 
         this.io.on('connection', (socket: Socket) => {
             const user = (socket as any).user as AuthPayload;
-            console.log(`New authenticated client connected: ${socket.id} (User: ${user.id})`);
 
             socket.on('join', (room: string) => {
                 // Security: Restrict room joining to prevent unauthorized eavesdropping
@@ -76,16 +75,13 @@ class SocketService {
                 }
 
                 socket.join(room);
-                console.log(`Socket ${socket.id} joined room ${room}`);
             });
 
             socket.on('leave', (room: string) => {
                 socket.leave(room);
-                console.log(`Socket ${socket.id} left room ${room}`);
             });
 
             socket.on('disconnect', () => {
-                console.log(`Client disconnected: ${socket.id} (User: ${user.id})`);
             });
         });
     }

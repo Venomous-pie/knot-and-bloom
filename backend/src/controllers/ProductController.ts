@@ -240,7 +240,6 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                 // Append random suffix for retry
                 const randomSuffix = Math.random().toString(36).substring(2, 5).toUpperCase();
                 currentSku = `${parsedInput.sku}-${randomSuffix}`;
-                console.log(`SKU collision detected. Retrying with new SKU: ${currentSku}`);
                 continue;
             }
             throw error; // Rethrow other errors

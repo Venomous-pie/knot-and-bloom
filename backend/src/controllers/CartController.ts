@@ -350,8 +350,6 @@ const checkout = async (req: Request, res: Response): Promise<void> => {
                             { message: `Insufficient stock for ${item.product.name} (${item.productVariant.name}). requested: ${item.quantity}`, path: ['quantity'] }
                         ]);
                     }
-
-                    console.log(`✅ Atomic stock update successful for ${item.product.name} (${item.productVariant.name})`);
                 }
             }
 

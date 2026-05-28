@@ -29,7 +29,6 @@ api.interceptors.request.use(
 
         // Log request for debugging (for dev local)
         if (process.env.NODE_ENV === 'development') {
-            console.log('API Request:', config.method?.toUpperCase(), config.url);
         }
         return config;
     },
@@ -56,7 +55,6 @@ const processQueue = (error: any, token: string | null = null) => {
 api.interceptors.response.use(
     (response: AxiosResponse) => {
         if (process.env.NODE_ENV === 'development') {
-            console.log('API Response:', response.status, response.config.url);
         }
         return response;
     },

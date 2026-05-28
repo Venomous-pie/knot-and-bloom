@@ -93,7 +93,6 @@ export const PaymentService = {
             const result = await Promise.race([paymentPromise, timeoutPromise]);
 
             const elapsed = Date.now() - startTime;
-            console.log(`[PaymentService] Payment processed in ${elapsed}ms | Success: ${result.success}`);
 
             return result;
         } catch (error) {

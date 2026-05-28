@@ -104,7 +104,6 @@ export default function OrderDetailsPage() {
 
         const handleStatusUpdate = (data: any) => {
             if (data.orderId === order.uid) {
-                console.log("Received real-time update for order:", data.orderId);
                 // Refresh full order details to get latest timeline, status, etc.
                 fetchOrder();
                 // Optionally show a toast here

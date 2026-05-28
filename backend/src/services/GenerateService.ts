@@ -122,7 +122,6 @@ export async function generateProductSKU(input: GenerateSKUInput): Promise<strin
         }
 
         attempts++;
-        console.log(`SKU collision detected: ${sku}, attempt ${attempts}/${maxAttempts}`);
     } while (attempts < maxAttempts);
 
     // If we've exhausted attempts, append extra random chars

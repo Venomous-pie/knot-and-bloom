@@ -45,7 +45,7 @@ export function useSocket(): UseSocketReturn {
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('[Socket] Connected:', socket.id);
+
             setIsConnected(true);
 
             // Auto-join user's room
@@ -55,7 +55,7 @@ export function useSocket(): UseSocketReturn {
         });
 
         socket.on('disconnect', (reason) => {
-            console.log('[Socket] Disconnected:', reason);
+
             setIsConnected(false);
         });
 
@@ -65,7 +65,7 @@ export function useSocket(): UseSocketReturn {
 
         // Cleanup function - THIS IS CRITICAL
         return () => {
-            console.log('[Socket] Cleaning up connection');
+
             if (socket) {
                 socket.removeAllListeners();
                 socket.disconnect();

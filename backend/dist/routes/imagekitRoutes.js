@@ -1,0 +1,39 @@
+import express from 'express';
+import crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
+import { authenticate } from '../middleware/authMiddleware.js';
+const router = express.Router();
+const IMAGEKIT_PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY || '';
+// @route   GET /api/imagekit/auth
+// @desc    Generate authentication parameters for ImageKit client-side upload
+router.get('/auth', authenticate, (req, res) => {
+    try {
+        if (!IMAGEKIT_PRIVATE_KEY) {
+            console.error('ImageKit Auth Error: IMAGEKIT_PRIVATE_KEY is missing');
+            return res.status(500).json({
+                success: false,
+                error: 'ImageKit private key not configured'
+            });
+        }
+        const token = req.query.token || uuidv4();
+        const expire = req.query.expire || String(Math.floor(Date.now() / 1000) + 2400); // 40 minutes
+        const signature = crypto
+            .createHmac('sha1', IMAGEKIT_PRIVATE_KEY)
+            .update(token + expire)
+            .digest('hex');
+        res.status(200).json({
+            token,
+            expire: parseInt(expire),
+            signature,
+        });
+    }
+    catch (error) {
+        console.error('ImageKit auth error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to generate authentication'
+        });
+    }
+});
+export default router;
+//# sourceMappingURL=imagekitRoutes.js.map

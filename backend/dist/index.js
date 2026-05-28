@@ -1,0 +1,119 @@
+import dotenv from 'dotenv';
+dotenv.config();
+// ── Security: Fail fast if critical secrets are missing ──
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    console.error('FATAL: JWT_SECRET is not set or is too short (min 32 chars). Exiting.');
+    process.exit(1);
+}
+import cors from 'cors';
+import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import accountRoutes from './routes/accountRoutes.js';
+import addressRoutes from './routes/addressRoutes.js';
+import cartRoutes from './routes/cartRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
+import checkoutRoutes from './routes/checkoutRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import paymentMethodRoutes from './routes/paymentMethodRoutes.js';
+import productRoutes from './routes/productRoutes.js';
+import sellerRoutes from './routes/sellerRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import imagekitRoutes from './routes/imagekitRoutes.js';
+import locationRoutes from './routes/locationRoutes.js';
+import servicesRoutes from './routes/servicesRoutes.js';
+import earningsRoutes from './routes/earningsRoutes.js';
+import wishlistRoutes from './routes/wishlistRoutes.js';
+import prisma from './utils/prismaUtils.js';
+import passport from './config/passport.js';
+import { createServer } from 'http';
+import { socketService } from './services/SocketService.js';
+import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
+import { sanitizeInput } from './middleware/sanitize.js';
+import { cronService } from './services/cronService.js';
+import { PrismaRateLimitStore } from './middleware/rateLimitStore.js';
+import { requestLogger } from './middleware/requestLogger.js';
+const app = express();
+// Check if cronService.start exists before calling (defensive, though file is created)
+cronService.start();
+// Enable trust proxy to correctly identify client IPs behind a proxy (e.g., Nginx, Heroku, AWS ELB)
+app.set('trust proxy', 1);
+const PORT = process.env.PORT || 3030;
+// ── Security Middlewares ──
+app.use(helmet()); // Sets security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
+app.use(requestLogger); // Structured JSON request logging for observability
+// Global rate limiter: 100 requests per minute per IP
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many requests, please try again later.' },
+    store: new PrismaRateLimitStore(),
+});
+app.use(globalLimiter);
+// CORS: Use CORS_ORIGINS env var in production, fallback to dev origins
+const defaultOrigins = [
+    'http://localhost:8081', // Expo Web
+    'http://localhost:19000', // Expo
+    'http://localhost:19006', // Expo
+    'http://localhost:3000', // React default
+    'http://localhost:3030', // Self (if needed)
+];
+const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : defaultOrigins;
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+}));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(sanitizeInput); // Strip HTML/script tags from all user input
+app.use(passport.initialize());
+// Healthcheck
+app.get('/', (req, res) => {
+    res.json({
+        name: "Knot and Bloom",
+        status: "Running",
+        timestamp: new Date().toISOString()
+    });
+});
+// Api Routes
+app.use('/api/products', productRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/checkout', checkoutRoutes);
+app.use('/api/sellers', sellerRoutes);
+app.use('/api/addresses', addressRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/payment-methods', paymentMethodRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/account', accountRoutes);
+app.use('/api/imagekit', imagekitRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/services', servicesRoutes);
+app.use('/api/earnings', earningsRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
+// Error handling middleware
+app.use(errorHandlingMiddleware);
+// Shutdown service
+const shutdown = async () => {
+    console.log("Shutting down...");
+    await prisma.$disconnect();
+    process.exit(0);
+};
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+const httpServer = createServer(app);
+socketService.init(httpServer);
+httpServer.listen(PORT, () => {
+    console.log(`Currently running on port ${PORT}.`);
+});
+export default app;
+//# sourceMappingURL=index.js.map

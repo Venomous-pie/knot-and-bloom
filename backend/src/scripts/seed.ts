@@ -9,7 +9,7 @@ async function seed() {
     const createdSellers: any[] = [];
 
     for (let i = 0; i < sellers.length; i++) {
-        const s = sellers[i];
+        const s = sellers[i]!;
         const existing = await prisma.customer.findUnique({ where: { email: s.email } });
         if (existing) {
             console.log(`⏭️  Skipping ${s.name} (email exists)`);
@@ -53,7 +53,7 @@ async function seed() {
         const existing = await prisma.product.findFirst({ where: { name: p.name, sellerId: seller.uid } });
         if (existing) { console.log(`⏭️  Skipping product: ${p.name}`); continue; }
 
-        const sku = `${p.cat[0].substring(0,3).toUpperCase()}-${p.name.replace(/[^A-Za-z]/g,'').substring(0,4).toUpperCase()}-${Math.floor(Math.random()*90000)+10000}`;
+        const sku = `${p.cat[0]!.substring(0,3).toUpperCase()}-${p.name.replace(/[^A-Za-z]/g,'').substring(0,4).toUpperCase()}-${Math.floor(Math.random()*90000)+10000}`;
 
         const product = await prisma.product.create({
             data: {
@@ -74,7 +74,7 @@ async function seed() {
         });
 
         for (let vi = 0; vi < p.variants.length; vi++) {
-            const v = p.variants[vi];
+            const v = p.variants[vi]!;
             const rand = Math.floor(Math.random() * 90000) + 10000;
             const vSku = `${sku}-${v.name.replace(/[^A-Za-z0-9]/g,'').substring(0,3).toUpperCase()}-${rand}`;
             await prisma.productVariant.create({

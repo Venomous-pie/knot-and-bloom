@@ -74,8 +74,9 @@ export default function ProductCategoryPage() {
     const gap = theme.spacing.md;
 
     const containerWidth = Math.min(width, 1200);
+    const sidebarWidth = width >= 768 ? 280 : 0;
     const horizontalPadding = isDesktop ? theme.spacing['2xl'] : theme.spacing.lg;
-    const gridAreaWidth = containerWidth - (horizontalPadding * 2);
+    const gridAreaWidth = containerWidth - sidebarWidth - (horizontalPadding * 2);
     const cardWidth = Math.max(100, (gridAreaWidth - (numColumns - 1) * gap) / numColumns);
 
     const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label ?? 'Sort By';
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
     mainLayout: {
         flex: 1,
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'stretch',
     },
     sidebar: {
         width: 280,

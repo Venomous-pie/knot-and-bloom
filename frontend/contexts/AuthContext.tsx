@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     useEffect(() => {
         if (!loading) {
             const inAuthGroup = segments[0] === 'auth';
-            const isProtectedRoute = ['admin', 'checkout', 'profile', 'secure', 'seller', 'seller-dashboard', 'wishlist'].includes(segments[0]);
+            const isProtectedRoute = ['admin', 'checkout', 'profile', 'secure', 'cart', 'seller-dashboard', 'wishlist'].includes(segments[0]);
 
             if (!user && isProtectedRoute) {
                 // Unauthenticated user trying to access a protected route

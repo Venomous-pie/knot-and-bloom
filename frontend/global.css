@@ -15,3 +15,7 @@ input[type="submit"] {
     -ms-user-select: none;
     user-select: none;
 }
+
+html, body, #root {
+    height: 100%;
+}

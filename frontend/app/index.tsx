@@ -15,6 +15,7 @@ import { theme } from "@/constants/theme";
 import HeroSection from "@/components/home/HeroSection";
 import CategoriesSection from "@/components/home/CategoriesSection";
 import BestsellersSection from "@/components/home/BestsellersSection";
+import NewArrivalsSection from "@/components/home/NewArrivalsSection";
 import CustomOrderBanner from "@/components/home/CustomOrderBanner";
 import Footer from "@/components/home/Footer";
 
@@ -32,6 +33,7 @@ export default function Index() {
         <View style={styles.pageWrapper}>
           <HeroSection />
           <CategoriesSection />
+          <NewArrivalsSection />
           <BestsellersSection />
           <CustomOrderBanner />
           <Footer />

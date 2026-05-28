@@ -8,7 +8,7 @@ const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/
 
 const api: AxiosInstance = axios.create({
     baseURL: BASE_URL,
-    timeout: 10000, // 10 seconds timeout
+    timeout: 60000, // 60 seconds timeout (allows Render free tier to wake up)
     headers: {
         'Content-Type': 'application/json',
     },

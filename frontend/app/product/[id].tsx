@@ -491,29 +491,45 @@ export default function ProductDetailPage() {
 
                         {/* Inline Action Bar (CTA + Save) */}
                         <View style={styles.sectionContainer}>
-                            <View style={styles.inlineActionRow}>
-                                <Pressable
-                                    ref={buttonRef}
-                                    style={({ pressed }) => [
-                                        styles.inlineAddToCartButton,
-                                        !isInStock && styles.disabledButton,
-                                        pressed && { opacity: 0.8 }
-                                    ]}
-                                    disabled={!isInStock}
-                                    onPress={handleAddToCart}
-                                >
-                                    <Text style={styles.inlineAddToCartText}>
-                                        {isInStock ? 'ADD TO CART' : 'OUT OF STOCK'}
-                                    </Text>
-                                </Pressable>
-                                <Pressable style={styles.inlineSaveButton} onPress={handleToggleWishlist}>
-                                    <Ionicons
-                                        name={isWishlisted ? "heart" : "heart-outline"}
-                                        size={26}
-                                        color={isWishlisted ? theme.colors.primary : theme.colors.text}
-                                    />
-                                </Pressable>
-                            </View>
+                            {user ? (
+                                <View style={styles.inlineActionRow}>
+                                    <Pressable
+                                        ref={buttonRef}
+                                        style={({ pressed }) => [
+                                            styles.inlineAddToCartButton,
+                                            !isInStock && styles.disabledButton,
+                                            pressed && { opacity: 0.8 }
+                                        ]}
+                                        disabled={!isInStock}
+                                        onPress={handleAddToCart}
+                                    >
+                                        <Text style={styles.inlineAddToCartText}>
+                                            {isInStock ? 'ADD TO CART' : 'OUT OF STOCK'}
+                                        </Text>
+                                    </Pressable>
+                                    <Pressable style={styles.inlineSaveButton} onPress={handleToggleWishlist}>
+                                        <Ionicons
+                                            name={isWishlisted ? "heart" : "heart-outline"}
+                                            size={26}
+                                            color={isWishlisted ? theme.colors.primary : theme.colors.text}
+                                        />
+                                    </Pressable>
+                                </View>
+                            ) : (
+                                <View style={styles.inlineActionRow}>
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            styles.inlineAddToCartButton,
+                                            { flexDirection: 'row', gap: 8 },
+                                            pressed && { opacity: 0.8 }
+                                        ]}
+                                        onPress={() => router.push('/auth/login' as any)}
+                                    >
+                                        <Ionicons name="log-in-outline" size={22} color={theme.colors.surface} />
+                                        <Text style={styles.inlineAddToCartText}>LOGIN OR SIGN UP</Text>
+                                    </Pressable>
+                                </View>
+                            )}
                         </View>
 
                         {/* Shipping Info */}

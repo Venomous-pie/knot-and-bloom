@@ -43,10 +43,9 @@ interface ProductItem {
     variant?: string;
 }
 
-/* Parse products JSON and return structured data */
-const parseProducts = (jsonString: string): ProductItem[] => {
+const parseProducts = (data: any): ProductItem[] => {
     try {
-        const items = JSON.parse(jsonString);
+        const items = typeof data === 'string' ? JSON.parse(data) : data;
         if (Array.isArray(items)) {
             return items.map(item => {
                 // Handle nested product object (item.product.name) or direct fields (item.name)
@@ -159,7 +158,8 @@ export default function OrderHistoryPage() {
     const fetchOrders = async () => {
         try {
             const response = await orderAPI.getOrders();
-            setOrders(response.data);
+            // The backend returns { orders: [...], total: ... }
+            setOrders(response.data.orders || response.data);
         } catch (error) {
             console.error("Failed to fetch orders", error);
             Alert.alert("Error", "Failed to load order history");
@@ -319,9 +319,8 @@ export default function OrderHistoryPage() {
 
             // Add each product to cart
             for (const item of products) {
-                // We need the product ID from the parsed data
-                // The products JSON should have product.uid
-                const productData = JSON.parse(order.products);
+                // The products field could be a JSON string or already parsed object
+                const productData = typeof order.products === 'string' ? JSON.parse(order.products) : order.products;
                 const matchingItem = productData.find((p: any) =>
                     (p.product?.name || p.name) === item.name
                 );

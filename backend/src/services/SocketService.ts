@@ -26,6 +26,7 @@ class SocketService {
             'http://localhost:8081',
             'http://localhost:19000',
             'http://localhost:3000',
+            'https://knot-and-bloom-rouge.vercel.app', // production
         ];
         const allowedOrigins = process.env.CORS_ORIGINS 
             ? process.env.CORS_ORIGINS.split(',') 

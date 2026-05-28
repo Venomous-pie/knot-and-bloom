@@ -70,6 +70,7 @@ const defaultOrigins = [
     'http://localhost:19006', // Expo
     'http://localhost:3000', // React default
     'http://localhost:3030', // Self (if needed)
+    'https://knot-and-bloom-rouge.vercel.app', //production
 ];
 const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',')

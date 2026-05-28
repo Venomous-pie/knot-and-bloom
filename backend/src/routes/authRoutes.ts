@@ -67,11 +67,11 @@ router.get(
 
             AuditService.logAuth('OAUTH_LOGIN_SUCCESS', user.uid, { provider: 'google' });
 
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
+            const frontendUrl = process.env.FRONTEND_URL || 'https://knot-and-bloom-rouge.vercel.app';
             res.redirect(`${frontendUrl}/auth/success?code=${authCode}`);
         } catch (error) {
             console.error('Auth callback error:', error);
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
+            const frontendUrl = process.env.FRONTEND_URL || 'https://knot-and-bloom-rouge.vercel.app';
             res.redirect(`${frontendUrl}/login?error=token_generation_failed`);
         }
     }

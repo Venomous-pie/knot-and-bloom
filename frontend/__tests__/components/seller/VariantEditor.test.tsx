@@ -33,8 +33,8 @@ describe('VariantEditor', () => {
         (useDialog as jest.Mock).mockReturnValue({ confirm: mockConfirm });
     });
 
-    const defaultVariants = [
-        { name: 'Default', stock: '5', sku: 'TEST-SKU-1', price: '', discountPercentage: '', images: [] }
+    const defaultVariants: any[] = [
+        { uid: 1, stock: '5', sku: 'TEST-SKU-1', price: '', discountPercentage: '', images: [], options: { 'Size': 'Default' }, isEnabled: true }
     ];
 
     it('should filter stock input to strictly integers', () => {
@@ -42,8 +42,9 @@ describe('VariantEditor', () => {
             <VariantEditor
                 {...baseProps}
                 variants={defaultVariants}
+                productOptions={[]}
+                onProductOptionsChange={jest.fn()}
                 onVariantsChange={mockOnVariantsChange}
-                onGenerateVariantSku={mockOnGenerateVariantSku}
             />
         );
 
@@ -66,17 +67,18 @@ describe('VariantEditor', () => {
     });
 
     it('should fall back to base price visually but allow price overrides', () => {
-        const variantsWithSecond = [
+        const variantsWithSecond: any[] = [
             ...defaultVariants,
-            { name: 'Second', stock: '5', sku: 'TEST-SKU-2', price: '', discountPercentage: '', images: [] }
+            { uid: 2, stock: '5', sku: 'TEST-SKU-2', price: '', discountPercentage: '', images: [], options: { 'Size': 'Second' }, isEnabled: true }
         ];
 
         const { getByPlaceholderText, getByText } = render(
             <VariantEditor
                 {...baseProps}
                 variants={variantsWithSecond} // price is ''
+                productOptions={[]}
+                onProductOptionsChange={jest.fn()}
                 onVariantsChange={mockOnVariantsChange}
-                onGenerateVariantSku={mockOnGenerateVariantSku}
             />
         );
 
@@ -97,17 +99,18 @@ describe('VariantEditor', () => {
     });
 
     it('should remove variant when delete is confirmed, and prevent deleting the default variant', async () => {
-        const variantsWithMultiple = [
+        const variantsWithMultiple: any[] = [
             ...defaultVariants,
-            { name: 'Second', stock: '2', sku: 'TEST-SKU-2', price: '', discountPercentage: '', images: [] }
+            { uid: 2, stock: '2', sku: 'TEST-SKU-2', price: '', discountPercentage: '', images: [], options: { 'Size': 'Second' }, isEnabled: true }
         ];
 
         const { queryAllByTestId } = render(
             <VariantEditor
                 {...baseProps}
                 variants={variantsWithMultiple}
+                productOptions={[]}
+                onProductOptionsChange={jest.fn()}
                 onVariantsChange={mockOnVariantsChange}
-                onGenerateVariantSku={mockOnGenerateVariantSku}
             />
         );
 
@@ -128,19 +131,19 @@ describe('VariantEditor', () => {
     it('should allow duplicate variant names without crashing', () => {
         // The first variant's name is locked to "Default", so we add two more variants
         // to test the text inputs.
-        const duplicateVariants = [
+        const duplicateVariants: any[] = [
             defaultVariants[0],
-            { name: 'Red', stock: '5', sku: 'SKU-R', price: '', discountPercentage: '', images: [] },
-            { name: 'Red', stock: '5', sku: 'SKU-R2', price: '', discountPercentage: '', images: [] },
+            { uid: 2, stock: '5', sku: 'SKU-R', price: '', discountPercentage: '', images: [], options: { 'Color': 'Red' }, isEnabled: true },
+            { uid: 3, stock: '5', sku: 'SKU-R2', price: '', discountPercentage: '', images: [], options: { 'Color': 'Red' }, isEnabled: true },
         ];
 
         const { getAllByPlaceholderText, getAllByText } = render(
             <VariantEditor
                 {...baseProps}
                 variants={duplicateVariants}
+                productOptions={[]}
+                onProductOptionsChange={jest.fn()}
                 onVariantsChange={mockOnVariantsChange}
-                onGenerateVariantSku={mockOnGenerateVariantSku}
-                onExpandedChange={jest.fn()}
             />
         );
 
@@ -155,7 +158,7 @@ describe('VariantEditor', () => {
 
         expect(mockOnVariantsChange).toHaveBeenCalledWith([
             duplicateVariants[0],
-            { ...duplicateVariants[1], name: 'Blue' },
+            { ...duplicateVariants[1], options: { ...duplicateVariants[1].options, 'Color': 'Blue' } },
             duplicateVariants[2]
         ]);
     });

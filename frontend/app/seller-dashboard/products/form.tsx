@@ -65,6 +65,17 @@ export default function SellerProductForm() {
                         tags: Array.isArray(p.tags) ? p.tags : [],
                         metaTitle: p.metaTitle || '',
                         metaDescription: p.metaDescription || '',
+                        videoUrl: p.videoUrl || '',
+                        shippingFeeOverride: p.shippingFeeOverride ? String(p.shippingFeeOverride) : '',
+                        isLocalPickupAllowed: p.isLocalPickupAllowed ?? false,
+                        localPickupInstructions: p.localPickupInstructions || '',
+                        processingTime: p.processingTime || '',
+                        fulfillmentType: p.fulfillmentType || 'READY_TO_SHIP',
+                        isCustomOrderAllowed: p.isCustomOrderAllowed ?? false,
+                        customOrderInstructions: p.customOrderInstructions || '',
+                        careInstructions: p.careInstructions || '',
+                        minOrderQty: p.minOrderQty ? String(p.minOrderQty) : '',
+                        maxOrderQty: p.maxOrderQty ? String(p.maxOrderQty) : '',
                     },
                     selectedCategories: Array.isArray(p.categories) ? p.categories : [],
                     variants: p.variants && p.variants.length > 0
@@ -76,9 +87,10 @@ export default function SellerProductForm() {
                             price: v.price ? String(v.price) : '',
                             discountPercentage: v.discountPercentage ? String(v.discountPercentage) : '',
                             images: v.images || (v.image ? [v.image] : []),
-                            materials: v.materials || '',
+                            options: v.options || {},
+                            isEnabled: v.isEnabled ?? true,
                         }))
-                        : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]
+                        : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [], options: {}, isEnabled: true }]
                 });
                 setProductStatus(p.status ?? null);
             }
@@ -103,7 +115,7 @@ export default function SellerProductForm() {
                 image: data.formData.image,
                 images: data.formData.images || [],
                 tags: data.formData.tags || [],
-                materials: data.formData.materials || data.variants[0]?.materials || undefined,
+                materials: data.formData.materials || undefined,
                 metaTitle: data.formData.metaTitle || undefined,
                 metaDescription: data.formData.metaDescription || undefined,
                 variants: data.variants.map(v => ({
@@ -114,7 +126,8 @@ export default function SellerProductForm() {
                     price: v.price ? parseFloat(v.price) : undefined,
                     discountPercentage: v.discountPercentage ? parseFloat(v.discountPercentage) : undefined,
                     images: v.images,
-                    materials: v.materials || undefined,
+                    options: v.options || {},
+                    isEnabled: v.isEnabled ?? true,
                 })),
                 status: isDraft ? 'DRAFT' : undefined,
             };

@@ -33,6 +33,17 @@ interface Product {
     isCodAllowed?: boolean;
     metaTitle?: string | null;
     metaDescription?: string | null;
+    videoUrl?: string | null;
+    shippingFeeOverride?: number | null;
+    isLocalPickupAllowed?: boolean;
+    localPickupInstructions?: string | null;
+    processingTime?: string | null;
+    fulfillmentType?: string;
+    isCustomOrderAllowed?: boolean;
+    customOrderInstructions?: string | null;
+    careInstructions?: string | null;
+    minOrderQty?: number | null;
+    maxOrderQty?: number | null;
     uploaded: string;
     updated: string;
     variants: ProductVariant[];

@@ -680,6 +680,12 @@ export const productGenerationAPI = {
      */
     generateVariantSku: (data: { baseSKU: string; variantName: string }) =>
         apiClient.post<{ success: boolean; sku: string; message?: string }>('/products/generate-variant-sku', data),
+
+    /**
+     * Auto-generate option values for a product option name
+     */
+    generateOptionValues: (data: { optionName: string }) =>
+        apiClient.post<{ success: boolean; values: string[] }>('/products/generate-option-values', data),
 };
 
 export default api;

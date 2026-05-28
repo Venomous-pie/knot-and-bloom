@@ -1,7 +1,7 @@
 import Router from 'express';
 import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../error/errorHandler.js';
-import { generateProductDescription, generateProductSKU, generateVariantSKU } from '../services/GenerateService.js';
+import { generateProductDescription, generateProductSKU, generateVariantSKU, generateOptionValues } from '../services/GenerateService.js';
 import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
 import { Role } from '../types/authTypes.js';
@@ -106,6 +106,32 @@ router.post('/generate-variant-sku', authenticate, aiRateLimiter, async (req, re
         return res.status(500).json({
             success: false,
             message: 'Failed to generate variant SKU',
+        });
+    }
+});
+
+router.post('/generate-option-values', authenticate, aiRateLimiter, async (req, res) => {
+    try {
+        const { optionName } = req.body;
+
+        if (!optionName || typeof optionName !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'optionName is required and must be a string',
+            });
+        }
+
+        const values = await generateOptionValues(optionName);
+
+        return res.status(200).json({
+            success: true,
+            values,
+        });
+    } catch (error) {
+        console.error('Option values generation error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to generate option values',
         });
     }
 });

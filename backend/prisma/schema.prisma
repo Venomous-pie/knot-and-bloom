@@ -41,6 +41,21 @@ model Product {
   metaTitle       String? // SEO title override (max 70 chars)
   metaDescription String? // SEO description override (max 160 chars)
 
+  // New Details & Fulfillment
+  videoUrl                String?
+  shippingFeeOverride     Decimal?
+  isLocalPickupAllowed    Boolean @default(false)
+  localPickupInstructions String?
+  processingTime          String?
+  fulfillmentType         FulfillmentType @default(READY_TO_SHIP)
+  isCustomOrderAllowed    Boolean @default(false)
+  customOrderInstructions String?
+  careInstructions        String?
+  minOrderQty             Int?
+  maxOrderQty             Int?
+
+  productOptions ProductOption[]
+
   orderItems    OrderItem[]
   wishlistItems WishlistItem[]
 }
@@ -58,7 +73,8 @@ model ProductVariant {
   discountPercentage Int?
   discountedPrice    Decimal?
   images             String[]
-  materials          String?
+  isEnabled          Boolean   @default(true)
+  optionValues       ProductOptionValue[]
   cartItems          CartItem[]
 
   @@unique([productId, name])
@@ -252,6 +268,29 @@ enum ProductStatus {
   PENDING
   ACTIVE
   SUSPENDED
+}
+
+enum FulfillmentType {
+  READY_TO_SHIP
+  MADE_TO_ORDER
+}
+
+model ProductOption {
+  uid       Int                  @id @default(autoincrement())
+  product   Product              @relation(fields: [productId], references: [uid], onDelete: Cascade)
+  productId Int
+  name      String
+  position  Int                  @default(0)
+  values    ProductOptionValue[]
+}
+
+model ProductOptionValue {
+  uid        Int              @id @default(autoincrement())
+  option     ProductOption    @relation(fields: [optionId], references: [uid], onDelete: Cascade)
+  optionId   Int
+  value      String
+  imageUrl   String?
+  variants   ProductVariant[]
 }
 
 model Seller {

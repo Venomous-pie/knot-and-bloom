@@ -60,7 +60,7 @@ export async function generateProductDescription(product: ProductDescriptionInpu
     try {
         const inferenceClient = getClient();
         const descriptionCompletion = await inferenceClient.chatCompletion({
-            model: "meta-llama/Llama-3.1-8B-Instruct:cerebras",
+            model: "meta-llama/Llama-3.3-70B-Instruct",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
@@ -152,4 +152,42 @@ export async function generateVariantSKU(input: GenerateVariantSKUInput): Promis
     }
 
     return variantSKU;
+}
+
+export async function generateOptionValues(optionName: string): Promise<string[]> {
+    const systemPrompt = `
+        You are a helpful e-commerce assistant.
+        The user will provide a product option name (e.g., "Scent", "Bundle Size", "Flavor").
+        Your task is to return exactly 6 typical values for that option name.
+        Return ONLY a comma-separated list of values. Do not include any explanations, bullet points, quotes, or conversational text.
+        Make the values concise and common for e-commerce.
+    `;
+
+    const userPrompt = `Option name: ${optionName}`;
+
+    try {
+        const inferenceClient = getClient();
+        const completion = await inferenceClient.chatCompletion({
+            model: "meta-llama/Llama-3.3-70B-Instruct",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+            ],
+            temperature: 0.7,
+            max_tokens: 50,
+        });
+
+        const content = completion.choices[0]?.message?.content?.trim();
+        if (!content) return [];
+
+        // Split by comma and clean up
+        return content
+            .split(',')
+            .map(v => v.trim().replace(/^['"]|['"]$/g, '')) // Remove quotes
+            .filter(v => v.length > 0 && v.length < 25) // Basic sanity check
+            .slice(0, 6);
+    } catch (error) {
+        console.error("Error generating option values:", error);
+        return []; // Fail silently and return no suggestions
+    }
 }

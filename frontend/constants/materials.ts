@@ -1,6 +1,7 @@
 export const MATERIAL_SUGGESTIONS: Record<string, string[]> = {
     'Crochet': ['100% Cotton Yarn', 'Acrylic Yarn', 'Milk Cotton Yarn', 'Polyester Stuffing', 'Safety Eyes', 'Keychain Ring'],
     'Fuzzy Wire Art': ['Fuzzy Wire', 'Pipe Cleaners', 'Felt Details', 'Wood Base', 'Plastic Eyes', 'Acrylic Paint'],
+    'Wire Flowers': ['Fuzzy Wire', 'Copper Wire', 'Floral Tape', 'Floral Wire', 'Satin Ribbon'],
     'Gift Boxes/Sets': ['Gift Box', 'Kraft Box', 'Satin Ribbon', 'Tissue Paper', 'Crinkle Paper', 'Custom Tags', 'Stickers', 'Handwritten Note'],
     'Hair Ties': ['Strong Elastic', 'Cotton Fabric', 'Pure Silk', 'Satin', 'Velvet', 'Organza'],
     'Fuzzy Wire Bouquets': ['Fuzzy Wire', 'Pipe Cleaners', 'Floral Tape', 'Floral Wire', 'Premium Wrapping Paper', 'Satin Ribbon'],

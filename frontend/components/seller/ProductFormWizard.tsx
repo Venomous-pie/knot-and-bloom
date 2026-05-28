@@ -48,6 +48,27 @@ export interface ProductFormData {
     tags: string[];
     metaTitle: string;
     metaDescription: string;
+    videoUrl: string;
+    shippingFeeOverride: string;
+    isLocalPickupAllowed: boolean;
+    localPickupInstructions: string;
+    processingTime: string;
+    fulfillmentType: string;
+    isCustomOrderAllowed: boolean;
+    customOrderInstructions: string;
+    careInstructions: string;
+    minOrderQty: string;
+    maxOrderQty: string;
+}
+
+export interface ProductOptionValue {
+    name: string;
+    imageUrl?: string;
+}
+
+export interface ProductOption {
+    name: string;
+    values: ProductOptionValue[];
 }
 
 interface ProductFormWizardProps {
@@ -55,16 +76,19 @@ interface ProductFormWizardProps {
         formData: ProductFormData;
         selectedCategories: string[];
         variants: VariantData[];
+        productOptions?: ProductOption[];
     };
     onSubmit: (data: {
         formData: ProductFormData;
         selectedCategories: string[];
         variants: VariantData[];
+        productOptions: ProductOption[];
     }) => Promise<void>;
     onSaveDraft?: (data: {
         formData: ProductFormData;
         selectedCategories: string[];
         variants: VariantData[];
+        productOptions: ProductOption[];
     }) => Promise<void>;
     onBack: () => void;
     loading: boolean;
@@ -74,6 +98,7 @@ interface ProductFormWizardProps {
         formData: ProductFormData;
         selectedCategories: string[];
         variants: VariantData[];
+        productOptions: ProductOption[];
     }) => void;
     productStatus?: string;
 }
@@ -117,6 +142,17 @@ export default function ProductFormWizard({
         tags: [],
         metaTitle: '',
         metaDescription: '',
+        videoUrl: '',
+        shippingFeeOverride: '',
+        isLocalPickupAllowed: false,
+        localPickupInstructions: '',
+        processingTime: '',
+        fulfillmentType: 'READY_TO_SHIP',
+        isCustomOrderAllowed: false,
+        customOrderInstructions: '',
+        careInstructions: '',
+        minOrderQty: '',
+        maxOrderQty: '',
     });
     const [tagInput, setTagInput] = useState('');
     const [tagError, setTagError] = useState<string | null>(null);
@@ -125,6 +161,7 @@ export default function ProductFormWizard({
     const [variants, setVariants] = useState<VariantData[]>([
         { name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }
     ]);
+    const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
     const [images, setImages] = useState<{ uri: string; isUrl?: boolean }[]>([]);
     const [showPreview, setShowPreview] = useState(!mobile);
 
@@ -142,12 +179,15 @@ export default function ProductFormWizard({
     // Centralized draft persistence
     const { clearDraft } = useDraft({
         key: 'product_form_draft',
-        data: { formData, selectedCategories, variants, images },
+        data: { formData, selectedCategories, variants, productOptions, images },
         enabled: !isEditing,
         onLoad: (draft: any) => {
-            setFormData({ tags: [], metaTitle: '', metaDescription: '', ...draft.formData });
+            // Draft Migration logic: If the draft is missing the new fields or option schema, we could discard or migrate it.
+            // For now we just merge what we have.
+            setFormData({ tags: [], metaTitle: '', metaDescription: '', fulfillmentType: 'READY_TO_SHIP', ...draft.formData });
             setSelectedCategories(draft.selectedCategories);
             setVariants(draft.variants);
+            setProductOptions(draft.productOptions || []);
             if (draft.images && draft.images.length > 0) {
                 setImages(draft.images);
             } else if (draft.formData?.image) {
@@ -158,10 +198,10 @@ export default function ProductFormWizard({
 
     // Notify parent of data changes
     useEffect(() => {
-        if (onDataChange) {
-            onDataChange({ formData, selectedCategories, variants });
+        if (initializedRef.current && onDataChange) {
+            onDataChange({ formData, selectedCategories, variants, productOptions });
         }
-    }, [formData, selectedCategories, variants, onDataChange]);
+    }, [formData, selectedCategories, variants, productOptions, onDataChange]);
 
     useEffect(() => {
         if (initialData && !initializedRef.current) {
@@ -260,9 +300,13 @@ export default function ProductFormWizard({
             name: '', sku: '', basePrice: '', discountPercentage: '', image: '',
             description: '', materials: '', bundleQuantity: '1', isCodAllowed: true, isBundle: false,
             tags: [], metaTitle: '', metaDescription: '',
+            videoUrl: '', shippingFeeOverride: '', isLocalPickupAllowed: false, localPickupInstructions: '',
+            processingTime: '', fulfillmentType: 'READY_TO_SHIP', isCustomOrderAllowed: false,
+            customOrderInstructions: '', careInstructions: '', minOrderQty: '', maxOrderQty: '',
         });
         setSelectedCategories([]);
         setVariants([{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]);
+        setProductOptions([]);
         setImages([]);
         setCurrentStep(1);
     };
@@ -378,6 +422,35 @@ export default function ProductFormWizard({
                     isValid = false;
                 }
 
+                if (formData.shippingFeeOverride && (isNaN(Number(formData.shippingFeeOverride)) || Number(formData.shippingFeeOverride) < 0)) {
+                    newErrors.shippingFeeOverride = 'Shipping fee override must be a valid number (0 or more).';
+                    isValid = false;
+                }
+                if (formData.isLocalPickupAllowed && !formData.localPickupInstructions.trim()) {
+                    newErrors.localPickupInstructions = 'Please provide pickup instructions.';
+                    isValid = false;
+                }
+                if (formData.fulfillmentType === 'MADE_TO_ORDER' && !formData.processingTime.trim()) {
+                    newErrors.processingTime = 'Processing time is required for made-to-order items.';
+                    isValid = false;
+                }
+                if (formData.isCustomOrderAllowed && !formData.customOrderInstructions.trim()) {
+                    newErrors.customOrderInstructions = 'Please provide instructions for custom orders.';
+                    isValid = false;
+                }
+                if (formData.minOrderQty && (isNaN(Number(formData.minOrderQty)) || !Number.isInteger(Number(formData.minOrderQty)) || Number(formData.minOrderQty) < 1)) {
+                    newErrors.minOrderQty = 'Min order quantity must be at least 1.';
+                    isValid = false;
+                }
+                if (formData.maxOrderQty && (isNaN(Number(formData.maxOrderQty)) || !Number.isInteger(Number(formData.maxOrderQty)) || Number(formData.maxOrderQty) < 1)) {
+                    newErrors.maxOrderQty = 'Max order quantity must be at least 1.';
+                    isValid = false;
+                }
+                if (formData.minOrderQty && formData.maxOrderQty && Number(formData.minOrderQty) > Number(formData.maxOrderQty)) {
+                    newErrors.maxOrderQty = 'Max order quantity must be greater than or equal to min order quantity.';
+                    isValid = false;
+                }
+
                 if (formData.isBundle && (!formData.bundleQuantity.trim() || isNaN(Number(formData.bundleQuantity)) || !Number.isInteger(Number(formData.bundleQuantity)) || Number(formData.bundleQuantity) < 2)) {
                     newErrors.bundleQty = 'Bundle quantity must be a whole number of at least 2.';
                     isValid = false;
@@ -395,10 +468,7 @@ export default function ProductFormWizard({
                         newErrors[`variant-${i}-name`] = 'Please enter a variant name.';
                         isValid = false;
                     }
-                    if (i === 0 && (!v.materials || !v.materials.trim())) {
-                        newErrors[`variant-${i}-materials`] = 'Base materials and inclusions are required.';
-                        isValid = false;
-                    }
+
                     if (i > 0 && (!v.images || v.images.length === 0)) {
                         newErrors[`variant-${i}-images`] = 'Please upload at least one image for this variant.';
                         isValid = false;
@@ -463,33 +533,48 @@ export default function ProductFormWizard({
     const handleSubmit = async () => {
         if (!validateStep(currentStep)) return;
         try {
-            await onSubmit({ formData, selectedCategories, variants });
+            // Auto-generate SEO metadata from product context
+            const autoMetaTitle = formData.name.length > 0
+                ? `${formData.name} | ${selectedCategories[0] || 'Handmade'} - Knot & Bloom`.slice(0, 70)
+                : '';
+            const autoMetaDescription = [
+                formData.description?.slice(0, 100),
+                selectedCategories.length > 0 ? `Category: ${selectedCategories.join(', ')}` : '',
+                formData.tags.length > 0 ? `Tags: ${formData.tags.slice(0, 3).join(', ')}` : '',
+            ].filter(Boolean).join('. ').slice(0, 160);
+
+            const enrichedFormData = {
+                ...formData,
+                metaTitle: autoMetaTitle,
+                metaDescription: autoMetaDescription,
+            };
+
+            await onSubmit({ formData: enrichedFormData, selectedCategories, variants, productOptions });
             if (!isEditing) clearDraft();
         } catch (error) {
             console.error('Submission failed:', error);
-            // Re-throw if parent expects to handle it synchronously, 
-            // but for now we just prevent the unhandled rejection crash.
         }
     };
 
     const handleSaveDraft = async () => {
         if (onSaveDraft) {
-            await onSaveDraft({ formData, selectedCategories, variants });
+            await onSaveDraft({ formData, selectedCategories, variants, productOptions });
             if (!isEditing) clearDraft();
         }
     };
 
     const optimizationScoreResult = React.useMemo(() => calculateOptimizationScore({
         image: images[0]?.uri || null,
+        videoUrl: formData.videoUrl,
         name: formData.name,
         description: formData.description,
         tags: formData.tags,
-        materials: variants[0]?.materials || '',
-        metaTitle: formData.metaTitle,
-        metaDescription: formData.metaDescription,
+        materials: formData.materials,
+        careInstructions: formData.careInstructions,
+        processingTime: formData.processingTime,
         basePrice: formData.basePrice,
         discountPercentage: formData.discountPercentage,
-        variants: variants.map(v => ({ stock: v.stock, images: v.images })),
+        variants: variants.map(v => ({ stock: v.stock, images: v.images, isEnabled: v.isEnabled })),
     }), [images, formData, variants]);
 
     const SectionTitleWithScore = ({ title, description, style }: { title: string, description?: string, style?: any }) => (
@@ -511,7 +596,7 @@ export default function ProductFormWizard({
     const getStepData = () => {
         switch (currentStep) {
             case 1: return { title: "Basic Information & Media", description: "Start by providing the essential details and photos for your product." };
-            case 2: return { title: "Product Details", description: "Add specifics like SKU, pricing, and SEO tags to boost discoverability." };
+            case 2: return { title: "Product Details", description: "Add specifics like SKU, pricing, and tags to boost discoverability." };
             case 3: return { title: "Variants & Stock", description: "Manage product variations (e.g., size, color) and track your inventory." };
             case 4: return { title: "Review & Submit", description: "Review your product details before submitting." };
             default: return { title: "", description: "" };
@@ -523,312 +608,547 @@ export default function ProductFormWizard({
             case 1:
                 return (
                     <View style={styles.stepContent}>
-                        {/* Product Images */}
-                        <View style={styles.field}>
-                            <Text style={styles.fieldLabel}>Product Images</Text>
-                            <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
-                                Add photos to showcase your product. The first image will be the primary photo.
-                            </Text>
-                            <View style={[errors.images && styles.fieldErrorContainer]}>
-                                <ImageUploader
-                                    images={images}
-                                    onImagesChange={(newImages) => {
-                                        setImages(newImages);
-                                        if (errors.images) {
-                                            setErrors(prev => { const n = { ...prev }; delete n.images; return n; });
+                        {/* 1. Identity Card */}
+                        <View style={styles.card}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                <Tag size={20} color={theme.colors.primary} />
+                                <Text style={styles.cardTitle}>Product Identity</Text>
+                            </View>
+                            <Text style={styles.cardDescription}>Give your product a clear name and select up to 3 categories to help buyers find it.</Text>
+                            
+                            {/* Product Name */}
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Product Name *</Text>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'name' && styles.inputFocused, errors.name && styles.inputError]}
+                                    value={formData.name}
+                                    onChangeText={(text: string) => handleChange('name', text)}
+                                    placeholder="e.g. Handmade Crochet Bear"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    autoCapitalize="sentences"
+                                    onFocus={() => setFocusedField('name')}
+                                    onBlur={() => {
+                                        setFocusedField(null);
+                                        if (formData.name) {
+                                            handleChange('name', toTitleCase(formData.name));
                                         }
                                     }}
-                                    maxImages={5}
                                 />
+                                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
                             </View>
-                            {errors.images && <Text style={styles.errorText}>{errors.images}</Text>}
-                        </View>
-                        {/* Product Name */}
-                        <View style={styles.field}>
-                            <Text style={styles.fieldLabel}>Product Name *</Text>
-                            <TextInput
-                                style={[styles.input, focusedField === 'name' && styles.inputFocused, errors.name && styles.inputError]}
-                                value={formData.name}
-                                onChangeText={(text: string) => handleChange('name', text)}
-                                placeholder="e.g. Handmade Crochet Bear"
-                                placeholderTextColor={theme.colors.textLight}
-                                autoCapitalize="sentences"
-                                onFocus={() => setFocusedField('name')}
-                                onBlur={() => {
-                                    setFocusedField(null);
-                                    if (formData.name) {
-                                        handleChange('name', toTitleCase(formData.name));
-                                    }
-                                }}
-                            />
-                            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-                        </View>
 
-                        {/* Categories */}
-                        <View style={styles.field}>
-                            <View style={styles.fieldLabelRow}>
-                                <Text style={styles.fieldLabel}>Categories*</Text>
-                                <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand' }}>
-                                    {selectedCategories.length}/3
+                            {/* Categories */}
+                            <View style={[styles.field, { marginBottom: 0 }]}>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>Categories *</Text>
+                                    <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                        {selectedCategories.length}/3
+                                    </Text>
+                                </View>
+                                <View style={styles.categoryList}>
+                                    {categories.map((cat) => {
+                                        const isSelected = selectedCategories.includes(cat);
+                                        const isMaxed = selectedCategories.length >= 3;
+                                        const isDisabled = isMaxed && !isSelected;
+                                        return (
+                                            <Pressable
+                                                key={cat}
+                                                style={[
+                                                    styles.categoryChip,
+                                                    isSelected && styles.categoryChipSelected,
+                                                    isDisabled && { opacity: 0.5, backgroundColor: theme.colors.subtle }
+                                                ]}
+                                                onPress={() => {
+                                                    if (isDisabled) {
+                                                        setErrors(prev => ({ ...prev, categories: 'Maximum of 3 categories reached.' }));
+                                                        return;
+                                                    }
+                                                    if (errors.categories) {
+                                                        setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
+                                                    }
+                                                    if (isSelected) {
+                                                        setSelectedCategories(selectedCategories.filter(c => c !== cat));
+                                                    } else {
+                                                        setSelectedCategories([...selectedCategories, cat]);
+                                                    }
+                                                }}
+                                            >
+                                                <Text style={[
+                                                    styles.categoryText,
+                                                    isSelected && styles.categoryTextSelected,
+                                                    isDisabled && { color: theme.colors.textLight }
+                                                ]}>{cat}</Text>
+                                            </Pressable>
+                                        );
+                                    })}
+                                </View>
+                                <View style={{ minHeight: 18, justifyContent: 'center' }}>
+                                    <Text style={[styles.errorText, { marginTop: 0, opacity: errors.categories ? 1 : 0 }]}>
+                                        {errors.categories || ' '}
+                                    </Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: theme.colors.textLight, paddingHorizontal: 2 }}>
+                                    Hint: You can select multiple categories (Up to 3).
                                 </Text>
                             </View>
-                            <View style={styles.categoryList}>
-                                {categories.map((cat) => {
-                                    const isSelected = selectedCategories.includes(cat);
-                                    const isMaxed = selectedCategories.length >= 3;
-                                    const isDisabled = isMaxed && !isSelected;
-                                    return (
-                                        <Pressable
-                                            key={cat}
-                                            style={[
-                                                styles.categoryChip,
-                                                isSelected && styles.categoryChipSelected,
-                                                isDisabled && { opacity: 0.5, backgroundColor: theme.colors.subtle }
-                                            ]}
-                                            onPress={() => {
-                                                if (isDisabled) {
-                                                    setErrors(prev => ({ ...prev, categories: 'Maximum of 3 categories reached.' }));
-                                                    return;
-                                                }
-                                                if (errors.categories) {
-                                                    setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
-                                                }
-                                                if (isSelected) {
-                                                    setSelectedCategories(selectedCategories.filter(c => c !== cat));
-                                                } else {
-                                                    setSelectedCategories([...selectedCategories, cat]);
-                                                }
-                                            }}
-                                        >
-                                            <Text style={[
-                                                styles.categoryText,
-                                                isSelected && styles.categoryTextSelected,
-                                                isDisabled && { color: theme.colors.textLight }
-                                            ]}>{cat}</Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </View>
-                            <View style={{ minHeight: 18, justifyContent: 'center' }}>
-                                <Text style={[styles.errorText, { marginTop: 0, opacity: errors.categories ? 1 : 0 }]}>
-                                    {errors.categories || ' '}
-                                </Text>
-                            </View>
-                            <Text style={{ fontSize: 11, color: theme.colors.textLight, paddingHorizontal: 2 }}>
-                                Hint: You can select multiple categories (Up to 3).
-                            </Text>
                         </View>
 
+                        {/* 2. Media Card */}
+                        <View style={styles.card}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                <ImageIcon size={20} color={theme.colors.primary} />
+                                <Text style={styles.cardTitle}>Product Media</Text>
+                            </View>
+                            <Text style={styles.cardDescription}>High-quality photos and videos increase your chances of making a sale.</Text>
+
+                            {/* Product Images */}
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Product Images *</Text>
+                                <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
+                                    Add up to 5 photos. The first image will be the primary photo.
+                                </Text>
+                                <View style={[errors.images && styles.fieldErrorContainer]}>
+                                    <ImageUploader
+                                        images={images}
+                                        onImagesChange={(newImages) => {
+                                            setImages(newImages);
+                                            if (errors.images) {
+                                                setErrors(prev => { const n = { ...prev }; delete n.images; return n; });
+                                            }
+                                        }}
+                                        maxImages={5}
+                                    />
+                                </View>
+                                {errors.images && <Text style={styles.errorText}>{errors.images}</Text>}
+                            </View>
+
+                            {/* Product Video */}
+                            <View style={[styles.field, { marginBottom: 0 }]}>
+                                <Text style={styles.fieldLabel}>Product Video (Optional)</Text>
+                                <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
+                                    Add a link to a TikTok, Instagram Reel, Facebook, or YouTube video to showcase your product in action.
+                                </Text>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'videoUrl' && styles.inputFocused, errors.videoUrl && styles.inputError]}
+                                    value={formData.videoUrl}
+                                    onChangeText={(text: string) => handleChange('videoUrl', text)}
+                                    placeholder="e.g. https://www.tiktok.com/@user/video/12345"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    autoCapitalize="none"
+                                    onFocus={() => setFocusedField('videoUrl')}
+                                    onBlur={() => setFocusedField(null)}
+                                />
+                                {errors.videoUrl && <Text style={styles.errorText}>{errors.videoUrl}</Text>}
+                            </View>
+                        </View>
                     </View>
                 );
 
             case 2:
                 return (
                     <View style={styles.stepContent}>
-                        {/* SKU */}
-                        <View style={styles.field}>
-                            <View style={styles.fieldLabelRow}>
-                                <Text style={styles.fieldLabel}>SKU (Stock Keeping Unit)</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                    {!formData.sku && (
-                                        <Text style={[styles.skuReqText, selectedCategories.length > 0 && styles.skuReqTextDone, { fontSize: 11 }]}>
-                                            {selectedCategories.length > 0 ? '✓ Auto-generating...' : 'Select category to auto-gen'}
-                                        </Text>
-                                    )}
-                                    {generatingSku && <ActivityIndicator size="small" color={theme.colors.primary} />}
+                        {/* 1. Pricing & Inventory Card */}
+                        <View style={styles.card}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                <PhilippinePeso size={20} color={theme.colors.primary} />
+                                <Text style={styles.cardTitle}>Pricing & Inventory</Text>
+                            </View>
+                            <Text style={styles.cardDescription}>Set your base price, sku, and bundle configurations.</Text>
+
+                            {/* Base Price & Discount */}
+                            <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
+                                <View style={[styles.field, !mobile && { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Base Price (₱) *</Text>
+                                    <TextInput
+                                        style={[styles.input, focusedField === 'basePrice' && styles.inputFocused, errors.basePrice && styles.inputError]}
+                                        value={formData.basePrice}
+                                        onChangeText={(text: string) => {
+                                            const clean = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '');
+                                            handleChange('basePrice', clean);
+                                        }}
+                                        placeholder="0.00"
+                                        placeholderTextColor={theme.colors.textLight}
+                                        keyboardType="numeric"
+                                        onFocus={() => setFocusedField('basePrice')}
+                                        onBlur={() => setFocusedField(null)}
+                                    />
+                                    {errors.basePrice && <Text style={styles.errorText}>{errors.basePrice}</Text>}
+                                </View>
+                                <View style={[styles.field, !mobile && { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Discount (%)</Text>
+                                    <TextInput
+                                        style={[styles.input, focusedField === 'discount' && styles.inputFocused]}
+                                        value={formData.discountPercentage}
+                                        onChangeText={(text: string) => {
+                                            const clean = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '');
+                                            handleChange('discountPercentage', clean);
+                                        }}
+                                        placeholder="0"
+                                        placeholderTextColor={theme.colors.textLight}
+                                        keyboardType="numeric"
+                                        onFocus={() => setFocusedField('discount')}
+                                        onBlur={() => setFocusedField(null)}
+                                    />
+                                    {errors.discountPercentage && <Text style={styles.errorText}>{errors.discountPercentage}</Text>}
                                 </View>
                             </View>
-                            <InfoBox
-                                type="info"
-                                message="A Stock Keeping Unit (SKU) is a unique code used to track your inventory. You can enter your own or let us auto-generate one based on your product category."
-                                style={{ marginBottom: 12, marginTop: 8 }}
-                                storageKey="product_form_sku_info"
-                            />
-                            <TextInput
-                                style={[styles.input, focusedField === 'sku' && styles.inputFocused, errors.sku && styles.inputError]}
-                                value={formData.sku}
-                                onChangeText={(text: string) => handleChange('sku', text.toUpperCase().replace(/\s+/g, '-'))}
-                                placeholder="e.g. BEAR-001"
-                                placeholderTextColor={theme.colors.textLight}
-                                autoCapitalize="sentences"
-                                onFocus={() => setFocusedField('sku')}
-                                onBlur={async () => {
-                                    setFocusedField(null);
-                                    if (!formData.sku.trim() && selectedCategories.length > 0) {
-                                        setGeneratingSku(true);
-                                        try {
-                                            const response = await api.post('/products/generate-sku', {
-                                                category: selectedCategories[0],
-                                                variants: variants.map(v => v.name).filter(Boolean)
-                                            });
-                                            const data = response.data;
-                                            if (data.success && data.sku) {
-                                                setFormData(prev => ({ ...prev, sku: data.sku }));
-                                                setVariants(prevVariants => prevVariants.map(v => ({
-                                                    ...v,
-                                                    sku: v.name ? `${data.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}` : ''
-                                                })));
+
+                            {/* SKU */}
+                            <View style={styles.field}>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>SKU (Stock Keeping Unit)</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        {!formData.sku && (
+                                            <Text style={[styles.skuReqText, selectedCategories.length > 0 && styles.skuReqTextDone, { fontSize: 11 }]}>
+                                                {selectedCategories.length > 0 ? '✓ Auto-generating...' : 'Select category to auto-gen'}
+                                            </Text>
+                                        )}
+                                        {generatingSku && <ActivityIndicator size="small" color={theme.colors.primary} />}
+                                    </View>
+                                </View>
+                                <InfoBox
+                                    type="info"
+                                    message="A Stock Keeping Unit (SKU) is a unique code used to track your inventory. You can enter your own or let us auto-generate one based on your product category."
+                                    style={{ marginBottom: 12, marginTop: 8 }}
+                                    storageKey="product_form_sku_info"
+                                />
+                                <TextInput
+                                    style={[styles.input, focusedField === 'sku' && styles.inputFocused, errors.sku && styles.inputError]}
+                                    value={formData.sku}
+                                    onChangeText={(text: string) => handleChange('sku', text.toUpperCase().replace(/\s+/g, '-'))}
+                                    placeholder="e.g. BEAR-001"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    autoCapitalize="sentences"
+                                    onFocus={() => setFocusedField('sku')}
+                                    onBlur={async () => {
+                                        setFocusedField(null);
+                                        if (!formData.sku.trim() && selectedCategories.length > 0) {
+                                            setGeneratingSku(true);
+                                            try {
+                                                const response = await api.post('/products/generate-sku', {
+                                                    category: selectedCategories[0],
+                                                    variants: variants.map(v => v.name).filter(Boolean)
+                                                });
+                                                const data = response.data;
+                                                if (data.success && data.sku) {
+                                                    setFormData(prev => ({ ...prev, sku: data.sku }));
+                                                    setVariants(prevVariants => prevVariants.map(v => ({
+                                                        ...v,
+                                                        sku: v.name ? `${data.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}` : ''
+                                                    })));
+                                                }
+                                            } catch {
+                                                // silent fail
+                                            } finally {
+                                                setGeneratingSku(false);
                                             }
-                                        } catch {
-                                            // silent fail
-                                        } finally {
-                                            setGeneratingSku(false);
                                         }
-                                    }
-                                }}
-                            />
-                            {errors.sku && <Text style={styles.errorText}>{errors.sku}</Text>}
-                        </View>
-
-                        <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
-                            <View style={[styles.field, !mobile && { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Base Price (₱) *</Text>
-                                <TextInput
-                                    style={[styles.input, focusedField === 'basePrice' && styles.inputFocused, errors.basePrice && styles.inputError]}
-                                    value={formData.basePrice}
-                                    onChangeText={(text: string) => {
-                                        const clean = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '');
-                                        handleChange('basePrice', clean);
                                     }}
-                                    placeholder="0.00"
-                                    placeholderTextColor={theme.colors.textLight}
-                                    keyboardType="numeric"
-                                    onFocus={() => setFocusedField('basePrice')}
-                                    onBlur={() => setFocusedField(null)}
                                 />
-                                {errors.basePrice && <Text style={styles.errorText}>{errors.basePrice}</Text>}
+                                {errors.sku && <Text style={styles.errorText}>{errors.sku}</Text>}
                             </View>
-                            <View style={[styles.field, !mobile && { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Discount (%)</Text>
-                                <TextInput
-                                    style={[styles.input, focusedField === 'discount' && styles.inputFocused]}
-                                    value={formData.discountPercentage}
-                                    onChangeText={(text: string) => {
-                                        const clean = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '');
-                                        handleChange('discountPercentage', clean);
-                                    }}
-                                    placeholder="0"
-                                    placeholderTextColor={theme.colors.textLight}
-                                    keyboardType="numeric"
-                                    onFocus={() => setFocusedField('discount')}
-                                    onBlur={() => setFocusedField(null)}
-                                />
-                                {errors.discountPercentage && <Text style={styles.errorText}>{errors.discountPercentage}</Text>}
-                            </View>
-                        </View>
 
-                        {/* Intelligent COD Toggle */}
-                        {Number(formData.basePrice) >= 200 && (
+                            {/* Min / Max Order Qty */}
+                            <View style={mobile ? styles.fieldColumn : styles.fieldRow}>
+                                <View style={[styles.field, !mobile && { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Min Order Qty (Optional)</Text>
+                                    <TextInput
+                                        style={[styles.input, focusedField === 'minOrderQty' && styles.inputFocused, errors.minOrderQty && styles.inputError]}
+                                        value={formData.minOrderQty}
+                                        onChangeText={(text: string) => handleChange('minOrderQty', text.replace(/^0+(?=\d)/, '').replace(/[^0-9]/g, ''))}
+                                        placeholder="e.g. 1"
+                                        placeholderTextColor={theme.colors.textLight}
+                                        keyboardType="numeric"
+                                        onFocus={() => setFocusedField('minOrderQty')}
+                                        onBlur={() => setFocusedField(null)}
+                                    />
+                                    {errors.minOrderQty && <Text style={styles.errorText}>{errors.minOrderQty}</Text>}
+                                </View>
+                                <View style={[styles.field, !mobile && { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Max Order Qty (Optional)</Text>
+                                    <TextInput
+                                        style={[styles.input, focusedField === 'maxOrderQty' && styles.inputFocused, errors.maxOrderQty && styles.inputError]}
+                                        value={formData.maxOrderQty}
+                                        onChangeText={(text: string) => handleChange('maxOrderQty', text.replace(/^0+(?=\d)/, '').replace(/[^0-9]/g, ''))}
+                                        placeholder="e.g. 10"
+                                        placeholderTextColor={theme.colors.textLight}
+                                        keyboardType="numeric"
+                                        onFocus={() => setFocusedField('maxOrderQty')}
+                                        onBlur={() => setFocusedField(null)}
+                                    />
+                                    {errors.maxOrderQty && <Text style={styles.errorText}>{errors.maxOrderQty}</Text>}
+                                </View>
+                            </View>
+
+                            {/* Bundle / Giftbox Toggle */}
                             <View style={styles.switchContainer}>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={styles.switchLabel}>Allow Cash on Delivery (COD)?</Text>
+                                    <Text style={styles.switchLabel}>Is this a Bundle or Giftbox?</Text>
                                     <Text style={styles.switchSub}>
-                                        For items over ₱200, you can disable COD to reduce cancellation risks.
+                                        Check this if the product contains multiple items sold together.
                                     </Text>
                                 </View>
                                 <Switch
                                     trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
-                                    thumbColor={formData.isCodAllowed ? "#f4f3f4" : "#f4f3f4"}
-                                    onValueChange={() => setFormData(prev => ({ ...prev, isCodAllowed: !prev.isCodAllowed }))}
-                                    value={formData.isCodAllowed}
+                                    thumbColor={formData.isBundle ? "#f4f3f4" : "#f4f3f4"}
+                                    onValueChange={() => setFormData(prev => ({ ...prev, isBundle: !prev.isBundle }))}
+                                    value={formData.isBundle}
                                 />
                             </View>
-                        )}
 
-                        {/* Description field moved here */}
-                        {/* Description */}
-                        <View style={styles.field}>
-                            <View style={styles.fieldLabelRow}>
-                                <Text style={styles.fieldLabel}>Description</Text>
-                                {settings.aiDescriptionEnabled ? (
-                                    <Pressable onPress={handleGenerateDescription} disabled={generatingDescription}>
-                                        {generatingDescription ? (
-                                            <ActivityIndicator size="small" color={theme.colors.primary} />
-                                        ) : (
-                                            <View style={styles.autoGenButton}>
-                                                <Sparkles size={14} color={theme.colors.primary} />
-                                                <Text style={styles.autoGenText}>AI Generate</Text>
-                                            </View>
-                                        )}
-                                    </Pressable>
-                                ) : (
-                                    <Pressable
-                                        style={styles.autoGenButtonLocked}
-                                        onPress={() => router.push('/seller-dashboard/settings' as any)}
-                                    >
-                                        <Lock size={12} color={theme.colors.textLight} />
-                                        <Text style={styles.autoGenTextLocked}>AI Generate</Text>
-                                    </Pressable>
-                                )}
-                            </View>
-                            <TextInput
-                                style={[styles.input, styles.textArea, focusedField === 'description' && styles.inputFocused, errors.description && styles.inputError]}
-                                value={formData.description}
-                                onChangeText={(text: string) => handleChange('description', text)}
-                                placeholder="Describe your product..."
-                                placeholderTextColor={theme.colors.textLight}
-                                multiline
-                                numberOfLines={5}
-                                onFocus={() => setFocusedField('description')}
-                                onBlur={() => {
-                                    setFocusedField(null);
-                                    if (formData.description) {
-                                        handleChange('description', toSentenceCase(formData.description));
-                                    }
-                                }}
-                            />
-                            {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                            {/* Bundle Quantity - Conditional */}
+                            {formData.isBundle && (
+                                <View style={[styles.field, { marginBottom: 0 }]}>
+                                    <Text style={styles.fieldLabel}>Bundle Quantity</Text>
+                                    <TextInput
+                                        style={[styles.input, focusedField === 'bundleQty' && styles.inputFocused, errors.bundleQty && styles.inputError]}
+                                        value={formData.bundleQuantity}
+                                        onChangeText={(text: string) => handleChange('bundleQuantity', text.replace(/^0+(?=\d)/, '').replace(/[^0-9]/g, ''))}
+                                        placeholder="Total number of items in the bundle (e.g. 3)"
+                                        placeholderTextColor={theme.colors.textLight}
+                                        keyboardType="numeric"
+                                        onFocus={() => setFocusedField('bundleQty')}
+                                        onBlur={() => setFocusedField(null)}
+                                    />
+                                    {errors.bundleQty && <Text style={styles.errorText}>{errors.bundleQty}</Text>}
+                                </View>
+                            )}
                         </View>
 
-
-
-
-                        {/* Bundle / Giftbox Toggle */}
-                        <View style={styles.switchContainer}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.switchLabel}>Is this a Bundle or Giftbox?</Text>
-                                <Text style={styles.switchSub}>
-                                    Check this if the product contains multiple items sold together.
-                                </Text>
+                        {/* 2. Product Details Card */}
+                        <View style={styles.card}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                <FileText size={20} color={theme.colors.primary} />
+                                <Text style={styles.cardTitle}>Product Details</Text>
                             </View>
-                            <Switch
-                                trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
-                                thumbColor={formData.isBundle ? "#f4f3f4" : "#f4f3f4"}
-                                onValueChange={() => setFormData(prev => ({ ...prev, isBundle: !prev.isBundle }))}
-                                value={formData.isBundle}
-                            />
-                        </View>
+                            <Text style={styles.cardDescription}>Provide a compelling description and helpful instructions for buyers.</Text>
 
-                        {/* Bundle Quantity - Conditional */}
-                        {formData.isBundle && (
+                            {/* Description */}
                             <View style={styles.field}>
-                                <Text style={styles.fieldLabel}>Bundle Quantity</Text>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>Description</Text>
+                                    {settings.aiDescriptionEnabled ? (
+                                        <Pressable onPress={handleGenerateDescription} disabled={generatingDescription}>
+                                            {generatingDescription ? (
+                                                <ActivityIndicator size="small" color={theme.colors.primary} />
+                                            ) : (
+                                                <View style={styles.autoGenButton}>
+                                                    <Sparkles size={14} color={theme.colors.primary} />
+                                                    <Text style={styles.autoGenText}>AI Generate</Text>
+                                                </View>
+                                            )}
+                                        </Pressable>
+                                    ) : (
+                                        <Pressable
+                                            style={styles.autoGenButtonLocked}
+                                            onPress={() => router.push('/seller-dashboard/settings' as any)}
+                                        >
+                                            <Lock size={12} color={theme.colors.textLight} />
+                                            <Text style={styles.autoGenTextLocked}>AI Generate</Text>
+                                        </Pressable>
+                                    )}
+                                </View>
                                 <TextInput
-                                    style={[styles.input, focusedField === 'bundleQty' && styles.inputFocused, errors.bundleQty && styles.inputError]}
-                                    value={formData.bundleQuantity}
-                                    onChangeText={(text: string) => handleChange('bundleQuantity', text.replace(/^0+(?=\d)/, '').replace(/[^0-9]/g, ''))}
-                                    placeholder="Total number of items in the bundle (e.g. 3)"
+                                    style={[styles.input, styles.textArea, focusedField === 'description' && styles.inputFocused, errors.description && styles.inputError]}
+                                    value={formData.description}
+                                    onChangeText={(text: string) => handleChange('description', text)}
+                                    placeholder="Describe your product..."
                                     placeholderTextColor={theme.colors.textLight}
-                                    keyboardType="numeric"
-                                    onFocus={() => setFocusedField('bundleQty')}
+                                    multiline
+                                    numberOfLines={5}
+                                    onFocus={() => setFocusedField('description')}
+                                    onBlur={() => {
+                                        setFocusedField(null);
+                                        if (formData.description) {
+                                            handleChange('description', toSentenceCase(formData.description));
+                                        }
+                                    }}
+                                />
+                                {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+                            </View>
+
+                            {/* Care Instructions */}
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Care Instructions (Optional)</Text>
+                                <TextInput
+                                    style={[styles.input, styles.textArea, focusedField === 'careInstructions' && styles.inputFocused, errors.careInstructions && styles.inputError]}
+                                    value={formData.careInstructions}
+                                    onChangeText={(text: string) => handleChange('careInstructions', text)}
+                                    placeholder="How should buyers care for this item? (e.g. Hand wash only)"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    multiline
+                                    numberOfLines={3}
+                                    onFocus={() => setFocusedField('careInstructions')}
                                     onBlur={() => setFocusedField(null)}
                                 />
-                                {errors.bundleQty && <Text style={styles.errorText}>{errors.bundleQty}</Text>}
+                                {errors.careInstructions && <Text style={styles.errorText}>{errors.careInstructions}</Text>}
                             </View>
-                        )}
 
-                        {/* ─── SEO & Discoverability ─────────────────────────── */}
-                        <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                                <Search size={18} color={theme.colors.primary} />
-                                <Text style={[styles.stepTitle, { marginBottom: 0, fontSize: 16 }]}>SEO & Discoverability</Text>
+                            {/* Custom Orders Toggle */}
+                            <View style={styles.switchContainer}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.switchLabel}>Accept Custom Orders?</Text>
+                                    <Text style={styles.switchSub}>
+                                        Allow buyers to request customizations for this product.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
+                                    thumbColor={formData.isCustomOrderAllowed ? "#f4f3f4" : "#f4f3f4"}
+                                    onValueChange={() => setFormData(prev => ({ ...prev, isCustomOrderAllowed: !prev.isCustomOrderAllowed }))}
+                                    value={formData.isCustomOrderAllowed}
+                                />
                             </View>
-                            <Text style={[styles.stepDescription, { marginBottom: 16 }]}>
-                                Improve how customers find your product in search results.
+
+                            {formData.isCustomOrderAllowed && (
+                                <View style={[styles.field, { marginBottom: 0 }]}>
+                                    <Text style={styles.fieldLabel}>Custom Order Instructions</Text>
+                                    <TextInput
+                                        style={[styles.input, focusedField === 'customOrderInstructions' && styles.inputFocused, errors.customOrderInstructions && styles.inputError]}
+                                        value={formData.customOrderInstructions}
+                                        onChangeText={(text: string) => handleChange('customOrderInstructions', text)}
+                                        placeholder="e.g. Message me with your preferred color combinations."
+                                        placeholderTextColor={theme.colors.textLight}
+                                        onFocus={() => setFocusedField('customOrderInstructions')}
+                                        onBlur={() => setFocusedField(null)}
+                                    />
+                                    {errors.customOrderInstructions && <Text style={styles.errorText}>{errors.customOrderInstructions}</Text>}
+                                </View>
+                            )}
+                        </View>
+
+                        {/* 3. Fulfillment & Shipping Card */}
+                        <View style={styles.card}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                <Truck size={20} color={theme.colors.primary} />
+                                <Text style={styles.cardTitle}>Fulfillment & Shipping</Text>
+                            </View>
+                            <Text style={styles.cardDescription}>Configure how this product reaches your customers.</Text>
+
+                            {/* Fulfillment Type */}
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Fulfillment Type *</Text>
+                                <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+                                    <Pressable
+                                        style={[styles.radioOption, formData.fulfillmentType === 'READY_TO_SHIP' && styles.radioOptionSelected]}
+                                        onPress={() => handleChange('fulfillmentType', 'READY_TO_SHIP')}
+                                    >
+                                        <View style={[styles.radioCircle, formData.fulfillmentType === 'READY_TO_SHIP' && styles.radioCircleSelected]} />
+                                        <Text style={styles.radioText}>Ready to Ship</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        style={[styles.radioOption, formData.fulfillmentType === 'MADE_TO_ORDER' && styles.radioOptionSelected]}
+                                        onPress={() => handleChange('fulfillmentType', 'MADE_TO_ORDER')}
+                                    >
+                                        <View style={[styles.radioCircle, formData.fulfillmentType === 'MADE_TO_ORDER' && styles.radioCircleSelected]} />
+                                        <Text style={styles.radioText}>Made to Order</Text>
+                                    </Pressable>
+                                </View>
+                            </View>
+
+                            {/* Processing Time */}
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Processing Time {formData.fulfillmentType === 'MADE_TO_ORDER' ? '*' : '(Optional)'}</Text>
+                                <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
+                                    How long it takes you to prepare this item for shipping.
+                                </Text>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'processingTime' && styles.inputFocused, errors.processingTime && styles.inputError]}
+                                    value={formData.processingTime}
+                                    onChangeText={(text: string) => handleChange('processingTime', text)}
+                                    placeholder='e.g. "3-5 days"'
+                                    placeholderTextColor={theme.colors.textLight}
+                                    onFocus={() => setFocusedField('processingTime')}
+                                    onBlur={() => setFocusedField(null)}
+                                />
+                                {errors.processingTime && <Text style={styles.errorText}>{errors.processingTime}</Text>}
+                            </View>
+
+                            {/* Shipping Fee Override */}
+                            <View style={styles.field}>
+                                <Text style={styles.fieldLabel}>Shipping Fee Override (₱) (Optional)</Text>
+                                <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
+                                    Set a specific shipping fee for this product, overriding your shop's default rate. Leave blank to use the default.
+                                </Text>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'shippingFeeOverride' && styles.inputFocused, errors.shippingFeeOverride && styles.inputError]}
+                                    value={formData.shippingFeeOverride}
+                                    onChangeText={(text: string) => {
+                                        const clean = text.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '');
+                                        handleChange('shippingFeeOverride', clean);
+                                    }}
+                                    placeholder="Optional"
+                                    placeholderTextColor={theme.colors.textLight}
+                                    keyboardType="numeric"
+                                    onFocus={() => setFocusedField('shippingFeeOverride')}
+                                    onBlur={() => setFocusedField(null)}
+                                />
+                                {errors.shippingFeeOverride && <Text style={styles.errorText}>{errors.shippingFeeOverride}</Text>}
+                            </View>
+
+                            {/* Local Pickup Toggle */}
+                            <View style={styles.switchContainer}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.switchLabel}>Allow Local Pickup?</Text>
+                                    <Text style={styles.switchSub}>
+                                        Let customers pick up their order directly from you.
+                                    </Text>
+                                </View>
+                                <Switch
+                                    trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
+                                    thumbColor={formData.isLocalPickupAllowed ? "#f4f3f4" : "#f4f3f4"}
+                                    onValueChange={() => setFormData(prev => ({ ...prev, isLocalPickupAllowed: !prev.isLocalPickupAllowed }))}
+                                    value={formData.isLocalPickupAllowed}
+                                />
+                            </View>
+
+                            {formData.isLocalPickupAllowed && (
+                                <View style={styles.field}>
+                                    <Text style={styles.fieldLabel}>Pickup Instructions</Text>
+                                    <TextInput
+                                        style={[styles.input, focusedField === 'localPickupInstructions' && styles.inputFocused, errors.localPickupInstructions && styles.inputError]}
+                                        value={formData.localPickupInstructions}
+                                        onChangeText={(text: string) => handleChange('localPickupInstructions', text)}
+                                        placeholder="e.g. Pickup at 123 Main St, Monday-Friday 9am-5pm"
+                                        placeholderTextColor={theme.colors.textLight}
+                                        onFocus={() => setFocusedField('localPickupInstructions')}
+                                        onBlur={() => setFocusedField(null)}
+                                    />
+                                    {errors.localPickupInstructions && <Text style={styles.errorText}>{errors.localPickupInstructions}</Text>}
+                                </View>
+                            )}
+
+                            {/* Intelligent COD Toggle */}
+                            {Number(formData.basePrice) >= 200 && (
+                                <View style={styles.switchContainer}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.switchLabel}>Allow Cash on Delivery (COD)?</Text>
+                                        <Text style={styles.switchSub}>
+                                            For items over ₱200, you can disable COD to reduce cancellation risks.
+                                        </Text>
+                                    </View>
+                                    <Switch
+                                        trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
+                                        thumbColor={formData.isCodAllowed ? "#f4f3f4" : "#f4f3f4"}
+                                        onValueChange={() => setFormData(prev => ({ ...prev, isCodAllowed: !prev.isCodAllowed }))}
+                                        value={formData.isCodAllowed}
+                                    />
+                                </View>
+                            )}
+                        </View>
+
+                        {/* 4. Tags & Discoverability Card */}
+                        <View style={styles.card}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+                                <Tag size={20} color={theme.colors.primary} />
+                                <Text style={styles.cardTitle}>Tags & Discoverability</Text>
+                            </View>
+                            <Text style={styles.cardDescription}>
+                                Add tags to help customers find your product. SEO metadata is generated automatically.
                             </Text>
 
                             {/* Tags */}
-                            <View style={styles.field}>
+                            <View style={[styles.field, { marginBottom: 0 }]}>
                                 <View style={styles.fieldLabelRow}>
                                     <Text style={styles.fieldLabel}>Tags</Text>
                                     <Text style={{ fontSize: 11, color: formData.tags.length >= 10 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
@@ -916,9 +1236,9 @@ export default function ProductFormWizard({
                                     
                                     selectedCategories.forEach(cat => {
                                         const catKey = cat.toLowerCase();
-                                        (lowerCatTags[catKey] || []).forEach(t => allSuggestions.add(t));
+                                        (lowerCatTags[catKey] || []).forEach((t: string) => allSuggestions.add(t));
                                     });
-                                    UNIVERSAL_TAGS.forEach(t => allSuggestions.add(t));
+                                    UNIVERSAL_TAGS.forEach((t: string) => allSuggestions.add(t));
                                     // Filter out already-added tags
                                     const available = Array.from(allSuggestions).filter(t => !formData.tags.includes(t));
                                     // If input is typed, filter by prefix
@@ -965,77 +1285,33 @@ export default function ProductFormWizard({
                                     Tags help customers find your product. Use lowercase words or short phrases (e.g. "handmade", "crochet bear").
                                 </Text>
                             </View>
-
-
-                            {/* Meta Title */}
-                            <View style={styles.field}>
-                                <View style={styles.fieldLabelRow}>
-                                    <Text style={styles.fieldLabel}>SEO Title</Text>
-                                    <Text style={{ fontSize: 11, color: (formData.metaTitle?.length || 0) > 70 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
-                                        {formData.metaTitle?.length || 0}/70
-                                    </Text>
-                                </View>
-                                <TextInput
-                                    style={[styles.input, focusedField === 'metaTitle' && styles.inputFocused]}
-                                    value={formData.metaTitle}
-                                    onChangeText={(text: string) => handleChange('metaTitle', text)}
-                                    placeholder="Custom title for search engines (defaults to product name)"
-                                    placeholderTextColor={theme.colors.textLight}
-                                    selectionColor={theme.colors.primary}
-                                    maxLength={70}
-                                    onFocus={() => setFocusedField('metaTitle')}
-                                    onBlur={() => setFocusedField(null)}
-                                />
-                            </View>
-
-                            {/* Meta Description */}
-                            <View style={styles.field}>
-                                <View style={styles.fieldLabelRow}>
-                                    <Text style={styles.fieldLabel}>SEO Description</Text>
-                                    <Text style={{ fontSize: 11, color: (formData.metaDescription?.length || 0) > 160 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
-                                        {formData.metaDescription?.length || 0}/160
-                                    </Text>
-                                </View>
-                                <TextInput
-                                    style={[styles.input, styles.textArea, focusedField === 'metaDescription' && styles.inputFocused, { minHeight: 72 }]}
-                                    value={formData.metaDescription}
-                                    onChangeText={(text: string) => handleChange('metaDescription', text)}
-                                    placeholder="Brief description for search engine results"
-                                    placeholderTextColor={theme.colors.textLight}
-                                    selectionColor={theme.colors.primary}
-                                    multiline
-                                    numberOfLines={3}
-                                    maxLength={160}
-                                    onFocus={() => setFocusedField('metaDescription')}
-                                    onBlur={() => setFocusedField(null)}
-                                />
-                            </View>
                         </View>
                     </View>
                 );
 
             case 3:
                 return (
-                    <VariantEditor
-                        variants={variants}
-                        onVariantsChange={(newVariants) => {
-                            setVariants(newVariants);
-                            setErrors(prev => {
-                                const next = { ...prev };
-                                Object.keys(next).filter(k => k.startsWith('variant-')).forEach(k => delete next[k]);
-                                return next;
-                            });
-                        }}
-                        baseSku={formData.sku}
-                        basePrice={formData.basePrice}
-                        baseDiscount={formData.discountPercentage}
-                        onGenerateVariantSku={handleGenerateVariantSku}
-                        onExpandedChange={setActiveVariantIndex}
-                        productImages={images}
-                        variantErrors={errors}
-                        categories={selectedCategories}
-                        productName={formData.name}
-                    />
+                    <View style={[styles.stepContent, { flex: 1 }]}>
+                        <VariantEditor
+                            variants={variants}
+                            onVariantsChange={(newVariants) => {
+                                setVariants(newVariants);
+                                setErrors(prev => {
+                                    const next = { ...prev };
+                                    Object.keys(next).filter(k => k.startsWith('variant-')).forEach(k => delete next[k]);
+                                    return next;
+                                });
+                            }}
+                            baseSku={formData.sku}
+                            basePrice={formData.basePrice}
+                            baseDiscount={formData.discountPercentage}
+                            onGenerateVariantSku={handleGenerateVariantSku}
+                            productImages={images}
+                            variantErrors={errors}
+                            categories={selectedCategories}
+                            productName={formData.name}
+                        />
+                    </View>
                 );
 
             case 4:
@@ -1110,6 +1386,56 @@ export default function ProductFormWizard({
                                     <Text style={styles.summaryValue}>{formData.isCodAllowed ? 'Enabled' : 'Disabled'}</Text>
                                 </View>
                             )}
+                            <View style={styles.summaryRow}>
+                                <View style={styles.summaryLabelContainer}>
+                                    <Package size={16} color={theme.colors.textLight} />
+                                    <Text style={styles.summaryLabel}>Fulfillment:</Text>
+                                </View>
+                                <Text style={styles.summaryValue}>
+                                    {formData.fulfillmentType === 'MADE_TO_ORDER' ? 'Made to Order' : 'Ready to Ship'}
+                                    {formData.processingTime ? ` (${formData.processingTime})` : ''}
+                                </Text>
+                            </View>
+                            {formData.shippingFeeOverride ? (
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryLabelContainer}>
+                                        <Truck size={16} color={theme.colors.textLight} />
+                                        <Text style={styles.summaryLabel}>Shipping Override:</Text>
+                                    </View>
+                                    <Text style={styles.summaryValue}>₱{formData.shippingFeeOverride}</Text>
+                                </View>
+                            ) : null}
+                            {formData.isLocalPickupAllowed && (
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryLabelContainer}>
+                                        <Truck size={16} color={theme.colors.textLight} />
+                                        <Text style={styles.summaryLabel}>Local Pickup:</Text>
+                                    </View>
+                                    <Text style={styles.summaryValue}>Enabled</Text>
+                                </View>
+                            )}
+                            {formData.isCustomOrderAllowed && (
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryLabelContainer}>
+                                        <Sparkles size={16} color={theme.colors.textLight} />
+                                        <Text style={styles.summaryLabel}>Custom Orders:</Text>
+                                    </View>
+                                    <Text style={styles.summaryValue}>Accepted</Text>
+                                </View>
+                            )}
+                            {(formData.minOrderQty || formData.maxOrderQty) && (
+                                <View style={styles.summaryRow}>
+                                    <View style={styles.summaryLabelContainer}>
+                                        <Archive size={16} color={theme.colors.textLight} />
+                                        <Text style={styles.summaryLabel}>Order Limits:</Text>
+                                    </View>
+                                    <Text style={styles.summaryValue}>
+                                        {formData.minOrderQty ? `Min: ${formData.minOrderQty}` : ''}
+                                        {formData.minOrderQty && formData.maxOrderQty ? ' | ' : ''}
+                                        {formData.maxOrderQty ? `Max: ${formData.maxOrderQty}` : ''}
+                                    </Text>
+                                </View>
+                            )}
                             {formData.isBundle && (
                                 <View style={styles.summaryRow}>
                                     <View style={styles.summaryLabelContainer}>
@@ -1169,29 +1495,28 @@ export default function ProductFormWizard({
                                     <Text style={styles.summaryLabel}>Variants Details:</Text>
                                 </View>
                                 {variants.map((v, i) => (
-                                    <View key={i} style={styles.summaryVariantItem}>
+                                    <View key={i} style={[styles.summaryVariantItem, !v.isEnabled && { opacity: 0.5 }]}>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                                             <Text style={styles.summaryVariantName}>
-                                                {v.name || 'Unnamed'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Main)</Text>}
+                                                {v.name || 'Base Product'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Main)</Text>}
+                                                {!v.isEnabled && <Text style={{ color: theme.colors.error, fontSize: 10 }}> (Disabled)</Text>}
                                             </Text>
                                             <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'monospace' }}>
-                                                {v.sku || (i === 0 ? formData.sku : `${formData.sku}-${v.name.toUpperCase().replace(/\s+/g, '-')}`)}
+                                                {v.sku || formData.sku}
                                             </Text>
                                         </View>
                                         <Text style={styles.summaryVariantDetail}>
                                             <Text style={{ fontWeight: '600', color: theme.colors.text }}>Stock: {v.stock || '0'}</Text>
                                             {' • '}
-                                            {v.price ? `₱${v.price}` : `Inherits ₱${formData.basePrice || '0'}`}
-                                            {i === 0 && images.length > 0
-                                                ? ` • ${images.length} base image(s)`
-                                                : (v.images && v.images.length > 0 ? ` • ${v.images.length} image(s)` : '')}
+                                            {v.price ? `₱${v.price}` : `₱${formData.basePrice || '0'}`}
+                                            {v.images && v.images.length > 0 ? ` • ${v.images.length} option image(s)` : ''}
                                         </Text>
-                                        <Text style={[styles.summaryVariantDetail, { marginTop: 2 }]}>
-                                            <Text style={{ fontWeight: '500' }}>Materials:</Text>{' '}
-                                            {v.materials
-                                                ? v.materials
-                                                : (i === 0 ? 'None specified' : <Text style={{ fontStyle: 'italic' }}>Inherits '{variants[0].materials || 'None'}'</Text>)}
-                                        </Text>
+                                        {v.options && Object.keys(v.options).length > 0 && (
+                                            <Text style={[styles.summaryVariantDetail, { marginTop: 2 }]}>
+                                                <Text style={{ fontWeight: '500' }}>Options:</Text>{' '}
+                                                {Object.entries(v.options).map(([k, val]) => `${k}: ${val}`).join(' | ')}
+                                            </Text>
+                                        )}
                                     </View>
                                 ))}
                             </View>
@@ -1503,6 +1828,31 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.colors.background,
     },
+    card: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    cardTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.colors.text,
+        fontFamily: 'Playfair Display',
+    },
+    cardDescription: {
+        fontSize: 13,
+        color: theme.colors.textLight,
+        marginBottom: 20,
+        lineHeight: 20,
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1654,6 +2004,37 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: theme.colors.textSecondary,
+        fontFamily: 'Quicksand',
+    },
+    radioOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.backgroundAlt,
+    },
+    radioOptionSelected: {
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.primary + '10',
+    },
+    radioCircle: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: theme.colors.textLight,
+    },
+    radioCircleSelected: {
+        borderColor: theme.colors.primary,
+        backgroundColor: theme.colors.primary,
+    },
+    radioText: {
+        fontSize: 14,
+        color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
     fieldLabelRow: {
@@ -1924,7 +2305,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.primaryLight,
         padding: 12,
         borderRadius: 12,
-        marginVertical: 24,
+        marginVertical: 12,
         borderWidth: 1,
         borderColor: theme.colors.primaryLight
     },

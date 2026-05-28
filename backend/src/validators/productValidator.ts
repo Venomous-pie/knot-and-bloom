@@ -14,7 +14,8 @@ export const productSchema = z.object({
         price: z.any().optional(), // Allow string or number, parse later
         discountPercentage: z.coerce.number().min(0).max(100).optional(),
         images: z.array(z.string()).optional(),
-        materials: z.string().optional()
+        isEnabled: z.boolean().optional(),
+        options: z.record(z.string(), z.string()).optional()
     })).optional(),
     basePrice: z.number().positive("Base price must be positive"),
     discountPercentage: z.number().min(0).max(100).optional(),
@@ -34,6 +35,31 @@ export const productSchema = z.object({
     metaDescription: z.string().max(160, "Meta description must be 160 characters or fewer").nullish(),
     sellerId: z.number().int().optional(),
     version: z.number().int().optional(),
+    
+    // New Details & Fulfillment
+    videoUrl: z.string().url().or(z.literal('')).nullish(),
+    shippingFeeOverride: z.any().optional(),
+    isLocalPickupAllowed: z.boolean().optional(),
+    localPickupInstructions: z.string().nullish(),
+    processingTime: z.string().nullish(),
+    fulfillmentType: z.enum(['READY_TO_SHIP', 'MADE_TO_ORDER']).optional(),
+    isCustomOrderAllowed: z.boolean().optional(),
+    customOrderInstructions: z.string().nullish(),
+    careInstructions: z.string().nullish(),
+    minOrderQty: z.any().optional(),
+    maxOrderQty: z.any().optional(),
+    
+    // Option Builder
+    productOptions: z.array(z.object({
+        uid: z.number().optional(),
+        name: z.string(),
+        position: z.number().optional(),
+        values: z.array(z.object({
+            uid: z.number().optional(),
+            value: z.string(),
+            imageUrl: z.string().nullish()
+        }))
+    })).optional()
 });
 
 export const getProductsQuerySchema = z.object({

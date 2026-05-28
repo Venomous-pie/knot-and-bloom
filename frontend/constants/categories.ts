@@ -5,6 +5,7 @@ import { RelativePathString } from "expo-router";
 export const categoryTitles: Record<string, string> = {
     crochet: "Crochet",
     "fuzzy-wire-art": "Fuzzy Wire Art",
+    "wire-flowers": "Wire Flowers",
     "gift-boxes-sets": "Gift Boxes/Sets",
     "hair-tie": "Hair Ties",
     "fuzzy-wire-bouquet": "Fuzzy Wire Bouquets",

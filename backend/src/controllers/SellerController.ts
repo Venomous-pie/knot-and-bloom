@@ -585,51 +585,56 @@ export const sellerController = {
             let pendingCount = 0;
 
             allProducts.forEach(p => {
-                // Weighted Optimization Score Calculation
                 let score = 0;
                 const hasVariants = p.variants && p.variants.length > 0;
+                
+                // Media (25 pts): main image +10, variant images +5, video +10
+                const hasMainImage = !!p.image;
+                const hasVariantImages = hasVariants && p.variants.some(v => v.images && v.images.length > 0);
+                const hasVideo = !!((p as any).videoUrl && (p as any).videoUrl.trim().length > 0);
+                
+                if (hasMainImage) score += 10;
+                if (hasVariantImages) score += 5;
+                if (hasVideo) score += 10;
 
-                // Images (25 pts): main image +15, variant images +10
-                if (p.image) score += 15;
-                if (hasVariants && p.variants.some(v => v.images && v.images.length > 0)) score += 10;
-
-                // Title & SEO (25 pts): name >= 30 chars +10, has tags +8, has metaTitle +7
+                // Title & SEO (25 pts): name >= 30 chars +10, has tags +8, 3+ tags +7
                 const nameLength = p.name ? p.name.length : 0;
-                const metaTitleLength = (p as any).metaTitle ? (p as any).metaTitle.trim().length : 0;
-                const hasLongName = nameLength >= 30 || metaTitleLength >= 30;
+                const hasLongName = nameLength >= 30;
                 const hasTags = (p as any).tags && (p as any).tags.length > 0;
-                const hasMetaTitle = metaTitleLength > 0;
+                const hasMultipleTags = (p as any).tags && (p as any).tags.length >= 3;
                 
                 if (hasLongName) score += 10;
                 if (hasTags) score += 8;
-                if (hasMetaTitle) score += 7;
+                if (hasMultipleTags) score += 7;
 
-                // Description (20 pts): >= 100 chars +10, >= 200 chars +5, has materials +5
+                // Description & Details (20 pts): >= 100 chars +10, has materials +5, care instructions +5
                 const descLength = p.description ? p.description.length : 0;
                 const hasGoodDesc = descLength >= 100;
-                const hasGreatDesc = descLength >= 200;
                 const hasMaterials = (p as any).materials && (p as any).materials.trim().length > 0;
+                const hasCareInstructions = !!((p as any).careInstructions && (p as any).careInstructions.trim().length > 0);
                 
                 if (hasGoodDesc) score += 10;
-                if (hasGreatDesc) score += 5;
                 if (hasMaterials) score += 5;
+                if (hasCareInstructions) score += 5;
 
-                // Inventory (15 pts): has stock +8, no low-stock variants +7
+                // Fulfillment & Inventory (20 pts): processing time +5, has stock +10, no low-stock variants +5
+                const hasProcessingTime = !!((p as any).processingTime && (p as any).processingTime.trim().length > 0);
                 const hasStock = hasVariants && p.variants.some(v => Number(v.stock || 0) > 0);
                 const hasLowStock = hasVariants && p.variants.some(v => {
                     const s = Number(v.stock || 0);
                     return s > 0 && s <= 5;
                 });
                 
-                if (hasStock) score += 8;
-                if (hasStock && !hasLowStock) score += 7;
+                if (hasProcessingTime) score += 5;
+                if (hasStock) score += 10;
+                if (hasStock && !hasLowStock) score += 5;
 
-                // Pricing (15 pts): has discount +8, price set +7
+                // Pricing (10 pts): price set +5, active discount +5
                 const hasDiscount = p.discountPercentage && Number(p.discountPercentage) > 0;
                 const hasPrice = p.basePrice && Number(p.basePrice) > 0;
                 
-                if (hasDiscount) score += 8;
-                if (hasPrice) score += 7;
+                if (hasPrice) score += 5;
+                if (hasDiscount) score += 5;
 
                 totalOptScore += score;
 

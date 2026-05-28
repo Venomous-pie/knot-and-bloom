@@ -1,6 +1,7 @@
 import { cartAPI, productAPI, sellerAPI } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { useWishlist } from "@/contexts/WishlistContext";
 import ProductCard from "@/components/product/ProductCard";
 import type { Product } from "@/types/products";
 import { calculatePrice } from "@/utils/pricing";
@@ -92,7 +93,22 @@ export default function ProductDetailPage() {
 
     const { user } = useAuth();
     const { refreshCart, triggerCartAnimation } = useCart();
+    const { wishlistedProductIds, toggleWishlist } = useWishlist();
     const buttonRef = useRef<View>(null);
+
+    const isWishlisted = product ? wishlistedProductIds.has(product.uid) : false;
+
+    const handleToggleWishlist = async () => {
+        if (!user) {
+            Alert.alert("Login Required", "Please log in to save items to your wishlist.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Login", onPress: () => router.push('/auth') }
+            ]);
+            return;
+        }
+        if (!product) return;
+        await toggleWishlist(product.uid);
+    };
 
     useEffect(() => {
         if (!id) {
@@ -273,7 +289,14 @@ export default function ProductDetailPage() {
                         <Text style={styles.sellerRatingText}>4.9/5.0 (98% Positive)</Text>
                     </View>
                 </View>
-                <Pressable style={styles.visitStoreButton}>
+                <Pressable
+                    style={styles.visitStoreButton}
+                    onPress={() => {
+                        if (product.seller?.slug) {
+                            router.push(`/seller/${product.seller.slug}` as any);
+                        }
+                    }}
+                >
                     <Text style={styles.visitStoreText}>Visit Store</Text>
                 </Pressable>
             </View>
@@ -483,8 +506,12 @@ export default function ProductDetailPage() {
                                         {isInStock ? 'ADD TO CART' : 'OUT OF STOCK'}
                                     </Text>
                                 </Pressable>
-                                <Pressable style={styles.inlineSaveButton}>
-                                    <Ionicons name="heart-outline" size={26} color={theme.colors.text} />
+                                <Pressable style={styles.inlineSaveButton} onPress={handleToggleWishlist}>
+                                    <Ionicons
+                                        name={isWishlisted ? "heart" : "heart-outline"}
+                                        size={26}
+                                        color={isWishlisted ? theme.colors.primary : theme.colors.text}
+                                    />
                                 </Pressable>
                             </View>
                         </View>
@@ -1006,6 +1033,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: theme.colors.text,
         fontFamily: theme.typography.fontFamily,
+        marginBottom: theme.spacing.md,
     },
     selectedVariantLabel: {
         fontSize: 14,

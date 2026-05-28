@@ -130,16 +130,62 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                         materials: parsedInput.materials ?? null,
                         metaTitle: parsedInput.metaTitle ?? null,
                         metaDescription: parsedInput.metaDescription ?? null,
+                        videoUrl: parsedInput.videoUrl ?? null,
+                        shippingFeeOverride: parsedInput.shippingFeeOverride ?? null,
+                        isLocalPickupAllowed: parsedInput.isLocalPickupAllowed ?? false,
+                        localPickupInstructions: parsedInput.localPickupInstructions ?? null,
+                        processingTime: parsedInput.processingTime ?? null,
+                        fulfillmentType: parsedInput.fulfillmentType ?? 'READY_TO_SHIP',
+                        isCustomOrderAllowed: parsedInput.isCustomOrderAllowed ?? false,
+                        customOrderInstructions: parsedInput.customOrderInstructions ?? null,
+                        careInstructions: parsedInput.careInstructions ?? null,
+                        minOrderQty: parsedInput.minOrderQty ? Number(parsedInput.minOrderQty) : null,
+                        maxOrderQty: parsedInput.maxOrderQty ? Number(parsedInput.maxOrderQty) : null,
                         sellerId: sellerId ?? null,
                         status: status,
                     },
                 });
+
+                // Create productOptions
+                const createdOptionsMap: Record<string, Record<string, number>> = {};
+                if (parsedInput.productOptions && parsedInput.productOptions.length > 0) {
+                    for (let i = 0; i < parsedInput.productOptions.length; i++) {
+                        const opt = parsedInput.productOptions[i];
+                        const createdOption = await tx.productOption.create({
+                            data: {
+                                productId: newProduct.uid,
+                                name: opt!.name,
+                                position: opt!.position || i,
+                            }
+                        });
+                        createdOptionsMap[opt!.name] = {};
+                        for (const val of opt!.values) {
+                            const createdVal = await tx.productOptionValue.create({
+                                data: {
+                                    optionId: createdOption.uid,
+                                    value: val.value,
+                                    imageUrl: val.imageUrl || null
+                                }
+                            });
+                            createdOptionsMap[opt!.name]![val.value] = createdVal.uid;
+                        }
+                    }
+                }
 
                 // Create variants
                 const variantsData = parsedInput.variants || [];
 
                 if (Array.isArray(variantsData) && variantsData.length > 0) {
                     for (const variant of variantsData) {
+                        const optionValueIds = [];
+                        if (variant.options) {
+                            for (const [optName, optVal] of Object.entries(variant.options) as [string, string][]) {
+                                if (createdOptionsMap[optName] && createdOptionsMap[optName][optVal]) {
+                                    optionValueIds.push(createdOptionsMap[optName][optVal]);
+                                }
+                            }
+                        }
+
                         await tx.productVariant.create({
                             data: {
                                 productId: newProduct.uid,
@@ -154,7 +200,10 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                                     Number(parsedInput.discountPercentage)
                                 ),
                                 images: variant.images || [],
-                                materials: variant.materials || null,
+                                isEnabled: variant.isEnabled !== false,
+                                optionValues: optionValueIds.length > 0 ? {
+                                    connect: optionValueIds.map(id => ({ uid: id }))
+                                } : undefined
                             } as any
                         });
                     }
@@ -167,7 +216,8 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                             stock: parsedInput.stock || 0,
                             price: null,
                             discountPercentage: null,
-                            discountedPrice: null
+                            discountedPrice: null,
+                            isEnabled: true
                         }
                     });
                 }
@@ -582,6 +632,17 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                     materials: parsedInput.materials ?? null,
                     metaTitle: parsedInput.metaTitle ?? null,
                     metaDescription: parsedInput.metaDescription ?? null,
+                    videoUrl: parsedInput.videoUrl ?? null,
+                    shippingFeeOverride: parsedInput.shippingFeeOverride ?? null,
+                    isLocalPickupAllowed: parsedInput.isLocalPickupAllowed ?? false,
+                    localPickupInstructions: parsedInput.localPickupInstructions ?? null,
+                    processingTime: parsedInput.processingTime ?? null,
+                    fulfillmentType: parsedInput.fulfillmentType ?? 'READY_TO_SHIP',
+                    isCustomOrderAllowed: parsedInput.isCustomOrderAllowed ?? false,
+                    customOrderInstructions: parsedInput.customOrderInstructions ?? null,
+                    careInstructions: parsedInput.careInstructions ?? null,
+                    minOrderQty: parsedInput.minOrderQty ? Number(parsedInput.minOrderQty) : null,
+                    maxOrderQty: parsedInput.maxOrderQty ? Number(parsedInput.maxOrderQty) : null,
                     version: { increment: 1 }
                 }
             });
@@ -612,6 +673,17 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                     materials: parsedInput.materials ?? null,
                     metaTitle: parsedInput.metaTitle ?? null,
                     metaDescription: parsedInput.metaDescription ?? null,
+                    videoUrl: parsedInput.videoUrl ?? null,
+                    shippingFeeOverride: parsedInput.shippingFeeOverride ?? null,
+                    isLocalPickupAllowed: parsedInput.isLocalPickupAllowed ?? false,
+                    localPickupInstructions: parsedInput.localPickupInstructions ?? null,
+                    processingTime: parsedInput.processingTime ?? null,
+                    fulfillmentType: parsedInput.fulfillmentType ?? 'READY_TO_SHIP',
+                    isCustomOrderAllowed: parsedInput.isCustomOrderAllowed ?? false,
+                    customOrderInstructions: parsedInput.customOrderInstructions ?? null,
+                    careInstructions: parsedInput.careInstructions ?? null,
+                    minOrderQty: parsedInput.minOrderQty ? Number(parsedInput.minOrderQty) : null,
+                    maxOrderQty: parsedInput.maxOrderQty ? Number(parsedInput.maxOrderQty) : null,
                     version: { increment: 1 }
                 }
             });
@@ -620,6 +692,36 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
         const updatedProduct = await tx.product.findUniqueOrThrow({
             where: { uid: parsedId }
         });
+
+        // Recreate Options
+        await tx.productOption.deleteMany({
+            where: { productId: parsedId }
+        });
+        
+        const createdOptionsMap: Record<string, Record<string, number>> = {};
+        if (parsedInput.productOptions && parsedInput.productOptions.length > 0) {
+            for (let i = 0; i < parsedInput.productOptions.length; i++) {
+                const opt = parsedInput.productOptions[i];
+                const createdOption = await tx.productOption.create({
+                    data: {
+                        productId: parsedId,
+                        name: opt!.name,
+                        position: opt!.position || i,
+                    }
+                });
+                createdOptionsMap[opt!.name] = {};
+                for (const val of opt!.values) {
+                    const createdVal = await tx.productOptionValue.create({
+                        data: {
+                            optionId: createdOption.uid,
+                            value: val.value,
+                            imageUrl: val.imageUrl || null
+                        }
+                    });
+                    createdOptionsMap[opt!.name]![val.value] = createdVal.uid;
+                }
+            }
+        }
 
         // Update Variants (same logic as before)
         const inputVariants = parsedInput.variants || [];
@@ -635,6 +737,15 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
         });
 
         for (const variant of inputVariants) {
+            const optionValueIds = [];
+            if (variant.options) {
+                for (const [optName, optVal] of Object.entries(variant.options) as [string, string][]) {
+                    if (createdOptionsMap[optName] && createdOptionsMap[optName][optVal]) {
+                        optionValueIds.push(createdOptionsMap[optName][optVal]);
+                    }
+                }
+            }
+
             if (variant.uid) {
                 await tx.productVariant.update({
                     where: { uid: variant.uid },
@@ -649,8 +760,11 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                             Number(parsedInput.discountPercentage)
                         ),
                         images: variant.images || [],
-                        materials: variant.materials || null,
-                        sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
+                        isEnabled: variant.isEnabled !== false,
+                        sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`,
+                        optionValues: {
+                            set: optionValueIds.map(id => ({ uid: id }))
+                        }
                     } as any
                 });
             } else {
@@ -667,8 +781,11 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                             Number(parsedInput.discountPercentage)
                         ),
                         images: variant.images || [],
-                        materials: variant.materials || null,
-                        sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`
+                        isEnabled: variant.isEnabled !== false,
+                        sku: variant.sku || `${updatedProduct.sku}-${variant.name.toUpperCase().replace(/\s+/g, '-')}`,
+                        optionValues: optionValueIds.length > 0 ? {
+                            connect: optionValueIds.map(id => ({ uid: id }))
+                        } : undefined
                     } as any
                 });
             }

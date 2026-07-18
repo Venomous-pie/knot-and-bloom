@@ -1,20 +1,22 @@
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Clock, AlertTriangle, Lock, Package, CheckSquare, Square } from 'lucide-react-native';
 import type { Order } from '@/types/order';
 
 const P = '#B36979', P_LIGHT = '#FDEEF1', BG = '#F4F4F8', CARD = '#FFFFFF';
-const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5', GREEN = '#10B981', RED = '#EF4444';
+const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5', GREEN = '#10B981', RED = '#EF4444', AMBER = '#F59E0B';
+const INDIGO = '#6366F1', TEAL = '#14B8A6', BLUE = '#3B82F6', PINK = '#EC4899';
+
 const LATE_THRESHOLD_DAYS = 3;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const getStatusColor = (status: string) => {
     const map: Record<string, string> = {
-        PENDING: '#F59E0B', CONFIRMED: '#3B82F6', IN_PRODUCTION: '#8B5CF6',
-        READY_TO_SHIP: '#EC4899', SHIPPED: '#10B981', DELIVERED: '#059669',
-        COMPLETED: '#059669', CANCELLED: '#EF4444', DISPUTED: '#DC2626',
+        PENDING: AMBER, CONFIRMED: BLUE, IN_PRODUCTION: INDIGO,
+        READY_TO_SHIP: PINK, SHIPPED: TEAL, DELIVERED: GREEN,
+        COMPLETED: GREEN, CANCELLED: RED, DISPUTED: RED,
     };
-    return map[status] || 'gray';
+    return map[status] || SUB;
 };
 
 const isLate = (order: Order) => {
@@ -24,25 +26,23 @@ const isLate = (order: Order) => {
 
 interface Props {
     order: Order;
-    isSelected: boolean;
-    selectionMode: boolean;
-    onToggleSelection: (id: number) => void;
     onOpenModal: (order: Order, type: 'ship' | 'accept' | 'reject') => void;
     onQuickAction: (status: string, order: Order) => void;
 }
 
-export default function OrderCard({ order, isSelected, selectionMode, onToggleSelection, onOpenModal, onQuickAction }: Props) {
+export default function OrderCard({ order, onOpenModal, onQuickAction }: Props) {
     const late = isLate(order);
+    const statusColor = getStatusColor(order.status);
 
     const renderActions = () => {
         switch (order.status) {
             case 'PENDING':
                 return (
                     <View style={s.actionRow}>
-                        <TouchableOpacity style={[s.btn, s.rejectBtn]} onPress={() => onOpenModal(order, 'reject')}>
-                            <Text style={s.rejectBtnText}>Reject</Text>
+                        <TouchableOpacity style={[s.btn, s.rejectBtn, { flex: 1 }]} onPress={() => onOpenModal(order, 'reject')}>
+                            <Text style={s.rejectBtnText}>Decline</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[s.btn, s.primaryBtn]} onPress={() => onOpenModal(order, 'accept')}>
+                        <TouchableOpacity style={[s.btn, s.primaryBtn, { flex: 1 }]} onPress={() => onOpenModal(order, 'accept')}>
                             <Text style={s.primaryBtnText}>Accept Order</Text>
                         </TouchableOpacity>
                     </View>
@@ -70,96 +70,150 @@ export default function OrderCard({ order, isSelected, selectionMode, onToggleSe
     };
 
     return (
-        <TouchableOpacity
-            activeOpacity={0.9}
-            onLongPress={() => onToggleSelection(order.uid)}
-            onPress={() => selectionMode ? onToggleSelection(order.uid) : null}
-            style={[s.card, isSelected && s.cardSelected, late && s.cardLate]}
-        >
-            {selectionMode && (
-                <View style={s.checkboxOverlay}>
-                    <View style={[s.checkbox, isSelected && s.checkboxSelected]}>
-                        {isSelected && <Ionicons name="checkmark" size={14} color="white" />}
-                    </View>
-                </View>
-            )}
-            {late && (
-                <View style={s.lateBadge}>
-                    <Ionicons name="alarm" size={14} color="#B91C1C" />
-                    <Text style={s.lateText}>Late Shipment</Text>
-                </View>
-            )}
+        <View style={[s.card, late && s.cardLate]}>
+            {/* Header Section */}
             <View style={s.header}>
-                <View>
-                    <Text style={s.orderId}>Order #{order.uid}</Text>
-                    <Text style={s.date}>{new Date(order.uploaded).toLocaleDateString()}</Text>
-                </View>
-                <View style={[s.statusBadge, { backgroundColor: getStatusColor(order.status) + '20' }]}>
-                    <Text style={[s.statusText, { color: getStatusColor(order.status) }]}>{order.status.replace(/_/g, ' ')}</Text>
-                </View>
-            </View>
-            <View style={s.customerInfo}>
-                <Text style={s.customerName}>Customer: {order.customer.name}</Text>
-                <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={s.subText}>Subtotal: ₱{Number(order.subtotal || order.total).toFixed(2)}</Text>
-                    <Text style={[s.subText, { color: '#EF4444' }]}>Platform Fee (5%): -₱{Number(order.platformFee || 0).toFixed(2)}</Text>
-                    <View style={s.divider} />
-                    <Text style={s.earningsText}>Earnings: ₱{Number(order.sellerEarnings || order.total).toFixed(2)}</Text>
-                </View>
-            </View>
-            {['PENDING', 'CONFIRMED', 'IN_PRODUCTION'].includes(order.status) && (
-                <View style={s.escrowNote}>
-                    <Text style={s.escrowText}>🔒 Payment held in Escrow</Text>
-                </View>
-            )}
-            <View style={s.itemsList}>
-                {order.items.map(oi => (
-                    <View key={oi.uid} style={s.itemRow}>
-                        {oi.product.image && <Image source={{ uri: oi.product.image }} style={s.image} />}
-                        <View style={s.itemDetails}>
-                            <Text style={s.productName}>{oi.product.name}</Text>
-                            <Text style={s.qtyText}>Qty: {oi.quantity} x ₱{Number(oi.price).toFixed(2)}</Text>
+                <View style={s.headerLeft}>
+                    <View>
+                        <Text style={s.orderId}>Order #{order.uid}</Text>
+                        <View style={s.dateRow}>
+                            <Clock size={12} color={SUB} />
+                            <Text style={s.dateText}>
+                                {new Date(order.uploaded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </Text>
                         </View>
                     </View>
-                ))}
+                </View>
+                <View style={[s.statusBadge, { backgroundColor: statusColor + '15', borderColor: statusColor + '30' }]}>
+                    <Text style={[s.statusText, { color: statusColor }]}>
+                        {order.status.replace(/_/g, ' ')}
+                    </Text>
+                </View>
             </View>
-            {!selectionMode && <View style={s.actions}>{renderActions()}</View>}
-        </TouchableOpacity>
+
+            {/* Late Warning */}
+            {late && (
+                <View style={s.lateBanner}>
+                    <AlertTriangle size={14} color={RED} />
+                    <Text style={s.lateText}>Shipment is overdue! Please process immediately.</Text>
+                </View>
+            )}
+
+            <View style={s.divider} />
+
+            {/* Customer & Items */}
+            <View style={s.contentSection}>
+                <View style={s.customerRow}>
+                    <View style={s.avatar}>
+                        <Text style={s.avatarText}>{order.customer.name.charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <View>
+                        <Text style={s.customerName}>{order.customer.name}</Text>
+                        <Text style={s.customerLabel}>Customer</Text>
+                    </View>
+                </View>
+
+                <View style={s.itemsList}>
+                    {order.items.map(oi => (
+                        <View key={oi.uid} style={s.itemRow}>
+                            {oi.product.image ? (
+                                <Image source={{ uri: oi.product.image }} style={s.image} />
+                            ) : (
+                                <View style={[s.image, { alignItems: 'center', justifyContent: 'center' }]}>
+                                    <Package size={20} color={SUB} />
+                                </View>
+                            )}
+                            <View style={s.itemDetails}>
+                                <Text style={s.productName} numberOfLines={2}>{oi.product.name}</Text>
+                                <Text style={s.qtyText}>Qty: {oi.quantity} x ₱{Number(oi.price).toFixed(2)}</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            </View>
+
+            {/* Financial Summary */}
+            <View style={s.summaryBox}>
+                <View style={s.summaryRow}>
+                    <Text style={s.summaryLabel}>Subtotal</Text>
+                    <Text style={s.summaryValue}>₱{Number(order.subtotal || order.total).toFixed(2)}</Text>
+                </View>
+                <View style={s.summaryRow}>
+                    <Text style={s.summaryLabel}>Platform Fee (5%)</Text>
+                    <Text style={[s.summaryValue, { color: RED }]}>-₱{Number(order.platformFee || 0).toFixed(2)}</Text>
+                </View>
+                <View style={[s.divider, { marginVertical: 8, backgroundColor: BORDER }]} />
+                <View style={s.summaryRow}>
+                    <Text style={s.earningsLabel}>Your Earnings</Text>
+                    <Text style={s.earningsValue}>₱{Number(order.sellerEarnings || order.total).toFixed(2)}</Text>
+                </View>
+            </View>
+
+            {/* Escrow Notice */}
+            {['PENDING', 'CONFIRMED', 'IN_PRODUCTION'].includes(order.status) && (
+                <View style={s.escrowNote}>
+                    <Lock size={12} color="#92400E" />
+                    <Text style={s.escrowText}>Funds secured in Escrow until delivery</Text>
+                </View>
+            )}
+
+            {/* Actions */}
+            {order.status !== 'CANCELLED' && order.status !== 'COMPLETED' && order.status !== 'DELIVERED' && order.status !== 'SHIPPED' && (
+                <View style={s.actionsContainer}>
+                    {renderActions()}
+                </View>
+            )}
+        </View>
     );
 }
 
 const s = StyleSheet.create({
-    card: { backgroundColor: CARD, padding: 20, borderRadius: 24, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
-    cardLate: { borderLeftWidth: 4, borderLeftColor: RED },
-    cardSelected: { borderColor: P, borderWidth: 2, backgroundColor: P_LIGHT },
-    header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, alignItems: 'flex-start' },
-    orderId: { fontWeight: '700', fontSize: 16, color: TEXT, fontFamily: 'Quicksand' },
-    date: { color: SUB, fontSize: 13, marginTop: 2, fontFamily: 'Quicksand' },
-    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-    statusText: { fontWeight: '700', fontSize: 12 },
-    customerInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: BORDER, paddingBottom: 12 },
-    customerName: { color: SUB, fontSize: 14, fontFamily: 'Quicksand' },
-    escrowNote: { backgroundColor: '#FEF3C7', padding: 8, borderRadius: 6, marginBottom: 12, borderWidth: 1, borderColor: '#FDE68A' },
-    escrowText: { fontSize: 12, color: '#92400E', fontWeight: '600', fontFamily: 'Quicksand' },
-    subText: { fontSize: 12, color: SUB, marginBottom: 2, fontFamily: 'Quicksand' },
-    earningsText: { fontSize: 14, fontWeight: '700', color: GREEN, marginTop: 2, fontFamily: 'Quicksand' },
-    divider: { height: 1, backgroundColor: BORDER, width: '100%', marginVertical: 4 },
-    itemsList: { marginBottom: 16 },
-    itemRow: { flexDirection: 'row', marginBottom: 12 },
-    image: { width: 48, height: 48, borderRadius: 12, marginRight: 12, backgroundColor: BG },
+    card: { backgroundColor: CARD, borderRadius: 24, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: BORDER },
+    cardLate: { borderColor: RED + '40', borderWidth: 1 },
+    
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    headerLeft: { flexDirection: 'row', alignItems: 'center' },
+    orderId: { fontSize: 18, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
+    dateRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    dateText: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
+    
+    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+    statusText: { fontSize: 11, fontWeight: '700', fontFamily: 'Quicksand', textTransform: 'uppercase', letterSpacing: 0.5 },
+    
+    lateBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEF2F2', padding: 12, borderRadius: 12, marginTop: 16 },
+    lateText: { fontSize: 13, color: RED, fontWeight: '600', fontFamily: 'Quicksand' },
+    
+    divider: { height: 1, backgroundColor: BORDER, width: '100%', marginVertical: 20 },
+    
+    contentSection: { marginBottom: 20 },
+    customerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+    avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { fontSize: 16, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    customerName: { fontSize: 15, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    customerLabel: { fontSize: 12, color: SUB, fontFamily: 'Quicksand', marginTop: 2 },
+    
+    itemsList: { gap: 12 },
+    itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    image: { width: 56, height: 56, borderRadius: 12, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
     itemDetails: { flex: 1, justifyContent: 'center' },
-    productName: { fontWeight: '600', fontSize: 14, color: TEXT, marginBottom: 2, fontFamily: 'Quicksand' },
+    productName: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand', marginBottom: 4, lineHeight: 20 },
     qtyText: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
-    actions: { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 16, alignItems: 'flex-end' },
+    
+    summaryBox: { backgroundColor: BG, borderRadius: 16, padding: 16, marginBottom: 16 },
+    summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+    summaryLabel: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
+    summaryValue: { fontSize: 13, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' },
+    earningsLabel: { fontSize: 14, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    earningsValue: { fontSize: 16, fontWeight: '800', color: GREEN, fontFamily: 'Quicksand' },
+    
+    escrowNote: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, alignSelf: 'flex-start' },
+    escrowText: { fontSize: 12, color: '#92400E', fontWeight: '600', fontFamily: 'Quicksand' },
+    
+    actionsContainer: { marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: BORDER },
     actionRow: { flexDirection: 'row', gap: 12 },
-    btn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, minWidth: 100, alignItems: 'center' },
+    btn: { paddingHorizontal: 24, paddingVertical: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
     primaryBtn: { backgroundColor: P },
     primaryBtnText: { color: 'white', fontWeight: '700', fontSize: 14, fontFamily: 'Quicksand' },
     rejectBtn: { backgroundColor: CARD, borderWidth: 1, borderColor: RED },
-    rejectBtnText: { color: RED, fontWeight: '600', fontSize: 14, fontFamily: 'Quicksand' },
-    lateBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8, backgroundColor: P_LIGHT, padding: 6, borderRadius: 8, alignSelf: 'flex-start' },
-    lateText: { fontSize: 12, color: RED, fontWeight: 'bold', fontFamily: 'Quicksand' },
-    checkboxOverlay: { position: 'absolute', top: 10, right: 10, zIndex: 10 },
-    checkbox: { width: 24, height: 24, borderRadius: 8, borderWidth: 2, borderColor: P, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center' },
-    checkboxSelected: { backgroundColor: P },
+    rejectBtnText: { color: RED, fontWeight: '700', fontSize: 14, fontFamily: 'Quicksand' },
 });

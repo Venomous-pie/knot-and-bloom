@@ -8,7 +8,7 @@ import {
     View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, Lock } from 'lucide-react-native';
+import { ChevronLeft, Sparkles, Lock, CreditCard, ChevronRight, Store } from 'lucide-react-native';
 
 const P       = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -49,12 +49,51 @@ export default function SellerSettingsPage() {
             {/* Header */}
             <View style={styles.headerContainer}>
                 <View style={styles.headerRow}>
-                    <Text style={styles.headerTitle}>Seller Settings</Text>
+                    <View>
+                        <Text style={styles.headerTitle}>Seller Settings</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                    </View>
                 </View>
             </View>
 
             <View style={{ flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
                 <ScrollView contentContainerStyle={styles.content}>
+
+                {/* Shop Profile Section */}
+                <Text style={styles.sectionLabel}>Shop Profile</Text>
+                <View style={styles.card}>
+                    <Pressable
+                        style={styles.linkRow}
+                        onPress={() => router.push('/profile' as any)}
+                    >
+                        <View style={[styles.settingIcon, { backgroundColor: P_LIGHT }]}>
+                            <Store size={20} color={P} />
+                        </View>
+                        <View style={styles.settingInfo}>
+                            <Text style={styles.settingTitle}>Edit Shop Profile</Text>
+                            <Text style={styles.settingSubtitle}>
+                                Update your shop name, bio, avatar, and banner image.
+                            </Text>
+                        </View>
+                        <ChevronRight size={18} color={SUB} />
+                    </Pressable>
+
+                    <Pressable
+                        style={[styles.linkRow, { borderBottomWidth: 0 }]}
+                        onPress={() => router.push('/profile/payment-methods' as any)}
+                    >
+                        <View style={[styles.settingIcon, { backgroundColor: '#E0F2FE' }]}>
+                            <CreditCard size={20} color={'#0284C7'} />
+                        </View>
+                        <View style={styles.settingInfo}>
+                            <Text style={styles.settingTitle}>Payout Methods</Text>
+                            <Text style={styles.settingSubtitle}>
+                                Manage your GCash, PayMaya, and bank accounts for withdrawals.
+                            </Text>
+                        </View>
+                        <ChevronRight size={18} color={SUB} />
+                    </Pressable>
+                </View>
 
                 {/* AI Features Section */}
                 <Text style={styles.sectionLabel}>AI Features</Text>
@@ -172,6 +211,14 @@ const styles = StyleSheet.create({
         borderColor: BORDER,
     },
     settingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        gap: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: BORDER,
+    },
+    linkRow: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 20,

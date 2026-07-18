@@ -13,6 +13,7 @@ import {
     TrendingUp, TrendingDown, Star, CheckCircle, Clock, XCircle, Settings
 } from 'lucide-react-native';
 import Tooltip from '../../components/ui/Tooltip';
+import StatCard from '../../components/ui/StatCard';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const P = '#B36979';
@@ -48,43 +49,7 @@ interface DashboardStats {
     recentReviews: Array<{ id: number; customerName: string; rating: number; comment: string; date: string }>;
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon, color, sub, trend, tooltip }: {
-    label: string; value: string; icon: React.ReactNode;
-    color: string; sub?: string; trend?: 'up' | 'down' | null; tooltip?: string;
-}) {
-    const scale = useRef(new Animated.Value(1)).current;
-    return (
-        <View style={{ flex: 1, minWidth: 140, zIndex: 99, overflow: 'visible' }}>
-            <Pressable onPress={() => {
-                Animated.sequence([
-                    Animated.timing(scale, { toValue: 0.95, duration: 70, useNativeDriver: true }),
-                    Animated.timing(scale, { toValue: 1, duration: 70, useNativeDriver: true }),
-                ]).start();
-            }} style={{ zIndex: 99, overflow: 'visible' }}>
-                <View style={{ position: 'relative', zIndex: 99, overflow: 'visible' }}>
-                    <Animated.View style={[s.statCard, { transform: [{ scale }] }]}>
-                        <View style={s.statCardHeader}>
-                            <View style={[s.statIcon, { backgroundColor: color + '18' }]}>{icon}</View>
-                            {tooltip && <Tooltip content={tooltip} iconColor={P} iconSize={18} position="right" />}
-                        </View>
-                        <Text style={s.statVal}>{value}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'nowrap' }}>
-                            <Text style={[s.statLbl, { marginTop: 0, lineHeight: 20 }]}>{label}</Text>
-                            {trend && (
-                                <View style={[s.trendBadge, { backgroundColor: trend === 'up' ? '#DCFCE7' : '#FEE2E2' }]}>
-                                    {trend === 'up' && <TrendingUp size={10} color={GREEN} />}
-                                    {trend === 'down' && <TrendingDown size={10} color={RED} />}
-                                </View>
-                            )}
-                        </View>
-                        {sub && <Text style={[s.statSub, { marginTop: 4 }]}>{sub}</Text>}
-                    </Animated.View>
-                </View>
-            </Pressable>
-        </View>
-    );
-}
+
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function SellerDashboardHome() {
@@ -110,28 +75,63 @@ export default function SellerDashboardHome() {
     };
     useEffect(() => { fetchStats(); }, []);
 
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
+    useEffect(() => {
+        if (loading) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+                ])
+            ).start();
+        }
+    }, [loading]);
+
     const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const fmtK = (n: number) => n >= 1000 ? `₱${(n / 1000).toFixed(1)}k` : `₱${n.toFixed(0)}`;
 
-    if (loading) return <View style={s.center}><ActivityIndicator size="large" color={P} /></View>;
-    if (!stats) return (
-        <View style={s.center}>
-            <RefreshCw size={32} color={SUB} />
-            <TouchableOpacity style={s.retryBtn} onPress={fetchStats}>
-                <Text style={s.retryTxt}>Try again</Text>
-            </TouchableOpacity>
+    const isDesktop = width >= 1024;
+
+    const displayStats = stats || {
+        performanceSnapshot: { todayRevenue: 0, todayOrders: 0, todayVisitors: 0, pendingActions: 0 },
+        quickStats: { thisMonthSales: 0, thisMonthOrders: 0, thisMonthEarnings: 0, lastMonthSales: 0, totalOrders: { PENDING: 0, PROCESSING: 0, COMPLETED: 0, CANCELLED: 0 }, conversionRate: 0 },
+        performanceGraph: [],
+        topProducts: [],
+        recentReviews: []
+    };
+
+    let dashboardContent = null;
+
+    const HeaderComponent = (
+        <View style={s.header}>
+            <View style={{ flex: 1 }}>
+                <Text style={s.greeting} numberOfLines={1}>Dashboard</Text>
+                <Text style={s.dateTxt}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+            </View>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {!stats && !loading && (
+                    <TouchableOpacity style={s.smallRetryBtn} onPress={fetchStats}>
+                        <RefreshCw size={14} color={P} />
+                        <Text style={s.smallRetryTxt}>Retry</Text>
+                    </TouchableOpacity>
+                )}
+                <TouchableOpacity style={s.bellBtn} onPress={() => router.push('/seller-dashboard/notifications' as any)}>
+                    <Bell size={19} color={TEXT} />
+                    {(displayStats.performanceSnapshot?.pendingActions ?? 0) > 0 && <View style={s.bellDot} />}
+                </TouchableOpacity>
+            </View>
         </View>
     );
 
-    const isDesktop = width >= 1024;
-
+    // Unconditionally render the dashboard components using displayStats
     // Calculate dynamic chart width.
-    const CHART_W = isDesktop
-        ? ((Math.min(width - 260, 1280) * 0.65) - 80)
-        : Math.min(width - 80, 340);
+        const CHART_W = isDesktop
+            ? ((Math.min(width - 260, 1280) * 0.65) - 80)
+            : Math.min(width - 80, 340);
 
-    const barData = stats.performanceGraph.map((d, i) => {
-        const isToday = i === stats.performanceGraph.length - 1;
+    const barData = displayStats.performanceGraph.map((d, i) => {
+        const isToday = i === displayStats.performanceGraph.length - 1;
         return {
             value: d.sales,
             label: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
@@ -143,51 +143,42 @@ export default function SellerDashboardHome() {
         };
     });
 
-    const delta = stats.quickStats.thisMonthSales - stats.quickStats.lastMonthSales;
+    const delta = displayStats.quickStats.thisMonthSales - displayStats.quickStats.lastMonthSales;
     const trend: 'up' | 'down' | null = delta > 0 ? 'up' : delta < 0 ? 'down' : null;
-    const { PENDING, PROCESSING, COMPLETED, CANCELLED } = stats.quickStats.totalOrders;
+    const { PENDING, PROCESSING, COMPLETED, CANCELLED } = displayStats.quickStats.totalOrders;
 
     // --- Components ---
-
-    const HeaderComponent = (
-        <View style={s.header}>
-            <View style={{ flex: 1 }}>
-                <Text style={s.greeting} numberOfLines={1}>{user?.sellerStoreName ?? 'Seller Dashboard'}</Text>
-                <Text style={s.dateTxt}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
-            </View>
-            <TouchableOpacity style={s.bellBtn} onPress={() => router.push('/seller-dashboard/notifications' as any)}>
-                <Bell size={19} color={TEXT} />
-                {stats.performanceSnapshot.pendingActions > 0 && <View style={s.bellDot} />}
-            </TouchableOpacity>
-        </View>
-    );
 
     const StatsBar = (
         <View style={[s.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 100, overflow: 'visible' }]}>
             <StatCard
-                label="Total Revenue" value={fmtK(stats.quickStats.thisMonthSales)}
+                label="Total Revenue" value={fmtK(displayStats.quickStats.thisMonthSales)}
                 icon={<DollarSign size={17} color={P} />} color={P}
                 sub={delta !== 0 ? `${delta >= 0 ? '+' : ''}${fmtK(Math.abs(delta))} vs last month` : 'Same as last month'}
                 trend={trend}
                 tooltip="Total sales revenue generated from your store this month."
+                isLoading={loading}
             />
             <StatCard
-                label="Orders" value={String(stats.quickStats.thisMonthOrders)}
+                label="Orders" value={String(displayStats.quickStats.thisMonthOrders)}
                 icon={<ShoppingBag size={17} color={INDIGO} />} color={INDIGO}
                 sub="This month"
                 tooltip="Total number of orders placed in your store this month."
+                isLoading={loading}
             />
             <StatCard
                 label="Completed" value={String(COMPLETED)}
                 icon={<Package size={17} color={GREEN} />} color={GREEN}
                 sub="All time"
                 tooltip="Orders that have been fully delivered and confirmed by the customer."
+                isLoading={loading}
             />
             <StatCard
-                label="Earnings" value={fmtK(stats.quickStats.thisMonthEarnings)}
+                label="Earnings" value={fmtK(displayStats.quickStats.thisMonthEarnings)}
                 icon={<DollarSign size={17} color={TEAL} />} color={TEAL}
                 sub="After platform fees"
                 tooltip="Your net earnings this month after Knot & Bloom platform fees are deducted."
+                isLoading={loading}
             />
         </View>
     );
@@ -267,7 +258,7 @@ export default function SellerDashboardHome() {
                 <Text style={s.cardSub}>By revenue</Text>
             </View>
             <View style={{ marginTop: 16, gap: 16 }}>
-                {stats.topProducts.length > 0 ? stats.topProducts.map((p, i) => (
+                {displayStats.topProducts.length > 0 ? displayStats.topProducts.map((p, i) => (
                     <View key={p.id} style={s.productRow}>
                         {p.image ? (
                             <Image source={{ uri: p.image }} style={s.productImg} />
@@ -289,32 +280,57 @@ export default function SellerDashboardHome() {
         </View>
     );
 
-    const RecentReviewsCard = (
-        <View style={s.card}>
-            <View style={s.cardHead}>
-                <Text style={s.cardTitle}>Recent Reviews</Text>
-                <Text style={s.cardSub}>Last 30 days</Text>
-            </View>
-            <View style={{ marginTop: 16, gap: 16 }}>
-                {stats.recentReviews.length > 0 ? stats.recentReviews.map((r) => (
-                    <View key={r.id} style={s.reviewRow}>
-                        <View style={s.reviewHead}>
-                            <Text style={s.reviewerName}>{r.customerName}</Text>
-                            <View style={s.starsRow}>
-                                {[1, 2, 3, 4, 5].map((sVal) => (
-                                    <Star key={sVal} size={12} fill={sVal <= r.rating ? '#F59E0B' : '#E5E7EB'} color={sVal <= r.rating ? '#F59E0B' : '#E5E7EB'} />
-                                ))}
+        const RecentReviewsCard = (
+            <View style={s.card}>
+                <View style={s.cardHead}>
+                    <Text style={s.cardTitle}>Recent Reviews</Text>
+                    <Text style={s.cardSub}>Last 30 days</Text>
+                </View>
+                <View style={{ marginTop: 16, gap: 16 }}>
+                    {displayStats.recentReviews.length > 0 ? displayStats.recentReviews.map((r) => (
+                        <View key={r.id} style={s.reviewRow}>
+                            <View style={s.reviewHead}>
+                                <Text style={s.reviewerName}>{r.customerName}</Text>
+                                <View style={s.starsRow}>
+                                    {[1, 2, 3, 4, 5].map((sVal) => (
+                                        <Star key={sVal} size={12} fill={sVal <= r.rating ? '#F59E0B' : '#E5E7EB'} color={sVal <= r.rating ? '#F59E0B' : '#E5E7EB'} />
+                                    ))}
+                                </View>
                             </View>
+                            <Text style={s.reviewComment}>{r.comment}</Text>
+                            <Text style={s.reviewDate}>{new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
                         </View>
-                        <Text style={s.reviewComment}>{r.comment}</Text>
-                        <Text style={s.reviewDate}>{new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
-                    </View>
-                )) : (
-                    <Text style={s.emptyTxt}>No reviews yet.</Text>
-                )}
+                    )) : (
+                        <Text style={s.emptyTxt}>No reviews yet.</Text>
+                    )}
+                </View>
             </View>
-        </View>
-    );
+        );
+
+        dashboardContent = (
+            <>
+                {StatsBar}
+                {isDesktop ? (
+                    <View style={s.desktopGrid}>
+                        <View style={s.desktopLeft}>
+                            {BarChartCard}
+                            {TopProductsCard}
+                        </View>
+                        <View style={s.desktopRight}>
+                            {PipelineCard}
+                            {RecentReviewsCard}
+                        </View>
+                    </View>
+                ) : (
+                    <>
+                        {BarChartCard}
+                        {PipelineCard}
+                        {TopProductsCard}
+                        {RecentReviewsCard}
+                    </>
+                )}
+            </>
+        );
 
     return (
         <View style={s.root}>
@@ -329,28 +345,7 @@ export default function SellerDashboardHome() {
                 }
             >
                 <View style={isDesktop ? s.desktopContainer : undefined}>
-
-                    {StatsBar}
-
-                    {isDesktop ? (
-                        <View style={s.desktopGrid}>
-                            <View style={s.desktopLeft}>
-                                {BarChartCard}
-                                {TopProductsCard}
-                            </View>
-                            <View style={s.desktopRight}>
-                                {PipelineCard}
-                                {RecentReviewsCard}
-                            </View>
-                        </View>
-                    ) : (
-                        <>
-                            {BarChartCard}
-                            {PipelineCard}
-                            {TopProductsCard}
-                            {RecentReviewsCard}
-                        </>
-                    )}
+                    {dashboardContent}
                 </View>
             </ScrollView>
         </View>
@@ -369,20 +364,13 @@ const s = StyleSheet.create({
     desktopRight: { flex: 0.35 },
 
     headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
-    header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, maxWidth: 1280, width: '100%', alignSelf: 'center' },
-    greeting: { fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    dateTxt: { fontSize: 12, color: SUB, marginTop: 3, fontFamily: 'Quicksand' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, maxWidth: 1280, width: '100%', alignSelf: 'center' },
+    greeting: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    dateTxt: { fontSize: 13, color: SUB, marginTop: 4, fontFamily: 'Quicksand' },
     bellBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3, position: 'relative' },
     bellDot: { position: 'absolute', top: 8, right: 8, width: 9, height: 9, borderRadius: 5, backgroundColor: RED, borderWidth: 1.5, borderColor: CARD },
 
     statRow: { gap: 16, marginBottom: 24 },
-    statCard: { backgroundColor: CARD, borderRadius: 20, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
-    statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    trendBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, height: 20 },
-    statVal: { fontSize: 24, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
-    statLbl: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4, fontWeight: '500' },
-    statSub: { fontSize: 11, color: SUB, fontFamily: 'Quicksand' },
 
     card: { backgroundColor: CARD, borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, overflow: 'hidden' },
     cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -416,6 +404,6 @@ const s = StyleSheet.create({
 
     emptyTxt: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', fontStyle: 'italic', textAlign: 'center', paddingVertical: 12 },
 
-    retryBtn: { backgroundColor: P, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, marginTop: 8 },
-    retryTxt: { color: 'white', fontWeight: '700', fontSize: 14 },
+    smallRetryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: P_LIGHT, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: P + '30' },
+    smallRetryTxt: { color: P, fontWeight: '700', fontSize: 12, fontFamily: 'Quicksand' },
 });

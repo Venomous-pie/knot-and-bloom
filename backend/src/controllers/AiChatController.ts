@@ -1,8 +1,7 @@
 import type { Request, Response } from 'express';
-import Groq from 'groq-sdk';
-import ErrorHandler from '../error/errorHandler.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const SYSTEM_PROMPT = `
 You are a friendly, helpful, and concise customer assistance AI for Knot & Bloom.
@@ -46,22 +45,25 @@ const sendAiMessage = async (req: Request, res: Response) => {
             });
         }
 
-        const formattedMessages = [
-            { role: "system", content: SYSTEM_PROMPT },
-            ...messages.map((m: any) => ({
-                role: m.role,
-                content: m.content?.substring(0, 280) // Enforce Twitter-style length limit
-            }))
-        ];
-
-        const chatCompletion = await groq.chat.completions.create({
-            messages: formattedMessages,
-            model: "llama-3.1-8b-instant", // Updated from decommissioned model
-            temperature: 0.7,
-            max_tokens: 500,
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            systemInstruction: SYSTEM_PROMPT,
         });
 
-        const reply = chatCompletion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response at this time.";
+        // Build Gemini chat history from all messages except the last one (the new user message)
+        const history = messages.slice(0, -1).map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content?.substring(0, 280) ?? '' }],
+        }));
+
+        const chat = model.startChat({ history });
+
+        const lastMessage = messages[messages.length - 1];
+        const result = await chat.sendMessage(
+            lastMessage?.content?.substring(0, 280) ?? ''
+        );
+
+        const reply = result.response.text() || "I'm sorry, I couldn't generate a response at this time.";
 
         res.json({
             success: true,

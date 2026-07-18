@@ -801,69 +801,44 @@ export const sellerController = {
 
             if (!sellerId) return res.status(404).json({ error: "Seller profile not found" });
 
+            // 1. Prepare Date Boundaries
             const now = new Date();
             const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
             const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+            sevenDaysAgo.setHours(0, 0, 0, 0);
 
-            // 1. Today's Metrics
-            const todayOrders = await prisma.order.findMany({
-                where: {
-                    sellerId,
-                    uploaded: { gte: startOfDay }
-                },
-                select: { total: true }
-            });
+            // 2. Execute Independent Queries Concurrently
+            const [
+                todayOrders,
+                pendingOrdersCount,
+                lowStockCount,
+                thisMonthMetrics,
+                lastMonthMetrics,
+                totalOrdersDistribution,
+                recentOrders,
+                completedOrders
+            ] = await Promise.all([
+                prisma.order.findMany({ where: { sellerId, uploaded: { gte: startOfDay } }, select: { total: true } }),
+                prisma.order.count({ where: { sellerId, status: 'PENDING' } }),
+                prisma.productVariant.count({ where: { product: { sellerId, deletedAt: null }, stock: { lt: 5 } } }),
+                prisma.order.aggregate({ where: { sellerId, uploaded: { gte: startOfMonth } }, _sum: { total: true, sellerEarnings: true }, _count: { uid: true } }),
+                prisma.order.aggregate({ where: { sellerId, uploaded: { gte: startOfLastMonth, lte: endOfLastMonth } }, _sum: { total: true }, _count: { uid: true } }),
+                prisma.order.groupBy({ by: ['status'], where: { sellerId }, _count: { uid: true } }),
+                prisma.order.findMany({ where: { sellerId, uploaded: { gte: sevenDaysAgo } }, select: { uploaded: true, total: true } }),
+                prisma.order.findMany({ where: { sellerId, status: 'COMPLETED' }, select: { items: { select: { productId: true, price: true, quantity: true } } } })
+            ]);
+
+            // 3. Process Data
             const todayRevenue = todayOrders.reduce((sum, order) => sum + Number(order.total), 0);
             const todayOrderCount = todayOrders.length;
 
-            // 2. Pending Actions
-            const pendingOrdersCount = await prisma.order.count({
-                where: {
-                    sellerId,
-                    status: 'PENDING'
-                }
-            });
-
-            // Low stock (Variants with stock < 5)
-            // Note: Efficiently query variants directly via Product relation
-            const lowStockCount = await prisma.productVariant.count({
-                where: {
-                    product: { sellerId, deletedAt: null },
-                    stock: { lt: 5 }
-                }
-            });
-
-            // 3. Quick Stats (Month vs Last Month)
-            const thisMonthMetrics = await prisma.order.aggregate({
-                where: {
-                    sellerId,
-                    uploaded: { gte: startOfMonth }
-                },
-                _sum: { total: true, sellerEarnings: true },
-                _count: { uid: true }
-            });
-
-            const lastMonthMetrics = await prisma.order.aggregate({
-                where: {
-                    sellerId,
-                    uploaded: { gte: startOfLastMonth, lte: endOfLastMonth }
-                },
-                _sum: { total: true },
-                _count: { uid: true }
-            });
-
-            const totalOrdersDistribution = await prisma.order.groupBy({
-                by: ['status'],
-                where: { sellerId },
-                _count: { uid: true }
-            });
-
-            // Map distribution to handy object
             const orderCounts = {
                 PENDING: 0,
-                PROCESSING: 0, // In Production + Ready to Ship
+                PROCESSING: 0,
                 COMPLETED: 0,
                 CANCELLED: 0
             };
@@ -876,19 +851,6 @@ export const sellerController = {
             });
 
             // 4. Sales Graph (Last 7 Days)
-            // Simple daily aggregation
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-            sevenDaysAgo.setHours(0, 0, 0, 0);
-
-            const recentOrders = await prisma.order.findMany({
-                where: {
-                    sellerId,
-                    uploaded: { gte: sevenDaysAgo }
-                },
-                select: { uploaded: true, total: true }
-            });
-
             const salesGraph = [];
             for (let i = 0; i < 7; i++) {
                 const date = new Date(sevenDaysAgo);
@@ -906,16 +868,6 @@ export const sellerController = {
             }
 
             // 5. Top Products (by revenue)
-            // Fetch all COMPLETED order items for the seller and calculate revenue per product in memory
-            const completedOrders = await prisma.order.findMany({
-                where: { sellerId, status: 'COMPLETED' },
-                select: {
-                    items: {
-                        select: { productId: true, price: true, quantity: true }
-                    }
-                }
-            });
-
             const productRevenue: Record<number, number> = {};
             completedOrders.forEach(order => {
                 order.items.forEach(item => {

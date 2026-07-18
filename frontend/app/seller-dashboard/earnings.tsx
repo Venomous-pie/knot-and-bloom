@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/api/api';
 import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard, ChevronLeft, ArrowUpCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import StatCard from '../../components/ui/StatCard';
 
 const P       = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -172,7 +173,10 @@ export default function SellerEarnings() {
             {/* Page Header */}
             <View style={styles.headerContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Earnings & Payouts</Text>
+                    <View>
+                        <Text style={styles.title}>Earnings & Payouts</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                    </View>
                     <TouchableOpacity
                         style={styles.withdrawBtn}
                         onPress={() => setModalVisible(true)}
@@ -206,41 +210,35 @@ export default function SellerEarnings() {
                     </LinearGradient>
 
                     {/* Pending & GMV Row */}
-                    <View style={styles.statsRow}>
-                        <View style={styles.statCard}>
-                            <View style={styles.statIconContainer}>
-                                <History size={20} color="#F59E0B" />
-                            </View>
-                            <Text style={styles.statValue}>{formatCurrency(data?.balance.pending || 0)}</Text>
-                            <Text style={styles.statLabel}>Pending Clearance</Text>
-                        </View>
-                        <View style={styles.statCard}>
-                            <View style={[styles.statIconContainer, { backgroundColor: '#E0E7FF' }]}>
-                                <TrendingUp size={20} color="#4F46E5" />
-                            </View>
-                            <Text style={styles.statValue}>{formatCurrency(data?.balance.gmv || 0)}</Text>
-                            <Text style={styles.statLabel}>Total Sales (GMV)</Text>
-                        </View>
+                    <View style={[styles.statsRow, { zIndex: 100, overflow: 'visible', marginTop: 16 }]}>
+                        <StatCard
+                            label="Pending Clearance"
+                            value={formatCurrency(data?.balance.pending || 0)}
+                            icon={<History size={20} color="#F59E0B" />}
+                            color="#F59E0B"
+                            tooltip="Funds from recent orders that are still processing or in transit."
+                        />
+                        <StatCard
+                            label="Total Sales (GMV)"
+                            value={formatCurrency(data?.balance.gmv || 0)}
+                            icon={<TrendingUp size={20} color="#4F46E5" />}
+                            color="#4F46E5"
+                            tooltip="Gross Merchandise Value: the total value of all items you've sold."
+                        />
                     </View>
                 </View>
 
-                {/* Commission Breakdown Chart */}
-                <View style={styles.chartSection}>
-                    <Text style={styles.sectionTitle}>Revenue Breakdown</Text>
-                    <View style={styles.chartCard}>
-                        <View style={styles.barContainer}>
-                            <View style={[styles.barPart, { flex: 95, backgroundColor: '#10B981', borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }]} />
-                            <View style={[styles.barPart, { flex: 5, backgroundColor: '#EF4444', borderTopRightRadius: 8, borderBottomRightRadius: 8 }]} />
+                {/* Explanation Box */}
+                <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+                    <View style={{ backgroundColor: '#F0F9FF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#BAE6FD', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                        <View style={{ backgroundColor: '#BAE6FD', padding: 8, borderRadius: 20 }}>
+                            <DollarSign size={16} color="#0284C7" />
                         </View>
-                        <View style={styles.legendContainer}>
-                            <View style={styles.legendItem}>
-                                <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
-                                <Text style={styles.legendText}>Net Earnings (95%)</Text>
-                            </View>
-                            <View style={styles.legendItem}>
-                                <View style={[styles.dot, { backgroundColor: '#EF4444' }]} />
-                                <Text style={styles.legendText}>Platform Fee (5%)</Text>
-                            </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#0369A1', marginBottom: 4, fontFamily: 'Quicksand' }}>How your earnings work</Text>
+                            <Text style={{ fontSize: 13, color: '#0C4A6E', fontFamily: 'Quicksand', lineHeight: 20 }}>
+                                Knot & Bloom deducts a standard 5% platform fee from completed orders. Your Available and Pending balances reflect your net earnings after this fee is applied.
+                            </Text>
                         </View>
                     </View>
                 </View>
@@ -369,7 +367,7 @@ const styles = StyleSheet.create({
     scrollContent: { paddingBottom: 40 },
     headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1280, width: '100%', alignSelf: 'center' },
-    title: { fontSize: 22, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    title: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
     withdrawBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
     withdrawBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14, fontFamily: 'Quicksand' },
 
@@ -392,10 +390,6 @@ const styles = StyleSheet.create({
     withdrawButtonText: { color: P, fontWeight: '600', fontSize: 14 },
 
     statsRow: { flexDirection: 'row', gap: 16 },
-    statCard: { flex: 1, backgroundColor: CARD, padding: 20, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER, gap: 8 },
-    statIconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' },
-    statValue: { fontSize: 18, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    statLabel: { fontSize: 12, color: SUB, fontFamily: 'Quicksand' },
 
     historySection: { padding: 20, marginTop: 10 },
     sectionTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 16, fontFamily: 'Quicksand' },

@@ -631,7 +631,7 @@ export const sellerOrdersAPI = {
      * Get orders for a specific seller
      */
     getSellerOrders: (sellerId: number) =>
-        apiClient.get<any[]>(`/sellers/${sellerId}/orders`),
+        apiClient.get<any>(`/sellers/${sellerId}/orders`),
 
     /**
      * Get public seller profile by slug

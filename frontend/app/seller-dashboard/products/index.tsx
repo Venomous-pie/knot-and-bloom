@@ -6,7 +6,8 @@ import { sellerProductsAPI } from '../../../api/api';
 import InfoBox from '../../../components/ui/InfoBox';
 import Tooltip from '../../../components/ui/Tooltip';
 import DropdownMenu from '../../../components/ui/DropdownMenu';
-import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter, Clock, History, TrendingDown, TrendingUp } from 'lucide-react-native';
+import StatCard from '../../../components/ui/StatCard';
+import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter, Clock, History, TrendingDown, TrendingUp, AlignJustify } from 'lucide-react-native';
 import { calculateOptimizationScore } from '../../../utils/optimizationScore';
 
 const P = '#B36979';
@@ -52,43 +53,7 @@ const SORT_OPTIONS = [
     { label: 'Price: Low-High', value: 'price_low', icon: TrendingUp },
 ];
 
-function StatCard({ label, value, icon, color, tooltip }: {
-    label: string; value: string | number; icon: React.ReactNode; color: string; tooltip?: string;
-}) {
-    const scale = useRef(new Animated.Value(1)).current;
-    return (
-        <View style={{ flex: 1, minWidth: 140, zIndex: 99, overflow: 'visible' }}>
-            <Pressable
-                onPress={() => {
-                    Animated.sequence([
-                        Animated.timing(scale, { toValue: 0.95, duration: 70, useNativeDriver: true }),
-                        Animated.timing(scale, { toValue: 1, duration: 70, useNativeDriver: true }),
-                    ]).start();
-                }}
-                style={{ zIndex: 99, overflow: 'visible' }}
-            >
-                <View style={{ position: 'relative', zIndex: 99, overflow: 'visible' }}>
-                    <Animated.View style={[styles.statCard, { transform: [{ scale }], zIndex: 1, overflow: 'visible' }]}>
-                        <View style={styles.statCardHeader}>
-                            <View style={[styles.statIcon, { backgroundColor: color + '18' }]}>{icon}</View>
-                            {/* Empty placeholder for the icon space */}
-                            {tooltip && <View style={{ width: 18, height: 18 }} />}
-                        </View>
-                        <Text style={styles.statVal}>{value}</Text>
-                        <Text style={styles.statLbl}>{label}</Text>
-                    </Animated.View>
 
-                    {/* Render tooltip outside the animated view to prevent transform clipping */}
-                    {tooltip && (
-                        <View style={{ position: 'absolute', top: 20, right: 20, zIndex: 9999, overflow: 'visible' }}>
-                            <Tooltip content={tooltip} iconColor={P} iconSize={18} position="right" />
-                        </View>
-                    )}
-                </View>
-            </Pressable>
-        </View>
-    );
-}
 
 export default function SellerProducts() {
     const router = useRouter();
@@ -98,6 +63,23 @@ export default function SellerProducts() {
     const [products, setProducts] = useState<Product[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
+    useEffect(() => {
+        let anim: Animated.CompositeAnimation | null = null;
+        if (loading) {
+            anim = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+                ])
+            );
+            anim.start();
+        } else {
+            pulseAnim.setValue(0.4);
+        }
+        return () => anim?.stop();
+    }, [loading]);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -108,7 +90,7 @@ export default function SellerProducts() {
     const [sortBy, setSortBy] = useState('newest');
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('list');
     const [showFilters, setShowFilters] = useState(false);
 
     // Bulk actions
@@ -338,6 +320,58 @@ export default function SellerProducts() {
             );
         }
 
+        if (viewMode === 'compact') {
+            return (
+                <Pressable
+                    onLongPress={() => toggleSelection(item.uid)}
+                    onPress={() => selectionMode ? toggleSelection(item.uid) : router.push({ pathname: '/seller-dashboard/products/form', params: { id: item.uid } })}
+                    style={[styles.card, { padding: 12, paddingHorizontal: 24, minHeight: 64, marginBottom: 8, borderRadius: 16, alignItems: 'center' }, isSelected && styles.cardSelected]}
+                >
+                    {selectionMode && (
+                        <View style={styles.checkbox}>
+                            {isSelected && <Ionicons name="checkmark" size={16} color="#FFF" />}
+                        </View>
+                    )}
+                    
+                    <View style={[styles.info, { padding: 0, margin: 0, marginLeft: selectionMode ? 0 : 0, flexDirection: 'row', alignItems: 'center', flex: 1 }]}>
+                        <View style={styles.colMain}>
+                            <Text style={[styles.name, { fontSize: 14, marginBottom: 2 }]} numberOfLines={1}>{item.name}</Text>
+                            <Text style={[styles.price, { fontSize: 13, marginBottom: 0 }]}>₱{Number(item.basePrice).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                        </View>
+                        
+                        <View style={styles.colStatus}>
+                            <View style={[styles.badgeAbs, { position: 'relative', top: 0, left: 0, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: getStatusColor(item.status), shadowOpacity: 0, elevation: 0, alignSelf: 'flex-start' }]}>
+                                <Text style={styles.badgeTextAbs}>{item.status || 'LEGACY'}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.colStock}>
+                            <View style={[styles.stockRow, { marginBottom: 0 }]}>
+                                <Package size={12} color={SUB} />
+                                <Text style={styles.stock}>{totalStock}</Text>
+                            </View>
+                        </View>
+                        
+                        <View style={[styles.colOpt, { flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>
+                            <Activity size={12} color={SUB} />
+                            <Text style={[styles.scoreValue, { fontSize: 12, color: optScore > 80 ? GREEN : optScore > 50 ? AMBER : RED }]}>{optScore}%</Text>
+                        </View>
+                    </View>
+
+                    {!selectionMode && (
+                        <View style={[styles.colActions, { flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }]}>
+                            <TouchableOpacity onPress={() => router.push({ pathname: '/seller-dashboard/products/form', params: { id: item.uid } })} style={[styles.actionBtn, { width: 32, height: 32, backgroundColor: BG }]}>
+                                <Edit2 size={14} color={SUB} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleDelete(item.uid)} style={[styles.actionBtn, { width: 32, height: 32, backgroundColor: '#FEE2E2' }]}>
+                                <Trash2 size={14} color={RED} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </Pressable>
+            );
+        }
+
         return (
             <Pressable
                 onLongPress={() => toggleSelection(item.uid)}
@@ -413,7 +447,10 @@ export default function SellerProducts() {
         <View style={styles.container}>
             <View style={styles.headerContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Inventory</Text>
+                    <View>
+                        <Text style={styles.title}>Products</Text>
+                        <Text style={styles.dateTxt}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                    </View>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                         <TouchableOpacity style={styles.exportBtn} onPress={exportToCSV}>
                             <Download size={18} color={TEXT} />
@@ -429,26 +466,28 @@ export default function SellerProducts() {
             <View style={{ paddingHorizontal: 24, paddingTop: 24, flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
 
                 {/* Stat Bar */}
-                {stats && (
-                    <View style={[styles.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 10 }]}>
-                        <StatCard
-                            label="Total Products" value={stats.totalProducts} icon={<Package size={17} color={INDIGO} />} color={INDIGO}
-                            tooltip="Total count of all your products, including active, drafts, and suspended."
-                        />
-                        <StatCard
-                            label="Avg. Optimization" value={`${stats.avgOptimizationScore}/100`} icon={<Activity size={17} color={GREEN} />} color={GREEN}
-                            tooltip="Score based on product details like image quality, description length, and stock health."
-                        />
-                        <StatCard
-                            label="Low Stock" value={stats.lowStockCount} icon={<AlertTriangle size={17} color={AMBER} />} color={AMBER}
-                            tooltip="Number of products that have 5 or fewer items remaining in stock."
-                        />
-                        <StatCard
-                            label="Pending Review" value={stats.pendingCount} icon={<ClipboardList size={17} color={P} />} color={P}
-                            tooltip="Products waiting for admin approval before they can appear in the shop."
-                        />
-                    </View>
-                )}
+                <View style={[styles.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 10 }]}>
+                    <StatCard
+                        label="Total Products" value={String(stats?.totalProducts ?? 0)}
+                        icon={<Package size={20} color={P} />} color={P} isLoading={!stats}
+                        tooltip="Total number of products in your catalog"
+                    />
+                    <StatCard
+                        label="Avg. Optimization" value={`${stats?.avgOptimizationScore ?? 0}%`}
+                        icon={<Activity size={20} color={GREEN} />} color={GREEN} isLoading={!stats}
+                        tooltip="Average optimization score across all your products"
+                    />
+                    <StatCard
+                        label="Low Stock Items" value={String(stats?.lowStockCount ?? 0)}
+                        icon={<AlertTriangle size={20} color={AMBER} />} color={AMBER} isLoading={!stats}
+                        tooltip="Products with 5 or fewer items remaining in stock"
+                    />
+                    <StatCard
+                        label="Pending Approval" value={String(stats?.pendingCount ?? 0)}
+                        icon={<ClipboardList size={20} color={INDIGO} />} color={INDIGO} isLoading={!stats}
+                        tooltip="Products currently under review by an administrator"
+                    />
+                </View>
 
                 {/* Navigation & Filters Row */}
                 <View style={styles.filterBar}>
@@ -504,6 +543,9 @@ export default function SellerProducts() {
                             <TouchableOpacity onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
                                 <LayoutGrid size={18} color={viewMode === 'grid' ? P : SUB} />
                             </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setViewMode('compact')} style={[styles.viewBtn, viewMode === 'compact' && styles.viewBtnActive]}>
+                                <AlignJustify size={18} color={viewMode === 'compact' ? P : SUB} />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
@@ -517,8 +559,29 @@ export default function SellerProducts() {
                     />
                 )}
 
-                {loading && page === 1 ? (
-                    <View style={styles.center}><ActivityIndicator size="large" color={P} /></View>
+                {viewMode === 'compact' && (
+                    <View style={styles.listHeaderRow}>
+                        {selectionMode && <View style={{ width: 36 }} />}
+                        <Text style={[styles.listHeaderTxt, styles.colMain]}>Product</Text>
+                        <Text style={[styles.listHeaderTxt, styles.colStatus]}>Status</Text>
+                        <Text style={[styles.listHeaderTxt, styles.colStock]}>Stock</Text>
+                        <Text style={[styles.listHeaderTxt, styles.colOpt]}>Optimization</Text>
+                        {!selectionMode && <Text style={[styles.listHeaderTxt, styles.colActions, { textAlign: 'right' }]}>Actions</Text>}
+                    </View>
+                )}
+
+                {loading && products.length === 0 ? (
+                    <Animated.View style={{ opacity: pulseAnim, width: '100%', marginTop: 12, flexDirection: viewMode === 'grid' ? 'row' : 'column', flexWrap: 'wrap', gap: viewMode === 'grid' ? gridGap : 0 }}>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <View key={i} style={{ 
+                                height: viewMode === 'grid' ? 250 : (viewMode === 'compact' ? 64 : 120), 
+                                width: viewMode === 'grid' ? cardWidth : '100%',
+                                backgroundColor: '#E2E8F0', 
+                                borderRadius: 12, 
+                                marginBottom: viewMode === 'grid' ? 0 : (viewMode === 'compact' ? 8 : 16) 
+                            }} />
+                        ))}
+                    </Animated.View>
                 ) : error ? (
                     <View style={styles.center}>
                         <Text style={styles.errorText}>{error}</Text>
@@ -585,17 +648,13 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1280, width: '100%', alignSelf: 'center' },
-    title: { fontSize: 24, fontWeight: 'bold', color: TEXT, fontFamily: 'Quicksand' },
+    title: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    dateTxt: { fontSize: 13, color: SUB, marginTop: 4, fontFamily: 'Quicksand' },
     addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
     addBtnText: { color: '#FFF', fontWeight: '700', marginLeft: 6, fontFamily: 'Quicksand' },
     exportBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: BORDER },
     exportBtnText: { color: TEXT, fontWeight: '700', marginLeft: 6, fontFamily: 'Quicksand' },
     statRow: { gap: 16, marginBottom: 24, zIndex: 100, overflow: 'visible' },
-    statCard: { backgroundColor: CARD, borderRadius: 20, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER, overflow: 'visible', zIndex: 99 },
-    statCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, zIndex: 100, overflow: 'visible' },
-    statIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    statVal: { fontSize: 24, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
-    statLbl: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4, fontWeight: '500' },
 
     filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
     searchContainer: { flex: 1, minWidth: 200, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: BORDER, height: 44 },
@@ -661,5 +720,14 @@ const styles = StyleSheet.create({
     bulkBar: { position: 'absolute', bottom: 24, left: 20, right: 20, backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: 24, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 10, borderWidth: 1, borderColor: BORDER },
     bulkCount: { fontWeight: 'bold', fontSize: 16, color: TEXT, marginLeft: 8, fontFamily: 'Quicksand' },
     bulkActions: { flexDirection: 'row', gap: 16 },
-    bulkBtn: { padding: 5 }
+    bulkBtn: { padding: 5 },
+
+    // Compact Table View
+    listHeaderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12, marginBottom: 8 },
+    listHeaderTxt: { fontSize: 12, fontWeight: '700', color: SUB, fontFamily: 'Quicksand', textTransform: 'uppercase', letterSpacing: 0.5 },
+    colMain: { flex: 2, paddingRight: 16 },
+    colStatus: { width: 100 },
+    colStock: { width: 80 },
+    colOpt: { width: 100, alignItems: 'center' },
+    colActions: { width: 80, alignItems: 'flex-end' }
 });

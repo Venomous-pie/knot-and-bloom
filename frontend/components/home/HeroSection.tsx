@@ -4,15 +4,7 @@ import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { ShoppingBag, Image as ImageIcon, Sparkles, Heart, Star } from 'lucide-react-native';
 
-const HERO_IMAGES = [
-  require('@/assets/hero-images/hero.jpeg'),
-  require('@/assets/hero-images/hero1.jpeg'),
-  require('@/assets/hero-images/hero2.jpeg'),
-  require('@/assets/hero-images/hero3.jpeg'),
-  require('@/assets/hero-images/hero4.jpeg'),
-  require('@/assets/hero-images/hero5.jpeg'),
-  require('@/assets/hero-images/hero6.jpeg'),
-];
+import { HERO_IMAGES } from '@/assets/hero-images';
 
 const Chain = ({ style }: { style: any }) => (
   <View style={[styles.chainWrapper, style]}>
@@ -28,7 +20,7 @@ export default function HeroSection() {
   const isMobile = width < 768;
   const router = useRouter();
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => Math.floor(Math.random() * HERO_IMAGES.length));
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const swayAnim = useRef(new Animated.Value(0)).current;
 
@@ -62,7 +54,13 @@ export default function HeroSection() {
         useNativeDriver: true,
       }).start(() => {
         // Swap image while faded
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % HERO_IMAGES.length);
+        setCurrentIndex((prevIndex) => {
+          let next;
+          do {
+            next = Math.floor(Math.random() * HERO_IMAGES.length);
+          } while (next === prevIndex);
+          return next;
+        });
 
         // Smooth fade back in
         Animated.timing(fadeAnim, {
@@ -150,19 +148,6 @@ export default function HeroSection() {
             source={HERO_IMAGES[currentIndex]}
             style={[styles.image, { opacity: fadeAnim }]}
           />
-          
-          {/* Pagination Dots */}
-          <View style={styles.dotsContainer}>
-            {HERO_IMAGES.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  currentIndex === index && styles.activeDot
-                ]}
-              />
-            ))}
-          </View>
         </View>
       </Animated.View>
     </View>

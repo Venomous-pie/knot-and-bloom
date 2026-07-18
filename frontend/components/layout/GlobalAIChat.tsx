@@ -91,6 +91,7 @@ export default function GlobalAIChat() {
 
     // Panel state
     const [isOpen, setIsOpen] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
     const slideAnim = useRef(new Animated.Value(350)).current; // 350 is the panel width
 
     // Chat state
@@ -330,15 +331,21 @@ export default function GlobalAIChat() {
             >
                 {/* Pull Tab */}
                 <Pressable
-                    style={[styles.pullTab, isOpen && styles.pullTabOpen]}
+                    style={[
+                        styles.pullTab, 
+                        isOpen && styles.pullTabOpen,
+                        !isOpen && !isHovered && styles.pullTabHidden
+                    ]}
                     onPress={() => setIsOpen(!isOpen)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onHoverIn={() => setIsHovered(true)}
+                    onHoverOut={() => setIsHovered(false)}
+                    hitSlop={{ top: 60, bottom: 60, left: 0, right: 0 }}
                 >
                     {isOpen ? (
                         <ChevronRight size={20} color="#666" />
                     ) : (
-                        <View style={styles.pullTabIconContainer}>
-                            <MessageCircle size={24} color="#FFF" />
+                        <View style={[styles.pullTabIconContainer, !isHovered && { opacity: 0 }]}>
+                            <ChevronLeft size={24} color="#FFF" />
                         </View>
                     )}
                 </Pressable>
@@ -467,6 +474,13 @@ export default function GlobalAIChat() {
             shadowRadius: 4,
             elevation: 5,
     },
+            pullTabHidden: {
+                backgroundColor: 'transparent',
+                shadowOpacity: 0,
+                elevation: 0,
+                left: -12,
+                width: 12,
+            },
             pullTabOpen: {
                 backgroundColor: '#FFF',
             left: -30,

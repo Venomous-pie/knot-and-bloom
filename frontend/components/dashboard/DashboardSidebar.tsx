@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
 import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,8 +57,9 @@ export default function DashboardSidebar() {
                 <Text style={s.brandSub}>Seller Control Center</Text>
             </View>
 
-            {/* Main Menu */}
-            <View style={s.menuSection}>
+            <ScrollView style={{ flexShrink: 1, flexGrow: 0 }} showsVerticalScrollIndicator={false}>
+                {/* Main Menu */}
+                <View style={s.menuSection}>
                 <Text style={s.sectionTitle}>Main Menu</Text>
                 {menuItems.map((item, idx) => {
                     const isActive = pathname === item.route || (item.route !== '/seller-dashboard' && pathname.startsWith(item.route));
@@ -127,9 +128,10 @@ export default function DashboardSidebar() {
                     );
                 })}
             </View>
-
-            <View style={{ flex: 1 }} />
+            </ScrollView>
             
+            <View style={{ flex: 1 }} />
+
             {/* User Menu / Footer */}
             <View style={s.footer}>
                 <DropdownMenu
@@ -221,7 +223,6 @@ const s = StyleSheet.create({
     },
     footer: {
         paddingHorizontal: 16,
-        paddingBottom: 24,
     },
     userInfo: {
         flexDirection: 'row',

@@ -375,7 +375,7 @@ export default function SellerOrders() {
                 </View>
 
                 <View style={s.colEarnings}>
-                    <Text style={s.rowEarnings}>{fmtMoney(Number(o.sellerEarnings || o.total))}</Text>
+                    <Text style={[s.rowEarnings, { color: isCompleted ? GREEN : TEXT }]}>{fmtMoney(Number(o.sellerEarnings || o.total))}</Text>
                 </View>
             </Pressable>
         );
@@ -497,7 +497,7 @@ export default function SellerOrders() {
                         <Text style={[s.listHeaderTxt, s.colId]}>Order ID</Text>
                         <Text style={[s.listHeaderTxt, s.colMain]}>Customer & Items</Text>
                         <Text style={[s.listHeaderTxt, s.colDue]}>Due Status</Text>
-                        <Text style={[s.listHeaderTxt, s.colEarnings, { textAlign: 'right' }]}>Earnings</Text>
+                        <Text style={[s.listHeaderTxt, s.colEarnings, { textAlign: 'right' }]}>Est. Earnings</Text>
                     </View>
 
                     {loading && orders.length === 0 ? (

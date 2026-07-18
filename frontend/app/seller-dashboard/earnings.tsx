@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert, Modal, TextInput, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert, Modal, TextInput, TouchableOpacity, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/api/api';
 import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard, ChevronLeft, ArrowUpCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LineChart, BarChart } from 'react-native-gifted-charts';
 import StatCard from '../../components/ui/StatCard';
 
 const P       = '#B36979';
@@ -49,6 +50,8 @@ interface EarningsData {
 export default function SellerEarnings() {
     const router = useRouter();
     const { user } = useAuth();
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 1024;
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [data, setData] = useState<EarningsData | null>(null);
@@ -60,6 +63,24 @@ export default function SellerEarnings() {
     const [withdrawMethod, setWithdrawMethod] = useState('GCASH'); // Default
     const [withdrawDetails, setWithdrawDetails] = useState(''); // Number/Account Name
     const [submitting, setSubmitting] = useState(false);
+    const [chartMode, setChartMode] = useState<'GMV' | 'NET'>('GMV');
+
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
+    useEffect(() => {
+        let anim: Animated.CompositeAnimation | null = null;
+        if (loading) {
+            anim = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+                ])
+            );
+            anim.start();
+        } else {
+            pulseAnim.setValue(0.4);
+        }
+        return () => anim?.stop();
+    }, [loading]);
 
     // Auth guard: only ACTIVE sellers or admins can access
     useEffect(() => {
@@ -131,16 +152,6 @@ export default function SellerEarnings() {
         return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
-    if (loading && !refreshing) {
-        return (
-            <View style={styles.container}>
-                <View style={[styles.content, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="large" color={P} />
-                </View>
-            </View>
-        );
-    }
-
     // Merge histories for display
     const mergedHistory = [
         ...(data?.history.orders.map(o => ({ ...o, type: 'EARNING', date: o.updated })) || []),
@@ -168,6 +179,237 @@ export default function SellerEarnings() {
     const feePart = revenueDisplay * 0.05; // 5% Platform Fee
     const earningPart = revenueDisplay * 0.95;
 
+    // Chart processing
+    
+    const generateChartData = () => {
+        if (!data?.history?.orders || data.history.orders.length === 0) {
+            return { gmvData: [{ value: 0, label: '' }], netData: [{ value: 0, label: '' }] };
+        }
+        
+        const grouped: Record<string, { gmv: number, net: number }> = {};
+        const sortedOrders = [...data.history.orders].sort((a, b) => new Date(a.updated).getTime() - new Date(b.updated).getTime());
+        
+        sortedOrders.forEach(order => {
+            const dateObj = new Date(order.updated);
+            const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (!grouped[dateLabel]) {
+                grouped[dateLabel] = { gmv: 0, net: 0 };
+            }
+            grouped[dateLabel].gmv += order.total;
+            grouped[dateLabel].net += order.sellerEarnings;
+        });
+
+        const gmvData = Object.keys(grouped).map(key => ({ value: grouped[key].gmv, label: key }));
+        const netData = Object.keys(grouped).map(key => ({ value: grouped[key].net, label: key }));
+        
+        return { gmvData, netData };
+    };
+    
+    const { gmvData, netData } = generateChartData();
+    const chartWidth = isDesktop
+        ? ((Math.min(width - 260, 1280) * 0.65) - 80)
+        : width - 88;
+
+    const StatsSection = (
+        <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 24, marginBottom: 24, zIndex: 100 }}>
+            <LinearGradient colors={['#B36979', '#8F4A5A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.mainCard, { flex: isDesktop ? 0.4 : 1 }]}>
+                <View>
+                    <Text style={styles.mainCardLabel}>Available Balance</Text>
+                    {loading && !data ? (
+                        <Animated.View style={{ opacity: pulseAnim, width: 120, height: 40, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 8, marginBottom: 24 }} />
+                    ) : (
+                        <Text style={styles.mainCardValue}>{formatCurrency(data?.balance.available || 0)}</Text>
+                    )}
+                </View>
+                <Pressable
+                    style={styles.withdrawButton}
+                    onPress={() => setModalVisible(true)}
+                    disabled={(data?.balance.available || 0) <= 0 || (loading && !data)}
+                >
+                    <Text style={styles.withdrawButtonText}>Withdraw</Text>
+                </Pressable>
+            </LinearGradient>
+
+            <View style={{ flex: isDesktop ? 0.6 : 1, flexDirection: isDesktop ? 'row' : 'column', gap: 16 }}>
+                <StatCard
+                    label="Pending Clearance"
+                    value={formatCurrency(data?.balance.pending || 0)}
+                    icon={<History size={20} color="#F59E0B" />}
+                    color="#F59E0B"
+                    tooltip="Funds from recent orders that are still processing or in transit."
+                    isLoading={loading && !data}
+                />
+                <StatCard
+                    label="Total Sales (GMV)"
+                    value={formatCurrency(data?.balance.gmv || 0)}
+                    icon={<TrendingUp size={20} color="#4F46E5" />}
+                    color="#4F46E5"
+                    tooltip="Gross Merchandise Value: the total value of all items you've sold."
+                    isLoading={loading && !data}
+                />
+            </View>
+        </View>
+    );
+
+    const ExplanationSection = (
+        <View style={{ backgroundColor: '#F0F9FF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#BAE6FD', flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+            <View style={{ backgroundColor: '#BAE6FD', padding: 8, borderRadius: 20 }}>
+                <DollarSign size={16} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#0369A1', marginBottom: 4, fontFamily: 'Quicksand' }}>How your earnings work</Text>
+                <Text style={{ fontSize: 13, color: '#0C4A6E', fontFamily: 'Quicksand', lineHeight: 20 }}>
+                    Knot & Bloom deducts a standard 5% platform fee from completed orders. Your Available and Pending balances reflect your net earnings after this fee is applied.
+                </Text>
+            </View>
+        </View>
+    );
+
+    const MotivationalSection = (
+        <View style={styles.motivationalCard}>
+            <Text style={styles.motivationalText}>
+                "Keep up the great work! Your efforts are paying off."
+            </Text>
+        </View>
+    );
+
+    const ChartsSection = (
+        <View style={[styles.chartCard, { marginBottom: 24 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={styles.sectionTitle}>Performance Overview</Text>
+                <View style={{ flexDirection: 'row', backgroundColor: BG, borderRadius: 12, padding: 4 }}>
+                    <Pressable onPress={() => setChartMode('GMV')} style={[{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }, chartMode === 'GMV' && { backgroundColor: CARD, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}>
+                        <Text style={[{ fontSize: 12, fontWeight: '600', color: SUB, fontFamily: 'Quicksand' }, chartMode === 'GMV' && { color: P }]}>GMV</Text>
+                    </Pressable>
+                    <Pressable onPress={() => setChartMode('NET')} style={[{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }, chartMode === 'NET' && { backgroundColor: CARD, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}>
+                        <Text style={[{ fontSize: 12, fontWeight: '600', color: SUB, fontFamily: 'Quicksand' }, chartMode === 'NET' && { color: P }]}>Net</Text>
+                    </Pressable>
+                </View>
+            </View>
+            
+            <View style={{ alignItems: isDesktop ? 'center' : 'flex-start', marginLeft: -8 }}>
+                {loading && !data ? (
+                    <Animated.View style={{ opacity: pulseAnim, width: chartWidth, height: 220, backgroundColor: '#E2E8F0', borderRadius: 12, marginVertical: 16 }} />
+                ) : chartMode === 'GMV' ? (
+                    <BarChart
+                        data={gmvData}
+                        width={chartWidth}
+                        height={220}
+                        barWidth={32}
+                        spacing={24}
+                        roundedTop
+                        xAxisThickness={0}
+                        yAxisThickness={0}
+                        yAxisTextStyle={{ color: SUB, fontSize: 11, fontFamily: 'Quicksand' }}
+                        xAxisLabelTextStyle={{ color: SUB, fontSize: 11, fontFamily: 'Quicksand' }}
+                        noOfSections={4}
+                        frontColor={INDIGO}
+                        isAnimated
+                    />
+                ) : (
+                    <LineChart
+                        data={netData}
+                        width={chartWidth}
+                        height={220}
+                        thickness={3}
+                        color={TEAL}
+                        dataPointsColor={TEAL}
+                        xAxisThickness={0}
+                        yAxisThickness={0}
+                        yAxisTextStyle={{ color: SUB, fontSize: 11, fontFamily: 'Quicksand' }}
+                        xAxisLabelTextStyle={{ color: SUB, fontSize: 11, fontFamily: 'Quicksand' }}
+                        noOfSections={4}
+                        isAnimated
+                        areaChart
+                        startFillColor={`${TEAL}40`}
+                        endFillColor={`${TEAL}00`}
+                    />
+                )}
+            </View>
+        </View>
+    );
+
+    const HistorySection = (
+        <View style={styles.historySection}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={styles.sectionTitle}>Recent Transactions</Text>
+                
+                {/* Filters */}
+                <View style={styles.filterRow}>
+                    {['ALL', 'EARNING', 'WITHDRAWAL'].map(type => (
+                        <Pressable
+                            key={type}
+                            style={[styles.filterChip, filterType === type && styles.filterChipActive]}
+                            onPress={() => setFilterType(type as any)}
+                        >
+                            <Text style={[styles.filterText, filterType === type && styles.filterTextActive]}>
+                                {type === 'ALL' ? 'All' : type === 'EARNING' ? 'Earnings' : 'Withdrawals'}
+                            </Text>
+                        </Pressable>
+                    ))}
+                </View>
+            </View>
+            
+            <View style={styles.listWrapper}>
+                <View style={styles.listHeaderRow}>
+                    <Text style={[styles.listHeaderTxt, styles.colIcon]}></Text>
+                    <Text style={[styles.listHeaderTxt, styles.colDetails]}>Transaction Details</Text>
+                    <Text style={[styles.listHeaderTxt, styles.colDate]}>Date</Text>
+                    <Text style={[styles.listHeaderTxt, styles.colAmount, { textAlign: 'right' }]}>Amount</Text>
+                </View>
+
+            {loading && !data ? (
+                <Animated.View style={{ opacity: pulseAnim, marginTop: 12, paddingBottom: 16 }}>
+                    {[1, 2, 3].map(i => (
+                        <View key={i} style={{ height: 60, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 12, marginHorizontal: 24 }} />
+                    ))}
+                </Animated.View>
+            ) : filteredHistory.length === 0 ? (
+                <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateTitle}>No transactions yet.</Text>
+                    <Text style={styles.emptyStateDesc}>Your earnings and payout history will appear here once you start making sales.</Text>
+                </View>
+            ) : (
+                <View style={styles.listContent}>
+                {filteredHistory.map((item: any, index) => (
+                    <View key={index} style={styles.historyItem}>
+                        <View style={styles.colIcon}>
+                            <View style={[styles.historyIcon,
+                            { backgroundColor: item.type === 'EARNING' ? '#DEF7EC' : '#FDE8E8' }
+                            ]}>
+                                {item.type === 'EARNING' ? (
+                                    <DollarSign size={16} color="#059669" />
+                                ) : (
+                                    <Wallet size={16} color="#E02424" />
+                                )}
+                            </View>
+                        </View>
+                        <View style={styles.colDetails}>
+                            <Text style={styles.historyTitle}>
+                                {item.type === 'EARNING' ? `Order #${item.uid}` : `Withdrawal (${item.status})`}
+                            </Text>
+                            <Text style={styles.historySub}>
+                                {item.type === 'EARNING' ? 'Completed Order' : 'Payout Request'}
+                            </Text>
+                        </View>
+                        <View style={styles.colDate}>
+                            <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
+                        </View>
+                        <View style={styles.colAmount}>
+                            <Text style={[styles.historyAmount,
+                            { color: item.type === 'EARNING' ? '#059669' : '#E02424' }
+                            ]}>
+                                {item.type === 'EARNING' ? '+' : '-'}{formatCurrency(item.type === 'EARNING' ? item.sellerEarnings : item.amount)}
+                            </Text>
+                        </View>
+                    </View>
+                ))}
+                </View>
+            )}
+            </View>
+        </View>
+    );
+
     return (
         <View style={styles.container}>
             {/* Page Header */}
@@ -186,114 +428,33 @@ export default function SellerEarnings() {
                     </TouchableOpacity>
                 </View>
             </View>
-            <View style={{ flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
-                <ScrollView
-                    contentContainerStyle={styles.scrollContent}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEarnings(); }} />}
-                >
+            <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={[styles.scrollContent, { padding: 24, maxWidth: 1280, width: '100%', alignSelf: 'center' }]}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEarnings(); }} />}
+            >
+                {StatsSection}
 
-                    {/* Balance Cards */}
-                <View style={styles.cardsContainer}>
-                    {/* Available Balance - Main Card */}
-                    <LinearGradient colors={['#B36979', '#8F4A5A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.mainCard}>
-                        <View>
-                            <Text style={styles.mainCardLabel}>Available Balance</Text>
-                            <Text style={styles.mainCardValue}>{formatCurrency(data?.balance.available || 0)}</Text>
+                {isDesktop ? (
+                    <View style={{ flexDirection: 'row', gap: 24 }}>
+                        <View style={{ flex: 0.65 }}>
+                            {ChartsSection}
+                            {HistorySection}
                         </View>
-                        <Pressable
-                            style={styles.withdrawButton}
-                            onPress={() => setModalVisible(true)}
-                            disabled={(data?.balance.available || 0) <= 0}
-                        >
-                            <Text style={styles.withdrawButtonText}>Withdraw</Text>
-                        </Pressable>
-                    </LinearGradient>
-
-                    {/* Pending & GMV Row */}
-                    <View style={[styles.statsRow, { zIndex: 100, overflow: 'visible', marginTop: 16 }]}>
-                        <StatCard
-                            label="Pending Clearance"
-                            value={formatCurrency(data?.balance.pending || 0)}
-                            icon={<History size={20} color="#F59E0B" />}
-                            color="#F59E0B"
-                            tooltip="Funds from recent orders that are still processing or in transit."
-                        />
-                        <StatCard
-                            label="Total Sales (GMV)"
-                            value={formatCurrency(data?.balance.gmv || 0)}
-                            icon={<TrendingUp size={20} color="#4F46E5" />}
-                            color="#4F46E5"
-                            tooltip="Gross Merchandise Value: the total value of all items you've sold."
-                        />
-                    </View>
-                </View>
-
-                {/* Explanation Box */}
-                <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
-                    <View style={{ backgroundColor: '#F0F9FF', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#BAE6FD', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                        <View style={{ backgroundColor: '#BAE6FD', padding: 8, borderRadius: 20 }}>
-                            <DollarSign size={16} color="#0284C7" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#0369A1', marginBottom: 4, fontFamily: 'Quicksand' }}>How your earnings work</Text>
-                            <Text style={{ fontSize: 13, color: '#0C4A6E', fontFamily: 'Quicksand', lineHeight: 20 }}>
-                                Knot & Bloom deducts a standard 5% platform fee from completed orders. Your Available and Pending balances reflect your net earnings after this fee is applied.
-                            </Text>
+                        <View style={{ flex: 0.35 }}>
+                            {ExplanationSection}
+                            {MotivationalSection}
                         </View>
                     </View>
-                </View>
-
-                {/* Filters */}
-                <View style={styles.filterRow}>
-                    {['ALL', 'EARNING', 'WITHDRAWAL'].map(type => (
-                        <Pressable
-                            key={type}
-                            style={[styles.filterChip, filterType === type && styles.filterChipActive]}
-                            onPress={() => setFilterType(type as any)}
-                        >
-                            <Text style={[styles.filterText, filterType === type && styles.filterTextActive]}>
-                                {type === 'ALL' ? 'All Transactions' : type === 'EARNING' ? 'Earnings' : 'Withdrawals'}
-                            </Text>
-                        </Pressable>
-                    ))}
-                </View>
-
-                {/* Transaction History */}
-                <View style={styles.historySection}>
-                    <Text style={styles.sectionTitle}>Recent Transactions</Text>
-                    {filteredHistory.length === 0 ? (
-                        <Text style={styles.emptyText}>No transactions found.</Text>
-                    ) : (
-                        filteredHistory.map((item: any, index) => (
-                            <View key={index} style={styles.historyItem}>
-                                <View style={styles.historyLeft}>
-                                    <View style={[styles.historyIcon,
-                                    { backgroundColor: item.type === 'EARNING' ? '#DEF7EC' : '#FDE8E8' }
-                                    ]}>
-                                        {item.type === 'EARNING' ? (
-                                            <DollarSign size={16} color="#059669" />
-                                        ) : (
-                                            <Wallet size={16} color="#E02424" />
-                                        )}
-                                    </View>
-                                    <View>
-                                        <Text style={styles.historyTitle}>
-                                            {item.type === 'EARNING' ? `Order #${item.uid}` : `Withdrawal (${item.status})`}
-                                        </Text>
-                                        <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
-                                    </View>
-                                </View>
-                                <Text style={[styles.historyAmount,
-                                { color: item.type === 'EARNING' ? '#059669' : '#E02424' }
-                                ]}>
-                                    {item.type === 'EARNING' ? '+' : '-'}{formatCurrency(item.type === 'EARNING' ? item.sellerEarnings : item.amount)}
-                                </Text>
-                            </View>
-                        ))
-                    )}
-                </View>
-                </ScrollView>
-            </View>
+                ) : (
+                    <>
+                        {ExplanationSection}
+                        {MotivationalSection}
+                        {ChartsSection}
+                        {HistorySection}
+                    </>
+                )}
+            </ScrollView>
 
             {/* Withdrawal Modal */}
             <Modal
@@ -365,41 +526,55 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: BG },
     content: { flex: 1 },
     scrollContent: { paddingBottom: 40 },
-    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16 },
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1280, width: '100%', alignSelf: 'center' },
     title: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    withdrawBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
+    withdrawBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: BORDER },
     withdrawBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14, fontFamily: 'Quicksand' },
 
-    cardsContainer: { paddingHorizontal: 20, gap: 16 },
+    cardsContainer: { gap: 16 },
     mainCard: {
         borderRadius: 24,
         padding: 24,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
         shadowColor: '#B36979',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
+        shadowOpacity: 0.3,
         shadowRadius: 16,
         elevation: 10,
     },
-    mainCardLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginBottom: 4, fontFamily: 'Quicksand', fontWeight: '500' },
-    mainCardValue: { color: 'white', fontSize: 34, fontWeight: '800', fontFamily: 'Quicksand' },
-    withdrawButton: { backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20 },
-    withdrawButtonText: { color: P, fontWeight: '600', fontSize: 14 },
+    mainCardLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14, marginBottom: 8, fontFamily: 'Quicksand', fontWeight: '500' },
+    mainCardValue: { color: 'white', fontSize: 36, fontWeight: '800', fontFamily: 'Quicksand', marginBottom: 24 },
+    withdrawButton: { backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 20, alignItems: 'center' },
+    withdrawButtonText: { color: P, fontWeight: '700', fontSize: 14, fontFamily: 'Quicksand' },
 
-    statsRow: { flexDirection: 'row', gap: 16 },
-
-    historySection: { padding: 20, marginTop: 10 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 16, fontFamily: 'Quicksand' },
-    historyItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: CARD, padding: 20, borderRadius: 24, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
-    historyLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    historyIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    historyTitle: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' },
-    historyDate: { fontSize: 12, color: SUB, fontFamily: 'Quicksand' },
-    historyAmount: { fontSize: 16, fontWeight: '600', fontFamily: 'Quicksand' },
+    historySection: { marginTop: 0 },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    
+    listWrapper: { flex: 1, width: '100%', backgroundColor: CARD, borderRadius: 24, borderWidth: 1, borderColor: BORDER, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2 },
+    listHeaderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: BG },
+    listHeaderTxt: { fontSize: 12, fontWeight: '700', color: SUB, fontFamily: 'Quicksand', textTransform: 'uppercase', letterSpacing: 0.5 },
+    listContent: { backgroundColor: CARD },
+    
+    historyItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: CARD },
+    colIcon: { width: 50 },
+    colDetails: { flex: 1, paddingRight: 20 },
+    colDate: { width: 120 },
+    colAmount: { width: 120, alignItems: 'flex-end' },
+    
+    historyIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+    historyTitle: { fontSize: 14, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand', marginBottom: 2 },
+    historySub: { fontSize: 12, color: SUB, fontFamily: 'Quicksand' },
+    historyDate: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
+    historyAmount: { fontSize: 15, fontWeight: '700', fontFamily: 'Quicksand' },
+    
     emptyText: { textAlign: 'center', color: SUB, marginTop: 20 },
+    emptyState: { paddingVertical: 40, alignItems: 'center', backgroundColor: CARD },
+    emptyStateTitle: { fontSize: 16, fontWeight: '700', color: TEXT, marginBottom: 8, fontFamily: 'Quicksand' },
+    emptyStateDesc: { fontSize: 14, color: SUB, textAlign: 'center', maxWidth: 300, fontFamily: 'Quicksand' },
+    
+    motivationalCard: { backgroundColor: '#FDF2F4', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#FCE7EB' },
+    motivationalText: { fontSize: 14, fontWeight: '600', color: P, fontFamily: 'Quicksand', fontStyle: 'italic', textAlign: 'center' },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
     modalContent: { backgroundColor: CARD, borderRadius: 24, padding: 24, gap: 16 },
@@ -419,8 +594,8 @@ const styles = StyleSheet.create({
     confirmButtonText: { color: 'white', fontWeight: '600' },
 
     // Chart & Filters
-    chartSection: { paddingHorizontal: 20, marginTop: 10 },
-    chartCard: { backgroundColor: CARD, padding: 20, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: BORDER },
+    chartSection: { marginTop: 10 },
+    chartCard: { backgroundColor: CARD, padding: 20, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: BORDER },
     barContainer: { flexDirection: 'row', height: 24, width: '100%', marginBottom: 16 },
     barPart: { height: '100%' },
     legendContainer: { flexDirection: 'row', justifyContent: 'center', gap: 24 },
@@ -428,7 +603,7 @@ const styles = StyleSheet.create({
     dot: { width: 10, height: 10, borderRadius: 5 },
     legendText: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
 
-    filterRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 24, marginBottom: 8 },
+    filterRow: { flexDirection: 'row', gap: 10 },
     filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
     filterChipActive: { backgroundColor: P_LIGHT, borderColor: P },
     filterText: { fontSize: 13, color: SUB, fontWeight: '600' },

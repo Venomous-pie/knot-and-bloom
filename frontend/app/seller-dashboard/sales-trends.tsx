@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, RefreshControl,
-    ActivityIndicator, useWindowDimensions, TouchableOpacity
+    ActivityIndicator, useWindowDimensions, TouchableOpacity, Animated
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { sellerAPI } from '@/api/api';
 import { BarChart } from 'react-native-gifted-charts';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Calendar } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Calendar, Package } from 'lucide-react-native';
 import StatCard from '../../components/ui/StatCard';
 
 const P       = '#B36979';
@@ -42,6 +42,23 @@ export default function SalesTrendsPage() {
     const [refreshing, setRefreshing] = useState(false);
     const [period, setPeriod] = useState<'7d' | '30d'>('7d');
 
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
+    useEffect(() => {
+        let anim: Animated.CompositeAnimation | null = null;
+        if (loading) {
+            anim = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+                ])
+            );
+            anim.start();
+        } else {
+            pulseAnim.setValue(0.4);
+        }
+        return () => anim?.stop();
+    }, [loading]);
+
     useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace('/auth/login' as any); return; }
@@ -63,12 +80,6 @@ export default function SalesTrendsPage() {
     };
 
     useEffect(() => { fetchStats(); }, []);
-
-    if (loading) return (
-        <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={P} />
-        </View>
-    );
 
     const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const fmtK = (n: number) => n >= 1000 ? `₱${(n / 1000).toFixed(1)}k` : `₱${n.toFixed(0)}`;
@@ -143,6 +154,7 @@ export default function SalesTrendsPage() {
                             sub={delta !== 0
                                 ? `${delta >= 0 ? '+' : ''}${fmtK(Math.abs(delta))} vs last month`
                                 : 'Same as last month'}
+                            isLoading={loading && !stats}
                         />
                         <StatCard
                             label="Orders This Month"
@@ -150,6 +162,7 @@ export default function SalesTrendsPage() {
                             icon={<ShoppingBag size={18} color={INDIGO} />}
                             color={INDIGO}
                             sub="Total placed"
+                            isLoading={loading && !stats}
                         />
                         <StatCard
                             label="Net Earnings"
@@ -157,6 +170,7 @@ export default function SalesTrendsPage() {
                             icon={<TrendingUp size={18} color={TEAL} />}
                             color={TEAL}
                             sub="After platform fees"
+                            isLoading={loading && !stats}
                         />
                     </View>
 
@@ -170,27 +184,31 @@ export default function SalesTrendsPage() {
                             </View>
                         </View>
                         <View style={{ marginTop: 16, marginLeft: -8 }}>
-                            <BarChart
-                                data={barData}
-                                width={CHART_W}
-                                height={180}
-                                barWidth={28}
-                                spacing={isDesktop ? Math.max(12, (CHART_W - (7 * 28)) / 7) : 12}
-                                roundedTop
-                                hideRules={false}
-                                rulesColor={BORDER}
-                                rulesType="solid"
-                                noOfSections={4}
-                                yAxisThickness={0}
-                                xAxisThickness={1}
-                                xAxisColor={BORDER}
-                                yAxisTextStyle={{ color: SUB, fontSize: 9 }}
-                                xAxisLabelTextStyle={{ color: SUB, fontSize: 9 }}
-                                showGradient
-                                gradientColor={P + '30'}
-                                isAnimated
-                                animationDuration={600}
-                            />
+                            {loading && !stats ? (
+                                <Animated.View style={{ opacity: pulseAnim, width: CHART_W, height: 180, backgroundColor: '#E2E8F0', borderRadius: 12, marginVertical: 12 }} />
+                            ) : (
+                                <BarChart
+                                    data={barData}
+                                    width={CHART_W}
+                                    height={180}
+                                    barWidth={28}
+                                    spacing={isDesktop ? Math.max(12, (CHART_W - (7 * 28)) / 7) : 12}
+                                    roundedTop
+                                    hideRules={false}
+                                    rulesColor={BORDER}
+                                    rulesType="solid"
+                                    noOfSections={4}
+                                    yAxisThickness={0}
+                                    xAxisThickness={1}
+                                    xAxisColor={BORDER}
+                                    yAxisTextStyle={{ color: SUB, fontSize: 9 }}
+                                    xAxisLabelTextStyle={{ color: SUB, fontSize: 9 }}
+                                    showGradient
+                                    gradientColor={P + '30'}
+                                    isAnimated
+                                    animationDuration={600}
+                                />
+                            )}
                         </View>
                     </View>
 
@@ -198,8 +216,13 @@ export default function SalesTrendsPage() {
                     <View style={[{ gap: 16 }, isDesktop && { flexDirection: 'row' }]}>
                         {/* Peak Day */}
                         <View style={[s.card, { marginBottom: 0, flex: isDesktop ? 1 : undefined }]}>
-                            <Text style={s.cardTitle}>📈 Peak Day</Text>
-                            {peakDay && peakDay.sales > 0 ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <TrendingUp size={20} color={TEXT} />
+                                <Text style={s.cardTitle}>Peak Day</Text>
+                            </View>
+                            {loading && !stats ? (
+                                <Animated.View style={{ opacity: pulseAnim, width: 120, height: 40, backgroundColor: '#E2E8F0', borderRadius: 8, marginTop: 12 }} />
+                            ) : peakDay && peakDay.sales > 0 ? (
                                 <>
                                     <Text style={{ fontSize: 28, fontWeight: '800', color: P, fontFamily: 'Quicksand', marginTop: 12 }}>
                                         {fmtK(peakDay.sales)}
@@ -217,13 +240,22 @@ export default function SalesTrendsPage() {
 
                         {/* Weekly Total */}
                         <View style={[s.card, { marginBottom: 0, flex: isDesktop ? 1 : undefined, marginTop: isDesktop ? 0 : 16 }]}>
-                            <Text style={s.cardTitle}>📦 7-Day Total</Text>
-                            <Text style={{ fontSize: 28, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand', marginTop: 12 }}>
-                                {fmtK(totalWeek)}
-                            </Text>
-                            <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4 }}>
-                                Combined revenue this week
-                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Package size={20} color={TEXT} />
+                                <Text style={s.cardTitle}>7-Day Total</Text>
+                            </View>
+                            {loading && !stats ? (
+                                <Animated.View style={{ opacity: pulseAnim, width: 120, height: 40, backgroundColor: '#E2E8F0', borderRadius: 8, marginTop: 12 }} />
+                            ) : (
+                                <>
+                                    <Text style={{ fontSize: 28, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand', marginTop: 12 }}>
+                                        {fmtK(totalWeek)}
+                                    </Text>
+                                    <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4 }}>
+                                        Combined revenue this week
+                                    </Text>
+                                </>
+                            )}
                         </View>
                     </View>
                 </ScrollView>

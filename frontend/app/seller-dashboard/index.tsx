@@ -192,27 +192,31 @@ export default function SellerDashboardHome() {
                 </View>
             </View>
             <View style={{ marginTop: 12, marginLeft: -8, alignItems: isDesktop ? 'center' : 'flex-start' }}>
-                <BarChart
-                    data={barData}
-                    width={CHART_W}
-                    height={150}
-                    barWidth={28}
-                    spacing={isDesktop ? Math.max(12, (CHART_W - (7 * 28)) / 7) : 12}
-                    roundedTop
-                    hideRules={false}
-                    rulesColor={BORDER}
-                    rulesType="solid"
-                    noOfSections={3}
-                    yAxisThickness={0}
-                    xAxisThickness={1}
-                    xAxisColor={BORDER}
-                    yAxisTextStyle={{ color: SUB, fontSize: 9 }}
-                    xAxisLabelTextStyle={{ color: SUB, fontSize: 9 }}
-                    showGradient
-                    gradientColor={P + '30'}
-                    isAnimated
-                    animationDuration={600}
-                />
+                {loading && !stats ? (
+                    <Animated.View style={{ opacity: pulseAnim, width: CHART_W, height: 150, backgroundColor: '#E2E8F0', borderRadius: 12, marginVertical: 12 }} />
+                ) : (
+                    <BarChart
+                        data={barData}
+                        width={CHART_W}
+                        height={150}
+                        barWidth={28}
+                        spacing={isDesktop ? Math.max(12, (CHART_W - (7 * 28)) / 7) : 12}
+                        roundedTop
+                        hideRules={false}
+                        rulesColor={BORDER}
+                        rulesType="solid"
+                        noOfSections={3}
+                        yAxisThickness={0}
+                        xAxisThickness={1}
+                        xAxisColor={BORDER}
+                        yAxisTextStyle={{ color: SUB, fontSize: 9 }}
+                        xAxisLabelTextStyle={{ color: SUB, fontSize: 9 }}
+                        showGradient
+                        gradientColor={P + '30'}
+                        isAnimated
+                        animationDuration={600}
+                    />
+                )}
             </View>
         </View>
     );
@@ -258,7 +262,11 @@ export default function SellerDashboardHome() {
                 <Text style={s.cardSub}>By revenue</Text>
             </View>
             <View style={{ marginTop: 16, gap: 16 }}>
-                {displayStats.topProducts.length > 0 ? displayStats.topProducts.map((p, i) => (
+                {loading && !stats ? (
+                    <Animated.View style={{ opacity: pulseAnim }}>
+                        {[1, 2, 3].map(i => <View key={i} style={{ height: 48, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 16 }} />)}
+                    </Animated.View>
+                ) : displayStats.topProducts.length > 0 ? displayStats.topProducts.map((p, i) => (
                     <View key={p.id} style={s.productRow}>
                         {p.image ? (
                             <Image source={{ uri: p.image }} style={s.productImg} />
@@ -287,7 +295,11 @@ export default function SellerDashboardHome() {
                     <Text style={s.cardSub}>Last 30 days</Text>
                 </View>
                 <View style={{ marginTop: 16, gap: 16 }}>
-                    {displayStats.recentReviews.length > 0 ? displayStats.recentReviews.map((r) => (
+                    {loading && !stats ? (
+                        <Animated.View style={{ opacity: pulseAnim }}>
+                            {[1, 2].map(i => <View key={i} style={{ height: 80, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 16 }} />)}
+                        </Animated.View>
+                    ) : displayStats.recentReviews.length > 0 ? displayStats.recentReviews.map((r) => (
                         <View key={r.id} style={s.reviewRow}>
                             <View style={s.reviewHead}>
                                 <Text style={s.reviewerName}>{r.customerName}</Text>

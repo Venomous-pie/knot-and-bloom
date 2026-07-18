@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, RefreshControl,
-    ActivityIndicator, Image, useWindowDimensions
+    View, Text, StyleSheet, ScrollView, RefreshControl, Animated, Image, useWindowDimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,17 +8,17 @@ import { sellerAPI, sellerProductsAPI } from '@/api/api';
 import { Package, TrendingUp, AlertTriangle, CheckCircle, BarChart2 } from 'lucide-react-native';
 import StatCard from '../../components/ui/StatCard';
 
-const P       = '#B36979';
+const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
-const BG      = '#F4F4F8';
-const CARD    = '#FFFFFF';
-const TEXT    = '#1A1A2E';
-const SUB     = '#6B7280';
-const BORDER  = '#F0F0F5';
-const GREEN   = '#10B981';
-const AMBER   = '#F59E0B';
-const RED     = '#EF4444';
-const INDIGO  = '#6366F1';
+const BG = '#F4F4F8';
+const CARD = '#FFFFFF';
+const TEXT = '#1A1A2E';
+const SUB = '#6B7280';
+const BORDER = '#F0F0F5';
+const GREEN = '#10B981';
+const AMBER = '#F59E0B';
+const RED = '#EF4444';
+const INDIGO = '#6366F1';
 
 interface ProductRow {
     id: number;
@@ -72,6 +71,23 @@ export default function ProductPerformancePage() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
+    useEffect(() => {
+        let anim: Animated.CompositeAnimation | null = null;
+        if (loading) {
+            anim = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+                ])
+            );
+            anim.start();
+        } else {
+            pulseAnim.setValue(0.4);
+        }
+        return () => anim?.stop();
+    }, [loading]);
+
     useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace('/auth/login' as any); return; }
@@ -121,12 +137,6 @@ export default function ProductPerformancePage() {
 
     useEffect(() => { fetchData(); }, []);
 
-    if (loading) return (
-        <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={P} />
-        </View>
-    );
-
     const fmt = (n: number) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const maxRevenue = products.reduce((m, p) => Math.max(m, p.revenue), 0);
     const totalRevenue = products.reduce((s, p) => s + p.revenue, 0);
@@ -165,6 +175,8 @@ export default function ProductPerformancePage() {
                             icon={<TrendingUp size={18} color={P} />}
                             color={P}
                             sub="All completed orders"
+                            tooltip="Gross revenue from all completed orders."
+                            isLoading={loading && products.length === 0}
                         />
                         <StatCard
                             label="Units Sold"
@@ -172,6 +184,8 @@ export default function ProductPerformancePage() {
                             icon={<Package size={18} color={INDIGO} />}
                             color={INDIGO}
                             sub="All time"
+                            tooltip="Total number of items sold."
+                            isLoading={loading && products.length === 0}
                         />
                         <StatCard
                             label="Low Stock Items"
@@ -179,6 +193,8 @@ export default function ProductPerformancePage() {
                             icon={lowStockCount > 0 ? <AlertTriangle size={18} color={AMBER} /> : <CheckCircle size={18} color={GREEN} />}
                             color={lowStockCount > 0 ? AMBER : GREEN}
                             sub="Under 5 units remaining"
+                            tooltip="Products that have less than 5 units in stock."
+                            isLoading={loading && products.length === 0}
                         />
                     </View>
 
@@ -189,7 +205,11 @@ export default function ProductPerformancePage() {
                             <Text style={s.cardSub}>Sorted by earnings</Text>
                         </View>
 
-                        {products.length === 0 ? (
+                        {loading && products.length === 0 ? (
+                            <Animated.View style={{ opacity: pulseAnim, marginTop: 16 }}>
+                                {[1, 2, 3, 4, 5].map(i => <View key={i} style={{ height: 80, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 16 }} />)}
+                            </Animated.View>
+                        ) : products.length === 0 ? (
                             <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', fontStyle: 'italic', textAlign: 'center', paddingVertical: 24 }}>
                                 No products yet.
                             </Text>
@@ -238,25 +258,25 @@ export default function ProductPerformancePage() {
 }
 
 const s = StyleSheet.create({
-    root:               { flex: 1, backgroundColor: BG },
-    scroll:             { padding: 20, paddingBottom: 52 },
-    headerContainer:    { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
-    header:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1280, width: '100%', alignSelf: 'center' },
-    title:              { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    chip:               { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: BG },
-    chipTxt:            { fontSize: 11, fontWeight: '700', fontFamily: 'Quicksand', color: SUB },
-    statRow:            { gap: 16, marginBottom: 24, zIndex: 100, overflow: 'visible' },
-    card:               { backgroundColor: CARD, borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 },
-    cardHead:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-    cardTitle:          { fontSize: 16, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
-    cardSub:            { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
-    productRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BORDER },
-    rankBadge:          { width: 28, height: 28, borderRadius: 8, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
-    rankTxt:            { fontSize: 11, fontWeight: '700', color: SUB, fontFamily: 'Quicksand' },
-    productImg:         { width: 52, height: 52, borderRadius: 12, backgroundColor: BG },
+    root: { flex: 1, backgroundColor: BG },
+    scroll: { padding: 20, paddingBottom: 52 },
+    headerContainer: { backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER, paddingHorizontal: 24, paddingVertical: 16, zIndex: 100 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1280, width: '100%', alignSelf: 'center' },
+    title: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: BG },
+    chipTxt: { fontSize: 11, fontWeight: '700', fontFamily: 'Quicksand', color: SUB },
+    statRow: { gap: 16, marginBottom: 24, zIndex: 100, overflow: 'visible' },
+    card: { backgroundColor: CARD, borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 },
+    cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
+    cardSub: { fontSize: 13, color: SUB, fontFamily: 'Quicksand' },
+    productRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: BORDER },
+    rankBadge: { width: 28, height: 28, borderRadius: 8, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
+    rankTxt: { fontSize: 11, fontWeight: '700', color: SUB, fontFamily: 'Quicksand' },
+    productImg: { width: 52, height: 52, borderRadius: 12, backgroundColor: BG },
     productImgPlaceholder: { width: 52, height: 52, borderRadius: 12, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
-    productName:        { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' },
-    revenueVal:         { fontSize: 15, fontWeight: '700', color: P, fontFamily: 'Quicksand' },
-    badge:              { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-    badgeTxt:           { fontSize: 11, fontWeight: '600', fontFamily: 'Quicksand' },
+    productName: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' },
+    revenueVal: { fontSize: 15, fontWeight: '700', color: P, fontFamily: 'Quicksand' },
+    badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    badgeTxt: { fontSize: 11, fontWeight: '600', fontFamily: 'Quicksand' },
 });

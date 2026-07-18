@@ -154,6 +154,7 @@ export default function SalesTrendsPage() {
                             sub={delta !== 0
                                 ? `${delta >= 0 ? '+' : ''}${fmtK(Math.abs(delta))} vs last month`
                                 : 'Same as last month'}
+                            tooltip="Total gross sales revenue for this month."
                             isLoading={loading && !stats}
                         />
                         <StatCard
@@ -162,6 +163,7 @@ export default function SalesTrendsPage() {
                             icon={<ShoppingBag size={18} color={INDIGO} />}
                             color={INDIGO}
                             sub="Total placed"
+                            tooltip="Number of orders placed this month."
                             isLoading={loading && !stats}
                         />
                         <StatCard
@@ -170,6 +172,7 @@ export default function SalesTrendsPage() {
                             icon={<TrendingUp size={18} color={TEAL} />}
                             color={TEAL}
                             sub="After platform fees"
+                            tooltip="Your net earnings this month after Knot & Bloom platform fees are deducted."
                             isLoading={loading && !stats}
                         />
                     </View>

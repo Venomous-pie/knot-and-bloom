@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, RefreshControl,
-    ActivityIndicator, useWindowDimensions
+    Animated, useWindowDimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,6 +64,23 @@ export default function SellerReviewsPage() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
+    useEffect(() => {
+        let anim: Animated.CompositeAnimation | null = null;
+        if (loading) {
+            anim = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+                ])
+            );
+            anim.start();
+        } else {
+            pulseAnim.setValue(0.4);
+        }
+        return () => anim?.stop();
+    }, [loading]);
+
     useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace('/auth/login' as any); return; }
@@ -86,11 +103,6 @@ export default function SellerReviewsPage() {
 
     useEffect(() => { fetchReviews(); }, []);
 
-    if (loading) return (
-        <View style={{ flex: 1, backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={P} />
-        </View>
-    );
 
     // Compute stats from reviews
     const totalReviews = reviews.length;
@@ -138,6 +150,8 @@ export default function SellerReviewsPage() {
                             value={avgRating > 0 ? avgRating.toFixed(1) : '—'}
                             icon={<Star size={20} fill={AMBER} color={AMBER} />}
                             color={AMBER}
+                            tooltip="Average rating based on all reviews."
+                            isLoading={loading && reviews.length === 0}
                         />
 
                         {/* Total Reviews Card */}
@@ -146,6 +160,8 @@ export default function SellerReviewsPage() {
                             value={String(totalReviews)}
                             icon={<MessageSquare size={20} color={P} />}
                             color={P}
+                            tooltip="Total number of reviews received."
+                            isLoading={loading && reviews.length === 0}
                         />
 
                         {/* Top Rating Card */}
@@ -154,6 +170,8 @@ export default function SellerReviewsPage() {
                             value={totalReviews > 0 ? `${Math.round((ratingCounts.filter(r => r.star >= 4).reduce((s, r) => s + r.count, 0) / totalReviews) * 100)}%` : '—'}
                             icon={<Award size={20} color={GREEN} />}
                             color={GREEN}
+                            tooltip="Percentage of reviews that are 4 or 5 stars."
+                            isLoading={loading && reviews.length === 0}
                         />
                     </View>
 
@@ -166,7 +184,11 @@ export default function SellerReviewsPage() {
                                         <Text style={s.cardTitle}>All Reviews</Text>
                                         <Text style={s.cardSub}>{totalReviews} total</Text>
                                     </View>
-                                    {reviews.length > 0 ? reviews.map((r, i) => (
+                                    {loading && reviews.length === 0 ? (
+                                        <Animated.View style={{ opacity: pulseAnim, marginTop: 16 }}>
+                                            {[1, 2, 3].map(i => <View key={i} style={{ height: 100, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 16 }} />)}
+                                        </Animated.View>
+                                    ) : reviews.length > 0 ? reviews.map((r, i) => (
                                         <ReviewRow key={r.id} review={r} isLast={i === reviews.length - 1} />
                                     )) : <EmptyState />}
                                 </View>
@@ -174,18 +196,22 @@ export default function SellerReviewsPage() {
 
                             {/* Right: Rating Breakdown */}
                             <View style={{ flex: 0.35 }}>
-                                <BreakdownCard ratingCounts={ratingCounts} total={totalReviews} />
+                                <BreakdownCard ratingCounts={ratingCounts} total={totalReviews} isLoading={loading && reviews.length === 0} pulseAnim={pulseAnim} />
                             </View>
                         </View>
                     ) : (
                         <>
-                            <BreakdownCard ratingCounts={ratingCounts} total={totalReviews} />
+                            <BreakdownCard ratingCounts={ratingCounts} total={totalReviews} isLoading={loading && reviews.length === 0} pulseAnim={pulseAnim} />
                             <View style={s.card}>
                                 <View style={s.cardHead}>
                                     <Text style={s.cardTitle}>All Reviews</Text>
                                     <Text style={s.cardSub}>{totalReviews} total</Text>
                                 </View>
-                                {reviews.length > 0 ? reviews.map((r, i) => (
+                                {loading && reviews.length === 0 ? (
+                                    <Animated.View style={{ opacity: pulseAnim, marginTop: 16 }}>
+                                        {[1, 2, 3].map(i => <View key={i} style={{ height: 100, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 16 }} />)}
+                                    </Animated.View>
+                                ) : reviews.length > 0 ? reviews.map((r, i) => (
                                     <ReviewRow key={r.id} review={r} isLast={i === reviews.length - 1} />
                                 )) : <EmptyState />}
                             </View>
@@ -219,7 +245,7 @@ function ReviewRow({ review, isLast }: { review: Review; isLast: boolean }) {
     );
 }
 
-function BreakdownCard({ ratingCounts, total }: { ratingCounts: { star: number; count: number }[]; total: number }) {
+function BreakdownCard({ ratingCounts, total, isLoading, pulseAnim }: { ratingCounts: { star: number; count: number }[]; total: number; isLoading?: boolean; pulseAnim?: Animated.Value }) {
     return (
         <View style={[s.card, { marginBottom: 24 }]}>
             <View style={s.cardHead}>
@@ -230,9 +256,15 @@ function BreakdownCard({ ratingCounts, total }: { ratingCounts: { star: number; 
                 </View>
             </View>
             <View style={{ marginTop: 16 }}>
-                {ratingCounts.map(({ star, count }) => (
-                    <RatingBar key={star} rating={star} count={count} total={total} />
-                ))}
+                {isLoading && pulseAnim ? (
+                    <Animated.View style={{ opacity: pulseAnim }}>
+                        {[1, 2, 3, 4, 5].map(i => <View key={i} style={{ height: 24, backgroundColor: '#E2E8F0', borderRadius: 4, marginBottom: 8 }} />)}
+                    </Animated.View>
+                ) : (
+                    ratingCounts.map(({ star, count }) => (
+                        <RatingBar key={star} rating={star} count={count} total={total} />
+                    ))
+                )}
             </View>
         </View>
     );

@@ -264,7 +264,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         throw error;
     }
 
-    const { category, searchTerm, newArrival = false, limit = 30, offset = 0, sort } = parsedInput;
+    const { category, searchTerm, newArrival = false, limit = 30, offset = 0, sort, minPrice, maxPrice, categories, tags } = parsedInput;
 
     const cacheKey = `product:list:${JSON.stringify(parsedInput)}`;
     const cachedResult = cache.get<GetProductsResult>(cacheKey);
@@ -296,6 +296,26 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
 
     if (category) {
         whereClause.categories = { has: category };
+    }
+
+    if (categories) {
+        const cats = categories.split(',').map(c => c.trim()).filter(Boolean);
+        if (cats.length > 0) {
+            whereClause.categories = { hasSome: cats };
+        }
+    }
+
+    if (tags) {
+        const ts = tags.split(',').map(t => t.trim()).filter(Boolean);
+        if (ts.length > 0) {
+            whereClause.tags = { hasSome: ts };
+        }
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+        whereClause.basePrice = {};
+        if (minPrice !== undefined) whereClause.basePrice.gte = minPrice;
+        if (maxPrice !== undefined) whereClause.basePrice.lte = maxPrice;
     }
 
     if (searchTerm) {

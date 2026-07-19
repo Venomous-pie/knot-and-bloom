@@ -72,6 +72,10 @@ export const getProductsQuerySchema = z.object({
     limit: z.coerce.number().int().positive().optional(),
     offset: z.coerce.number().int().nonnegative().optional(),
     sort: z.enum(['newest', 'price_asc', 'price_desc', 'bestselling']).optional(),
+    minPrice: z.coerce.number().nonnegative().optional(),
+    maxPrice: z.coerce.number().nonnegative().optional(),
+    categories: z.string().optional(),
+    tags: z.string().optional(),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

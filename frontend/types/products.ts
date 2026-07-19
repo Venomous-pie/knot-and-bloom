@@ -63,6 +63,10 @@ interface GetProductsParams {
     limit?: number;
     offset?: number;
     sort?: 'newest' | 'price_asc' | 'price_desc' | 'bestselling';
+    minPrice?: number;
+    maxPrice?: number;
+    categories?: string;
+    tags?: string;
 }
 
 interface GetProductsResponse {

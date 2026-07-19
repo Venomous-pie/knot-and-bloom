@@ -9,6 +9,7 @@ import DropdownMenu from '../../../components/ui/DropdownMenu';
 import StatCard from '../../../components/ui/StatCard';
 import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter, Clock, History, TrendingDown, TrendingUp, AlignJustify } from 'lucide-react-native';
 import { calculateOptimizationScore } from '../../../utils/optimizationScore';
+import { useDialog } from '../../../contexts/DialogContext';
 
 const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -59,8 +60,10 @@ export default function SellerProducts() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
+    const { confirm } = useDialog();
 
-    const [products, setProducts] = useState<Product[]>([]);
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
+    const [productsLoaded, setProductsLoaded] = useState(false);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -89,7 +92,6 @@ export default function SellerProducts() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('newest');
     const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('list');
     const [showFilters, setShowFilters] = useState(false);
 
@@ -108,54 +110,73 @@ export default function SellerProducts() {
     // Reset pagination when filters change
     useEffect(() => {
         setPage(1);
-        setHasMore(true);
-        loadProducts(1, true);
     }, [statusFilter, debouncedSearch, sortBy]);
 
-    const loadProducts = async (pageNumber: number = page, reset: boolean = false) => {
+    useEffect(() => {
+        loadProducts();
+    }, []);
+
+    const loadProducts = async (force: boolean = false) => {
+        if (productsLoaded && !force) return;
         try {
-            if (reset) setLoading(true);
-            else setLoadingMore(true);
-
+            setLoading(true);
             const params = {
-                page: pageNumber,
-                limit: 20,
-                ...(statusFilter ? { status: statusFilter } : {}),
-                ...(debouncedSearch ? { search: debouncedSearch } : {}),
-                ...(sortBy ? { sortBy } : {})
+                limit: 1000,
+                includeStats: 'true'
             };
-
             const data = await sellerProductsAPI.getMyProducts(params);
 
-            if (reset) {
-                setProducts(data.products);
-            } else {
-                setProducts(prev => [...prev, ...data.products]);
-            }
-
+            setAllProducts(data.products);
             if (data.stats) setStats(data.stats);
-            setHasMore(data.pagination.page < data.pagination.pages);
-            setPage(data.pagination.page);
+            setProductsLoaded(true);
             setError(null);
         } catch (err) {
             setError('Failed to load products');
             console.error(err);
         } finally {
             setLoading(false);
-            setLoadingMore(false);
         }
     };
 
+    const filteredProducts = React.useMemo(() => {
+        let filtered = allProducts;
+        
+        if (statusFilter) {
+            filtered = filtered.filter(p => p.status === statusFilter);
+        }
+        
+        if (debouncedSearch) {
+            const query = debouncedSearch.toLowerCase();
+            filtered = filtered.filter(p => 
+                p.name?.toLowerCase().includes(query) || 
+                (p as any).sku?.toLowerCase().includes(query)
+            );
+        }
+        
+        filtered = [...filtered].sort((a, b) => {
+            if (sortBy === 'newest') return b.uid - a.uid;
+            if (sortBy === 'oldest') return a.uid - b.uid;
+            if (sortBy === 'price_high') return b.basePrice - a.basePrice;
+            if (sortBy === 'price_low') return a.basePrice - b.basePrice;
+            return 0;
+        });
+
+        return filtered;
+    }, [allProducts, statusFilter, debouncedSearch, sortBy]);
+
+    const products = filteredProducts.slice(0, page * 20);
+    const hasMore = products.length < filteredProducts.length;
+
     const loadMore = () => {
-        if (!hasMore || loading || loadingMore) return;
-        loadProducts(page + 1);
+        if (!hasMore || loading) return;
+        setPage(prev => prev + 1);
     };
 
     const performDelete = async (id: string | number) => {
         try {
             await sellerProductsAPI.deleteProduct(id);
             setPage(1);
-            loadProducts(1, true);
+            loadProducts(true);
         } catch (err: any) {
             const msg = err.response?.data?.error || "Failed to delete product";
             if (Platform.OS === 'web') {
@@ -166,20 +187,15 @@ export default function SellerProducts() {
         }
     };
 
-    const handleDelete = (id: string | number) => {
-        if (Platform.OS === 'web') {
-            if (window.confirm("Are you sure you want to delete this product?")) {
-                performDelete(id);
-            }
-        } else {
-            Alert.alert(
-                "Delete Product",
-                "Are you sure you want to delete this product?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Delete", style: "destructive", onPress: () => performDelete(id) }
-                ]
-            );
+    const handleDelete = async (id: string | number) => {
+        const confirmed = await confirm({
+            title: "Delete Product",
+            message: "Are you sure you want to delete this product?",
+            confirmText: "Delete",
+            cancelText: "Cancel"
+        });
+        if (confirmed) {
+            performDelete(id);
         }
     };
 
@@ -198,6 +214,16 @@ export default function SellerProducts() {
     const handleBulkAction = async (action: 'PUBLISH' | 'UNPUBLISH' | 'DELETE') => {
         if (selectedIds.size === 0) return;
 
+        if (action === 'DELETE') {
+            const confirmed = await confirm({
+                title: "Delete Products",
+                message: `Are you sure you want to delete ${selectedIds.size} products?`,
+                confirmText: "Delete",
+                cancelText: "Cancel"
+            });
+            if (!confirmed) return;
+        }
+
         try {
             setLoading(true);
             const ids = Array.from(selectedIds);
@@ -210,7 +236,7 @@ export default function SellerProducts() {
             setSelectedIds(new Set());
             setSelectionMode(false);
             setPage(1);
-            loadProducts(1, true);
+            loadProducts(true);
         } catch (err) {
             console.error(err);
             Alert.alert("Error", "Failed to perform bulk action");
@@ -585,7 +611,7 @@ export default function SellerProducts() {
                 ) : error ? (
                     <View style={styles.center}>
                         <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity onPress={() => loadProducts(1, true)} style={styles.retryBtn}>
+                        <TouchableOpacity onPress={() => loadProducts(true)} style={styles.retryBtn}>
                             <Text style={{ fontFamily: 'Quicksand', fontWeight: '600' }}>Retry</Text>
                         </TouchableOpacity>
                     </View>

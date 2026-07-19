@@ -141,6 +141,9 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                         careInstructions: parsedInput.careInstructions ?? null,
                         minOrderQty: parsedInput.minOrderQty ? Number(parsedInput.minOrderQty) : null,
                         maxOrderQty: parsedInput.maxOrderQty ? Number(parsedInput.maxOrderQty) : null,
+                        isBundle: parsedInput.isBundle ?? false,
+                        bundleQuantity: parsedInput.bundleQuantity ? Number(parsedInput.bundleQuantity) : null,
+                        isCodAllowed: parsedInput.isCodAllowed ?? true,
                         sellerId: sellerId ?? null,
                         status: status,
                     },
@@ -642,6 +645,9 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                     careInstructions: parsedInput.careInstructions ?? null,
                     minOrderQty: parsedInput.minOrderQty ? Number(parsedInput.minOrderQty) : null,
                     maxOrderQty: parsedInput.maxOrderQty ? Number(parsedInput.maxOrderQty) : null,
+                    isBundle: parsedInput.isBundle ?? false,
+                    bundleQuantity: parsedInput.bundleQuantity ? Number(parsedInput.bundleQuantity) : null,
+                    isCodAllowed: parsedInput.isCodAllowed ?? true,
                     version: { increment: 1 }
                 }
             });
@@ -683,6 +689,9 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
                     careInstructions: parsedInput.careInstructions ?? null,
                     minOrderQty: parsedInput.minOrderQty ? Number(parsedInput.minOrderQty) : null,
                     maxOrderQty: parsedInput.maxOrderQty ? Number(parsedInput.maxOrderQty) : null,
+                    isBundle: parsedInput.isBundle ?? false,
+                    bundleQuantity: parsedInput.bundleQuantity ? Number(parsedInput.bundleQuantity) : null,
+                    isCodAllowed: parsedInput.isCodAllowed ?? true,
                     version: { increment: 1 }
                 }
             });
@@ -836,4 +845,4 @@ export const deleteProduct = async (productId: string, user?: AuthPayload) => {
 
     cache.deletePattern('product:');
     return result;
-};
+}; 

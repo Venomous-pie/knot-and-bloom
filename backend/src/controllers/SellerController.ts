@@ -564,25 +564,36 @@ export const sellerController = {
             else if (sortBy === 'price_high') orderBy = { basePrice: 'desc' };
             else if (sortBy === 'price_low') orderBy = { basePrice: 'asc' };
 
-            const globalWhere = { sellerId, deletedAt: null };
-            
-            const [products, total, allProducts] = await Promise.all([
+            const includeStats = req.query.includeStats === 'true';
+
+            const promises: any[] = [
                 prisma.product.findMany({
                     where: whereClause,
                     include: { variants: true },
                     orderBy,
                     skip, take: limit
                 }),
-                prisma.product.count({ where: whereClause }),
-                prisma.product.findMany({
-                    where: globalWhere,
-                    include: { variants: true }
-                })
-            ]);
+                prisma.product.count({ where: whereClause })
+            ];
 
-            let totalOptScore = 0;
-            let lowStockCount = 0;
-            let pendingCount = 0;
+            if (includeStats) {
+                const globalWhere = { sellerId, deletedAt: null };
+                promises.push(
+                    prisma.product.findMany({
+                        where: globalWhere,
+                        include: { variants: true }
+                    })
+                );
+            }
+
+            const [products, total, allProducts] = await Promise.all(promises);
+
+            let stats = undefined;
+
+            if (includeStats && allProducts) {
+                let totalOptScore = 0;
+                let lowStockCount = 0;
+                let pendingCount = 0;
 
             allProducts.forEach(p => {
                 let score = 0;
@@ -649,14 +660,17 @@ export const sellerController = {
 
             const avgOptimizationScore = allProducts.length > 0 ? Math.round(totalOptScore / allProducts.length) : 0;
 
+            stats = {
+                totalProducts: allProducts.length,
+                avgOptimizationScore,
+                lowStockCount,
+                pendingCount
+            };
+            }
+
             res.json({
                 products,
-                stats: {
-                    totalProducts: allProducts.length,
-                    avgOptimizationScore,
-                    lowStockCount,
-                    pendingCount
-                },
+                ...(stats ? { stats } : {}),
                 pagination: {
                     page,
                     limit,
@@ -970,3 +984,4 @@ export const sellerController = {
         }
     }
 };
+ 

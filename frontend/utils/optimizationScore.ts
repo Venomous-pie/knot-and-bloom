@@ -115,7 +115,8 @@ export function calculateOptimizationScore(product: ProductInput): OptimizationR
     // ── Description & Details (20 pts) ───────────────────────────────
     const descLength = product.description?.length || 0;
     const hasGoodDesc = descLength >= 100;
-    const hasMaterials = !!product.materials && product.materials.trim().length > 0;
+    const materialsStr = product.materials || (activeVariants[0] && activeVariants[0].materials) || '';
+    const hasMaterials = !!materialsStr && materialsStr.trim().length > 0;
     const hasCareInstructions = !!(product.careInstructions && product.careInstructions.trim().length > 0);
 
     const descCategory: ScoreCategory = {

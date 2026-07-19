@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View, Animated } from 'react-native';
 import { sellerProductsAPI, productAPI } from '../../../api/api';
-import ProductFormWizard, { ProductFormData } from '../../../components/seller/ProductFormWizard';
+import ProductFormWizard, { ProductFormData, ProductOption } from '../../../components/seller/ProductFormWizard';
 import { VariantData } from '../../../components/seller/VariantEditor';
 import InfoBox from '../../../components/ui/InfoBox';
 
@@ -20,6 +20,128 @@ const RED = '#EF4444';
 const INDIGO = '#6366F1';
 const TEAL = '#14B8A6';
 
+import { useWindowDimensions } from 'react-native';
+
+const SkeletonLoader = () => {
+    const { width } = useWindowDimensions();
+    const isMobileLayout = width < 768;
+    const fadeAnim = React.useRef(new Animated.Value(0.3)).current;
+
+    React.useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+                Animated.timing(fadeAnim, { toValue: 0.3, duration: 800, useNativeDriver: true })
+            ])
+        ).start();
+    }, [fadeAnim]);
+
+    const SkeletonBox = ({ width, height, borderRadius = 8, marginBottom = 16, style }: any) => (
+        <Animated.View style={[{ width, height, borderRadius, marginBottom, backgroundColor: '#E5E7EB', opacity: fadeAnim }, style]} />
+    );
+
+    return (
+        <View style={styles.container}>
+            <Stack.Screen options={{ headerShown: false }} />
+            
+            {/* Row 1: Top Header (<- Edit Product) */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: CARD }}>
+                <SkeletonBox width={24} height={24} borderRadius={12} marginBottom={0} style={{ marginRight: 16 }} />
+                <SkeletonBox width={120} height={24} marginBottom={0} />
+                <SkeletonBox width={60} height={24} borderRadius={12} marginBottom={0} style={{ marginLeft: 16 }} />
+            </View>
+
+            {/* Row 2: Step Indicator */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: BORDER, backgroundColor: CARD, position: 'relative', height: 80 }}>
+                {/* Left: Title */}
+                {!isMobileLayout && (
+                    <View style={{ position: 'absolute', left: 20, top: 0, bottom: 0, justifyContent: 'center', width: 250 }}>
+                        <SkeletonBox width={200} height={20} marginBottom={8} />
+                        <SkeletonBox width={240} height={12} marginBottom={0} />
+                    </View>
+                )}
+
+                {/* Center: Steps */}
+                {!isMobileLayout && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+                         <SkeletonBox width={32} height={32} borderRadius={16} marginBottom={0} />
+                         <SkeletonBox width={40} height={2} borderRadius={2} marginBottom={0} />
+                         <SkeletonBox width={32} height={32} borderRadius={16} marginBottom={0} />
+                         <SkeletonBox width={40} height={2} borderRadius={2} marginBottom={0} />
+                         <SkeletonBox width={32} height={32} borderRadius={16} marginBottom={0} />
+                         <SkeletonBox width={40} height={2} borderRadius={2} marginBottom={0} />
+                         <SkeletonBox width={32} height={32} borderRadius={16} marginBottom={0} />
+                    </View>
+                )}
+
+                {/* Right: Optimization Score */}
+                {!isMobileLayout && (
+                    <View style={{ position: 'absolute', right: 20, top: 0, bottom: 0, justifyContent: 'center' }}>
+                        <SkeletonBox width={36} height={36} borderRadius={18} marginBottom={0} />
+                    </View>
+                )}
+            </View>
+
+            {/* Row 3: Main Layout Area */}
+            <View style={{ flex: 1, flexDirection: 'row' }}>
+                
+                {/* Left Column (Form Area) */}
+                <View style={{ flex: 1, padding: 20 }}>
+                    {/* Card 1 */}
+                    <View style={{ padding: 24, backgroundColor: CARD, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: BORDER }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+                            <SkeletonBox width={20} height={20} borderRadius={10} marginBottom={0} />
+                            <SkeletonBox width={150} height={20} marginBottom={0} />
+                        </View>
+                        <SkeletonBox width={300} height={14} marginBottom={24} />
+
+                        <SkeletonBox width={100} height={16} marginBottom={8} />
+                        <SkeletonBox width={'100%'} height={48} borderRadius={8} marginBottom={20} />
+
+                        <SkeletonBox width={120} height={16} marginBottom={8} />
+                        <SkeletonBox width={'100%'} height={48} borderRadius={8} marginBottom={0} />
+                    </View>
+
+                    {/* Card 2 */}
+                    <View style={{ padding: 24, backgroundColor: CARD, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: BORDER }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+                            <SkeletonBox width={20} height={20} borderRadius={10} marginBottom={0} />
+                            <SkeletonBox width={150} height={20} marginBottom={0} />
+                        </View>
+                        <SkeletonBox width={300} height={14} marginBottom={24} />
+
+                        <SkeletonBox width={'100%'} height={150} borderRadius={12} marginBottom={0} />
+                    </View>
+                </View>
+
+                {/* Right Column (Preview Panel) */}
+                {!isMobileLayout && (
+                    <View style={{ width: 380, borderLeftWidth: 1, borderLeftColor: BORDER, padding: 20, backgroundColor: BG }}>
+                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                 <SkeletonBox width={18} height={18} borderRadius={9} marginBottom={0} />
+                                 <SkeletonBox width={100} height={18} marginBottom={0} />
+                             </View>
+                             <SkeletonBox width={60} height={24} borderRadius={4} marginBottom={0} />
+                         </View>
+                         
+                         <View style={{ backgroundColor: CARD, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: BORDER }}>
+                             {/* Image Placeholder */}
+                             <SkeletonBox width={'100%'} height={300} borderRadius={0} marginBottom={16} />
+                             
+                             <View style={{ padding: 16 }}>
+                                 <SkeletonBox width={120} height={14} marginBottom={8} />
+                                 <SkeletonBox width={200} height={24} marginBottom={8} />
+                                 <SkeletonBox width={80} height={24} marginBottom={0} />
+                             </View>
+                         </View>
+                    </View>
+                )}
+            </View>
+        </View>
+    );
+};
+
 export default function SellerProductForm() {
     const router = useRouter();
     const { id } = useLocalSearchParams();
@@ -32,6 +154,7 @@ export default function SellerProductForm() {
         formData: ProductFormData;
         selectedCategories: string[];
         variants: VariantData[];
+        productOptions: ProductOption[];
     } | undefined>(undefined);
     const [productStatus, setProductStatus] = useState<string | null>(null);
 
@@ -86,11 +209,17 @@ export default function SellerProductForm() {
                             sku: v.sku || '',
                             price: v.price ? String(v.price) : '',
                             discountPercentage: v.discountPercentage ? String(v.discountPercentage) : '',
-                            images: v.images || (v.image ? [v.image] : []),
-                            options: v.options || {},
-                            isEnabled: v.isEnabled ?? true,
                         }))
-                        : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [], options: {}, isEnabled: true }]
+                        : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [], options: {}, isEnabled: true }],
+                    productOptions: p.productOptions && p.productOptions.length > 0 
+                        ? p.productOptions.map((opt: any) => ({
+                            name: opt.name,
+                            values: opt.values ? opt.values.map((v: any) => ({
+                                name: v.value,
+                                imageUrl: v.imageUrl || undefined
+                            })) : []
+                        }))
+                        : []
                 });
                 setProductStatus(p.status ?? null);
             }
@@ -101,7 +230,7 @@ export default function SellerProductForm() {
         }
     };
 
-    const handleSubmit = async (data: { formData: ProductFormData; selectedCategories: string[]; variants: VariantData[] }, isDraft = false) => {
+    const handleSubmit = async (data: { formData: ProductFormData; selectedCategories: string[]; variants: VariantData[]; productOptions: ProductOption[] }, isDraft = false) => {
         setLoading(true);
 
         try {
@@ -112,12 +241,27 @@ export default function SellerProductForm() {
                 basePrice: parseFloat(data.formData.basePrice) || 0,
                 discountPercentage: data.formData.discountPercentage ? parseFloat(data.formData.discountPercentage) : undefined,
                 categories: data.selectedCategories,
+                productOptions: data.productOptions,
                 image: data.formData.image,
                 images: data.formData.images || [],
                 tags: data.formData.tags || [],
-                materials: data.formData.materials || undefined,
+                materials: data.variants[0]?.materials || data.formData.materials || undefined,
                 metaTitle: data.formData.metaTitle || undefined,
                 metaDescription: data.formData.metaDescription || undefined,
+                videoUrl: data.formData.videoUrl || undefined,
+                processingTime: data.formData.processingTime || undefined,
+                careInstructions: data.formData.careInstructions || undefined,
+                bundleQuantity: data.formData.bundleQuantity ? parseInt(data.formData.bundleQuantity) : undefined,
+                isCodAllowed: data.formData.isCodAllowed,
+                isBundle: data.formData.isBundle,
+                shippingFeeOverride: data.formData.shippingFeeOverride ? parseFloat(data.formData.shippingFeeOverride) : undefined,
+                isLocalPickupAllowed: data.formData.isLocalPickupAllowed,
+                localPickupInstructions: data.formData.localPickupInstructions || undefined,
+                fulfillmentType: data.formData.fulfillmentType,
+                isCustomOrderAllowed: data.formData.isCustomOrderAllowed,
+                customOrderInstructions: data.formData.customOrderInstructions || undefined,
+                minOrderQty: data.formData.minOrderQty ? parseInt(data.formData.minOrderQty) : undefined,
+                maxOrderQty: data.formData.maxOrderQty ? parseInt(data.formData.maxOrderQty) : undefined,
                 variants: data.variants.map(v => ({
                     uid: v.uid,
                     name: v.name,
@@ -154,7 +298,7 @@ export default function SellerProductForm() {
     };
 
     if (initialLoading) {
-        return <View style={styles.center}><ActivityIndicator size="large" /></View>;
+        return <SkeletonLoader />;
     }
 
     return (

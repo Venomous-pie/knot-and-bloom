@@ -35,12 +35,16 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
     const mobile = isMobile(width);
     const containerRef = useRef<View>(null);
 
-    const [uploading, setUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState('');
+    const [uploadingImages, setUploadingImages] = useState<{id: string; uri: string; progress: number; name: string}[]>([]);
     const [showUrlInput, setShowUrlInput] = useState(false);
     const [urlInput, setUrlInput] = useState('');
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+    const imagesRef = useRef(images);
+    useEffect(() => {
+        imagesRef.current = images;
+    }, [images]);
 
     // Crop modal state
     const [showCropModal, setShowCropModal] = useState(false);
@@ -71,14 +75,23 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                             continue;
                         }
                         const uri = URL.createObjectURL(file);
-                        setUploading(true);
-                        setUploadProgress('Uploading pasted image...');
+                        const id = Math.random().toString();
+                        setUploadingImages(prev => [...prev, { id, uri, progress: 0, name: file.name }]);
+
+                        const interval = setInterval(() => {
+                            setUploadingImages(prev => prev.map(u => 
+                                u.id === id && u.progress < 90 ? { ...u, progress: u.progress + 15 } : u
+                            ));
+                        }, 500);
+
                         const uploaded = await uploadSingleImage(uri, file.name);
+                        
+                        clearInterval(interval);
+                        setUploadingImages(prev => prev.filter(u => u.id !== id));
+                        
                         if (uploaded) {
-                            onImagesChange([...images, uploaded]);
+                            onImagesChange([...imagesRef.current, uploaded]);
                         }
-                        setUploading(false);
-                        setUploadProgress('');
                     }
                     break;
                 }
@@ -90,52 +103,83 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
     }, [canAddMore, images.length, maxImages]);
 
     const pickImages = async () => {
-        if (images.length >= maxImages) return;
+        const allowedCount = maxImages - (images.length + uploadingImages.length);
+        if (allowedCount <= 0) return;
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsMultipleSelection: true,
             quality: 0.8,
-            selectionLimit: maxImages - images.length,
+            selectionLimit: allowedCount,
         });
 
         if (!result.canceled && result.assets) {
-            setUploading(true);
-            setUploadProgress('Uploading...');
+            // Enforce max count since selectionLimit fails on some web browsers
+            const newUploads = result.assets.slice(0, allowedCount).map(asset => ({
+                id: Math.random().toString(),
+                uri: asset.uri,
+                progress: 0,
+                name: asset.fileName || `image_${Date.now()}.jpg`
+            }));
 
-            const newImages: ImageItem[] = [];
-            for (const asset of result.assets) {
-                if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-                    Alert.alert("File Too Large", `${asset.fileName || 'An image'} exceeds the 5MB limit.`);
-                    continue;
-                }
-                const uploaded = await uploadSingleImage(asset.uri, asset.fileName || `image_${Date.now()}.jpg`);
-                if (uploaded) newImages.push(uploaded);
+            setUploadingImages(prev => [...prev, ...newUploads]);
+
+            const uploadPromises = newUploads.map(async (upload) => {
+                const interval = setInterval(() => {
+                    setUploadingImages(prev => prev.map(u => 
+                        u.id === upload.id && u.progress < 90 ? { ...u, progress: u.progress + Math.random() * 15 } : u
+                    ));
+                }, 500);
+
+                const uploaded = await uploadSingleImage(upload.uri, upload.name);
+                
+                clearInterval(interval);
+                // Set progress to 100% instead of deleting right away, so it stays on screen until parent state updates
+                setUploadingImages(prev => prev.map(u => 
+                    u.id === upload.id ? { ...u, progress: 100 } : u
+                ));
+                return uploaded;
+            });
+
+            const results = await Promise.all(uploadPromises);
+            const successfulUploads = results.filter(Boolean) as ImageItem[];
+            
+            // Delete all from uploadingImages at once
+            const uploadIds = newUploads.map(u => u.id);
+            setUploadingImages(prev => prev.filter(u => !uploadIds.includes(u.id)));
+
+            if (successfulUploads.length > 0) {
+                onImagesChange([...imagesRef.current, ...successfulUploads]);
             }
-
-            onImagesChange([...images, ...newImages]);
-            setUploading(false);
-            setUploadProgress('');
         }
     };
 
     const handleCropComplete = async (croppedUri: string) => {
         const current = pendingImages[0];
         setShowCropModal(false);
-        setUploading(true);
-        setUploadProgress('Applying crop...');
+        
+        const id = Math.random().toString();
+        setUploadingImages(prev => [...prev, { id, uri: croppedUri, progress: 0, name: current?.name || 'cropped.jpg' }]);
+
+        const interval = setInterval(() => {
+            setUploadingImages(prev => prev.map(u => 
+                u.id === id && u.progress < 90 ? { ...u, progress: u.progress + 15 } : u
+            ));
+        }, 500);
 
         const uploaded = await uploadSingleImage(croppedUri, current?.name);
+        
+        clearInterval(interval);
+        setUploadingImages(prev => prev.filter(u => u.id !== id));
+
         if (uploaded) {
-            const newImages = [...images];
+            const newImages = [...imagesRef.current];
             newImages[currentCropIndex] = uploaded;
             onImagesChange(newImages);
         }
 
         setPendingImages([]);
         setCurrentCropIndex(0);
-        setUploading(false);
-        setUploadProgress('');
     };
 
     const moveImage = (fromIndex: number, toIndex: number) => {
@@ -261,13 +305,28 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
         }
     };
 
+    const clearAll = async () => {
+        if (images.length === 0) return;
+        const confirmed = await confirm({
+            title: 'Clear All Images',
+            message: 'Are you sure you want to remove all uploaded images?',
+            confirmText: 'Clear All',
+            cancelText: 'Cancel',
+            isDestructive: true,
+        });
+
+        if (confirmed) {
+            onImagesChange([]);
+        }
+    };
+
     // Empty state - centered
-    const isEmpty = images.length === 0;
+    const isEmpty = images.length === 0 && uploadingImages.length === 0;
 
     return (
         <View style={styles.container} ref={containerRef}>
             {/* Header info is moved to parent or kept minimal */}
-            {isEmpty && !uploading ? (
+            {isEmpty ? (
                 <Pressable
                     style={[styles.emptyDropzone, compact && styles.compactDropzone]}
                     onPress={pickImages}
@@ -285,16 +344,17 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                         </>
                     )}
                 </Pressable>
-            ) : isEmpty && uploading ? (
-                <View style={[styles.emptyDropzone, compact && styles.compactDropzone, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="large" color="#B36979" />
-                    <Text style={[styles.dropzoneTitle, { marginTop: 16 }]}>{uploadProgress || 'Uploading...'}</Text>
-                </View>
             ) : (
                 <View style={styles.populatedContainer}>
                     {!compact && (
                         <View style={styles.header}>
                             <Text style={styles.subtitle}>{images.length}/{maxImages} images uploaded</Text>
+                            {images.length > 0 && (
+                                <Pressable onPress={clearAll} style={styles.clearAllBtn}>
+                                    <Trash2 size={14} color={theme.colors.error || '#D32F2F'} />
+                                    <Text style={styles.clearAllText}>Clear All</Text>
+                                </Pressable>
+                            )}
                         </View>
                     )}
 
@@ -366,7 +426,21 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                             );
                         })}
 
-                        {canAddMore && !uploading && (
+                        {/* Uploading Images */}
+                        {uploadingImages.map((upload) => (
+                            <View key={upload.id} style={[styles.imageWrapper, styles.secondaryImageWrapper]}>
+                                <Image
+                                    source={{ uri: upload.uri }}
+                                    style={[styles.image, { opacity: 0.5 }]}
+                                    resizeMode="cover"
+                                />
+                                <View style={styles.uploadProgressContainer}>
+                                    <View style={[styles.uploadProgressBar, { width: `${upload.progress}%` }]} />
+                                </View>
+                            </View>
+                        ))}
+
+                        {canAddMore && uploadingImages.length === 0 && (
                             <Pressable
                                 style={[styles.secondaryImageWrapper, styles.uploadingWrapper, { borderColor: '#E8D5D9', backgroundColor: '#FCFAFA' }]}
                                 onPress={pickImages}
@@ -374,13 +448,6 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                                 <ImagePlus size={24} color="#B36979" />
                                 <Text style={[styles.uploadingText, { color: '#B36979', marginTop: 4 }]}>Add</Text>
                             </Pressable>
-                        )}
-
-                        {uploading && (
-                            <View style={[styles.secondaryImageWrapper, styles.uploadingWrapper]}>
-                                <ActivityIndicator size="large" color="#B36979" />
-                                <Text style={styles.uploadingText}>{uploadProgress || 'Uploading...'}</Text>
-                            </View>
                         )}
                     </View>
                 </View>
@@ -461,6 +528,18 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         fontWeight: '500',
+    },
+    clearAllBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        padding: 4,
+    },
+    clearAllText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: theme.colors.error || '#D32F2F',
+        fontFamily: 'Quicksand',
     },
     smallAddButton: {
         flexDirection: 'row',
@@ -638,5 +717,17 @@ const styles = StyleSheet.create({
     },
     urlCancelButton: {
         padding: 8,
+    },
+    uploadProgressContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 6,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+    },
+    uploadProgressBar: {
+        height: '100%',
+        backgroundColor: '#B36979',
     },
 });

@@ -39,6 +39,9 @@ export const productSchema = z.object({
     // New Details & Fulfillment
     videoUrl: z.string().url().or(z.literal('')).nullish(),
     shippingFeeOverride: z.any().optional(),
+    isCodAllowed: z.boolean().optional(),
+    isBundle: z.boolean().optional(),
+    bundleQuantity: z.any().optional(),
     isLocalPickupAllowed: z.boolean().optional(),
     localPickupInstructions: z.string().nullish(),
     processingTime: z.string().nullish(),

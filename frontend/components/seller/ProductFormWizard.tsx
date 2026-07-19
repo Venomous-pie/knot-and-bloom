@@ -5,13 +5,14 @@ import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift, Search, Hash, Type, AlignLeft, AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronDown, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift, Search, Hash, Type, AlignLeft, AlertTriangle } from 'lucide-react-native';
 import { calculateOptimizationScore, type OptimizationResult, type ScoreCategory } from '@/utils/optimizationScore';
 import React, { useEffect, useState, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Animated,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -21,7 +22,7 @@ import {
     View,
     Switch,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import api from '@/api/api';
 import { useDraft } from '@/hooks/useDraft';
 import ImageUploader from './ImageUploader';
@@ -38,7 +39,7 @@ export interface ProductFormData {
     sku: string;
     basePrice: string;
     discountPercentage: string;
-    image: string;
+    image?: string | null;
     images?: string[];
     materials: string;
     bundleQuantity: string;
@@ -53,7 +54,7 @@ export interface ProductFormData {
     isLocalPickupAllowed: boolean;
     localPickupInstructions: string;
     processingTime: string;
-    fulfillmentType: string;
+    fulfillmentType: 'READY_TO_SHIP' | 'MADE_TO_ORDER';
     isCustomOrderAllowed: boolean;
     customOrderInstructions: string;
     careInstructions: string;
@@ -61,14 +62,13 @@ export interface ProductFormData {
     maxOrderQty: string;
 }
 
-export interface ProductOptionValue {
-    name: string;
-    imageUrl?: string;
-}
-
 export interface ProductOption {
     name: string;
-    values: ProductOptionValue[];
+    position?: number;
+    values: {
+        value: string;
+        imageUrl?: string;
+    }[];
 }
 
 interface ProductFormWizardProps {
@@ -78,29 +78,14 @@ interface ProductFormWizardProps {
         variants: VariantData[];
         productOptions?: ProductOption[];
     };
-    onSubmit: (data: {
-        formData: ProductFormData;
-        selectedCategories: string[];
-        variants: VariantData[];
-        productOptions: ProductOption[];
-    }) => Promise<void>;
-    onSaveDraft?: (data: {
-        formData: ProductFormData;
-        selectedCategories: string[];
-        variants: VariantData[];
-        productOptions: ProductOption[];
-    }) => Promise<void>;
-    onBack: () => void;
+    onSubmit: (data: { formData: ProductFormData, selectedCategories: string[], variants: VariantData[], productOptions: ProductOption[] }) => void;
+    onSaveDraft?: (data: { formData: ProductFormData, selectedCategories: string[], variants: VariantData[], productOptions: ProductOption[] }) => void;
     loading: boolean;
+    onBack: () => void;
     submitLabel: string;
     isEditing?: boolean;
-    onDataChange?: (data: {
-        formData: ProductFormData;
-        selectedCategories: string[];
-        variants: VariantData[];
-        productOptions: ProductOption[];
-    }) => void;
-    productStatus?: string;
+    onDataChange?: (data: { formData: ProductFormData, selectedCategories: string[], variants: VariantData[], productOptions: ProductOption[] }) => void;
+    productStatus?: string | null;
 }
 
 const STEPS = [
@@ -114,8 +99,8 @@ export default function ProductFormWizard({
     initialData,
     onSubmit,
     onSaveDraft,
-    onBack,
     loading,
+    onBack,
     submitLabel,
     isEditing = false,
     onDataChange,
@@ -171,20 +156,23 @@ export default function ProductFormWizard({
     const [activeVariantIndex, setActiveVariantIndex] = useState<number | null>(0);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+    const [categorySearchQuery, setCategorySearchQuery] = useState('');
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+    const [isCustomProcessingTime, setIsCustomProcessingTime] = useState(false);
     const { settings } = useSellerSettings();
     const router = useRouter();
+    const { id } = useLocalSearchParams();
 
     const categories = Object.values(categoryTitles);
 
     // Centralized draft persistence
     const { clearDraft } = useDraft({
-        key: 'product_form_draft',
+        key: id ? `product_form_draft_${id}` : 'product_form_draft_new',
         data: { formData, selectedCategories, variants, productOptions, images },
-        enabled: !isEditing,
+        enabled: true,
         onLoad: (draft: any) => {
-            // Draft Migration logic: If the draft is missing the new fields or option schema, we could discard or migrate it.
-            // For now we just merge what we have.
-            setFormData({ tags: [], metaTitle: '', metaDescription: '', fulfillmentType: 'READY_TO_SHIP', ...draft.formData });
+            // Draft Migration logic: Ensure we don't lose default keys if the draft is from an older schema.
+            setFormData(prev => ({ ...prev, ...draft.formData }));
             setSelectedCategories(draft.selectedCategories);
             setVariants(draft.variants);
             setProductOptions(draft.productOptions || []);
@@ -207,11 +195,15 @@ export default function ProductFormWizard({
         if (initialData && !initializedRef.current) {
             initializedRef.current = true;
             setFormData({ ...initialData.formData, tags: initialData.formData.tags || [], metaTitle: initialData.formData.metaTitle || '', metaDescription: initialData.formData.metaDescription || '' });
+            if (initialData.formData.processingTime && !['1-2 business days', '3-5 business days', '1-2 weeks', '3-4 weeks'].includes(initialData.formData.processingTime)) {
+                setIsCustomProcessingTime(true);
+            }
             setSelectedCategories(initialData.selectedCategories);
             setVariants(initialData.variants.length > 0
                 ? initialData.variants
                 : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [] }]
             );
+            setProductOptions(initialData.productOptions || []);
             // Restore full images array; fall back to single cover image if no array
             if (initialData.formData.images && initialData.formData.images.length > 0) {
                 setImages(initialData.formData.images.map(uri => ({ uri, isUrl: true })));
@@ -250,6 +242,32 @@ export default function ProductFormWizard({
             });
         }
     }, [formData.name]);
+
+    const getSuggestedCategories = () => {
+        const name = formData.name.toLowerCase();
+        if (!name) return [];
+        const suggestions: string[] = [];
+        if (name.includes('crochet bouquet') || name.includes('crochet flower')) suggestions.push('Crochet Flower Bouquets');
+        if (name.includes('fuzzy wire bouquet') || name.includes('pipe cleaner bouquet')) suggestions.push('Fuzzy Wire Bouquets');
+        if (name.includes('crochet key') || name.includes('crochet keychain')) suggestions.push('Crochet Key Chains');
+        if (name.includes('amigurumi') || name.includes('plushie')) suggestions.push('Amigurumi Plushies');
+        if (name.includes('crochet')) suggestions.push('Crochet');
+        if (name.includes('fuzzy wire') || name.includes('pipe cleaner')) suggestions.push('Fuzzy Wire Art');
+        if (name.includes('wire flower')) suggestions.push('Wire Flowers');
+        if (name.includes('gift box') || name.includes('gift set')) suggestions.push('Gift Boxes/Sets');
+        if (name.includes('hair tie')) suggestions.push('Hair Ties');
+        if (name.includes('bead') || name.includes('bracelet') || name.includes('necklace')) suggestions.push('Beaded Jewelry');
+        if (name.includes('phone charm') || name.includes('phone strap')) suggestions.push('Phone Charms');
+        if (name.includes('scrunchie')) suggestions.push('Scrunchies');
+        if (name.includes('resin')) suggestions.push('Resin Crafts');
+        if (name.includes('bookmark')) suggestions.push('Bookmarks');
+        if (name.includes('tote bag') || name.includes('canvas bag')) suggestions.push('Tote Bags');
+        if (name.includes('sticker') || name.includes('print')) suggestions.push('Stickers & Prints');
+        if (name.includes('clay')) suggestions.push('Clay Accessories');
+        if (name.includes('key chain') || name.includes('keychain')) suggestions.push('Key Chains');
+        if (name.includes('bouquet') || name.includes('flower')) suggestions.push('Flower Boquets');
+        return suggestions;
+    };
 
     const handleChange = (field: keyof ProductFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -469,7 +487,7 @@ export default function ProductFormWizard({
                         isValid = false;
                     }
 
-                    if (i > 0 && (!v.images || v.images.length === 0)) {
+                    if (i > 0 && !v.hasNoImage && (!v.images || v.images.length === 0)) {
                         newErrors[`variant-${i}-images`] = 'Please upload at least one image for this variant.';
                         isValid = false;
                     }
@@ -547,10 +565,12 @@ export default function ProductFormWizard({
                 ...formData,
                 metaTitle: autoMetaTitle,
                 metaDescription: autoMetaDescription,
+                image: images[0]?.uri || null,
+                images: images.map(img => img.uri),
             };
 
             await onSubmit({ formData: enrichedFormData, selectedCategories, variants, productOptions });
-            if (!isEditing) clearDraft();
+            clearDraft();
         } catch (error) {
             console.error('Submission failed:', error);
         }
@@ -558,8 +578,13 @@ export default function ProductFormWizard({
 
     const handleSaveDraft = async () => {
         if (onSaveDraft) {
-            await onSaveDraft({ formData, selectedCategories, variants, productOptions });
-            if (!isEditing) clearDraft();
+            const enrichedFormData = {
+                ...formData,
+                image: images[0]?.uri || null,
+                images: images.map(img => img.uri),
+            };
+            await onSaveDraft({ formData: enrichedFormData, selectedCategories, variants, productOptions });
+            clearDraft();
         }
     };
 
@@ -569,7 +594,7 @@ export default function ProductFormWizard({
         name: formData.name,
         description: formData.description,
         tags: formData.tags,
-        materials: formData.materials,
+        materials: variants[0]?.materials || formData.materials,
         careInstructions: formData.careInstructions,
         processingTime: formData.processingTime,
         basePrice: formData.basePrice,
@@ -604,12 +629,17 @@ export default function ProductFormWizard({
     };
 
     const renderStepContent = () => {
+        const isIdentityComplete = !!formData.name.trim() && selectedCategories.length > 0;
+        const isPricingComplete = !!formData.sku.trim() && !!formData.basePrice.trim() && !isNaN(Number(formData.basePrice)) && Number(formData.basePrice) >= 0;
+        const isDetailsComplete = isPricingComplete && !!formData.description.trim() && (!formData.isCustomOrderAllowed || !!formData.customOrderInstructions.trim());
+        const isFulfillmentComplete = isDetailsComplete && (!formData.isLocalPickupAllowed || !!formData.localPickupInstructions.trim()) && (formData.fulfillmentType !== 'MADE_TO_ORDER' || !!formData.processingTime.trim());
+
         switch (currentStep) {
             case 1:
                 return (
                     <View style={styles.stepContent}>
                         {/* 1. Identity Card */}
-                        <View style={styles.card}>
+                        <View style={[styles.card, { zIndex: 10 }]}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
                                 <Tag size={20} color={theme.colors.primary} />
                                 <Text style={styles.cardTitle}>Product Identity</Text>
@@ -638,62 +668,153 @@ export default function ProductFormWizard({
                             </View>
 
                             {/* Categories */}
-                            <View style={[styles.field, { marginBottom: 0 }]}>
+                            {/* Category Dropdown */}
+                            <View style={[styles.field, { marginBottom: 0, zIndex: 999999}]}>
                                 <View style={styles.fieldLabelRow}>
-                                    <Text style={styles.fieldLabel}>Categories *</Text>
-                                    <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                    <Text style={styles.fieldLabel}>Category (Max 3) *</Text>
+                                    <Text style={{ fontSize: 11, color: selectedCategories.length > 3 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
                                         {selectedCategories.length}/3
                                     </Text>
                                 </View>
-                                <View style={styles.categoryList}>
-                                    {categories.map((cat) => {
-                                        const isSelected = selectedCategories.includes(cat);
-                                        const isMaxed = selectedCategories.length >= 3;
-                                        const isDisabled = isMaxed && !isSelected;
-                                        return (
-                                            <Pressable
-                                                key={cat}
-                                                style={[
-                                                    styles.categoryChip,
-                                                    isSelected && styles.categoryChipSelected,
-                                                    isDisabled && { opacity: 0.5, backgroundColor: theme.colors.subtle }
-                                                ]}
-                                                onPress={() => {
-                                                    if (isDisabled) {
-                                                        setErrors(prev => ({ ...prev, categories: 'Maximum of 3 categories reached.' }));
-                                                        return;
-                                                    }
-                                                    if (errors.categories) {
-                                                        setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
-                                                    }
-                                                    if (isSelected) {
-                                                        setSelectedCategories(selectedCategories.filter(c => c !== cat));
-                                                    } else {
-                                                        setSelectedCategories([...selectedCategories, cat]);
-                                                    }
-                                                }}
-                                            >
-                                                <Text style={[
-                                                    styles.categoryText,
-                                                    isSelected && styles.categoryTextSelected,
-                                                    isDisabled && { color: theme.colors.textLight }
-                                                ]}>{cat}</Text>
-                                            </Pressable>
-                                        );
-                                    })}
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: selectedCategories.length > 0 ? 8 : 0 }}>
+                                    {selectedCategories.map((cat, i) => (
+                                        <Pressable
+                                            key={i}
+                                            onPress={() => setSelectedCategories(prev => prev.filter(c => c !== cat))}
+                                            style={{
+                                                flexDirection: 'row', alignItems: 'center', gap: 4,
+                                                backgroundColor: theme.colors.primary + '15',
+                                                paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: '600', fontFamily: 'Quicksand' }}>{cat}</Text>
+                                            <Text style={{ fontSize: 14, color: theme.colors.primary, marginLeft: 2, fontWeight: '700' }}>×</Text>
+                                        </Pressable>
+                                    ))}
                                 </View>
-                                <View style={{ minHeight: 18, justifyContent: 'center' }}>
-                                    <Text style={[styles.errorText, { marginTop: 0, opacity: errors.categories ? 1 : 0 }]}>
-                                        {errors.categories || ' '}
-                                    </Text>
-                                </View>
-                                <Text style={{ fontSize: 11, color: theme.colors.textLight, paddingHorizontal: 2 }}>
-                                    Hint: You can select multiple categories (Up to 3).
-                                </Text>
+                                <TextInput
+                                    style={[styles.input, focusedField === 'category' && styles.inputFocused, errors.categories && styles.inputError]}
+                                    value={categorySearchQuery}
+                                    onChangeText={(text) => {
+                                        if (text.includes(',')) {
+                                            const parts = text.split(',');
+                                            let currentCats = [...selectedCategories];
+                                            let lastPart = parts.pop() || '';
+                                            for (const part of parts) {
+                                                const p = part.trim();
+                                                if (p && currentCats.length < 3 && !currentCats.includes(p)) {
+                                                    currentCats.push(p);
+                                                }
+                                            }
+                                            setSelectedCategories(currentCats);
+                                            setCategorySearchQuery(lastPart);
+                                            if (errors.categories) setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
+                                        } else {
+                                            setCategorySearchQuery(text);
+                                            if (errors.categories) setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
+                                        }
+                                    }}
+                                    placeholder={selectedCategories.length >= 3 ? 'Maximum categories reached' : 'Type a category and press Enter...'}
+                                    placeholderTextColor={theme.colors.textLight}
+                                    selectionColor={theme.colors.primary}
+                                    editable={selectedCategories.length < 3}
+                                    maxLength={40}
+                                    onFocus={() => {
+                                        if (selectedCategories.length < 3) {
+                                            setFocusedField('category');
+                                            setIsCategoryDropdownOpen(true);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        setFocusedField(null);
+                                        setTimeout(() => {
+                                            setIsCategoryDropdownOpen(false);
+                                            if (categorySearchQuery.trim()) {
+                                                const p = categorySearchQuery.trim();
+                                                if (selectedCategories.length < 3 && !selectedCategories.includes(p)) {
+                                                    setSelectedCategories(prev => [...prev, p]);
+                                                    setCategorySearchQuery('');
+                                                }
+                                            }
+                                        }, 200);
+                                    }}
+                                    onSubmitEditing={() => {
+                                        if (categorySearchQuery.trim()) {
+                                            const p = categorySearchQuery.trim();
+                                            if (selectedCategories.length < 3 && !selectedCategories.includes(p)) {
+                                                setSelectedCategories(prev => [...prev, p]);
+                                                setCategorySearchQuery('');
+                                            }
+                                        }
+                                    }}
+                                />
+                                
+                                {isCategoryDropdownOpen && selectedCategories.length < 3 && (() => {
+                                    const suggestedCats = getSuggestedCategories();
+                                    const filteredCategories = categories.filter(c => c.toLowerCase().includes(categorySearchQuery.toLowerCase()) && !selectedCategories.includes(c));
+                                    const sortedCategories = [...filteredCategories].sort((a, b) => {
+                                        const aSug = suggestedCats.includes(a);
+                                        const bSug = suggestedCats.includes(b);
+                                        if (aSug && !bSug) return -1;
+                                        if (!aSug && bSug) return 1;
+                                        return 0;
+                                    }).slice(0, 10);
+
+                                    if (sortedCategories.length === 0 && !categorySearchQuery.trim()) return null;
+
+                                    return (
+                                        <View style={{ marginTop: 8, padding: 12, backgroundColor: theme.colors.primary + '0A', borderRadius: 8 }}>
+                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 8 }}>
+                                                💡 Suggested categories {categorySearchQuery.trim() ? 'matching your input' : 'for your product'}:
+                                            </Text>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                                {sortedCategories.map(suggestion => {
+                                                    const isSug = suggestedCats.includes(suggestion) && !categorySearchQuery;
+                                                    return (
+                                                        <Pressable
+                                                            key={suggestion}
+                                                            style={{
+                                                                backgroundColor: 'white',
+                                                                paddingHorizontal: 12, paddingVertical: 6,
+                                                                borderRadius: 20, borderWidth: 1,
+                                                                borderColor: isSug ? theme.colors.secondary + '50' : theme.colors.border,
+                                                                flexDirection: 'row', alignItems: 'center', gap: 4
+                                                            }}
+                                                            onPress={() => {
+                                                                if (selectedCategories.length < 3 && !selectedCategories.includes(suggestion)) {
+                                                                    setSelectedCategories(prev => [...prev, suggestion]);
+                                                                    setCategorySearchQuery('');
+                                                                    setIsCategoryDropdownOpen(false);
+                                                                    if (errors.categories) {
+                                                                        setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Text style={{ fontSize: 12, color: theme.colors.text, fontFamily: 'Quicksand' }}>
+                                                                + {suggestion}
+                                                            </Text>
+                                                            {isSug && (
+                                                                <Text style={{ fontSize: 9, color: theme.colors.secondary, fontWeight: '700', marginLeft: 4 }}>★</Text>
+                                                            )}
+                                                        </Pressable>
+                                                    );
+                                                })}
+                                                {sortedCategories.length === 0 && categorySearchQuery.trim() && (
+                                                    <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', fontStyle: 'italic' }}>
+                                                        Press Enter to add "{categorySearchQuery.trim()}" as a new custom category.
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </View>
+                                    );
+                                })()}
+                                {errors.categories && <Text style={styles.errorText}>{errors.categories}</Text>}
                             </View>
                         </View>
 
                         {/* 2. Media Card */}
+                        {isIdentityComplete && (
                         <View style={styles.card}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
                                 <ImageIcon size={20} color={theme.colors.primary} />
@@ -740,7 +861,8 @@ export default function ProductFormWizard({
                                 />
                                 {errors.videoUrl && <Text style={styles.errorText}>{errors.videoUrl}</Text>}
                             </View>
-                        </View>
+                            </View>
+                        )}
                     </View>
                 );
 
@@ -916,6 +1038,7 @@ export default function ProductFormWizard({
                         </View>
 
                         {/* 2. Product Details Card */}
+                        {isPricingComplete && (
                         <View style={styles.card}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
                                 <FileText size={20} color={theme.colors.primary} />
@@ -1004,11 +1127,13 @@ export default function ProductFormWizard({
                                 <View style={[styles.field, { marginBottom: 0 }]}>
                                     <Text style={styles.fieldLabel}>Custom Order Instructions</Text>
                                     <TextInput
-                                        style={[styles.input, focusedField === 'customOrderInstructions' && styles.inputFocused, errors.customOrderInstructions && styles.inputError]}
+                                        style={[styles.input, styles.textArea, focusedField === 'customOrderInstructions' && styles.inputFocused, errors.customOrderInstructions && styles.inputError]}
                                         value={formData.customOrderInstructions}
                                         onChangeText={(text: string) => handleChange('customOrderInstructions', text)}
                                         placeholder="e.g. Message me with your preferred color combinations."
                                         placeholderTextColor={theme.colors.textLight}
+                                        multiline
+                                        numberOfLines={3}
                                         onFocus={() => setFocusedField('customOrderInstructions')}
                                         onBlur={() => setFocusedField(null)}
                                     />
@@ -1016,8 +1141,10 @@ export default function ProductFormWizard({
                                 </View>
                             )}
                         </View>
+                        )}
 
                         {/* 3. Fulfillment & Shipping Card */}
+                        {isDetailsComplete && (
                         <View style={styles.card}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
                                 <Truck size={20} color={theme.colors.primary} />
@@ -1052,16 +1179,50 @@ export default function ProductFormWizard({
                                 <Text style={[styles.stepDescription, { marginTop: 0, marginBottom: 8 }]}>
                                     How long it takes you to prepare this item for shipping.
                                 </Text>
-                                <TextInput
-                                    style={[styles.input, focusedField === 'processingTime' && styles.inputFocused, errors.processingTime && styles.inputError]}
-                                    value={formData.processingTime}
-                                    onChangeText={(text: string) => handleChange('processingTime', text)}
-                                    placeholder='e.g. "3-5 days"'
-                                    placeholderTextColor={theme.colors.textLight}
-                                    onFocus={() => setFocusedField('processingTime')}
-                                    onBlur={() => setFocusedField(null)}
-                                />
-                                {errors.processingTime && <Text style={styles.errorText}>{errors.processingTime}</Text>}
+                                
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                                    {['1-2 business days', '3-5 business days', '1-2 weeks', '3-4 weeks', 'Custom'].map((preset) => (
+                                        <Pressable
+                                            key={preset}
+                                            style={[
+                                                styles.categoryChip,
+                                                (preset === 'Custom' ? isCustomProcessingTime : (formData.processingTime === preset && !isCustomProcessingTime)) && styles.categoryChipSelected,
+                                                { paddingVertical: 6, paddingHorizontal: 12 }
+                                            ]}
+                                            onPress={() => {
+                                                if (preset === 'Custom') {
+                                                    setIsCustomProcessingTime(true);
+                                                } else {
+                                                    setIsCustomProcessingTime(false);
+                                                    handleChange('processingTime', preset);
+                                                }
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.categoryText,
+                                                (preset === 'Custom' ? isCustomProcessingTime : (formData.processingTime === preset && !isCustomProcessingTime)) && styles.categoryTextSelected,
+                                                { fontSize: 13 }
+                                            ]}>
+                                                {preset}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </View>
+
+                                {isCustomProcessingTime && (
+                                    <>
+                                        <TextInput
+                                            style={[styles.input, focusedField === 'processingTime' && styles.inputFocused, errors.processingTime && styles.inputError]}
+                                            value={formData.processingTime}
+                                            onChangeText={(text: string) => handleChange('processingTime', text)}
+                                            placeholder='Type a custom time (e.g. "6-8 weeks")'
+                                            placeholderTextColor={theme.colors.textLight}
+                                            onFocus={() => setFocusedField('processingTime')}
+                                            onBlur={() => setFocusedField(null)}
+                                        />
+                                        {errors.processingTime && <Text style={styles.errorText}>{errors.processingTime}</Text>}
+                                    </>
+                                )}
                             </View>
 
                             {/* Shipping Fee Override */}
@@ -1106,11 +1267,14 @@ export default function ProductFormWizard({
                                 <View style={styles.field}>
                                     <Text style={styles.fieldLabel}>Pickup Instructions</Text>
                                     <TextInput
-                                        style={[styles.input, focusedField === 'localPickupInstructions' && styles.inputFocused, errors.localPickupInstructions && styles.inputError]}
+                                        style={[styles.input, styles.textArea, focusedField === 'localPickupInstructions' && styles.inputFocused, errors.localPickupInstructions && styles.inputError]}
                                         value={formData.localPickupInstructions}
                                         onChangeText={(text: string) => handleChange('localPickupInstructions', text)}
                                         placeholder="e.g. Pickup at 123 Main St, Monday-Friday 9am-5pm"
                                         placeholderTextColor={theme.colors.textLight}
+                                        multiline={true}
+                                        numberOfLines={3}
+                                        textAlignVertical="top"
                                         onFocus={() => setFocusedField('localPickupInstructions')}
                                         onBlur={() => setFocusedField(null)}
                                     />
@@ -1136,8 +1300,10 @@ export default function ProductFormWizard({
                                 </View>
                             )}
                         </View>
+                        )}
 
                         {/* 4. Tags & Discoverability Card */}
+                        {isFulfillmentComplete && (
                         <View style={styles.card}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
                                 <Tag size={20} color={theme.colors.primary} />
@@ -1176,8 +1342,30 @@ export default function ProductFormWizard({
                                     style={[styles.input, focusedField === 'tags' && styles.inputFocused, tagError && styles.inputError]}
                                     value={tagInput}
                                     onChangeText={(text) => {
-                                        setTagInput(text);
-                                        if (tagError) setTagError(null);
+                                        if (text.includes(',')) {
+                                            const parts = text.split(',');
+                                            const currentTags = [...formData.tags];
+                                            let lastPart = parts.pop() || '';
+                                            let lastError = null;
+
+                                            for (const part of parts) {
+                                                if (!part.trim()) continue;
+                                                if (currentTags.length >= 10) break;
+                                                const result = validateTag(part, currentTags);
+                                                if (result.valid) {
+                                                    currentTags.push(result.cleaned);
+                                                } else {
+                                                    lastError = result.reason;
+                                                }
+                                            }
+
+                                            setFormData(prev => ({ ...prev, tags: currentTags }));
+                                            setTagInput(lastPart);
+                                            setTagError(lastError);
+                                        } else {
+                                            setTagInput(text);
+                                            if (tagError) setTagError(null);
+                                        }
                                     }}
                                     placeholder={formData.tags.length >= 10 ? 'Maximum tags reached' : 'Type a tag and press Enter (e.g. handmade, crochet)'}
                                     placeholderTextColor={theme.colors.textLight}
@@ -1228,53 +1416,66 @@ export default function ProductFormWizard({
 
                                 {/* Tag suggestions */}
                                 {showTagSuggestions && formData.tags.length < 10 && (() => {
-                                    // Build suggestion list from selected categories + universal (case-insensitive lookup)
                                     const allSuggestions = new Set<string>();
+                                    const smartSuggestions = new Set<string>();
                                     const lowerCatTags = Object.fromEntries(
                                         Object.entries(TAG_SUGGESTIONS).map(([k, v]) => [k.toLowerCase(), v])
                                     );
                                     
                                     selectedCategories.forEach(cat => {
                                         const catKey = cat.toLowerCase();
-                                        (lowerCatTags[catKey] || []).forEach((t: string) => allSuggestions.add(t));
+                                        (lowerCatTags[catKey] || []).forEach((t: string) => {
+                                            allSuggestions.add(t);
+                                            smartSuggestions.add(t);
+                                        });
                                     });
                                     UNIVERSAL_TAGS.forEach((t: string) => allSuggestions.add(t));
-                                    // Filter out already-added tags
+                                    
                                     const available = Array.from(allSuggestions).filter(t => !formData.tags.includes(t));
-                                    // If input is typed, filter by prefix
                                     const filtered = tagInput.trim()
                                         ? available.filter(t => t.includes(tagInput.trim().toLowerCase()))
                                         : available;
 
                                     if (filtered.length === 0) return null;
 
+                                    const sorted = [...filtered].sort((a, b) => {
+                                        const aSug = smartSuggestions.has(a);
+                                        const bSug = smartSuggestions.has(b);
+                                        if (aSug && !bSug) return -1;
+                                        if (!aSug && bSug) return 1;
+                                        return 0;
+                                    });
+
                                     return (
-                                        <View style={{ marginTop: 8 }}>
-                                            <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 6 }}>
+                                        <View style={{ marginTop: 8, padding: 12, backgroundColor: theme.colors.primary + '0A', borderRadius: 8 }}>
+                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 8 }}>
                                                 💡 Suggested tags {tagInput.trim() ? 'matching your input' : 'for your categories'}:
                                             </Text>
-                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                                                {filtered.slice(0, 12).map((suggestion) => (
-                                                    <Pressable
-                                                        key={suggestion}
-                                                        onPress={() => {
-                                                            if (formData.tags.length < 10 && !formData.tags.includes(suggestion)) {
-                                                                setFormData(prev => ({ ...prev, tags: [...prev.tags, suggestion] }));
-                                                                setTagError(null);
-                                                            }
-                                                        }}
-                                                        style={{
-                                                            flexDirection: 'row', alignItems: 'center', gap: 3,
-                                                            backgroundColor: theme.colors.background,
-                                                            borderWidth: 1,
-                                                            borderColor: theme.colors.border,
-                                                            borderStyle: 'dashed',
-                                                            paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-                                                        }}
-                                                    >
-                                                        <Text style={{ fontSize: 12, color: theme.colors.textLight, fontWeight: '500', fontFamily: 'Quicksand' }}>+ {suggestion}</Text>
-                                                    </Pressable>
-                                                ))}
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                                {sorted.slice(0, 12).map((suggestion) => {
+                                                    const isSug = smartSuggestions.has(suggestion) && !tagInput.trim();
+                                                    return (
+                                                        <Pressable
+                                                            key={suggestion}
+                                                            onPress={() => {
+                                                                if (formData.tags.length < 10 && !formData.tags.includes(suggestion)) {
+                                                                    setFormData(prev => ({ ...prev, tags: [...prev.tags, suggestion] }));
+                                                                    setTagError(null);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                backgroundColor: 'white',
+                                                                paddingHorizontal: 12, paddingVertical: 6,
+                                                                borderRadius: 20, borderWidth: 1,
+                                                                borderColor: isSug ? theme.colors.secondary + '50' : theme.colors.border,
+                                                                flexDirection: 'row', alignItems: 'center', gap: 4
+                                                            }}
+                                                        >
+                                                            <Text style={{ fontSize: 12, color: theme.colors.text, fontFamily: 'Quicksand' }}>+ {suggestion}</Text>
+                                                            {isSug && <Text style={{ fontSize: 9, color: theme.colors.secondary, fontWeight: '700', marginLeft: 4 }}>★</Text>}
+                                                        </Pressable>
+                                                    );
+                                                })}
                                             </View>
                                         </View>
                                     );
@@ -1286,6 +1487,7 @@ export default function ProductFormWizard({
                                 </Text>
                             </View>
                         </View>
+                        )}
                     </View>
                 );
 
@@ -1495,11 +1697,11 @@ export default function ProductFormWizard({
                                     <Text style={styles.summaryLabel}>Variants Details:</Text>
                                 </View>
                                 {variants.map((v, i) => (
-                                    <View key={i} style={[styles.summaryVariantItem, !v.isEnabled && { opacity: 0.5 }]}>
+                                    <View key={i} style={[styles.summaryVariantItem, v.isEnabled === false && { opacity: 0.5 }]}>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                                             <Text style={styles.summaryVariantName}>
                                                 {v.name || 'Base Product'} {i === 0 && <Text style={{ color: theme.colors.primary, fontSize: 10 }}>(Main)</Text>}
-                                                {!v.isEnabled && <Text style={{ color: theme.colors.error, fontSize: 10 }}> (Disabled)</Text>}
+                                                {v.isEnabled === false && <Text style={{ color: theme.colors.error, fontSize: 10 }}> (Disabled)</Text>}
                                             </Text>
                                             <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'monospace' }}>
                                                 {v.sku || formData.sku}
@@ -1652,8 +1854,24 @@ export default function ProductFormWizard({
             </View>
 
             {/* Step Indicator */}
-            <View style={styles.stepIndicator}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+            <View style={[styles.stepIndicator, { position: 'relative', justifyContent: 'center' }, mobile && { flexDirection: 'column', gap: 16 }]}>
+                {/* Left side: Title and Description */}
+                {!mobile && (
+                    <View style={{ position: 'absolute', left: 20, top: 0, bottom: 0, justifyContent: 'center', width: 250, zIndex: 10 }}>
+                        {(() => {
+                            const data = getStepData();
+                            return (
+                                <View>
+                                    <Text style={[styles.stepTitle, { marginBottom: 4, fontSize: 18 }]} numberOfLines={1}>{data.title}</Text>
+                                    {data.description ? <Text style={[styles.stepDescription, { marginBottom: 0, fontSize: 11 }]} numberOfLines={2}>{data.description}</Text> : null}
+                                </View>
+                            );
+                        })()}
+                    </View>
+                )}
+
+                {/* Center: Step Indicators */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
                     {STEPS.map((step, index) => (
                         <React.Fragment key={step.id}>
                             <Pressable
@@ -1691,20 +1909,37 @@ export default function ProductFormWizard({
                         </React.Fragment>
                     ))}
                 </View>
+
+                {/* Mobile version for Title */}
+                {mobile && (
+                    <View style={{ width: '100%', alignItems: 'center', marginTop: 16 }}>
+                        {(() => {
+                            const data = getStepData();
+                            return (
+                                <View style={{ alignItems: 'center' }}>
+                                    <Text style={[styles.stepTitle, { marginBottom: 4, textAlign: 'center' }]}>{data.title}</Text>
+                                    {data.description ? <Text style={[styles.stepDescription, { marginBottom: 0, textAlign: 'center' }]}>{data.description}</Text> : null}
+                                </View>
+                            );
+                        })()}
+                    </View>
+                )}
+
+                {/* Right side: Optimization Score */}
+                {!mobile && (
+                    <View style={{ position: 'absolute', right: 20, top: 0, bottom: 0, justifyContent: 'center', zIndex: 10 }}>
+                        <Tooltip content="Listing Optimization Score: Higher scores lead to better visibility." position="left">
+                            <OptimizationScoreCircle score={optimizationScoreResult.totalScore} size={36} strokeWidth={3} />
+                        </Tooltip>
+                    </View>
+                )}
             </View>
 
             {/* Main Content Area */}
             <View style={styles.mainContent}>
-                <View style={{ flex: 1, flexDirection: 'column' }}>
+                <View style={{ flex: 1, flexDirection: 'column', position: 'relative' }}>
+                    
                     {/* Form Area */}
-                    {/* Sticky Section Title */}
-                    <View style={{ paddingHorizontal: 20, paddingTop: 20, backgroundColor: theme.colors.background, zIndex: 10 }}>
-                        {(() => {
-                            const data = getStepData();
-                            return <SectionTitleWithScore title={data.title} description={data.description} style={{ marginBottom: 12 }} />
-                        })()}
-                    </View>
-
                     {currentStep === 3 ? (
                         <View style={[styles.formArea, !mobile && showPreview && { flex: 1 }, { flex: 1 }]}>
                             {renderStepContent()}
@@ -1712,7 +1947,7 @@ export default function ProductFormWizard({
                     ) : (
                         <ScrollView
                             style={[styles.formArea, !mobile && showPreview && { flex: 1 }]}
-                            contentContainerStyle={[styles.formAreaContent, { paddingTop: 0 }]}
+                            contentContainerStyle={styles.formAreaContent}
                             showsVerticalScrollIndicator={false}
                         >
                             {renderStepContent()}
@@ -1735,13 +1970,19 @@ export default function ProductFormWizard({
                             )}
 
                             {currentStep < 4 ? (
-                                <Pressable
-                                    style={styles.primaryButton}
-                                    onPress={() => goToStep(currentStep + 1)}
-                                >
-                                    <Text style={styles.primaryButtonText}>Next</Text>
-                                    <ArrowRight size={18} color="white" />
-                                </Pressable>
+                                (() => {
+                                    const isNextDisabled = currentStep === 1 && images.length === 0;
+                                    return (
+                                        <Pressable
+                                            style={[styles.primaryButton, isNextDisabled && styles.buttonDisabled]}
+                                            onPress={() => goToStep(currentStep + 1)}
+                                            disabled={isNextDisabled}
+                                        >
+                                            <Text style={styles.primaryButtonText}>Next</Text>
+                                            <ArrowRight size={18} color="white" />
+                                        </Pressable>
+                                    );
+                                })()
                             ) : (
                                 <Pressable
                                     style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -1832,7 +2073,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 24,
-        marginBottom: 24,
+        marginBottom: 8,
         borderWidth: 1,
         borderColor: theme.colors.border,
         shadowColor: '#000',
@@ -1965,7 +2206,6 @@ const styles = StyleSheet.create({
     },
     formAreaContent: {
         padding: 20,
-        paddingBottom: 100,
     },
     previewPanel: {
         width: 380,

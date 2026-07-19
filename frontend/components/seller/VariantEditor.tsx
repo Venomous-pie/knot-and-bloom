@@ -11,6 +11,7 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     useWindowDimensions,
@@ -78,80 +79,48 @@ function CustomOptionsModal({ visible, onClose, onGenerate }: CustomOptionsModal
     };
 
     return (
-        <Modal
-            visible={visible}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={handleClose}
-        >
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Pressable style={styles.modalOverlay} onPress={handleClose} />
-                <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Quick Add Variants</Text>
-                    <Text style={styles.modalSubtitle}>Create multiple variants at once by listing your options.</Text>
+        <Modal visible={visible} transparent animationType="fade">
+            <View style={modalStyles.overlay}>
+                <View style={modalStyles.content}>
+                    <Text style={modalStyles.title}>Generate Variants</Text>
+                    <Text style={modalStyles.desc}>
+                        Enter comma-separated values to automatically generate variant combinations.
+                    </Text>
 
-                    <ScrollView style={{ maxHeight: 450, width: '100%' }} showsVerticalScrollIndicator={false}>
-                        <View style={styles.field}>
-                            <Text style={styles.fieldLabel}>Primary Options (comma separated)</Text>
-                            <TextInput
-                                style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
-                                value={list1}
-                                onChangeText={setList1}
-                                placeholder="e.g. Red, Blue, White"
-                                placeholderTextColor={theme.colors.textLight}
-                                autoCapitalize="sentences"
-                                multiline
-                            />
-                        </View>
+                    <View style={modalStyles.inputGroup}>
+                        <Text style={modalStyles.label}>Option 1 (e.g., Colors)</Text>
+                        <TextInput
+                            style={modalStyles.input}
+                            value={list1}
+                            onChangeText={setList1}
+                            placeholder="Red, Blue, Green..."
+                            placeholderTextColor={theme.colors.textLight}
+                        />
+                    </View>
 
-                        <View style={[styles.field, { marginTop: 16 }]}>
-                            <Text style={styles.fieldLabel}>Secondary Options - Optional</Text>
-                            <Text style={{ fontSize: 12, color: theme.colors.textLight, marginBottom: 8, marginTop: -4 }}>
-                                If provided, we'll combine these with your primary options.
-                            </Text>
-                            <TextInput
-                                style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
-                                value={list2}
-                                onChangeText={setList2}
-                                placeholder="e.g. Small, Medium, Large"
-                                placeholderTextColor={theme.colors.textLight}
-                                autoCapitalize="sentences"
-                                multiline
-                            />
-                        </View>
+                    <View style={modalStyles.inputGroup}>
+                        <Text style={modalStyles.label}>Option 2 (e.g., Sizes) - Optional</Text>
+                        <TextInput
+                            style={modalStyles.input}
+                            value={list2}
+                            onChangeText={setList2}
+                            placeholder="Small, Medium, Large..."
+                            placeholderTextColor={theme.colors.textLight}
+                        />
+                    </View>
 
-                        {combinations.length > 0 && (
-                            <View style={{ marginTop: 20, padding: 16, backgroundColor: theme.colors.backgroundAlt, borderRadius: 12 }}>
-                                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.text, marginBottom: 12 }}>
-                                    Preview ({combinations.length} variant{combinations.length !== 1 && 's'} will be created)
-                                </Text>
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                                    {combinations.slice(0, 8).map((combo, i) => (
-                                        <View key={i} style={{ backgroundColor: 'white', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
-                                            <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '500' }}>{combo}</Text>
-                                        </View>
-                                    ))}
-                                    {combinations.length > 8 && (
-                                        <View style={{ backgroundColor: 'transparent', paddingHorizontal: 4, paddingVertical: 6, justifyContent: 'center' }}>
-                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontWeight: '500' }}>+ {combinations.length - 8} more</Text>
-                                        </View>
-                                    )}
-                                </View>
-                            </View>
-                        )}
-                    </ScrollView>
-
-                    <View style={styles.modalActions}>
-                        <Pressable style={styles.modalCancel} onPress={handleClose}>
-                            <Text style={styles.modalCancelText}>Cancel</Text>
+                    <View style={modalStyles.actions}>
+                        <Pressable style={modalStyles.cancelBtn} onPress={handleClose}>
+                            <Text style={modalStyles.cancelBtnText}>Cancel</Text>
                         </Pressable>
                         <Pressable
-                            style={[styles.modalGenerate, combinations.length === 0 && styles.disabledBtn]}
+                            style={[modalStyles.generateBtn, combinations.length === 0 && { opacity: 0.5 }]}
                             onPress={handleGenerate}
                             disabled={combinations.length === 0}
                         >
-                            <Sparkles size={16} color="white" />
-                            <Text style={styles.modalGenerateText}>Create</Text>
+                            <Text style={modalStyles.generateBtnText}>
+                                Generate {combinations.length > 0 ? `(${combinations.length})` : ''}
+                            </Text>
                         </Pressable>
                     </View>
                 </View>
@@ -159,6 +128,82 @@ function CustomOptionsModal({ visible, onClose, onGenerate }: CustomOptionsModal
         </Modal>
     );
 }
+
+const modalStyles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    content: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+    },
+    title: {
+        fontFamily: 'Quicksand',
+        fontWeight: '700',
+        fontSize: 20,
+        color: theme.colors.text,
+        marginBottom: 8,
+    },
+    desc: {
+        fontFamily: 'Quicksand',
+        fontSize: 14,
+        color: theme.colors.textLight,
+        marginBottom: 20,
+    },
+    inputGroup: {
+        marginBottom: 16,
+    },
+    label: {
+        fontFamily: 'Quicksand',
+        fontWeight: '600',
+        fontSize: 14,
+        color: theme.colors.text,
+        marginBottom: 8,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 8,
+        padding: 12,
+        fontFamily: 'Quicksand',
+        fontSize: 15,
+        backgroundColor: '#F8FAFC',
+    },
+    actions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+        marginTop: 24,
+    },
+    cancelBtn: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+    },
+    cancelBtnText: {
+        fontFamily: 'Quicksand',
+        fontWeight: '600',
+        color: theme.colors.textLight,
+    },
+    generateBtn: {
+        backgroundColor: theme.colors.primary,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 8,
+    },
+    generateBtnText: {
+        fontFamily: 'Quicksand',
+        fontWeight: '600',
+        color: '#fff',
+    },
+});
 
 export interface VariantData {
     uid?: number;
@@ -169,6 +214,9 @@ export interface VariantData {
     discountPercentage: string;
     images: string[];
     materials?: string;
+    hasNoImage?: boolean;
+    isEnabled?: boolean;
+    options?: Record<string, string>;
 }
 
 interface VariantEditorProps {
@@ -211,7 +259,7 @@ export default function VariantEditor({
     const [materialInputs, setMaterialInputs] = useState<Record<number, string>>({});
 
     const handleNumericInput = (index: number, field: keyof VariantData, value: string, allowDecimal = false, max?: number) => {
-        let cleanValue = allowDecimal 
+        let cleanValue = allowDecimal
             ? value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1').replace(/^0+(?=\d)/, '')
             : value.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '');
 
@@ -318,10 +366,6 @@ export default function VariantEditor({
                     {variants.length} variant{variants.length !== 1 ? 's' : ''}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable style={styles.outlineButton} onPress={() => setBulkModalVisible(true)}>
-                        <Layers size={16} color={theme.colors.primary} />
-                        <Text style={styles.outlineButtonText}>Quick Add</Text>
-                    </Pressable>
                     <Pressable style={styles.addButton} onPress={addVariant}>
                         <Plus size={16} color="white" />
                         <Text style={styles.addButtonText}>Add Variant</Text>
@@ -478,7 +522,7 @@ export default function VariantEditor({
                                             </Text>
                                         )}
                                     </View>
-                                    
+
                                     {/* Selected or Inherited Chips */}
                                     {(() => {
                                         const hasOwnMaterials = (variant.materials || '').trim().length > 0;
@@ -523,15 +567,32 @@ export default function VariantEditor({
                                     })()}
 
                                     <View style={[
-                                        styles.input, 
-                                        focusedField === getFieldKey(index, 'materials') && styles.inputFocused, 
+                                        styles.input,
+                                        focusedField === getFieldKey(index, 'materials') && styles.inputFocused,
                                         variantErrors[`variant-${index}-materials`] && styles.inputError,
                                         { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 }
                                     ]}>
                                         <TextInput
                                             style={{ flex: 1, paddingVertical: 12, outlineStyle: 'none' } as any}
                                             value={materialInputs[index] || ''}
-                                            onChangeText={(text) => setMaterialInputs(prev => ({ ...prev, [index]: text }))}
+                                            onChangeText={(text) => {
+                                                if (text.includes(',')) {
+                                                    const newParts = text.split(',');
+                                                    let lastPart = newParts.pop() || '';
+                                                    const currentParts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
+                                                    
+                                                    for (const part of newParts) {
+                                                        const p = part.trim();
+                                                        if (p && currentParts.length < 5 && !currentParts.includes(p)) {
+                                                            currentParts.push(p);
+                                                        }
+                                                    }
+                                                    updateVariant(index, 'materials', currentParts.join(', '));
+                                                    setMaterialInputs(prev => ({ ...prev, [index]: lastPart }));
+                                                } else {
+                                                    setMaterialInputs(prev => ({ ...prev, [index]: text }));
+                                                }
+                                            }}
                                             placeholder={(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length >= 5 ? 'Maximum items reached' : 'Type and press Enter, or select below...'}
                                             placeholderTextColor={theme.colors.textLight}
                                             editable={(variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5}
@@ -555,7 +616,7 @@ export default function VariantEditor({
                                             }}
                                         />
                                         {(materialInputs[index] || '').trim().length > 0 && (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5 && (
-                                            <Pressable 
+                                            <Pressable
                                                 style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginLeft: 8 }}
                                                 onPress={() => {
                                                     const currentInput = (materialInputs[index] || '').trim();
@@ -577,18 +638,22 @@ export default function VariantEditor({
                                     <Text style={{ fontSize: 11, color: theme.colors.textLight, marginTop: 4 }}>
                                         Hint: Type a material and press Enter to add multiple items, or select from the presets below.
                                     </Text>
-                                    
+
                                     {/* Smart Suggestions */}
                                     {focusedField === getFieldKey(index, 'materials') && (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5 && (() => {
                                         // Build context-aware suggestions (case-insensitive lookup)
                                         const allSuggestions = new Set<string>();
+                                        const smartSuggestions = new Set<string>();
                                         const lowerCatMaterials = Object.fromEntries(
                                             Object.entries(MATERIAL_SUGGESTIONS).map(([k, v]) => [k.toLowerCase(), v])
                                         );
-                                        
+
                                         categories.forEach(cat => {
                                             const catKey = cat.toLowerCase();
-                                            (lowerCatMaterials[catKey] || []).forEach(m => allSuggestions.add(m));
+                                            (lowerCatMaterials[catKey] || []).forEach(m => {
+                                                allSuggestions.add(m);
+                                                smartSuggestions.add(m);
+                                            });
                                         });
                                         if (allSuggestions.size === 0) {
                                             UNIVERSAL_MATERIALS.forEach(m => allSuggestions.add(m));
@@ -596,7 +661,7 @@ export default function VariantEditor({
 
                                         const currentInput = (materialInputs[index] || '').toLowerCase().trim();
                                         const currentMaterials = (variant.materials || '').toLowerCase().split(',').map(s => s.trim());
-                                        
+
                                         const available = Array.from(allSuggestions).filter(m => !currentMaterials.includes(m.toLowerCase()));
                                         const filtered = currentInput
                                             ? available.filter(m => m.toLowerCase().includes(currentInput))
@@ -604,35 +669,46 @@ export default function VariantEditor({
 
                                         if (filtered.length === 0) return null;
 
+                                        const sorted = [...filtered].sort((a, b) => {
+                                            const aSug = smartSuggestions.has(a);
+                                            const bSug = smartSuggestions.has(b);
+                                            if (aSug && !bSug) return -1;
+                                            if (!aSug && bSug) return 1;
+                                            return 0;
+                                        });
+
                                         return (
-                                            <View style={styles.materialSuggestions}>
-                                                <Text style={{ fontSize: 11, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 6 }}>
+                                            <View style={[styles.materialSuggestions, { padding: 12, backgroundColor: theme.colors.primary + '0A', borderRadius: 8, marginTop: 8 }]}>
+                                                <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 8 }}>
                                                     💡 Suggested materials {currentInput ? 'matching your input' : 'for your categories'}:
                                                 </Text>
-                                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                                                    {filtered.slice(0, 5).map((material) => (
-                                                        <Pressable
-                                                            key={material}
-                                                            style={{
-                                                                flexDirection: 'row', alignItems: 'center', gap: 3,
-                                                                backgroundColor: theme.colors.background,
-                                                                borderWidth: 1,
-                                                                borderColor: theme.colors.border,
-                                                                borderStyle: 'dashed',
-                                                                paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
-                                                            }}
-                                                            onPress={() => {
-                                                                const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
-                                                                if (parts.length < 5 && !parts.includes(material)) {
-                                                                    parts.push(material);
-                                                                    updateVariant(index, 'materials', parts.join(', '));
-                                                                }
-                                                                setMaterialInputs(prev => ({ ...prev, [index]: '' }));
-                                                            }}
-                                                        >
-                                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontWeight: '500', fontFamily: 'Quicksand' }}>+ {material}</Text>
-                                                        </Pressable>
-                                                    ))}
+                                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                                    {sorted.slice(0, 5).map((material) => {
+                                                        const isSug = smartSuggestions.has(material) && !currentInput;
+                                                        return (
+                                                            <Pressable
+                                                                key={material}
+                                                                style={{
+                                                                    backgroundColor: 'white',
+                                                                    paddingHorizontal: 12, paddingVertical: 6,
+                                                                    borderRadius: 20, borderWidth: 1,
+                                                                    borderColor: isSug ? theme.colors.secondary + '50' : theme.colors.border,
+                                                                    flexDirection: 'row', alignItems: 'center', gap: 4
+                                                                }}
+                                                                onPress={() => {
+                                                                    const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
+                                                                    if (parts.length < 5 && !parts.includes(material)) {
+                                                                        parts.push(material);
+                                                                        updateVariant(index, 'materials', parts.join(', '));
+                                                                    }
+                                                                    setMaterialInputs(prev => ({ ...prev, [index]: '' }));
+                                                                }}
+                                                            >
+                                                                <Text style={{ fontSize: 12, color: theme.colors.text, fontFamily: 'Quicksand' }}>+ {material}</Text>
+                                                                {isSug && <Text style={{ fontSize: 9, color: theme.colors.secondary, fontWeight: '700', marginLeft: 4 }}>★</Text>}
+                                                            </Pressable>
+                                                        );
+                                                    })}
                                                 </View>
                                             </View>
                                         );
@@ -749,21 +825,58 @@ export default function VariantEditor({
                                 {/* Variant Image Upload (non-Default variants only) */}
                                 {index > 0 && (
                                     <View style={styles.field}>
-                                        <Text style={[
-                                            styles.fieldLabel,
-                                            variantErrors[`variant-${index}-images`] && { color: theme.colors.error }
-                                        ]}>
-                                            Variant Images *
-                                        </Text>
-                                        <View style={variantErrors[`variant-${index}-images`] ? styles.imageErrorBorder : undefined}>
-                                            <ImageUploader
-                                                compact
-                                                maxImages={3}
-                                                images={variant.images ? variant.images.map(uri => ({ uri, isUrl: true })) : []}
-                                                onImagesChange={(imgs) => updateVariant(index, 'images', imgs.map(img => img.uri))}
+                                        <View style={[styles.fieldLabelRow, { marginBottom: 8 }]}>
+                                            <Text style={[
+                                                styles.fieldLabel,
+                                                variantErrors[`variant-${index}-images`] && !variant.hasNoImage && { color: theme.colors.error },
+                                                { marginBottom: 0 }
+                                            ]}>
+                                                Variant Images {variant.hasNoImage ? '' : '*'}
+                                            </Text>
+                                        </View>
+
+                                        <View style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            backgroundColor: theme.colors.background,
+                                            padding: 12,
+                                            borderRadius: 8,
+                                            borderWidth: 1,
+                                            borderColor: theme.colors.border,
+                                            marginBottom: 12,
+                                        }}>
+                                            <View style={{ flex: 1, paddingRight: 16 }}>
+                                                <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text, fontFamily: 'Quicksand' }}>Use main product image</Text>
+                                                <Text style={{ fontSize: 12, color: theme.colors.textLight, marginTop: 2, fontFamily: 'Quicksand' }}>
+                                                    Enable this if the variant doesn't have its own specific image.
+                                                </Text>
+                                            </View>
+                                            <Switch
+                                                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                                                thumbColor="#fff"
+                                                onValueChange={(val) => {
+                                                    updateVariant(index, 'hasNoImage', val);
+                                                    if (val && variantErrors[`variant-${index}-images`]) {
+                                                        const newErrors = { ...variantErrors };
+                                                        delete newErrors[`variant-${index}-images`];
+                                                    }
+                                                }}
+                                                value={!!variant.hasNoImage}
                                             />
                                         </View>
-                                        {variantErrors[`variant-${index}-images`] && (
+
+                                        {!variant.hasNoImage && (
+                                            <View style={variantErrors[`variant-${index}-images`] ? styles.imageErrorBorder : undefined}>
+                                                <ImageUploader
+                                                    compact
+                                                    maxImages={3}
+                                                    images={variant.images ? variant.images.map(uri => ({ uri, isUrl: true })) : []}
+                                                    onImagesChange={(imgs) => updateVariant(index, 'images', imgs.map(img => img.uri))}
+                                                />
+                                            </View>
+                                        )}
+                                        {variantErrors[`variant-${index}-images`] && !variant.hasNoImage && (
                                             <Text style={styles.errorText}>{variantErrors[`variant-${index}-images`]}</Text>
                                         )}
                                     </View>
@@ -1333,7 +1446,8 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.backgroundAlt,
         borderWidth: 1,
         borderColor: theme.colors.border,
-        paddingVertical: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
     },
     materialChipsRow: {
         flexDirection: 'row',

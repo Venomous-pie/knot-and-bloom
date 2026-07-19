@@ -26,6 +26,8 @@ model Product {
   status                  ProductStatus    @default(PENDING)
   version                 Int              @default(0)
   isCodAllowed            Boolean          @default(true)
+  isBundle                Boolean          @default(false)
+  bundleQuantity          Int?
   materials               String?
   metaDescription         String?
   metaTitle               String?

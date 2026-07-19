@@ -20,6 +20,8 @@ export interface VariantData {
     price: string;
     discountPercentage: string;
     images: string[];
+    materials?: string;
+    hasNoImage?: boolean;
 }
 
 interface ProductFormProps {

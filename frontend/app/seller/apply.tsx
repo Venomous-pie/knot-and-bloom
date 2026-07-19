@@ -3,6 +3,7 @@ import { sellerAPI } from "@/api/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDraft } from "@/hooks/useDraft";
 import { Link, RelativePathString, useRouter } from "expo-router";
+import { categoryTitles } from "@/constants/categories";
 import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -20,12 +21,10 @@ import {
     KeyboardAvoidingView
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// Removed image upload imports
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from '@/constants/theme';
 import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
-
-// ImageUploadSection removed
+import ImageUploader from '@/components/seller/ImageUploader';
 
 export default function SellerApplyPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
@@ -44,12 +43,18 @@ export default function SellerApplyPage() {
     const [description, setDescription] = useState("");
     const [businessType, setBusinessType] = useState("Individual");
     const [productCategories, setProductCategories] = useState<string[]>([]);
+    const [categorySearch, setCategorySearch] = useState("");
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
     const [isBusinessTypeOpen, setIsBusinessTypeOpen] = useState(false);
     const [isHandmade, setIsHandmade] = useState(false);
     const [hasPriorExperience, setHasPriorExperience] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState("");
     const [email, setEmail] = useState(""); // Add email state
     const [socialLink, setSocialLink] = useState("");
+    const [sampleItems, setSampleItems] = useState<{uri: string, isUrl?: boolean}[]>([]);
+    const [salesChannels, setSalesChannels] = useState<string[]>([]);
+    const [monthlyOrders, setMonthlyOrders] = useState("");
+    const [isMonthlyOrdersOpen, setIsMonthlyOrdersOpen] = useState(false);
     
     // KYC Fields
     const [legalName, setLegalName] = useState("");
@@ -61,6 +66,28 @@ export default function SellerApplyPage() {
 
     const [termsAccepted, setTermsAccepted] = useState(false);
 
+    const handleAddCategoryInput = (input: string) => {
+        if (!input.trim()) return;
+        const parts = input.split(',').map(p => p.trim()).filter(Boolean);
+        const ALL_CATEGORIES = Object.values(categoryTitles);
+        
+        setProductCategories(prev => {
+            const combined = [...prev];
+            parts.forEach(part => {
+                const cased = part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+                const exactMatch = ALL_CATEGORIES.find(c => c.toLowerCase() === cased.toLowerCase());
+                const finalCat = exactMatch || cased;
+                
+                if (!combined.some(c => c.toLowerCase() === finalCat.toLowerCase())) {
+                    combined.push(finalCat);
+                }
+            });
+            return combined;
+        });
+        setCategorySearch("");
+        setIsCategoryDropdownOpen(false);
+    };
+
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -68,7 +95,8 @@ export default function SellerApplyPage() {
     const draftData = {
         currentStep, shopName, description, businessType, productCategories,
         isHandmade, hasPriorExperience, phoneNumber, email, socialLink,
-        legalName, businessAddress, portfolioLink, idType, idNumber, termsAccepted
+        legalName, businessAddress, portfolioLink, idType, idNumber, termsAccepted,
+        sampleItems, salesChannels, monthlyOrders
     };
 
     const { clearDraft } = useDraft({
@@ -92,6 +120,9 @@ export default function SellerApplyPage() {
             if (draft.idType) setIdType(draft.idType);
             if (draft.idNumber) setIdNumber(draft.idNumber);
             if (draft.termsAccepted !== undefined) setTermsAccepted(draft.termsAccepted);
+            if (draft.sampleItems) setSampleItems(draft.sampleItems);
+            if (draft.salesChannels) setSalesChannels(draft.salesChannels);
+            if (draft.monthlyOrders) setMonthlyOrders(draft.monthlyOrders);
         },
     });
 
@@ -125,6 +156,10 @@ export default function SellerApplyPage() {
         if (description.length > 500) newErrors.description = "Description must be 500 characters or less";
         
         if (productCategories.length === 0) newErrors.productCategories = "At least one category is required";
+        
+        if (sampleItems.length === 0) newErrors.sampleItems = "At least one sample item photo is required";
+        
+        if (!isHandmade) newErrors.isHandmade = "You must confirm that your items are handmade";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -149,16 +184,6 @@ export default function SellerApplyPage() {
             newErrors.email = "Please enter a valid email address";
         }
 
-        const trimmedSocial = socialLink.trim();
-        if (!trimmedSocial) {
-            newErrors.socialLink = "Social media link is required to verify identity.";
-        } else {
-            const urlRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
-            if (!urlRegex.test(trimmedSocial)) {
-                newErrors.socialLink = "Please enter a valid URL";
-            }
-        }
-
         const trimmedLegalName = legalName.trim();
         if (!trimmedLegalName) {
             newErrors.legalName = "Legal name is required.";
@@ -171,6 +196,13 @@ export default function SellerApplyPage() {
             newErrors.businessAddress = "Full business address is required.";
         } else if (trimmedAddress.length < 5) {
             newErrors.businessAddress = "Please provide a complete address.";
+        }
+
+        const trimmedPortfolio = portfolioLink.trim();
+        if (!trimmedPortfolio) {
+            newErrors.portfolioLink = "Personal social media link is required.";
+        } else if (trimmedPortfolio.length < 3) {
+            newErrors.portfolioLink = "Please provide a valid link.";
         }
 
         if (idType && !idNumber.trim()) {
@@ -188,7 +220,21 @@ export default function SellerApplyPage() {
         return Object.keys(newErrors).length === 0;
     };
 
+    const isStep1Valid = shopName.trim().length >= 3 && shopName.trim().length <= 50 && description.length <= 500 && productCategories.length > 0 && sampleItems.length > 0 && isHandmade;
+    
+    const isStep2Valid = 
+        legalName.trim().length >= 2 &&
+        businessAddress.trim().length >= 5 &&
+        portfolioLink.trim().length >= 3 &&
+        phoneNumber.trim() !== '' && !/[a-zA-Z]/.test(phoneNumber.trim()) && phoneNumber.trim().replace(/[^0-9]/g, '').length >= 10 &&
+        email.trim() !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+        (!idType || idNumber.trim() !== '');
+
+    const isNextDisabled = (currentStep === 1 && !isStep1Valid) || (currentStep === 2 && !isStep2Valid);
+
     const handleNext = () => {
+        if (isNextDisabled) return;
+        
         let isValid = false;
         if (currentStep === 1) isValid = validateStep1();
         if (currentStep === 2) isValid = validateStep2();
@@ -221,8 +267,11 @@ export default function SellerApplyPage() {
                 productCategories: productCategories.length > 0 ? productCategories.join(", ") : undefined,
                 isHandmade: isHandmade,
                 hasPriorExperience: hasPriorExperience,
+                sampleItems: sampleItems.map(i => i.uri),
+                salesChannels: salesChannels,
+                monthlyOrders: monthlyOrders || undefined,
                 phone: phoneNumber.trim(),
-                socialMediaLink: socialLink.trim(),
+                socialMediaLink: socialLink.trim() || undefined,
                 email: email.trim(),
                 legalName: legalName.trim(),
                 businessAddress: businessAddress.trim(),
@@ -284,6 +333,144 @@ export default function SellerApplyPage() {
                 {errors.shopName && <Text style={styles.fieldError}>{errors.shopName}</Text>}
             </View>
 
+            <View style={[styles.formGroup, { zIndex: 11 }]}>
+                <Text style={styles.label}>Product Categories *</Text>
+                
+                {productCategories.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                        {productCategories.map(cat => (
+                            <TouchableOpacity 
+                                key={cat} 
+                                style={styles.selectedPill} 
+                                onPress={() => setProductCategories(prev => prev.filter(c => c !== cat))}
+                            >
+                                <Text style={styles.selectedPillText}>{cat} ✕</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                <View style={{ position: 'relative' }}>
+                    <TextInput
+                        style={[styles.input, focusedField === 'categorySearch' && styles.inputFocused, errors.productCategories && styles.inputError]}
+                        value={categorySearch}
+                        onChangeText={(text) => {
+                            if (text.includes(',')) {
+                                handleAddCategoryInput(text);
+                            } else {
+                                setCategorySearch(text);
+                                setIsCategoryDropdownOpen(true);
+                            }
+                        }}
+                        placeholder="Search or select categories..."
+                        placeholderTextColor={theme.colors.textLight}
+                        onFocus={() => {
+                            setFocusedField('categorySearch');
+                            setIsCategoryDropdownOpen(true);
+                        }}
+                        onBlur={() => {
+                            setFocusedField(null);
+                            setTimeout(() => setIsCategoryDropdownOpen(false), 200);
+                        }}
+                        onSubmitEditing={() => {
+                            handleAddCategoryInput(categorySearch);
+                        }}
+                    />
+                    <Ionicons 
+                        name={isCategoryDropdownOpen ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color={theme.colors.textLight} 
+                        style={{ position: 'absolute', right: 14, top: 14 }} 
+                    />
+                    
+                    {isCategoryDropdownOpen && (
+                        <View style={[styles.dropdownList, { maxHeight: 200, overflow: 'hidden', top: 50, zIndex: 100 }]}>
+                            <ScrollView nestedScrollEnabled>
+                                {(() => {
+                                    const ALL_CATEGORIES = Object.values(categoryTitles);
+                                    
+                                    // 1. Filter out already selected ones so we don't show duplicates
+                                    const unselectedCategories = ALL_CATEGORIES.filter(c => !productCategories.includes(c));
+                                    
+                                    // 2. Filter based on search text
+                                    const filteredCategories = unselectedCategories.filter(c => c.toLowerCase().includes(categorySearch.toLowerCase().trim()));
+                                    
+                                    // 3. Handle custom categories (if search doesn't exactly match any existing ALL_CATEGORIES)
+                                    const isCustomValid = categorySearch.trim().length > 0;
+                                    const exactMatchExists = ALL_CATEGORIES.some(c => c.toLowerCase() === categorySearch.toLowerCase().trim());
+                                    const showCustomAdd = isCustomValid && !exactMatchExists && !productCategories.some(c => c.toLowerCase() === categorySearch.toLowerCase().trim());
+                                    
+                                    const options = [...filteredCategories];
+                                    
+                                    if (options.length === 0 && !showCustomAdd) {
+                                        return (
+                                            <View style={styles.dropdownItem}>
+                                                <Text style={{ color: theme.colors.textLight }}>No categories found</Text>
+                                            </View>
+                                        );
+                                    }
+
+                                    return (
+                                        <>
+                                            {showCustomAdd && (
+                                                <TouchableOpacity 
+                                                    style={[
+                                                        styles.dropdownItem, 
+                                                        { borderBottomWidth: options.length > 0 ? 1 : 0, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }
+                                                    ]} 
+                                                    onPress={() => handleAddCategoryInput(categorySearch)}
+                                                >
+                                                    <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>
+                                                        + Add "{categorySearch.trim()}"
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            )}
+                                            {options.map((opt, idx) => (
+                                                <TouchableOpacity 
+                                                    key={opt} 
+                                                    style={[
+                                                        styles.dropdownItem, 
+                                                        idx !== options.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+                                                    ]} 
+                                                    onPress={() => handleAddCategoryInput(opt)}
+                                                >
+                                                    <Text style={{ color: theme.colors.text }}>{opt}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </>
+                                    );
+                                })()}
+                            </ScrollView>
+                        </View>
+                    )}
+                </View>
+                {errors.productCategories && <Text style={styles.fieldError}>{errors.productCategories}</Text>}
+            </View>
+
+            <View style={styles.formGroup}>
+                <Text style={styles.label}>Photo of 1-3 handmade items *</Text>
+                <Text style={styles.sublabel}>Show us a few examples of your work.</Text>
+                <ImageUploader 
+                    images={sampleItems}
+                    onImagesChange={setSampleItems}
+                    maxImages={3}
+                    compact
+                    hidePrimaryBadge
+                />
+                {errors.sampleItems && <Text style={styles.fieldError}>{errors.sampleItems}</Text>}
+            </View>
+
+            <Pressable
+                style={styles.termsContainer}
+                onPress={() => setIsHandmade(!isHandmade)}
+            >
+                <View style={[styles.checkbox, isHandmade && styles.checkboxChecked]}>
+                    {isHandmade && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.termsText}>I make these products by hand *</Text>
+            </Pressable>
+            {errors.isHandmade && <Text style={styles.fieldError}>{errors.isHandmade}</Text>}
+
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Description</Text>
                 <TextInput
@@ -336,53 +523,6 @@ export default function SellerApplyPage() {
                 )}
             </View>
 
-            <View style={[styles.formGroup, { zIndex: 1 }]}>
-                <Text style={styles.label}>Product Categories *</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                    {[
-                        "Jewelry", "Ceramics", "Digital Art", "Clothing", 
-                        "Home Decor", "Stationery", "Accessories", "Art & Collectibles"
-                    ].map(cat => {
-                        const isSelected = productCategories.includes(cat);
-                        return (
-                            <TouchableOpacity 
-                                key={cat} 
-                                style={{ 
-                                    paddingHorizontal: 12, 
-                                    paddingVertical: 8, 
-                                    borderRadius: 20, 
-                                    backgroundColor: isSelected ? theme.colors.primary : theme.colors.subtle, 
-                                    borderWidth: 1, 
-                                    borderColor: isSelected ? theme.colors.primaryDark : theme.colors.border 
-                                }} 
-                                onPress={() => {
-                                    if (isSelected) {
-                                        setProductCategories(prev => prev.filter(c => c !== cat));
-                                    } else {
-                                        setProductCategories(prev => [...prev, cat]);
-                                    }
-                                }}
-                            >
-                                <Text style={{ color: isSelected ? 'white' : theme.colors.textSecondary, fontSize: 13, fontWeight: isSelected ? '600' : '400' }}>
-                                    {cat}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-                {errors.productCategories && <Text style={styles.fieldError}>{errors.productCategories}</Text>}
-            </View>
-
-            <Pressable
-                style={styles.termsContainer}
-                onPress={() => setIsHandmade(!isHandmade)}
-            >
-                <View style={[styles.checkbox, isHandmade && styles.checkboxChecked]}>
-                    {isHandmade && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.termsText}>I make these products by hand</Text>
-            </Pressable>
-
             <Pressable
                 style={styles.termsContainer}
                 onPress={() => setHasPriorExperience(!hasPriorExperience)}
@@ -392,6 +532,96 @@ export default function SellerApplyPage() {
                 </View>
                 <Text style={styles.termsText}>I have prior experience selling online</Text>
             </Pressable>
+
+            {hasPriorExperience && (
+                <View style={styles.experienceSection}>
+                    <View style={[styles.formGroup, { zIndex: 9 }]}>
+                        <Text style={styles.label}>Where do you currently sell?</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                            {[
+                                "Facebook", "Instagram", "Shopee", "Lazada", "TikTok Shop", "Own Website", "Other"
+                            ].map(channel => {
+                                const isSelected = salesChannels.includes(channel);
+                                return (
+                                    <TouchableOpacity 
+                                        key={channel} 
+                                        style={{ 
+                                            paddingHorizontal: 12, 
+                                            paddingVertical: 8, 
+                                            borderRadius: 20, 
+                                            backgroundColor: isSelected ? theme.colors.primary : theme.colors.subtle, 
+                                            borderWidth: 1, 
+                                            borderColor: isSelected ? theme.colors.primaryDark : theme.colors.border 
+                                        }} 
+                                        onPress={() => {
+                                            if (isSelected) {
+                                                setSalesChannels(prev => prev.filter(c => c !== channel));
+                                            } else {
+                                                setSalesChannels(prev => [...prev, channel]);
+                                            }
+                                        }}
+                                    >
+                                        <Text style={{ color: isSelected ? 'white' : theme.colors.textSecondary, fontSize: 13, fontWeight: isSelected ? '600' : '400' }}>
+                                            {channel}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+                    <View style={[styles.formGroup, { zIndex: 8 }]}>
+                        <Text style={styles.label}>Approximate monthly orders</Text>
+                        <TouchableOpacity 
+                            style={styles.input} 
+                            onPress={() => setIsMonthlyOrdersOpen(!isMonthlyOrdersOpen)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{ color: monthlyOrders ? theme.colors.text : theme.colors.textLight }}>
+                                {monthlyOrders || "Select Range"}
+                            </Text>
+                            <Ionicons 
+                                name={isMonthlyOrdersOpen ? "chevron-up" : "chevron-down"} 
+                                size={20} 
+                                color={theme.colors.textLight} 
+                                style={{ position: 'absolute', right: 14, top: 14 }} 
+                            />
+                        </TouchableOpacity>
+                        {isMonthlyOrdersOpen && (
+                            <View style={styles.dropdownList}>
+                                {["1-5", "6-20", "21-50", "50+"].map((opt, idx) => (
+                                    <TouchableOpacity 
+                                        key={opt} 
+                                        style={[
+                                            styles.dropdownItem, 
+                                            idx !== 3 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }
+                                        ]} 
+                                        onPress={() => { setMonthlyOrders(opt); setIsMonthlyOrdersOpen(false); }}
+                                    >
+                                        <Text style={{ color: theme.colors.text }}>{opt}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>Link to existing shop/page</Text>
+                        <TextInput
+                            style={[styles.input, focusedField === 'socialLink' && styles.inputFocused]}
+                            value={socialLink}
+                            onChangeText={setSocialLink}
+                            placeholder="e.g. instagram.com/myshop"
+                            placeholderTextColor={theme.colors.textLight}
+                            selectionColor={theme.colors.primary}
+                            autoCapitalize="none"
+                            onFocus={() => setFocusedField('socialLink')}
+                            onBlur={() => setFocusedField(null)}
+                        />
+                    </View>
+                </View>
+            )}
+
         </Animated.View>
     );
 
@@ -478,35 +708,20 @@ export default function SellerApplyPage() {
             </View>
 
             <View style={styles.formGroup}>
-                <Text style={styles.label}>Social Media Link *</Text>
+                <Text style={styles.label}>Personal Social Media Link *</Text>
                 <TextInput
-                    style={[styles.input, focusedField === 'socialLink' && styles.inputFocused, errors.socialLink && styles.inputError]}
-                    value={socialLink}
-                    onChangeText={setSocialLink}
-                    placeholder="e.g. instagram.com/myshop"
-                    placeholderTextColor={theme.colors.textLight}
-                    selectionColor={theme.colors.primary}
-                    autoCapitalize="none"
-                    onFocus={() => setFocusedField('socialLink')}
-                    onBlur={() => setFocusedField(null)}
-                />
-                {errors.socialLink && <Text style={styles.fieldError}>{errors.socialLink}</Text>}
-                <Text style={styles.helperText}>Required to verify your existing presence and authenticity.</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-                <Text style={styles.label}>Portfolio / Website Link (Optional)</Text>
-                <TextInput
-                    style={[styles.input, focusedField === 'portfolioLink' && styles.inputFocused]}
+                    style={[styles.input, focusedField === 'portfolioLink' && styles.inputFocused, errors.portfolioLink && styles.inputError]}
                     value={portfolioLink}
                     onChangeText={setPortfolioLink}
-                    placeholder="e.g. myportfolio.com"
+                    placeholder="e.g. facebook.com/yourname"
                     placeholderTextColor={theme.colors.textLight}
                     selectionColor={theme.colors.primary}
                     autoCapitalize="none"
                     onFocus={() => setFocusedField('portfolioLink')}
                     onBlur={() => setFocusedField(null)}
                 />
+                <Text style={styles.helperText}>Provide a link to your personal profile for verification purposes and faster approval.</Text>
+                {errors.portfolioLink && <Text style={styles.fieldError}>{errors.portfolioLink}</Text>}
             </View>
 
             <View style={styles.divider} />
@@ -601,8 +816,13 @@ export default function SellerApplyPage() {
             </View>
 
             <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>Social Link:</Text>
+                <Text style={styles.reviewLabel}>Existing Shop Link:</Text>
                 <Text style={styles.reviewValue}>{socialLink || "N/A"}</Text>
+            </View>
+
+            <View style={styles.reviewSection}>
+                <Text style={styles.reviewLabel}>Personal Social Media:</Text>
+                <Text style={styles.reviewValue}>{portfolioLink}</Text>
             </View>
 
             <View style={styles.reviewSection}>
@@ -665,6 +885,40 @@ export default function SellerApplyPage() {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1 }}
             >
+                {!(isAlreadySeller && user?.sellerStatus !== "REJECTED") && (
+                    <View style={{ paddingTop: 20, paddingBottom: 10, backgroundColor: theme.colors.surface, zIndex: 100, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+                        <View style={[styles.stepIndicatorContainer, { marginBottom: 0, maxWidth: 600, alignSelf: 'center', paddingHorizontal: 24 }]}>
+                            {[{ num: 1, label: 'Shop Info' }, { num: 2, label: 'Identity' }, { num: 3, label: 'Review' }].map(({ num: step, label }) => (
+                            <React.Fragment key={step}>
+                                <View style={{ alignItems: 'center' }}>
+                                    <View style={[
+                                        styles.stepCircle,
+                                        currentStep >= step && styles.stepCircleActive
+                                    ]}>
+                                        {currentStep > step ? (
+                                            <Ionicons name="checkmark" size={16} color="white" />
+                                        ) : (
+                                            <Text style={[styles.stepNumber, currentStep >= step && styles.stepNumberActive]}>
+                                                {step}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    <Text style={{ fontSize: 10, color: currentStep >= step ? theme.colors.primary : theme.colors.textLight, marginTop: 4, fontWeight: currentStep >= step ? '600' : '400' }}>
+                                        {label}
+                                    </Text>
+                                </View>
+                                {step < 3 && (
+                                    <View style={[
+                                        styles.stepLine,
+                                        currentStep > step && styles.stepLineActive,
+                                        { marginBottom: 16 }
+                                    ]} />
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </View>
+                    </View>
+                )}
                 <ScrollView ref={scrollViewRef} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
                     <View style={[styles.contentContainer, styles.column]}>
                         {/* Centered Wizard Form */}
@@ -695,39 +949,7 @@ export default function SellerApplyPage() {
                                         </Pressable>
                                     </View>
                                 ) : (
-                                    <>
-                                        {/* Step Indicator */}
-                                        <View style={styles.stepIndicatorContainer}>
-                                            {[{ num: 1, label: 'Shop Info' }, { num: 2, label: 'Identity' }, { num: 3, label: 'Review' }].map(({ num: step, label }) => (
-                                                <React.Fragment key={step}>
-                                                    <View style={{ alignItems: 'center' }}>
-                                                        <View style={[
-                                                            styles.stepCircle,
-                                                            currentStep >= step && styles.stepCircleActive
-                                                        ]}>
-                                                            {currentStep > step ? (
-                                                                <Ionicons name="checkmark" size={16} color="white" />
-                                                            ) : (
-                                                                <Text style={[styles.stepNumber, currentStep >= step && styles.stepNumberActive]}>
-                                                                    {step}
-                                                                </Text>
-                                                            )}
-                                                        </View>
-                                                        <Text style={{ fontSize: 10, color: currentStep >= step ? theme.colors.primary : theme.colors.textLight, marginTop: 4, fontWeight: currentStep >= step ? '600' : '400' }}>
-                                                            {label}
-                                                        </Text>
-                                                    </View>
-                                                    {step < 3 && (
-                                                        <View style={[
-                                                            styles.stepLine,
-                                                            currentStep > step && styles.stepLineActive,
-                                                            { marginBottom: 16 }
-                                                        ]} />
-                                                    )}
-                                                </React.Fragment>
-                                            ))}
-                                        </View>
-
+                                    <View>
                                         {currentStep === 1 && renderStep1()}
                                         {currentStep === 2 && renderStep2()}
                                         {currentStep === 3 && renderStep3()}
@@ -739,7 +961,7 @@ export default function SellerApplyPage() {
                                                 onPress={() => router.replace("/" as RelativePathString)}
                                                 disabled={loading}
                                             >
-                                                <Text style={styles.backButtonText}>Cancel</Text>
+                                                <Text style={styles.backButtonText}>Exit</Text>
                                             </TouchableOpacity>
 
                                             {currentStep > 1 && (
@@ -756,9 +978,11 @@ export default function SellerApplyPage() {
                                                 <TouchableOpacity
                                                     style={[
                                                         styles.nextButton, 
-                                                        currentStep === 1 && styles.fullWidthButton
+                                                        currentStep === 1 && styles.fullWidthButton,
+                                                        isNextDisabled && styles.nextButtonDisabled
                                                     ]}
                                                     onPress={handleNext}
+                                                    disabled={isNextDisabled}
                                                 >
                                                     <Text style={styles.nextButtonText}>Next Step →</Text>
                                                 </TouchableOpacity>
@@ -779,7 +1003,7 @@ export default function SellerApplyPage() {
                                                 </TouchableOpacity>
                                             )}
                                         </View>
-                                    </>
+                                    </View>
                                 )}
                             </View>
                         </View>
@@ -983,9 +1207,18 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     helperText: {
-        fontSize: 12,
+        fontSize: 13,
         color: theme.colors.textLight,
-        marginTop: 4,
+        marginTop: 6,
+    },
+    experienceSection: {
+        marginTop: 8,
+        padding: 16,
+        backgroundColor: theme.colors.subtle,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        gap: 16,
     },
     input: {
         borderWidth: 1,
@@ -1034,6 +1267,19 @@ const styles = StyleSheet.create({
     },
     dropdownItem: {
         padding: 16,
+    },
+    selectedPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: theme.colors.primary,
+    },
+    selectedPillText: {
+        color: 'white',
+        fontSize: 13,
+        fontWeight: '600',
     },
     textArea: {
         height: 100,
@@ -1159,6 +1405,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 5,
     },
+    nextButtonDisabled: {
+        opacity: 0.5,
+        shadowOpacity: 0,
+    },
     fullWidthButton: {
         flex: 1,
     },
@@ -1183,7 +1433,6 @@ const styles = StyleSheet.create({
     },
     submitButtonDisabled: {
         opacity: 0.5,
-        backgroundColor: theme.colors.border, // More grayed out
         shadowOpacity: 0,
     },
     submitButtonText: {

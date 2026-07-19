@@ -8,7 +8,7 @@ import type { AuthPayload } from '../types/authTypes.js';
 import prisma from '../utils/prismaUtils.js';
 import { ensureAdminSellerProfile } from '../utils/sellerUtils.js';
 import { sellerSchema, registerSellerSchema } from '../validators/sellerValidator.js';
-import { socketService } from '../services/SocketService.js';
+import { supabaseService } from '../services/SupabaseService.js';
 
 export const sellerController = {
     // Flow B: Direct Register as Seller (Public)
@@ -56,6 +56,9 @@ export const sellerController = {
                         productCategories: data.productCategories ?? null,
                         isHandmade: data.isHandmade ?? false,
                         hasPriorExperience: data.hasPriorExperience ?? false,
+                        sampleItems: data.sampleItems ?? [],
+                        salesChannels: data.salesChannels ?? [],
+                        monthlyOrders: data.monthlyOrders ?? null,
                         legalName: data.legalName ?? null,
                         businessAddress: data.businessAddress ?? null,
                         portfolioLink: data.portfolioLink ?? null,
@@ -75,7 +78,7 @@ export const sellerController = {
                             type: 'system'
                         }))
                     });
-                    admins.forEach(admin => socketService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                    admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
                 }
 
                 return { customer, seller };
@@ -142,6 +145,9 @@ export const sellerController = {
                             productCategories: data.productCategories ?? null,
                             isHandmade: data.isHandmade ?? false,
                             hasPriorExperience: data.hasPriorExperience ?? false,
+                            sampleItems: data.sampleItems ?? [],
+                            salesChannels: data.salesChannels ?? [],
+                            monthlyOrders: data.monthlyOrders ?? null,
                             legalName: data.legalName ?? null,
                             businessAddress: data.businessAddress ?? null,
                             portfolioLink: data.portfolioLink ?? null,
@@ -164,7 +170,7 @@ export const sellerController = {
                                 type: 'system'
                             }))
                         });
-                        admins.forEach(admin => socketService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                        admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
                     }
 
                     return res.status(200).json(updatedSeller);
@@ -195,6 +201,9 @@ export const sellerController = {
                     productCategories: data.productCategories ?? null,
                     isHandmade: data.isHandmade ?? false,
                     hasPriorExperience: data.hasPriorExperience ?? false,
+                    sampleItems: data.sampleItems ?? [],
+                    salesChannels: data.salesChannels ?? [],
+                    monthlyOrders: data.monthlyOrders ?? null,
                     legalName: data.legalName ?? null,
                     businessAddress: data.businessAddress ?? null,
                     portfolioLink: data.portfolioLink ?? null,
@@ -216,7 +225,7 @@ export const sellerController = {
                         type: 'system'
                     }))
                 });
-                admins.forEach(admin => socketService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
             }
 
             res.status(201).json(seller);
@@ -318,7 +327,7 @@ export const sellerController = {
                         type: 'system',
                     }
                 });
-                socketService.emitToRoom(`user_${currentSeller.customerId}`, 'notification:new', {});
+                supabaseService.emitToRoom(`user_${currentSeller.customerId}`, 'notification:new', {});
 
                 const updatedSeller = await prisma.seller.findUnique({ where: { uid: targetSellerId } });
                 return res.json(updatedSeller);
@@ -343,7 +352,7 @@ export const sellerController = {
                         type: 'system',
                     }
                 });
-                socketService.emitToRoom(`user_${seller.customerId}`, 'notification:new', {});
+                supabaseService.emitToRoom(`user_${seller.customerId}`, 'notification:new', {});
 
                 return res.json(seller);
             }
@@ -816,64 +825,101 @@ export const sellerController = {
             if (!sellerId) return res.status(404).json({ error: "Seller profile not found" });
 
             // 1. Prepare Date Boundaries
+            // HARDCODED: Asia/Manila (UTC+8) is the single source of truth for Knot & Bloom date logic.
+            // This ensures midnight resets and SLA calculations are consistent for Filipino sellers regardless of server UTC time.
             const now = new Date();
-            const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-            sevenDaysAgo.setHours(0, 0, 0, 0);
+            
+            const getStartOfDayPHT = (dateObj: Date, offsetDays = 0) => {
+                const phtTime = new Date(dateObj.getTime() + (8 * 3600000));
+                phtTime.setUTCDate(phtTime.getUTCDate() + offsetDays);
+                const startOfPhtDay = new Date(Date.UTC(phtTime.getUTCFullYear(), phtTime.getUTCMonth(), phtTime.getUTCDate()));
+                return new Date(startOfPhtDay.getTime() - (8 * 3600000));
+            };
+
+            const startOfDay = getStartOfDayPHT(now);
+            
+            const phtNow = new Date(now.getTime() + (8 * 3600000));
+            const startOfMonthPHT = new Date(Date.UTC(phtNow.getUTCFullYear(), phtNow.getUTCMonth(), 1));
+            const startOfMonth = new Date(startOfMonthPHT.getTime() - (8 * 3600000));
+            
+            const startOfLastMonthPHT = new Date(Date.UTC(phtNow.getUTCFullYear(), phtNow.getUTCMonth() - 1, 1));
+            const startOfLastMonth = new Date(startOfLastMonthPHT.getTime() - (8 * 3600000));
+            
+            const endOfLastMonthPHT = new Date(Date.UTC(phtNow.getUTCFullYear(), phtNow.getUTCMonth(), 0, 23, 59, 59, 999));
+            const endOfLastMonth = new Date(endOfLastMonthPHT.getTime() - (8 * 3600000));
+            
+            const sevenDaysAgo = getStartOfDayPHT(now, -6);
+            
+            const SLA_24H = new Date(now.getTime() - (24 * 3600000));
+            const SLA_48H = new Date(now.getTime() - (48 * 3600000));
 
             // 2. Execute Independent Queries Concurrently
             const [
                 todayOrders,
-                pendingOrdersCount,
+                pendingOrders,
                 lowStockCount,
                 thisMonthMetrics,
                 lastMonthMetrics,
                 totalOrdersDistribution,
                 recentOrders,
-                completedOrders
+                completedOrders,
+                unreadMessagesCount
             ] = await Promise.all([
                 prisma.order.findMany({ where: { sellerId, uploaded: { gte: startOfDay } }, select: { total: true } }),
-                prisma.order.count({ where: { sellerId, status: 'PENDING' } }),
+                prisma.order.findMany({ where: { sellerId, status: 'PENDING' }, select: { uid: true, uploaded: true } }),
                 prisma.productVariant.count({ where: { product: { sellerId, deletedAt: null }, stock: { lt: 5 } } }),
                 prisma.order.aggregate({ where: { sellerId, uploaded: { gte: startOfMonth } }, _sum: { total: true, sellerEarnings: true }, _count: { uid: true } }),
                 prisma.order.aggregate({ where: { sellerId, uploaded: { gte: startOfLastMonth, lte: endOfLastMonth } }, _sum: { total: true }, _count: { uid: true } }),
                 prisma.order.groupBy({ by: ['status'], where: { sellerId }, _count: { uid: true } }),
                 prisma.order.findMany({ where: { sellerId, uploaded: { gte: sevenDaysAgo } }, select: { uploaded: true, total: true } }),
-                prisma.order.findMany({ where: { sellerId, status: 'COMPLETED' }, select: { items: { select: { productId: true, price: true, quantity: true } } } })
+                prisma.order.findMany({ where: { sellerId, status: 'COMPLETED' }, select: { items: { select: { productId: true, price: true, quantity: true } } } }),
+                prisma.notification.count({ where: { customerId: user.id, isRead: false } })
             ]);
 
             // 3. Process Data
             const todayRevenue = todayOrders.reduce((sum, order) => sum + Number(order.total), 0);
             const todayOrderCount = todayOrders.length;
 
+            let pendingNeutral = 0;
+            let pendingAmber = 0;
+            let pendingRed = 0;
+
+            pendingOrders.forEach(o => {
+                if (o.uploaded < SLA_48H) pendingRed++;
+                else if (o.uploaded < SLA_24H) pendingAmber++;
+                else pendingNeutral++;
+            });
+            
+            let pendingSeverity = 'NEUTRAL';
+            if (pendingRed > 0) pendingSeverity = 'RED';
+            else if (pendingAmber > 0) pendingSeverity = 'AMBER';
+
             const orderCounts = {
-                PENDING: 0,
+                PENDING: pendingOrders.length,
                 PROCESSING: 0,
                 COMPLETED: 0,
                 CANCELLED: 0
             };
 
+            let lifetimeTotalOrders = pendingOrders.length;
+
             totalOrdersDistribution.forEach(group => {
-                if (group.status === 'PENDING') orderCounts.PENDING += group._count.uid;
-                else if (['IN_PRODUCTION', 'READY_TO_SHIP'].includes(group.status)) orderCounts.PROCESSING += group._count.uid;
-                else if (group.status === 'COMPLETED') orderCounts.COMPLETED += group._count.uid;
-                else if (['CANCELLED', 'REJECTED'].includes(group.status)) orderCounts.CANCELLED += group._count.uid;
+                if (group.status === 'PENDING') { /* already counted */ }
+                else if (['IN_PRODUCTION', 'READY_TO_SHIP'].includes(group.status)) { orderCounts.PROCESSING += group._count.uid; lifetimeTotalOrders += group._count.uid; }
+                else if (group.status === 'COMPLETED') { orderCounts.COMPLETED += group._count.uid; lifetimeTotalOrders += group._count.uid; }
+                else if (['CANCELLED', 'REJECTED'].includes(group.status)) { orderCounts.CANCELLED += group._count.uid; lifetimeTotalOrders += group._count.uid; }
             });
 
             // 4. Sales Graph (Last 7 Days)
             const salesGraph = [];
             for (let i = 0; i < 7; i++) {
-                const date = new Date(sevenDaysAgo);
-                date.setDate(date.getDate() + i);
-                const dateString = date.toISOString().split('T')[0];
+                const date = getStartOfDayPHT(now, -6 + i);
+                const dateString = new Date(date.getTime() + (8 * 3600000)).toISOString().split('T')[0];
 
-                const dayOrders = recentOrders.filter(o =>
-                    o.uploaded.toISOString().split('T')[0] === dateString
-                );
+                const dayOrders = recentOrders.filter(o => {
+                    const oPHT = new Date(o.uploaded.getTime() + (8 * 3600000));
+                    return oPHT.toISOString().split('T')[0] === dateString;
+                });
 
                 salesGraph.push({
                     date: dateString,
@@ -924,7 +970,11 @@ export const sellerController = {
                     todayRevenue,
                     todayOrders: todayOrderCount,
                     todayVisitors: 0, // Placeholder until analytics
-                    pendingActions: pendingOrdersCount + lowStockCount
+                    pendingOrders: pendingOrders.length,
+                    lowStockItems: lowStockCount,
+                    unreadMessages: unreadMessagesCount,
+                    pendingOrdersSeverity: pendingSeverity,
+                    lifetimeTotalOrders
                 },
                 quickStats: {
                     thisMonthSales: Number(thisMonthMetrics._sum.total || 0),

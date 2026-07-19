@@ -1,38 +1,39 @@
-# Knot & Bloom - Business Model Analysis
+# Knot & Bloom: The Final Business Model
 
-## Platform Overview
+## 1. The Core Vision
+Knot & Bloom is a B2C2C multi-vendor marketplace exclusively for micro-creators—students, single parents, and local handcrafters in the Philippines. It is a heavily curated sanctuary from mass-produced imports, providing these artisans with professional tools without the steep fees or business registration hurdles of enterprise e-commerce.
 
-**Knot & Bloom** is a B2C2C multi-vendor marketplace for **handcrafted goods**, connecting independent artisans (sellers) with buyers (customers) through a unified mobile and web experience built with React Native (Expo) and Express.
+## 2. Revenue & Economics (The Survival Engine)
+To ensure the platform generates immediate cash flow while remaining hyper-affordable for sellers, the revenue model relies on three pillars:
+- **Platform Sustainability Fee (Seller Side):** A flat 2% deducted immediately from every successful sale. The seller keeps 98%.
+- **Order Routing Fee (Buyer Side):** A flat ₱15 fee charged to the buyer per unique maker in their cart.
+- **Premium Aesthetic Upgrades (High Margin):** Sellers can purchase bespoke digital assets—custom avatar frames, unique storefront layout materials, and dynamic clothing overlays for their profile portraits—to make their shop visually pop.
 
----
+## 3. The Payment & Escrow Architecture
+Because you must collect your 2% immediately, the platform acts as a central secure escrow rather than relying on direct peer-to-peer transfers.
+- **The Collection:** The buyer pays the grand total (Item + 2% Gateway Processing Fee + ₱15 Routing Fee) directly to Knot & Bloom's central GCash or PayMongo account.
+- **The Immediate Cut:** The system instantly skims the ₱15 routing fee and the 2% seller fee into your operational budget.
+- **The Escrow:** The remaining 98% of the item's price is credited to the seller's Pending Balance.
+- **The Payout:** Once the courier delivers the item, the funds move to the seller's Available Balance. The seller requests a withdrawal, which you process to their personal GCash or bank account.
 
-## Revenue Model
+## 4. The 20% COD Trust System
+Cash on Delivery is the lifeblood of Philippine e-commerce, but it carries high risks. Knot & Bloom eliminates this risk for artisans.
+- **The Deposit:** If a buyer selects COD, they must pay a 20% deposit upfront via the central platform gateway.
+- **The Fulfillment:** The artisan crafts the item with peace of mind. The courier collects the remaining 80% upon delivery.
+- **The Safety Net:** If the buyer refuses the package, the artisan keeps the 20% deposit to cover their materials, and the buyer's Customer Trust Score plummets, banning them from future COD purchases.
 
-| Revenue Stream         | Status         | Details                                              |
-| ---------------------- | -------------- | ---------------------------------------------------- |
-| **Commission Fee**     | ✅ Implemented | Default **5%** per seller (configurable by admin)    |
-| **COD Deposit**        | ✅ Implemented | **20% deposit** required for Cash-on-Delivery orders |
-| **Payment Processing** | 📋 Planned     | ~2-3% when integrated (Stripe/PayMongo)              |
+## 5. Lean Tech Stack & Infrastructure
+The architecture is stripped down to maximize your profit as a solo developer by leveraging free tiers and client-side processing.
+- **Backend & Database:** Supabase handles all PostgreSQL data storage and JWT authentication for free.
+- **Real-Time Events:** Supabase Realtime (Broadcast) replaces Socket.IO to handle live cart updates and order notifications statelessly.
+- **Media Hosting:** Supabase Storage replaces ImageKit. Product photos are aggressively compressed client-side via the browser's Canvas API before uploading to keep storage costs at zero.
+- **Frontend (Buyers, Sellers, Admin):** React Native (Expo) with Expo Router for a unified, seamless mobile and web experience across all dashboards, allowing you to iterate rapidly on a single codebase.
 
-### Market Comparison
-
-| Platform         | Commission | Payment Fee | Other          |
-| ---------------- | ---------- | ----------- | -------------- |
-| **Knot & Bloom** | **5%**     | TBD (~2-3%) | None           |
-| Etsy             | 6.5%       | 3-4%        | $0.20/listing  |
-| Shopee/Lazada PH | 2-5%       | 2%          | Various promos |
-
-> **Philosophy**: Low barrier for students, hobbyists, and small artisans to start selling their handcrafted goods.
-
----
-
-## User Types
-
-| Role         | Description                                                                              |
-| ------------ | ---------------------------------------------------------------------------------------- |
-| **Customer** | Browse products, manage cart & wishlist, place orders, track shipments, manage addresses  |
-| **Seller**   | Onboarded customer who manages products, fulfills orders, tracks earnings & withdrawals  |
-| **Admin**    | Platform oversight: approves sellers/products, manages global settings, reviews disputes  |
+## 6. Trust-Tiered Product Governance
+To prevent the admin panel from bottlenecking ahead of next month's launch, quality control is community-driven.
+- **Auto-Approval:** Once a seller completes their basic KYC identity check, their first 5 products bypass manual review and go live instantly.
+- **Proof of Work:** To block dropshippers, every product listing requires a "Work in Progress" (WIP) photo or workspace snapshot, proudly displayed to the buyer as proof of authenticity.
+- **Crowdsourced Moderation:** Buyers can use a "Report Listing" button to flag mass-produced goods, which sends the item directly to your admin dashboard for review.
 
 ---
 
@@ -95,9 +96,9 @@ REJECTED (can re-apply)
    - COD: 20% deposit upfront, balance on delivery
    - Card/Wallet: Full payment processed
 4. **Order Split by Seller** – Multi-seller cart creates separate orders per seller
-5. **Commission Calculation** – Platform fee, seller earnings, and shipping fee computed
+5. **Fee Calculation** – 2% Sustainability Fee, ₱15 Routing Fee, and shipping fee computed
 6. **Inventory Deduction** (atomic transaction with optimistic locking)
-7. **Seller Notification** (real-time via WebSocket)
+7. **Seller Notification** (Supabase Realtime Broadcast)
 8. **Order Timeline** – Full event history with photos and audit trail
 
 ### Payment Methods
@@ -106,9 +107,9 @@ REJECTED (can re-apply)
 | --------------- | -------------- | ------------------------------------------ |
 | `MOCK_CARD`     | ✅ Implemented | Simulated card payment                     |
 | `MOCK_WALLET`   | ✅ Implemented | Simulated e-wallet                         |
-| `COD`           | ✅ Implemented | Cash on Delivery (20% deposit, trust-gated)|
-| `GCASH`         | 📋 Planned     | Via PayMongo integration                   |
-| `PAYMAYA`       | 📋 Planned     | Via PayMongo integration                   |
+| `COD`           | ✅ Implemented | Cash on Delivery (20% deposit via central escrow)|
+| `GCASH`         | 📋 Planned     | Via Central Escrow (PayMongo integration)  |
+| `PAYMAYA`       | 📋 Planned     | Via Central Escrow (PayMongo integration)  |
 | `BANK`          | 📋 Planned     | Bank transfer support                      |
 
 ### COD Trust System
@@ -125,9 +126,9 @@ REJECTED (can re-apply)
 
 | Metric              | Status         | Description                                 |
 | ------------------- | -------------- | ------------------------------------------- |
-| **Commission Rate** | ✅ Implemented | 5% default (adjustable per seller)          |
-| **Platform Fee**    | ✅ Implemented | Calculated per order (subtotal × commission)|
-| **Seller Earnings** | ✅ Implemented | Per-order net earnings after platform fee   |
+| **Sustainability Fee**| ✅ Implemented | 2% flat deduction per successful sale       |
+| **Routing Fee**     | ✅ Implemented | ₱15 flat charge to buyer per unique maker   |
+| **Seller Earnings** | ✅ Implemented | Per-order net earnings (98% of subtotal)    |
 | **Pending Balance** | ✅ Implemented | Earnings awaiting clearance                 |
 | **Available Balance**| ✅ Implemented | Earnings available for withdrawal           |
 | **Total Withdrawn** | ✅ Implemented | Cumulative withdrawn amount                 |
@@ -162,7 +163,6 @@ REJECTED (can re-apply)
 | **Notifications**        | ✅ Implemented | Real-time via WebSocket + in-app notification center |
 | **Notification Settings**| ✅ Implemented | Toggle order updates, promotions, system messages |
 | **Account Deletion**     | ✅ Implemented | Scheduled soft-delete with grace period      |
-| **AI Customer Service**  | ✅ Implemented | HuggingFace-powered chat assistant           |
 | **Maker Profiles**       | ✅ Implemented | Browse and view seller/artisan storefronts   |
 
 ---
@@ -176,7 +176,7 @@ REJECTED (can re-apply)
 | **Product SEO**           | ✅ Implemented | Meta title, description, tags for discoverability |
 | **AI-Generated Content**  | ✅ Implemented | Auto-generate descriptions, SKUs, and SEO tags |
 | **Variant Editor**        | ✅ Implemented | Visual variant management with color picker    |
-| **Image Upload**          | ✅ Implemented | Multi-image upload with cropping via ImageKit  |
+| **Image Upload**          | ✅ Implemented | Multi-image upload with client-side Canvas compression via Supabase Storage |
 | **Order Management**      | ✅ Implemented | View, confirm, ship, and track all orders      |
 | **Earnings Dashboard**    | ✅ Implemented | Balance overview, withdrawal requests          |
 | **Notifications**         | ✅ Implemented | Seller-specific notification feed              |
@@ -224,7 +224,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 
 | Mechanism                | Status         | Purpose                                              |
 | ------------------------ | -------------- | ---------------------------------------------------- |
-| **Product Approval**     | ✅ Implemented | All products require admin review before going live   |
+| **Product Approval**     | ✅ Implemented | First 5 products auto-approved, subsequent require review or community moderation |
 | **Seller KYC**           | ✅ Implemented | Identity verification during application              |
 | **Seller Approval**      | ✅ Implemented | All seller applications reviewed by admin             |
 | **OTP Verification**     | ✅ Implemented | Email/phone verification for all registrations        |
@@ -250,12 +250,10 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 | ---------------- | -------------------------------------------- |
 | **Express.js**   | REST API server                              |
 | **Prisma ORM**   | Type-safe database access                    |
-| **PostgreSQL**   | Relational data persistence                  |
-| **Socket.IO**    | Real-time notifications & events             |
+| **PostgreSQL**   | Relational data persistence (via Supabase)   |
+| **Supabase**     | Real-time events, Storage, JWT Auth          |
 | **Passport.js**  | Google OAuth integration                     |
 | **node-cron**    | Scheduled jobs (session cleanup, auto-confirm)|
-| **ImageKit**     | Cloud image storage & transformation         |
-| **HuggingFace**  | AI-powered content generation                |
 
 ### Frontend
 
@@ -264,7 +262,7 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 | **React Native**    | Cross-platform mobile + web UI             |
 | **Expo (Router)**   | File-based routing, build toolchain        |
 | **Axios**           | HTTP client with JWT interceptors          |
-| **Socket.IO Client**| Real-time event subscriptions              |
+| **Supabase JS**     | Real-time event subscriptions              |
 | **AsyncStorage**    | Token persistence                          |
 
 ### Key Database Models
@@ -297,11 +295,10 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 | **PaymentService**       | Mock gateway (Stripe/PayMongo planned)       |
 | **SellerService**        | Performance metrics calculation              |
 | **SellerEarningsController** | Balance management & withdrawal processing |
-| **SocketService**        | WebSocket room management & event broadcasting|
+| **SupabaseService**      | Realtime channel management & event broadcasting|
 | **OtpService**           | OTP generation, validation, and expiry       |
 | **CronService**          | Scheduled cleanup & auto-confirmation jobs   |
 | **AuditService**         | Operation logging and audit trails           |
-| **GenerateService**      | HuggingFace AI content generation            |
 | **NotificationService**  | Push notification creation & delivery        |
 | **RefreshTokenService**  | JWT refresh token rotation                   |
 | **LoginRateLimiter**     | Brute-force auth protection                  |

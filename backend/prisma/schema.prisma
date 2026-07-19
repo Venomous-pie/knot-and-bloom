@@ -248,6 +248,9 @@ model Seller {
   rating              Decimal             @default(0)
   rejectionReason     String?
   socialMediaLink     String?
+  sampleItems         String[]
+  salesChannels       String[]
+  monthlyOrders       String?
   totalWithdrawn      Decimal             @default(0)
   orders              Order[]
   orderItems          OrderItem[]

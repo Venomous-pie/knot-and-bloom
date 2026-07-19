@@ -6,7 +6,7 @@ import { CheckoutStatus, OrderStatus, PaymentStatus } from '../../generated/pris
 import { AuditService } from '../services/AuditService.js';
 import { notifications } from '../services/notificationService.js';
 import { PaymentService } from '../services/PaymentService.js';
-import { socketService } from '../services/SocketService.js';
+import { supabaseService } from '../services/SupabaseService.js';
 import { SellerService } from '../services/SellerService.js';
 import { generateOrderReference } from '../utils/orderUtils.js';
 import { groupItemsBySeller, calculateShippingFee, buildOrderedProducts } from '../utils/checkoutHelpers.js';
@@ -847,11 +847,11 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         // 1. Inventory Updates (Trigger refetch for anyone viewing these products)
         const uniqueProductIds = [...new Set(lockedPrices.map(item => item.productId))];
         uniqueProductIds.forEach(pid => {
-            socketService.emit('product:updated', { productId: pid });
+            supabaseService.emit('product:updated', { productId: pid });
         });
 
         // 2. Cart Sync (Clear cart for this user on other devices)
-        socketService.emitToRoom(`user_${session.customerId}`, 'cart:updated', {
+        supabaseService.emitToRoom(`user_${session.customerId}`, 'cart:updated', {
             customerId: session.customerId,
             cart: { items: [] }
         });
@@ -860,7 +860,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         // We grouped itemsBySeller earlier.
         for (const [sellerId, sellerItems] of itemsBySeller) {
             if (sellerId) {
-                socketService.emitToRoom(`seller_${sellerId}`, 'vendor:notification', {
+                supabaseService.emitToRoom(`seller_${sellerId}`, 'vendor:notification', {
                     type: 'NEW_ORDER',
                     message: `You have a new order with ${sellerItems.length} items.`,
                     data: {

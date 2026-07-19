@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { notifications } from '../services/notificationService.js';
 import prisma from '../utils/prismaUtils.js';
-import { socketService } from '../services/SocketService.js';
+import { supabaseService } from '../services/SupabaseService.js';
 import type { AuthPayload } from '../types/authTypes.js';
 
 const getOrders = async (req: Request, res: Response, next: NextFunction) => {
@@ -150,7 +150,7 @@ const updateOrderItemStatus = async (req: Request, res: Response, next: NextFunc
         }
 
         // Real-time Update
-        socketService.emitToRoom(`user_${item.order.customerId}`, 'order:status:updated', {
+        supabaseService.emitToRoom(`user_${item.order.customerId}`, 'order:status:updated', {
             orderId: item.order.uid,
             itemId: item.uid,
             status,
@@ -356,7 +356,7 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
             body: `Your order #${order.uid} is now ${status}.${notifyMessage}`
         }).catch(console.error);
 
-        socketService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
+        supabaseService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
             orderId: order.uid,
             status,
             timeline: { title: timelineTitle, message, photos }

@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { socketService } from '../services/SocketService.js';
+import { supabaseService } from '../services/SupabaseService.js';
 import ErrorHandler from '../error/errorHandler.js';
 
 import { ZodError } from 'zod';
@@ -24,14 +24,14 @@ const sendMessage = async (req: Request, res: Response) => {
             timestamp: new Date().toISOString()
         };
 
-        socketService.emitToRoom(`user_${recipientId}`, 'chat:message', messagePayload);
+        supabaseService.emitToRoom(`user_${recipientId}`, 'chat:message', messagePayload);
 
         // Also emit to sender so they see it confirmed/synced on other devices
         const senderPayload: ChatMessage = {
             ...messagePayload,
             to: recipientId
         };
-        socketService.emitToRoom(`user_${senderId}`, 'chat:message', senderPayload);
+        supabaseService.emitToRoom(`user_${senderId}`, 'chat:message', senderPayload);
 
         res.status(200).json({ success: true, message: "Message sent" });
 

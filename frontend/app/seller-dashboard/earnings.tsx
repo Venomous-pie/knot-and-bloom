@@ -339,14 +339,25 @@ export default function SellerEarnings() {
                         <TextInput
                             style={styles.searchInput}
                             placeholder="Search orders or status..."
+                            placeholderTextColor={SUB}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                         />
                     </View>
-                    <TouchableOpacity onPress={exportCSV} style={styles.exportBtn}>
-                        <Download size={18} color={SUB} />
-                        {isDesktop && <Text style={{ fontSize: 14, fontWeight: '600', color: SUB, fontFamily: 'Quicksand', marginLeft: 8 }}>Export</Text>}
-                    </TouchableOpacity>
+                    <Pressable 
+                        onPress={exportCSV} 
+                        style={({ hovered }: any) => [
+                            styles.exportBtn,
+                            hovered && { backgroundColor: P_LIGHT, borderColor: P }
+                        ]}
+                    >
+                        {({ hovered }: any) => (
+                            <>
+                                <Download size={18} color={hovered ? P : SUB} />
+                                {isDesktop && <Text style={{ fontSize: 14, fontWeight: '600', color: hovered ? P : SUB, fontFamily: 'Quicksand', marginLeft: 8 }}>Export</Text>}
+                            </>
+                        )}
+                    </Pressable>
                 </View>
 
                 {/* Tabs */}

@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import prisma from '../utils/prismaUtils.js';
 import { notifications } from './notificationService.js';
-import { socketService } from './SocketService.js';
+import { supabaseService } from './SupabaseService.js';
 
 class CronService {
     public start() {
@@ -84,7 +84,7 @@ class CronService {
                 });
 
                 // Socket Update
-                socketService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
+                supabaseService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
                     orderId: order.uid,
                     status: 'COMPLETED',
                     timeline: { title: 'Order Completed (Auto)', message: 'Order automatically marked as completed.' }

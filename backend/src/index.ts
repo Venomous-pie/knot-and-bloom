@@ -32,7 +32,7 @@ import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
 import { createServer } from 'http';
-import { socketService } from './services/SocketService.js';
+
 import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
 import { sanitizeInput } from './middleware/sanitize.js';
 import { cronService } from './services/cronService.js';
@@ -129,7 +129,6 @@ process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 const httpServer = createServer(app);
-socketService.init(httpServer);
 
 httpServer.listen(PORT, () => {
     console.log(`Currently running on port ${PORT}.`);

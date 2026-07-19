@@ -2,7 +2,7 @@ import prisma from '../utils/prismaUtils.js';
 import type { Request, Response } from 'express';
 import Pricing from '../utils/pricingUtils.js';
 import ErrorHandler from '../error/errorHandler.js';
-import { socketService } from '../services/SocketService.js';
+import { supabaseService } from '../services/SupabaseService.js';
 
 const addToCart = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -76,7 +76,7 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
         }
 
         // Real-time Update
-        socketService.emitToRoom(`user_${customerId}`, 'cart:updated', { customerId: Number(customerId) });
+        supabaseService.emitToRoom(`user_${customerId}`, 'cart:updated', { customerId: Number(customerId) });
 
         res.status(200).json({ message: "Product added to cart successfully." });
 
@@ -194,7 +194,7 @@ const updateCartItem = async (req: Request, res: Response): Promise<void> => {
 
         // Real-time Update
         if (updatedItem && updatedItem.cart) {
-            socketService.emitToRoom(`user_${updatedItem.cart.customerId}`, 'cart:updated', { customerId: updatedItem.cart.customerId });
+            supabaseService.emitToRoom(`user_${updatedItem.cart.customerId}`, 'cart:updated', { customerId: updatedItem.cart.customerId });
         }
 
         res.status(200).json({ message: "Cart item updated." });
@@ -223,7 +223,7 @@ const removeFromCart = async (req: Request, res: Response): Promise<void> => {
 
             // Real-time Update
             if (deletedItem && deletedItem.cart) {
-                socketService.emitToRoom(`user_${deletedItem.cart.customerId}`, 'cart:updated', { customerId: deletedItem.cart.customerId });
+                supabaseService.emitToRoom(`user_${deletedItem.cart.customerId}`, 'cart:updated', { customerId: deletedItem.cart.customerId });
             }
         } catch (e: any) {
             // Ignore if record not found (idempotent)

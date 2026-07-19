@@ -1,7 +1,7 @@
 import prisma from "../utils/prismaUtils.js";
 import { ProductStatus, SellerStatus } from "../../generated/prisma/client.js";
 import { ZodError } from "zod";
-import { socketService } from "../services/SocketService.js";
+import { supabaseService } from "../services/SupabaseService.js";
 import ErrorHandler from "../error/errorHandler.js";
 import { Role } from "../types/authTypes.js";
 import Pricing from "../utils/pricingUtils.js";
@@ -803,7 +803,7 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
     });
 
     // Emit Realtime Update
-    socketService.emit('product:updated', { productId: parsedId, version: result.version });
+    supabaseService.emit('product:updated', { productId: parsedId, version: result.version });
     cache.deletePattern('product:');
 
     return result;

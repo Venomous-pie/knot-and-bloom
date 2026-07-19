@@ -28,9 +28,10 @@ interface ImageUploaderProps {
     onImagesChange: (images: ImageItem[]) => void;
     maxImages?: number;
     compact?: boolean;
+    hidePrimaryBadge?: boolean;
 }
 
-export default function ImageUploader({ images, onImagesChange, maxImages = 5, compact = false }: ImageUploaderProps) {
+export default function ImageUploader({ images, onImagesChange, maxImages = 5, compact = false, hidePrimaryBadge = false }: ImageUploaderProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);
     const containerRef = useRef<View>(null);
@@ -360,9 +361,9 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
 
                     <View style={styles.gridContainer}>
                         {images.map((image, index) => {
-                            const isPrimary = index === 0;
+                            const isPrimary = !hidePrimaryBadge && index === 0;
                             const isHovered = hoveredIndex === index;
-                            const showArrows = Platform.OS === 'web' ? isHovered : true;
+                            const showArrows = !hidePrimaryBadge && (Platform.OS === 'web' ? isHovered : true);
                             
                             return (
                                 <View

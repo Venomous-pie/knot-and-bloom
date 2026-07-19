@@ -1,68 +1,95 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View, Platform, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Platform, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { HeartHandshake, ShieldCheck, Wallet, FileCheck2, Box, ArrowLeft } from 'lucide-react-native';
+
+const P       = '#B36979'; // Brand primary — Dusty Pink
+const P_LIGHT = '#FDEEF1'; // Primary tint (active backgrounds, selected states)
+const BG      = '#F4F4F8'; // Page background
+const CARD    = '#FFFFFF'; // Card surface
+const TEXT    = '#1A1A2E'; // Primary text
+const SUB     = '#6B7280'; // Secondary / muted text
+const BORDER  = '#F0F0F5'; // Card borders, dividers
 
 export default function SellerTermsPage() {
     const router = useRouter();
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 1024;
+
+    const terms = [
+        {
+            icon: <HeartHandshake size={24} color={P} />,
+            title: "1. For the Local Crafters",
+            content: "Knot & Bloom is a special marketplace made just for Filipino students, single parents, and local crafters. We give you a professional online shop to sell your handmade items without the high fees or complicated business permits that big websites require."
+        },
+        {
+            icon: <ShieldCheck size={24} color={P} />,
+            title: "2. Keeping it Handmade",
+            content: "To make sure everything here is truly handmade, we require a \"Work in Progress\" photo showing you making the item. To help you start selling right away, your first 5 products are approved instantly once we verify your identity. If anyone tries to sell factory-made goods, buyers can easily report them to us."
+        },
+        {
+            icon: <Wallet size={24} color={P} />,
+            title: "3. Simple & Fair Fees",
+            content: "We believe you should keep what you earn. We only deduct a tiny 2% fee from every successful sale—meaning you keep 98%. To help cover the costs of keeping the website running smoothly, buyers pay a small ₱15 service fee when they check out."
+        },
+        {
+            icon: <Box size={24} color={P} />,
+            title: "4. Cash on Delivery Protection",
+            content: "Cash on Delivery is important, but we want to protect you from bogus buyers. If a buyer chooses COD, they must pay a 20% downpayment upfront. If they refuse to accept the package when it arrives, you get to keep that 20% to cover your wasted time and materials, and the buyer will be banned from using COD again."
+        },
+        {
+            icon: <FileCheck2 size={24} color={P} />,
+            title: "5. Trust and Safety",
+            content: "To keep our community safe, we require all sellers to verify their identity with a valid ID before they start selling. We ask that you provide honest information. If anyone breaks these rules or tries to scam our community, their account will be permanently removed."
+        }
+    ];
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Seller Terms & Conditions</Text>
-                <View style={styles.backButton} /> {/* Spacer for centering */}
+            {/* Page Header */}
+            <View style={styles.headerContainer}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+                        <ArrowLeft size={20} color={TEXT} />
+                        <Text style={styles.backBtnText}>Back</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.title}>Seller Terms & Conditions</Text>
+                    <View style={{ width: 80 }} /> {/* Spacer for flex balance */}
+                </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.content}>
-                    <Text style={styles.lastUpdated}>Last Updated: [Date]</Text>
+            {/* Scrollable Content */}
+            <View style={{ flex: 1, maxWidth: 800, width: '100%', alignSelf: 'center' }}>
+                <ScrollView 
+                    contentContainerStyle={{ padding: 24, paddingBottom: 52 }}
+                    showsVerticalScrollIndicator={false}
+                >
+                    <Text style={styles.lastUpdated}>Last Updated: July 2026</Text>
                     
-                    <Text style={styles.paragraph}>
-                        Welcome to the Knot & Bloom Seller Platform. These Terms of Service ("Terms") govern your access to and use of our marketplace as a seller. Please read these Terms carefully before registering as a seller.
+                    <Text style={styles.introText}>
+                        Welcome to the Knot & Bloom Seller Platform. These Terms of Service ("Terms") govern your access to and use of our marketplace. Please read these Terms carefully. By registering as a seller, you agree to these guidelines designed to protect our community of Filipino micro-creators.
                     </Text>
 
-                    <Text style={styles.sectionTitle}>1. Terms of Use</Text>
-                    <Text style={styles.paragraph}>
-                        [Placeholder] By applying to become a seller on Knot & Bloom, you agree to comply with all platform rules, guidelines, and policies. You must provide accurate information during the onboarding process.
-                    </Text>
-
-                    <Text style={styles.sectionTitle}>2. Platform Responsibility & Operations</Text>
-                    <Text style={styles.paragraph}>
-                        [Placeholder] Knot & Bloom provides a marketplace connecting creators with buyers. We process payments and offer platform tools, but sellers are responsible for the fulfillment, quality, and shipping of their respective products unless otherwise stated.
-                    </Text>
-
-                    <Text style={styles.sectionTitle}>3. Product Guidelines</Text>
-                    <Text style={styles.paragraph}>
-                        [Placeholder] All items listed must be handmade, bespoke, or fall under approved creative categories. Counterfeit, hazardous, or mass-produced items are strictly prohibited and may result in account suspension.
-                    </Text>
-
-                    <Text style={styles.sectionTitle}>4. Fees and Payments</Text>
-                    <Text style={styles.paragraph}>
-                        [Placeholder] The platform charges a commission fee on successfully completed sales. Payouts are processed according to our standard payout schedule after an order reaches the "Completed" status.
-                    </Text>
-
-                    <Text style={styles.sectionTitle}>5. Liability</Text>
-                    <Text style={styles.paragraph}>
-                        [Placeholder] Knot & Bloom is not liable for disputes arising directly between sellers and buyers, though we offer mediation services. Sellers assume full liability for the safety and legality of the items they sell.
-                    </Text>
-
-                    <Text style={styles.sectionTitle}>6. Account Termination</Text>
-                    <Text style={styles.paragraph}>
-                        [Placeholder] We reserve the right to suspend or terminate seller accounts that violate these Terms, receive excessive complaints, or engage in fraudulent activities.
-                    </Text>
+                    {terms.map((term, index) => (
+                        <View key={index} style={styles.card}>
+                            <View style={styles.cardHeader}>
+                                <View style={styles.iconContainer}>
+                                    {term.icon}
+                                </View>
+                                <Text style={styles.cardTitle}>{term.title}</Text>
+                            </View>
+                            <Text style={styles.cardContent}>{term.content}</Text>
+                        </View>
+                    ))}
 
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
                             For detailed inquiries regarding these terms, please contact seller-support@knotandbloom.com
                         </Text>
                     </View>
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </View>
         </SafeAreaView>
     );
 }
@@ -70,67 +97,115 @@ export default function SellerTermsPage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.surface,
+        backgroundColor: BG,
+    },
+    headerContainer: {
+        backgroundColor: CARD,
+        borderBottomWidth: 1,
+        borderBottomColor: BORDER,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        zIndex: 100,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-        backgroundColor: theme.colors.surface,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: Platform.OS === "web" ? "serif" : "System",
-    },
-    contentContainer: {
-        padding: 24,
-    },
-    content: {
-        maxWidth: 800,
+        maxWidth: 1280,
         width: '100%',
         alignSelf: 'center',
     },
+    title: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: TEXT,
+        fontFamily: 'Quicksand',
+    },
+    backBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: BG,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+    },
+    backBtnText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: TEXT,
+        fontFamily: 'Quicksand',
+    },
     lastUpdated: {
         fontSize: 14,
-        color: theme.colors.textLight,
-        marginBottom: 24,
+        color: SUB,
+        fontFamily: 'Quicksand',
         fontStyle: 'italic',
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginTop: 24,
-        marginBottom: 12,
-    },
-    paragraph: {
-        fontSize: 16,
-        color: theme.colors.textSecondary,
-        lineHeight: 24,
         marginBottom: 16,
+        textAlign: 'center',
+    },
+    introText: {
+        fontSize: 15,
+        color: TEXT,
+        fontFamily: 'Quicksand',
+        lineHeight: 24,
+        marginBottom: 32,
+        textAlign: 'center',
+        paddingHorizontal: 16,
+    },
+    card: {
+        backgroundColor: CARD,
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: BORDER,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
+        overflow: 'hidden',
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        gap: 16,
+    },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        backgroundColor: P_LIGHT,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cardTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: TEXT,
+        fontFamily: 'Quicksand',
+        flex: 1,
+    },
+    cardContent: {
+        fontSize: 15,
+        color: SUB,
+        fontFamily: 'Quicksand',
+        lineHeight: 24,
     },
     footer: {
-        marginTop: 40,
-        paddingTop: 20,
+        marginTop: 32,
+        paddingTop: 24,
         borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
+        borderTopColor: BORDER,
+        alignItems: 'center',
     },
     footerText: {
-        fontSize: 14,
-        color: theme.colors.textLight,
-        textAlign: 'center',
+        fontSize: 13,
+        color: SUB,
+        fontFamily: 'Quicksand',
         fontStyle: 'italic',
+        textAlign: 'center',
     }
 });

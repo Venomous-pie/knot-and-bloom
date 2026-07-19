@@ -2011,7 +2011,7 @@ export default function ProductFormWizard({
                             description={formData.description}
                             basePrice={formData.basePrice}
                             discountPercentage={formData.discountPercentage}
-                            image={formData.image}
+                            image={formData.image || ''}
                             images={images}
                             categories={selectedCategories}
                             variants={variants}
@@ -2044,7 +2044,7 @@ export default function ProductFormWizard({
                         description={formData.description}
                         basePrice={formData.basePrice}
                         discountPercentage={formData.discountPercentage}
-                        image={formData.image}
+                        image={formData.image || ''}
                         images={images}
                         categories={selectedCategories}
                         variants={variants}

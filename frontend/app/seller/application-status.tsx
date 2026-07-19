@@ -11,15 +11,18 @@ import {
     StyleSheet,
     Text,
     View,
+    Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Clock, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, FileText, Info } from "lucide-react-native";
 import { theme } from '@/constants/theme';
 
 export default function ApplicationStatusPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
     const router = useRouter();
     const [refreshing, setRefreshing] = useState(false);
+    const [cancelModalVisible, setCancelModalVisible] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -33,30 +36,26 @@ export default function ApplicationStatusPage() {
         setRefreshing(false);
     };
 
-    const handleCancel = async () => {
-        Alert.alert(
-            "Cancel Application",
-            "Are you sure you want to cancel your seller application? This action cannot be undone.",
-            [
-                { text: "No", style: "cancel" },
-                {
-                    text: "Yes, Cancel",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            setRefreshing(true);
-                            await sellerAPI.cancelApplication();
-                            await refreshUser();
-                            Alert.alert("Success", "Application cancelled successfully.");
-                        } catch (error) {
-                            Alert.alert("Error", "Failed to cancel application.");
-                        } finally {
-                            setRefreshing(false);
-                        }
-                    }
-                }
-            ]
-        );
+    const confirmCancel = async () => {
+        try {
+            setIsCancelling(true);
+            await sellerAPI.cancelApplication();
+            await refreshUser();
+            setCancelModalVisible(false);
+            if (Platform.OS !== 'web') {
+                Alert.alert("Success", "Application cancelled successfully.");
+            } else {
+                alert("Application cancelled successfully.");
+            }
+        } catch (error) {
+            if (Platform.OS !== 'web') {
+                Alert.alert("Error", "Failed to cancel application.");
+            } else {
+                alert("Failed to cancel application.");
+            }
+        } finally {
+            setIsCancelling(false);
+        }
     };
 
     if (authLoading || !user) {
@@ -69,38 +68,86 @@ export default function ApplicationStatusPage() {
 
     const sellerStatus = user.sellerStatus || "NONE";
 
+    const renderCancelModal = () => (
+        <Modal
+            animationType="none"
+            transparent={true}
+            visible={cancelModalVisible}
+            onRequestClose={() => setCancelModalVisible(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalIconWrapper}>
+                        <AlertCircle size={32} color={theme.colors.error} strokeWidth={2.5} />
+                    </View>
+                    <Text style={styles.modalTitle}>Cancel Application</Text>
+                    <Text style={styles.modalMessage}>
+                        Are you sure you want to cancel your seller application? This action cannot be undone.
+                    </Text>
+                    <View style={styles.modalActions}>
+                        <Pressable 
+                            style={styles.modalCancelBtn}
+                            onPress={() => setCancelModalVisible(false)}
+                            disabled={isCancelling}
+                        >
+                            <Text style={styles.modalCancelBtnText}>No, Keep It</Text>
+                        </Pressable>
+                        <Pressable 
+                            style={styles.modalConfirmBtn}
+                            onPress={confirmCancel}
+                            disabled={isCancelling}
+                        >
+                            {isCancelling ? (
+                                <ActivityIndicator color="white" size="small" />
+                            ) : (
+                                <Text style={styles.modalConfirmBtnText}>Yes, Cancel</Text>
+                            )}
+                        </Pressable>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+
     const renderStatusContent = () => {
         switch (sellerStatus) {
             case "PENDING":
                 return (
-                    <View style={styles.statusCard}>
-                        <View style={[styles.iconWrapper, { backgroundColor: '#FFF4E5' }]}>
-                            <Ionicons name="time" size={48} color="#FF9800" />
+                    <View style={styles.card}>
+                        <View style={styles.iconWrapper}>
+                            <View style={[styles.iconBackground, { backgroundColor: theme.colors.warning + '20' }]}>
+                                <Clock size={40} color={theme.colors.warning} strokeWidth={2.5} />
+                            </View>
                         </View>
-                        <Text style={styles.statusTitle}>Under Review</Text>
-                        <Text style={styles.statusMessage}>
-                            Thanks for applying! Our team is currently reviewing your shop details.
-                            This usually takes 1-2 business days.
+                        <Text style={styles.title}>Under Review</Text>
+                        <Text style={styles.subtitle}>
+                            Thanks for applying! Our team is currently reviewing your shop details. This usually takes 1-2 business days.
                         </Text>
-                        <Text style={styles.noteText}>
-                            We'll verify your information and notify you via SMS/Email once approved.
-                        </Text>
-
-                        <View style={styles.buttonGroup}>
+                        
+                        <View style={styles.buttonContainer}>
                             <Pressable 
-                                style={[styles.actionButton, styles.primaryButton]} 
+                                style={({ pressed }) => [
+                                    styles.primaryBtn,
+                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                                ]}
                                 onPress={handleRefresh} 
                                 disabled={refreshing}
                             >
                                 {refreshing ? (
                                     <ActivityIndicator color="white" size="small" />
                                 ) : (
-                                    <Text style={styles.actionButtonText}>Refresh Status</Text>
+                                    <Text style={styles.primaryBtnText}>Refresh Status</Text>
                                 )}
                             </Pressable>
 
-                            <Pressable style={styles.cancelLink} onPress={handleCancel}>
-                                <Text style={styles.cancelLinkText}>Cancel Application</Text>
+                            <Pressable 
+                                style={({ pressed }) => [
+                                    styles.destructiveBtn,
+                                    pressed && { backgroundColor: theme.colors.errorLight }
+                                ]}
+                                onPress={() => setCancelModalVisible(true)}
+                            >
+                                <Text style={styles.destructiveBtnText}>Cancel Application</Text>
                             </Pressable>
                         </View>
                     </View>
@@ -108,71 +155,99 @@ export default function ApplicationStatusPage() {
             case "APPROVED":
             case "ACTIVE":
                 return (
-                    <View style={styles.statusCard}>
-                        <View style={[styles.iconWrapper, { backgroundColor: theme.colors.success + '20' }]}>
-                            <Ionicons name="checkmark-circle" size={48} color={theme.colors.success} />
+                    <View style={styles.card}>
+                        <View style={styles.iconWrapper}>
+                            <View style={[styles.iconBackground, { backgroundColor: theme.colors.success + '20' }]}>
+                                <CheckCircle size={40} color={theme.colors.success} strokeWidth={2.5} />
+                            </View>
                         </View>
-                        <Text style={styles.statusTitle}>Application Approved!</Text>
-                        <Text style={styles.statusMessage}>
+                        <Text style={styles.title}>Application Approved!</Text>
+                        <Text style={styles.subtitle}>
                             Congratulations! Your shop is ready to go. Welcome to our curated marketplace of local makers.
                         </Text>
-                        <Pressable
-                            style={[styles.actionButton, styles.primaryButton, { marginTop: theme.spacing.lg }]}
-                            onPress={() => router.push("/seller-dashboard/" as RelativePathString)}
-                        >
-                            <Text style={styles.actionButtonText}>Go to Seller Dashboard</Text>
-                            <Ionicons name="arrow-forward" size={18} color="white" style={{ marginLeft: 8 }} />
-                        </Pressable>
+                        
+                        <View style={[styles.buttonContainer, { marginTop: 24 }]}>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.primaryBtn,
+                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                                ]}
+                                onPress={() => router.push("/seller-dashboard/" as RelativePathString)}
+                            >
+                                <Text style={styles.primaryBtnText}>Go to Seller Dashboard</Text>
+                                <ArrowRight size={18} color="white" />
+                            </Pressable>
+                        </View>
                     </View>
                 );
             case "REJECTED":
                 return (
-                    <View style={styles.statusCard}>
-                        <View style={[styles.iconWrapper, { backgroundColor: theme.colors.errorLight }]}>
-                            <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
+                    <View style={styles.card}>
+                        <View style={styles.iconWrapper}>
+                            <View style={[styles.iconBackground, { backgroundColor: theme.colors.error + '20' }]}>
+                                <AlertCircle size={40} color={theme.colors.error} strokeWidth={2.5} />
+                            </View>
                         </View>
-                        <Text style={styles.statusTitle}>Application Update</Text>
-                        <Text style={styles.statusMessage}>
+                        <Text style={styles.title}>Application Update</Text>
+                        <Text style={styles.subtitle}>
                             Unfortunately, we couldn't approve your application at this time.
                         </Text>
+                        
                         <View style={styles.rejectionBox}>
-                            <Ionicons name="information-circle-outline" size={20} color={theme.colors.errorDark} />
+                            <Info size={18} color={theme.colors.errorDark} style={{ marginTop: 2 }} />
                             <Text style={styles.rejectionReasonText}>
                                 {user.sellerRejectionReason || "Information provided was incomplete. Please update your details and try again."}
                             </Text>
                         </View>
                         
-                        <View style={styles.buttonGroup}>
+                        <View style={styles.buttonContainer}>
                             <Pressable
-                                style={[styles.actionButton, styles.primaryButton]}
+                                style={({ pressed }) => [
+                                    styles.primaryBtn,
+                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                                ]}
                                 onPress={() => router.push("/seller/apply" as RelativePathString)}
                             >
-                                <Text style={styles.actionButtonText}>Update Application</Text>
+                                <Text style={styles.primaryBtnText}>Update Application</Text>
                             </Pressable>
 
-                            <Pressable style={styles.cancelLink} onPress={handleCancel}>
-                                <Text style={styles.cancelLinkText}>Cancel Application</Text>
+                            <Pressable 
+                                style={({ pressed }) => [
+                                    styles.destructiveBtn,
+                                    pressed && { backgroundColor: theme.colors.errorLight }
+                                ]}
+                                onPress={() => setCancelModalVisible(true)}
+                            >
+                                <Text style={styles.destructiveBtnText}>Cancel Application</Text>
                             </Pressable>
                         </View>
                     </View >
                 );
             default:
                 return (
-                    <View style={styles.statusCard}>
-                        <View style={[styles.iconWrapper, { backgroundColor: theme.colors.subtle }]}>
-                            <Ionicons name="document-text" size={48} color={theme.colors.textSecondary} />
+                    <View style={styles.card}>
+                        <View style={styles.iconWrapper}>
+                            <View style={[styles.iconBackground, { backgroundColor: theme.colors.border }]}>
+                                <FileText size={40} color={theme.colors.textSecondary} strokeWidth={2.5} />
+                            </View>
                         </View>
-                        <Text style={styles.statusTitle}>No Application Found</Text>
-                        <Text style={styles.statusMessage}>
+                        <Text style={styles.title}>No Application Found</Text>
+                        <Text style={styles.subtitle}>
                             You haven't submitted a seller application yet. Join our community of makers!
                         </Text>
-                        <Pressable
-                            style={[styles.actionButton, styles.primaryButton, { marginTop: theme.spacing.lg }]}
-                            onPress={() => router.push("/seller/apply" as RelativePathString)}
-                        >
-                            <Text style={styles.actionButtonText}>Apply Now</Text>
-                            <Ionicons name="arrow-forward" size={18} color="white" style={{ marginLeft: 8 }} />
-                        </Pressable>
+                        
+                        <View style={[styles.buttonContainer, { marginTop: 24 }]}>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.primaryBtn,
+                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+                                ]}
+                                onPress={() => router.push("/seller/apply" as RelativePathString)}
+                            >
+                                <Text style={styles.primaryBtnText}>Apply Now</Text>
+                                <ArrowRight size={18} color="white" />
+                            </Pressable>
+                        </View>
                     </View>
                 );
         }
@@ -180,19 +255,18 @@ export default function ApplicationStatusPage() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.contentWrapper}>
-                    <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Seller Application</Text>
-                    </View>
-
-                    {renderStatusContent()}
-
-                    <Pressable style={styles.backLink} onPress={() => router.push("/")}>
-                        <Ionicons name="arrow-back" size={16} color={theme.colors.textSecondary} />
-                        <Text style={styles.backLinkText}>Return to Storefront</Text>
-                    </Pressable>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Seller Application</Text>
                 </View>
+
+                {renderStatusContent()}
+                {renderCancelModal()}
+
+                <Pressable style={styles.backLink} onPress={() => router.push("/profile")}>
+                    <ArrowLeft size={16} color={theme.colors.textSecondary} />
+                    <Text style={styles.backLinkText}>Return to Profile</Text>
+                </Pressable>
             </ScrollView>
         </SafeAreaView>
     );
@@ -211,124 +285,256 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        padding: theme.spacing.lg,
+        padding: 24,
+        alignItems: 'center',
         justifyContent: 'center',
-    },
-    contentWrapper: {
-        width: '100%',
-        maxWidth: 520,
-        alignSelf: 'center',
     },
     header: {
         alignItems: "center",
-        marginBottom: theme.spacing.xl,
+        marginBottom: 32,
     },
     headerTitle: {
-        fontSize: theme.typography.sizes['2xl'],
+        fontSize: 28,
         fontWeight: "bold",
         color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
+        fontFamily: 'Quicksand',
     },
-    statusCard: {
+    card: {
+        width: '100%',
+        maxWidth: 480,
         backgroundColor: theme.colors.surface,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing['2xl'],
+        borderRadius: 24,
+        padding: 32,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 3,
         alignItems: "center",
-        width: "100%",
-        ...theme.shadows.md,
     },
     iconWrapper: {
-        width: 96,
-        height: 96,
-        borderRadius: 48,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: theme.spacing.xl,
+        alignItems: 'center',
+        marginBottom: 20,
     },
-    statusTitle: {
-        fontSize: theme.typography.sizes.xl,
-        fontWeight: "bold",
+    iconBackground: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: "700",
         color: theme.colors.text,
-        marginBottom: theme.spacing.sm,
+        marginBottom: 12,
         textAlign: "center",
-        fontFamily: theme.typography.fontFamily,
+        fontFamily: 'Quicksand',
     },
-    statusMessage: {
-        fontSize: theme.typography.sizes.base,
+    subtitle: {
+        fontSize: 14,
         color: theme.colors.textSecondary,
         textAlign: "center",
-        lineHeight: 24,
-        marginBottom: theme.spacing.md,
-        fontFamily: theme.typography.fontFamily,
+        lineHeight: 22,
+        marginBottom: 24,
+        fontFamily: 'Quicksand',
     },
-    noteText: {
-        fontSize: theme.typography.sizes.sm,
-        color: theme.colors.textLight,
-        textAlign: "center",
-        fontFamily: theme.typography.fontFamily,
+    timeline: {
+        width: '100%',
+        marginTop: 8,
+        paddingLeft: 12,
+    },
+    timelineStep: {
+        flexDirection: 'row',
+        marginBottom: 24,
+        position: 'relative',
+    },
+    timelineLine: {
+        position: 'absolute',
+        left: 7,
+        top: 20,
+        bottom: -24,
+        width: 2,
+        backgroundColor: theme.colors.border,
+        zIndex: 0,
+    },
+    timelineDot: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: theme.colors.border,
+        marginTop: 2,
+        marginRight: 16,
+        zIndex: 1,
+    },
+    timelineContent: {
+        flex: 1,
+    },
+    timelineTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.text,
+        fontFamily: 'Quicksand',
+        marginBottom: 2,
+    },
+    timelineDesc: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontFamily: 'Quicksand',
+        lineHeight: 18,
+    },
+    divider: {
+        height: 1,
+        width: '100%',
+        backgroundColor: theme.colors.border,
+        marginVertical: 24,
     },
     rejectionBox: {
         flexDirection: 'row',
         backgroundColor: theme.colors.errorLight,
-        padding: theme.spacing.md,
-        borderRadius: theme.borderRadius.md,
-        marginBottom: theme.spacing.xl,
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 24,
         width: "100%",
-        gap: theme.spacing.sm,
+        gap: 12,
         alignItems: 'flex-start',
     },
     rejectionReasonText: {
-        fontSize: theme.typography.sizes.sm,
+        fontSize: 13,
         color: theme.colors.errorDark,
         flex: 1,
         lineHeight: 20,
-        fontFamily: theme.typography.fontFamily,
+        fontFamily: 'Quicksand',
     },
-    buttonGroup: {
-        marginTop: theme.spacing.lg,
+    buttonContainer: {
+        gap: 12,
         width: '100%',
-        alignItems: 'center',
-        gap: theme.spacing.md,
     },
-    actionButton: {
-        flexDirection: 'row',
-        paddingVertical: theme.spacing.md,
-        paddingHorizontal: theme.spacing.xl,
-        borderRadius: theme.borderRadius.md,
-        width: '100%',
-        justifyContent: 'center',
-        alignItems: "center",
-    },
-    primaryButton: {
+    primaryBtn: {
         backgroundColor: theme.colors.primary,
-        ...theme.shadows.sm,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
     },
-    actionButtonText: {
+    primaryBtnText: {
         color: "white",
-        fontSize: theme.typography.sizes.base,
+        fontSize: 15,
+        fontWeight: "700",
+        fontFamily: 'Quicksand',
+    },
+    destructiveBtn: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: theme.colors.error,
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    destructiveBtnText: {
+        color: theme.colors.error,
+        fontSize: 14,
         fontWeight: "600",
-        fontFamily: theme.typography.fontFamily,
-    },
-    cancelLink: {
-        padding: theme.spacing.sm,
-    },
-    cancelLinkText: {
-        color: theme.colors.textLight,
-        fontSize: theme.typography.sizes.sm,
-        fontWeight: '500',
-        fontFamily: theme.typography.fontFamily,
+        fontFamily: 'Quicksand',
     },
     backLink: {
-        marginTop: theme.spacing.xl,
+        marginTop: 32,
         flexDirection: 'row',
         alignItems: "center",
         justifyContent: 'center',
-        gap: theme.spacing.sm,
+        gap: 8,
     },
     backLinkText: {
         color: theme.colors.textSecondary,
-        fontSize: theme.typography.sizes.sm,
-        fontWeight: '500',
-        fontFamily: theme.typography.fontFamily,
+        fontSize: 14,
+        fontWeight: '600',
+        fontFamily: 'Quicksand',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    modalContent: {
+        width: '100%',
+        maxWidth: 400,
+        backgroundColor: theme.colors.surface,
+        borderRadius: 24,
+        padding: 32,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    modalIconWrapper: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: theme.colors.error + '15',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: theme.colors.text,
+        fontFamily: 'Quicksand',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    modalMessage: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 32,
+        fontFamily: 'Quicksand',
+    },
+    modalActions: {
+        flexDirection: 'row',
+        width: '100%',
+        gap: 12,
+    },
+    modalCancelBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: theme.colors.background,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    modalCancelBtnText: {
+        color: theme.colors.textSecondary,
+        fontSize: 15,
+        fontWeight: '600',
+        fontFamily: 'Quicksand',
+    },
+    modalConfirmBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: theme.colors.error,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalConfirmBtnText: {
+        color: 'white',
+        fontSize: 15,
+        fontWeight: '700',
+        fontFamily: 'Quicksand',
     },
 });

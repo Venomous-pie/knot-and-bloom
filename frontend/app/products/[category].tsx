@@ -18,6 +18,10 @@ import {
 } from "react-native";
 import { theme } from '@/constants/theme';
 import ProductCard from "@/components/product/ProductCard";
+import ProductCardSkeleton from "@/components/product/ProductCardSkeleton";
+import { productAPI } from '@/api/api';
+import { useWishlist } from "@/contexts/WishlistContext";
+import { UNIVERSAL_TAGS } from '@/constants/tagSuggestions';
 
 type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'bestselling';
 
@@ -50,6 +54,37 @@ export default function ProductCategoryPage() {
         }, 500);
         return () => clearTimeout(timer);
     }, [priceRange]);
+
+    const { wishlistedProductIds } = useWishlist();
+
+    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+    const [showAllCategories, setShowAllCategories] = useState(false);
+    const MAX_CATEGORIES = 6;
+
+    const [showAllTags, setShowAllTags] = useState(false);
+    const MAX_TAGS = 6;
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await productAPI.getCategoryCounts();
+                if (response.data?.success && response.data?.counts) {
+                    const dynamicCats = Object.keys(response.data.counts);
+                    const staticCats = Object.values(categoryTitles);
+                    // Merge and deduplicate (case-insensitive deduplication is better, but Set works for exact matches)
+                    const uniqueCats = new Set<string>();
+                    [...staticCats, ...dynamicCats].forEach(c => uniqueCats.add(c.trim()));
+                    setAvailableCategories(Array.from(uniqueCats).sort());
+                } else {
+                    setAvailableCategories(Object.values(categoryTitles).sort());
+                }
+            } catch (err) {
+                console.error("Failed to fetch categories:", err);
+                setAvailableCategories(Object.values(categoryTitles).sort());
+            }
+        };
+        fetchCategories();
+    }, []);
 
     // Determine filter parameters based on category slug
     const filterParams = useMemo(() => {
@@ -99,9 +134,26 @@ export default function ProductCategoryPage() {
 
     const renderContent = () => {
         if (loading && products.length === 0) {
+            const skeletonData = Array.from({ length: numColumns * 3 }, (_, i) => i);
             return (
-                <View style={styles.centerContent}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                <View style={styles.mainContentContainer}>
+                    <FlatList
+                        data={skeletonData}
+                        keyExtractor={(item) => `skeleton-${item}`}
+                        key={`grid-${numColumns}`}
+                        numColumns={numColumns}
+                        renderItem={({ item, index }) => (
+                            <View style={{ 
+                                width: cardWidth,
+                                marginRight: (index % numColumns === numColumns - 1) ? 0 : gap
+                            }}>
+                                <ProductCardSkeleton />
+                            </View>
+                        )}
+                        contentContainerStyle={styles.listContent}
+                        columnWrapperStyle={styles.columnWrapper}
+                        showsVerticalScrollIndicator={false}
+                    />
                 </View>
             );
         }
@@ -115,36 +167,40 @@ export default function ProductCategoryPage() {
         }
 
         return (
-            <FlatList
-                data={products}
-                keyExtractor={(item) => item.uid.toString()}
-                key={`grid-${numColumns}`}
-                numColumns={numColumns}
-                renderItem={({ item, index }) => (
-                    <View style={{ 
-                        width: cardWidth,
-                        marginRight: (index % numColumns === numColumns - 1) ? 0 : gap
-                    }}>
-                        <ProductCard product={item} />
-                    </View>
-                )}
-                contentContainerStyle={styles.listContent}
-                columnWrapperStyle={styles.columnWrapper}
-                showsVerticalScrollIndicator={false}
-                onEndReached={loadMore}
-                onEndReachedThreshold={0.5}
-                ListFooterComponent={
-                    loading ? (
-                        <View style={styles.footer}>
-                            <ActivityIndicator size="small" color={theme.colors.primary} />
-                        </View>
-                    ) : !hasMore && products.length > 0 ? (
-                        <View style={styles.footer}>
-                            <Text style={styles.footerText}>You've reached the end of the list</Text>
-                        </View>
-                    ) : null
-                }
-            />
+            <View style={styles.mainContentContainer}>
+                <View style={{ flex: 1 }}>
+                    <FlatList
+                        data={products}
+                        keyExtractor={(item) => item.uid.toString()}
+                        key={`grid-${numColumns}`}
+                        numColumns={numColumns}
+                        renderItem={({ item, index }) => (
+                            <View style={{ 
+                                width: cardWidth,
+                                marginRight: (index % numColumns === numColumns - 1) ? 0 : gap
+                            }}>
+                                <ProductCard product={item} />
+                            </View>
+                        )}
+                        contentContainerStyle={styles.listContent}
+                        columnWrapperStyle={styles.columnWrapper}
+                        showsVerticalScrollIndicator={false}
+                        onEndReached={loadMore}
+                        onEndReachedThreshold={0.5}
+                        ListFooterComponent={
+                            loading && products.length > 0 ? (
+                                <View style={styles.footer}>
+                                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                                </View>
+                            ) : !hasMore && products.length > 0 ? (
+                                <View style={styles.footer}>
+                                    <Text style={styles.footerText}>You've reached the end of the list</Text>
+                                </View>
+                            ) : null
+                        }
+                    />
+                </View>
+            </View>
         );
     };
 
@@ -185,45 +241,79 @@ export default function ProductCategoryPage() {
             {/* Category */}
             <View style={styles.filterSection}>
                 <Text style={styles.filterTitle}>CATEGORY</Text>
-                {['Crochet', 'Fuzzy Wire Art', 'Accessories', 'Hair Ties', 'Stuffed Toys'].map(cat => {
-                    const isSelected = selectedCategories.includes(cat);
-                    return (
-                        <Pressable
-                            key={cat}
-                            style={styles.checkboxRow}
-                            onPress={() => setSelectedCategories(prev =>
-                                isSelected ? prev.filter(c => c !== cat) : [...prev, cat]
-                            )}
+                <View style={{ gap: theme.spacing.sm }}>
+                    {(showAllCategories ? availableCategories : availableCategories.slice(0, MAX_CATEGORIES)).map(cat => {
+                        const isSelected = selectedCategories.includes(cat);
+                        return (
+                            <Pressable
+                                key={cat}
+                                style={styles.checkboxRow}
+                                onPress={() => setSelectedCategories(prev =>
+                                    isSelected ? prev.filter(c => c !== cat) : [...prev, cat]
+                                )}
+                            >
+                                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                    {isSelected && <Check size={12} color="#fff" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>{cat}</Text>
+                            </Pressable>
+                        );
+                    })}
+                    {availableCategories.length > MAX_CATEGORIES && (
+                        <Pressable 
+                            style={{ paddingTop: theme.spacing.xs }}
+                            onPress={() => setShowAllCategories(!showAllCategories)}
                         >
-                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                                {isSelected && <Check size={12} color="#fff" />}
-                            </View>
-                            <Text style={styles.checkboxLabel}>{cat}</Text>
+                            <Text style={{ 
+                                color: theme.colors.primary, 
+                                fontSize: theme.typography.sizes.sm,
+                                fontWeight: theme.typography.weights.medium as any 
+                            }}>
+                                {showAllCategories ? 'Show Less' : `+ Show ${availableCategories.length - MAX_CATEGORIES} More`}
+                            </Text>
                         </Pressable>
-                    );
-                })}
+                    )}
+                </View>
             </View>
 
             {/* Tags */}
             <View style={styles.filterSection}>
                 <Text style={styles.filterTitle}>TAGS</Text>
-                {['Trending', 'New arrival', 'Custom order'].map(tag => {
-                    const isSelected = selectedTags.includes(tag);
-                    return (
-                        <Pressable
-                            key={tag}
-                            style={styles.checkboxRow}
-                            onPress={() => setSelectedTags(prev =>
-                                isSelected ? prev.filter(t => t !== tag) : [...prev, tag]
-                            )}
+                <View style={{ gap: theme.spacing.sm }}>
+                    {(showAllTags ? UNIVERSAL_TAGS : UNIVERSAL_TAGS.slice(0, MAX_TAGS)).map(tag => {
+                        const isSelected = selectedTags.includes(tag);
+                        return (
+                            <Pressable
+                                key={tag}
+                                style={styles.checkboxRow}
+                                onPress={() => setSelectedTags(prev =>
+                                    isSelected ? prev.filter(t => t !== tag) : [...prev, tag]
+                                )}
+                            >
+                                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                                    {isSelected && <Check size={12} color="#fff" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>
+                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                </Text>
+                            </Pressable>
+                        );
+                    })}
+                    {UNIVERSAL_TAGS.length > MAX_TAGS && (
+                        <Pressable 
+                            style={{ paddingTop: theme.spacing.xs }}
+                            onPress={() => setShowAllTags(!showAllTags)}
                         >
-                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                                {isSelected && <Check size={12} color="#fff" />}
-                            </View>
-                            <Text style={styles.checkboxLabel}>{tag}</Text>
+                            <Text style={{ 
+                                color: theme.colors.primary, 
+                                fontSize: theme.typography.sizes.sm,
+                                fontWeight: theme.typography.weights.medium as any 
+                            }}>
+                                {showAllTags ? 'Show Less' : `+ Show ${UNIVERSAL_TAGS.length - MAX_TAGS} More`}
+                            </Text>
                         </Pressable>
-                    );
-                })}
+                    )}
+                </View>
             </View>
         </ScrollView>
     );
@@ -370,6 +460,7 @@ const styles = StyleSheet.create({
     },
     priceInputWrapper: {
         flex: 1,
+        minWidth: 0,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
@@ -385,6 +476,7 @@ const styles = StyleSheet.create({
     },
     priceInput: {
         flex: 1,
+        minWidth: 0,
         paddingVertical: theme.spacing.sm,
         color: theme.colors.text,
         fontSize: theme.typography.sizes.sm,
@@ -398,7 +490,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.md,
-        marginBottom: theme.spacing.md,
+        marginBottom: 0,
     },
     checkbox: {
         width: 18,
@@ -421,6 +513,10 @@ const styles = StyleSheet.create({
     mainContent: {
         flex: 1,
     },
+    mainContentContainer: {
+        flex: 1,
+        position: 'relative',
+    },
     listContent: {
         paddingTop: theme.spacing.xl,
         paddingBottom: theme.spacing['2xl'],
@@ -436,7 +532,7 @@ const styles = StyleSheet.create({
         padding: theme.spacing['2xl'],
     },
     emptyText: {
-        fontSize: theme.typography.sizes.md,
+        fontSize: theme.typography.sizes.base,
         color: theme.colors.textLight,
         textAlign: 'center',
     },
@@ -492,7 +588,7 @@ const styles = StyleSheet.create({
     },
     modalApplyButtonText: {
         color: '#fff',
-        fontSize: theme.typography.sizes.md,
+        fontSize: theme.typography.sizes.base,
         fontWeight: theme.typography.weights.bold as any,
     },
 });

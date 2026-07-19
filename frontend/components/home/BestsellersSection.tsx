@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { theme } from '@/constants/theme';
 import ProductCard from '@/components/product/ProductCard';
+import ProductCardSkeleton from '@/components/product/ProductCardSkeleton';
 import { useProducts } from '@/hooks/useProducts';
 
 export default function BestsellersSection() {
@@ -23,7 +24,14 @@ export default function BestsellersSection() {
       <Text style={styles.sectionTitle}>BESTSELLERS</Text>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <View style={[styles.grid, isMobile && styles.gridMobile]}>
+          {[1, 2, 3].map((key) => (
+            <ProductCardSkeleton
+              key={key}
+              style={{ width: itemWidth }}
+            />
+          ))}
+        </View>
       ) : (
         <View style={[styles.grid, isMobile && styles.gridMobile]}>
           {products.slice(0, 3).map((product) => (

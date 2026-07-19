@@ -35,6 +35,10 @@ export const useProducts = (options: UseProductsOptions = {}): UseProductsResult
         try {
             setLoading(true);
             setError(null);
+            
+            if (!isLoadMore) {
+                setProducts([]);
+            }
 
             const response = await productAPI.getProducts(currentParams);
 

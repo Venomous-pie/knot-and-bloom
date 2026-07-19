@@ -78,6 +78,9 @@ export default function ProductCard({
     const { wishlistedProductIds, toggleWishlist } = useWishlist();
     const [cardWidth, setCardWidth] = useState(200); // Default 200px until measured
     const [isHovered, setIsHovered] = useState(false);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [prevImageIndex, setPrevImageIndex] = useState(0);
+    const fadeAnim = useRef(new Animated.Value(1)).current;
     
     // External prop overrides context if provided
     const isWishlisted = externalWishlisted ?? wishlistedProductIds.has(product.uid);
@@ -136,6 +139,29 @@ export default function ProductCard({
     const sellerDisplay = product.seller?.name || 'Knot & Bloom';
     const isKnotAndBloom = sellerDisplay === 'Knot & Bloom';
 
+    React.useEffect(() => {
+        let interval: ReturnType<typeof setInterval>;
+        if (imageList.length > 1) {
+            interval = setInterval(() => {
+                setPrevImageIndex(currentImageIndex);
+                setCurrentImageIndex((currentImageIndex + 1) % imageList.length);
+                
+                fadeAnim.setValue(0);
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 600,
+                    useNativeDriver: true
+                }).start();
+            }, 3500); // cycle every 3.5s automatically
+        } else {
+            setCurrentImageIndex(0);
+            setPrevImageIndex(0);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [currentImageIndex, imageList.length]);
+
     const handleWishlistPress = () => {
         if (onWishlistToggle) {
             onWishlistToggle(product.uid, !isWishlisted);
@@ -168,12 +194,21 @@ export default function ProductCard({
             >
                 {/* Image */}
                 <View style={styles.imageContainer}>
-                    {displayImage ? (
-                        <Image
-                            source={{ uri: displayImage }}
-                            style={styles.productImage}
-                            resizeMode="cover"
-                        />
+                    {imageList.length > 0 ? (
+                        <>
+                            {imageList.length > 1 && currentImageIndex !== prevImageIndex && (
+                                <Image
+                                    source={{ uri: imageList[prevImageIndex] }}
+                                    style={[styles.productImage, { position: 'absolute' }]}
+                                    resizeMode="cover"
+                                />
+                            )}
+                            <Animated.Image
+                                source={{ uri: imageList[currentImageIndex] }}
+                                style={[styles.productImage, { opacity: fadeAnim }]}
+                                resizeMode="cover"
+                            />
+                        </>
                     ) : (
                         <View style={styles.imagePlaceholder}>
                             <Text style={{ color: theme.colors.textLight, fontSize: s.ratingFont }}>No Image</Text>
@@ -189,7 +224,7 @@ export default function ProductCard({
                             {imageList.slice(0, 5).map((_, i) => (
                                 <View key={i} style={{
                                     width: 4, height: 4, borderRadius: 2,
-                                    backgroundColor: i === 0 ? theme.colors.primary : 'rgba(255,255,255,0.6)'
+                                    backgroundColor: i === (currentImageIndex % 5) ? theme.colors.primary : 'rgba(255,255,255,0.6)'
                                 }} />
                             ))}
                         </View>

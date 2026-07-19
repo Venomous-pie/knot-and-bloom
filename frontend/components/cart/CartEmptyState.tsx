@@ -15,7 +15,7 @@ export const CartEmptyState = () => {
                 Looks like you haven't added anything to your cart yet.
                 Start shopping to fill it up!
             </Text>
-            <Pressable style={styles.shopBtn} onPress={() => router.push('/products/all')}>
+            <Pressable style={styles.shopBtn} onPress={() => router.push('/products/all-products')}>
                 <Text style={styles.shopBtnText}>Start Shopping</Text>
             </Pressable>
         </View>

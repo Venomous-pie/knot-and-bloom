@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, Platform, useWindowDimensions, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Phone, MapPin, MessageCircle, ChevronDown, ChevronUp, Send } from 'lucide-react-native';
 import { Stack } from 'expo-router';
@@ -94,7 +94,9 @@ export default function CustomerServicePage() {
                                     </View>
                                     <View>
                                         <Text style={styles.contactLabel}>Email Us</Text>
-                                        <Text style={styles.contactValue}>support@knotandbloom.com</Text>
+                                        <TouchableOpacity onPress={() => Linking.openURL('mailto:knotandbloom.shop+support@gmail.com')}>
+                                            <Text style={[styles.contactValue, { color: '#B36979', textDecorationLine: 'underline' }]}>knotandbloom.shop+support@gmail.com</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
                                 <View style={styles.contactItem}>

@@ -736,7 +736,12 @@ export default function OrderDetailsPage() {
 
                                 <Text style={{ textAlign: 'center', color: '#888', fontSize: 12, marginTop: 20, lineHeight: 18 }}>
                                     If you have any questions, please contact us at{'\n'}
-                                    <Text style={{ color: '#B36979', fontWeight: 'bold' }}>support@knotandbloom.com</Text>
+                                    <Text 
+                                        style={{ color: '#B36979', fontWeight: 'bold', textDecorationLine: 'underline' }}
+                                        onPress={() => Linking.openURL('mailto:knotandbloom.shop+support@gmail.com')}
+                                    >
+                                        knotandbloom.shop+support@gmail.com
+                                    </Text>
                                 </Text>
                                 <Text style={{ textAlign: 'center', color: '#aaa', fontSize: 10, marginTop: 10 }}>
                                     Returns accepted within 5 business days after delivery.{'\n'}See our website for full return policy.

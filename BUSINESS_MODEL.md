@@ -19,7 +19,9 @@ Because you must collect your 2% immediately, the platform acts as a central sec
 ## 4. The 20% COD Trust System
 Cash on Delivery is the lifeblood of Philippine e-commerce, but it carries high risks. Knot & Bloom eliminates this risk for artisans.
 - **The Deposit:** If a buyer selects COD, they must pay a 20% deposit upfront via the central platform gateway.
-- **The Fulfillment:** The artisan crafts the item with peace of mind. The courier collects the remaining 80% upon delivery.
+- **The Fulfillment:** The artisan crafts the item with peace of mind. The courier collects the remaining 80% upon delivery. 
+  - *If using Platform-Integrated 3PL (e.g., GoGoXpress API):* The courier remits the 80% to Knot & Bloom's corporate account, which is then added to the seller's Available Balance for withdrawal.
+  - *If using Independent Courier (e.g., Seller's local LBC):* The courier remits the 80% directly to the seller's bank account, bypassing the platform completely (since Knot & Bloom already took its fees from the 20% upfront deposit).
 - **The Safety Net:** If the buyer refuses the package, the artisan keeps the 20% deposit to cover their materials, and the buyer's Customer Trust Score plummets, banning them from future COD purchases.
 
 ## 5. Lean Tech Stack & Infrastructure
@@ -302,6 +304,24 @@ PENDING → CONFIRMED → IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVE
 | **NotificationService**  | Push notification creation & delivery        |
 | **RefreshTokenService**  | JWT refresh token rotation                   |
 | **LoginRateLimiter**     | Brute-force auth protection                  |
+
+---
+
+## Communication & Email Routing
+
+To maintain a professional outward appearance and automate triage as a solo developer, all incoming platform communications are routed through Gmail aliases (`+` syntax) to the main `knotandbloom.shop@gmail.com` inbox.
+
+| Alias / Email | Purpose & Routing |
+| ------------- | ----------------- |
+| **`...shop+support@`** | General buyer inquiries, order issues. |
+| **`...shop+apply@`** | Automated notifications when a new seller KYC application is submitted. |
+| **`...shop+payouts@`** | Automated alerts when a seller requests a GCash/Bank withdrawal. |
+| **`...shop+sellers@`** | Direct communication channel exclusively for active sellers. |
+| **`...shop+report@`** | Urgent moderation alerts when a buyer flags a listing as a mass-produced/dropshipped item. |
+| **`...shop+payments@`** | Inbound receipts and webhooks from the central escrow/PayMongo gateway. |
+| **`...shop+partners@`** | B2B inquiries, marketing collaborations, or sponsorships. |
+
+> **Operational Hack:** These aliases allow you to set up automated Gmail filters. For example, any email sent to `+report` gets labeled as "URGENT - MODERATION" and triggers a push notification to your phone. Later on, these aliases can be plugged into Webhooks (e.g., via SendGrid or Postmark) to automatically trigger backend functions without you ever opening your inbox.
 
 ---
 

@@ -85,7 +85,7 @@ export default function SellerTermsPage() {
 
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>
-                            For detailed inquiries regarding these terms, please contact seller-support@knotandbloom.com
+                            For detailed inquiries regarding these terms, please contact knotandbloom.shop@gmail.com
                         </Text>
                     </View>
                 </ScrollView>

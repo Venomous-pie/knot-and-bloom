@@ -75,10 +75,18 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
             });
         }
 
+        // Return the updated unique item count
+        const cartItemCount = await prisma.cartItem.count({
+            where: { cartId: cart.uid }
+        });
+
         // Real-time Update
         supabaseService.emitToRoom(`user_${customerId}`, 'cart:updated', { customerId: Number(customerId) });
 
-        res.status(200).json({ message: "Product added to cart successfully." });
+        res.status(200).json({ 
+            message: "Product added to cart successfully.",
+            cartCount: cartItemCount 
+        });
 
     } catch (error) {
         console.error("Error adding to cart:", error);

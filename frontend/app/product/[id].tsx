@@ -94,7 +94,7 @@ export default function ProductDetailPage() {
     const displayImage = selectedImage || product?.image || null;
 
     const { user } = useAuth();
-    const { refreshCart, triggerCartAnimation } = useCart();
+    const { refreshCart, triggerCartAnimation, setCartCount } = useCart();
     const { wishlistedProductIds, toggleWishlist } = useWishlist();
     const buttonRef = useRef<View>(null);
 
@@ -232,8 +232,15 @@ export default function ProductDetailPage() {
                 triggerCartAnimation({ x: pageX + btnWidth / 2, y: pageY + btnHeight / 2 });
             });
 
-            await cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant);
-            await refreshCart();
+            const response = await cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant);
+            
+            // Update the cart badge instantly with the new count from the response
+            if (response.data && response.data.cartCount !== undefined) {
+                setCartCount(response.data.cartCount);
+            }
+            
+            // Optionally, we can still fetch the full cart in the background but we don't need to await it
+            refreshCart();
 
             Alert.alert(
                 "Added to Cart",

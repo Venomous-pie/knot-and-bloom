@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface CartContextType {
     cartCount: number;
+    setCartCount: (count: number) => void;
     refreshCart: () => Promise<void>;
     animationStartPos: { x: number; y: number } | null;
     triggerCartAnimation: (pos: { x: number; y: number }) => void;
@@ -14,6 +15,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType>({
     cartCount: 0,
+    setCartCount: () => { },
     refreshCart: async () => { },
     animationStartPos: null,
     triggerCartAnimation: () => { },
@@ -65,6 +67,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     return (
         <CartContext.Provider value={{
             cartCount,
+            setCartCount,
             refreshCart,
             animationStartPos,
             triggerCartAnimation,

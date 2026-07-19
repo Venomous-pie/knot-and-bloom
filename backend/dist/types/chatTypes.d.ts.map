@@ -1,1 +1,0 @@
-{"version":3,"file":"chatTypes.d.ts","sourceRoot":"","sources":["../../src/types/chatTypes.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,gBAAgB;IAC7B,WAAW,EAAE,MAAM,CAAC;IACpB,OAAO,EAAE,MAAM,CAAC;CACnB;AAED,MAAM,WAAW,WAAW;IACxB,IAAI,EAAE,MAAM,CAAC;IACb,EAAE,CAAC,EAAE,MAAM,CAAC;IACZ,OAAO,EAAE,MAAM,CAAC;IAChB,SAAS,EAAE,MAAM,CAAC;CACrB"}

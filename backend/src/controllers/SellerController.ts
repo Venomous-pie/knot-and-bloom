@@ -604,13 +604,13 @@ export const sellerController = {
                 let lowStockCount = 0;
                 let pendingCount = 0;
 
-            allProducts.forEach(p => {
+            allProducts.forEach((p: any) => {
                 let score = 0;
                 const hasVariants = p.variants && p.variants.length > 0;
                 
                 // Media (25 pts): main image +10, variant images +5, video +10
                 const hasMainImage = !!p.image;
-                const hasVariantImages = hasVariants && p.variants.some(v => v.images && v.images.length > 0);
+                const hasVariantImages = hasVariants && p.variants.some((v: any) => v.images && v.images.length > 0);
                 const hasVideo = !!((p as any).videoUrl && (p as any).videoUrl.trim().length > 0);
                 
                 if (hasMainImage) score += 10;
@@ -639,8 +639,8 @@ export const sellerController = {
 
                 // Fulfillment & Inventory (20 pts): processing time +5, has stock +10, no low-stock variants +5
                 const hasProcessingTime = !!((p as any).processingTime && (p as any).processingTime.trim().length > 0);
-                const hasStock = hasVariants && p.variants.some(v => Number(v.stock || 0) > 0);
-                const hasLowStock = hasVariants && p.variants.some(v => {
+                const hasStock = hasVariants && p.variants.some((v: any) => Number(v.stock || 0) > 0);
+                const hasLowStock = hasVariants && p.variants.some((v: any) => {
                     const s = Number(v.stock || 0);
                     return s > 0 && s <= 5;
                 });
@@ -659,7 +659,7 @@ export const sellerController = {
                 totalOptScore += score;
 
                 // Low Stock Calculation
-                if (hasVariants && p.variants.some(v => v.stock <= 5)) {
+                if (hasVariants && p.variants.some((v: any) => v.stock <= 5)) {
                     lowStockCount++;
                 }
 

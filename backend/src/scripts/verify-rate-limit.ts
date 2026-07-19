@@ -1,6 +1,4 @@
 
-import { io } from 'socket.io-client';
-
 const API_URL = 'http://localhost:3030/api/customers';
 
 async function main() {

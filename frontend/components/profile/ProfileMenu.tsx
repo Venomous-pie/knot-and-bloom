@@ -274,13 +274,22 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
 
                 {/* My Account Section */}
                 <MenuSection title="My Account">
-                    {!((user?.sellerId && (user.sellerStatus === 'ACTIVE' || user.sellerStatus === 'PENDING')) || user?.role === 'ADMIN') && (
+                    {(!user?.sellerStatus || user.sellerStatus === 'NONE') && user?.role !== 'ADMIN' && (
                         <MenuItem
                             icon={<Store size={20} />}
                             title="Be a Seller"
                             subtitle="Start your own store"
                             isActive={pathname === '/seller/apply'}
                             onPress={() => router.push('/seller/apply' as RelativePathString)}
+                        />
+                    )}
+                    {(user?.sellerStatus === 'PENDING' || user?.sellerStatus === 'REJECTED') && (
+                        <MenuItem
+                            icon={<Store size={20} />}
+                            title="Application Status"
+                            subtitle={user.sellerStatus === 'PENDING' ? "Track your application" : "Update your application"}
+                            isActive={pathname === '/seller/application-status'}
+                            onPress={() => router.push('/seller/application-status' as RelativePathString)}
                         />
                     )}
                     <MenuItem

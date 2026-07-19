@@ -22,6 +22,7 @@ import { FreeShippingProgress } from "@/components/cart/FreeShippingProgress";
 import { CartBottomBar } from "@/components/cart/CartBottomBar";
 import { CartTableHeader } from "@/components/cart/CartTableHeader";
 import { CartShopGroup } from "@/components/cart/CartShopGroup";
+import { CartPageSkeleton } from "@/components/cart/CartPageSkeleton";
 
 export const FREE_SHIPPING_THRESHOLD = 500;
 
@@ -217,9 +218,11 @@ export default function CartPage() {
 
     if (!user || (loading && cartItems.length === 0)) {
         return (
-            <SafeAreaView style={styles.centerContainer}>
-                <Stack.Screen options={{ title: 'Shopping Cart', headerTitleAlign: 'center' }} />
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <Stack.Screen options={{ title: 'Shopping Cart', headerTitleStyle: { fontFamily: theme.typography.fontFamily }, headerStyle: { backgroundColor: theme.colors.background } }} />
+                <View style={styles.contentContainer}>
+                    <CartPageSkeleton />
+                </View>
             </SafeAreaView>
         );
     }
@@ -232,15 +235,20 @@ export default function CartPage() {
                 <FlatList
                     data={shopGroups}
                     keyExtractor={(group) => group.sellerName}
-                    contentContainerStyle={[styles.listContent, { paddingBottom: 140 }]}
+                    contentContainerStyle={[
+                        cartItems.length === 0 ? styles.listContent : undefined, 
+                        cartItems.length > 0 ? { paddingBottom: 140 } : { flexGrow: 1, justifyContent: 'center' }
+                    ]}
                     ListHeaderComponent={
-                        <>
-                            <FreeShippingProgress currentTotal={subtotal} threshold={FREE_SHIPPING_THRESHOLD} />
-                            <CartTableHeader
-                                allSelected={selectedItems.size === cartItems.length && cartItems.length > 0}
-                                onToggleSelectAll={toggleSelectAll}
-                            />
-                        </>
+                        cartItems.length > 0 ? (
+                            <>
+                                <FreeShippingProgress currentTotal={subtotal} threshold={FREE_SHIPPING_THRESHOLD} />
+                                <CartTableHeader
+                                    allSelected={selectedItems.size === cartItems.length && cartItems.length > 0}
+                                    onToggleSelectAll={toggleSelectAll}
+                                />
+                            </>
+                        ) : null
                     }
                     ListEmptyComponent={<CartEmptyState />}
                     renderItem={({ item: group }) => (

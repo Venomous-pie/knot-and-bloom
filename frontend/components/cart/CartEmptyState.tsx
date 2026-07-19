@@ -15,7 +15,7 @@ export const CartEmptyState = () => {
                 Looks like you haven't added anything to your cart yet.
                 Start shopping to fill it up!
             </Text>
-            <Pressable style={styles.shopBtn} onPress={() => router.push('/')}>
+            <Pressable style={styles.shopBtn} onPress={() => router.push('/products/all')}>
                 <Text style={styles.shopBtnText}>Start Shopping</Text>
             </Pressable>
         </View>
@@ -28,7 +28,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: theme.spacing['2xl'],
-        marginTop: theme.spacing['2xl'],
     },
     iconContainer: {
         width: 120,

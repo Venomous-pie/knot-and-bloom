@@ -11,6 +11,7 @@ interface CartContextType {
     clearAnimation: () => void;
     cartIconPosition: { x: number; y: number } | null;
     setCartIconPosition: (pos: { x: number; y: number }) => void;
+    cartItems: any[];
 }
 
 const CartContext = createContext<CartContextType>({
@@ -22,6 +23,7 @@ const CartContext = createContext<CartContextType>({
     clearAnimation: () => { },
     cartIconPosition: null,
     setCartIconPosition: () => { },
+    cartItems: [],
 });
 
 export const useCart = () => useContext(CartContext);
@@ -29,6 +31,7 @@ export const useCart = () => useContext(CartContext);
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     const { user } = useAuth();
     const [cartCount, setCartCount] = useState(0);
+    const [cartItems, setCartItems] = useState<any[]>([]);
     const [animationStartPos, setAnimationStartPos] = useState<{ x: number; y: number } | null>(null);
     const [cartIconPosition, setCartIconPosition] = useState<{ x: number; y: number } | null>(null);
 
@@ -42,13 +45,16 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             if (response.data && response.data.cart && Array.isArray(response.data.cart.items)) {
                 // Count unique items (product variants) rather than total quantity
                 setCartCount(response.data.cart.items.length);
+                setCartItems(response.data.cart.items);
             } else {
                 setCartCount(0);
+                setCartItems([]);
             }
         } catch (error) {
             console.error("Failed to refresh cart count", error);
             // On error, safest to show 0
             setCartCount(0);
+            setCartItems([]);
         }
     };
 
@@ -73,7 +79,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
             triggerCartAnimation,
             clearAnimation,
             cartIconPosition,
-            setCartIconPosition
+            setCartIconPosition,
+            cartItems
         }}>
             {children}
         </CartContext.Provider>

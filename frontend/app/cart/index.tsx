@@ -35,12 +35,12 @@ interface ShopGroup {
 
 export default function CartPage() {
     const { user } = useAuth();
-    const { refreshCart } = useCart();
+    const { refreshCart, cartItems: globalCartItems } = useCart();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
 
-    const [cartItems, setCartItems] = useState<CartItemType[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [cartItems, setCartItems] = useState<CartItemType[]>(globalCartItems || []);
+    const [loading, setLoading] = useState(false);
     const [subtotal, setSubtotal] = useState(0);
     const [totalSavings, setTotalSavings] = useState(0);
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
@@ -67,8 +67,21 @@ export default function CartPage() {
     }, [cartItems]);
 
     useEffect(() => {
-        if (user) fetchCart();
-        else setLoading(false);
+        if (globalCartItems && globalCartItems.length > 0) {
+            setCartItems(globalCartItems);
+            if (selectedItems.size === 0) {
+                setSelectedItems(new Set(globalCartItems.map((i: CartItemType) => i.uid)));
+            }
+        }
+    }, [globalCartItems]);
+
+    useEffect(() => {
+        if (user) {
+            // We still fetch quietly in the background to ensure it's fresh
+            fetchCart();
+        } else {
+            setLoading(false);
+        }
     }, [user]);
 
     useEffect(() => {
@@ -77,7 +90,8 @@ export default function CartPage() {
 
     const fetchCart = async () => {
         try {
-            setLoading(true);
+            // Only show loading if we have NO items yet
+            if (cartItems.length === 0) setLoading(true);
             if (!user?.uid) return;
             const response = await cartAPI.getCart(user.uid);
             const items = response.data.cart.items || [];

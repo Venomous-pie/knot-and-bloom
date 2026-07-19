@@ -7,6 +7,7 @@ import type { Product } from "@/types/products";
 import { calculatePrice } from "@/utils/pricing";
 import { router, useLocalSearchParams, Stack, Link } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
+import { getCachedProduct, cacheProduct } from "@/utils/productCache";
 import {
     ActivityIndicator,
     Alert,
@@ -59,8 +60,9 @@ export default function ProductDetailPage() {
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
 
-    const [product, setProduct] = useState<Product | null>(null);
-    const [loading, setLoading] = useState(true);
+    const cachedProduct = getCachedProduct(id as string);
+    const [product, setProduct] = useState<Product | null>(cachedProduct);
+    const [loading, setLoading] = useState(!cachedProduct);
     const [error, setError] = useState<string | null>(null);
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -94,7 +96,7 @@ export default function ProductDetailPage() {
     const displayImage = selectedImage || product?.image || null;
 
     const { user } = useAuth();
-    const { refreshCart, triggerCartAnimation, setCartCount } = useCart();
+    const { refreshCart, triggerCartAnimation, setCartCount, cartCount, cartItems } = useCart();
     const { wishlistedProductIds, toggleWishlist } = useWishlist();
     const buttonRef = useRef<View>(null);
 
@@ -121,12 +123,13 @@ export default function ProductDetailPage() {
 
         const fetchProduct = async () => {
             try {
-                setLoading(true);
+                if (!cachedProduct) setLoading(true);
                 setError(null);
 
                 const response = await productAPI.getProductById(id);
                 const fetchedProduct = response.data.product;
                 setProduct(fetchedProduct);
+                cacheProduct(fetchedProduct);
 
                 if (fetchedProduct.variants && fetchedProduct.variants.length > 0) {
                     setSelectedVariant(fetchedProduct.variants[0].name);
@@ -232,27 +235,39 @@ export default function ProductDetailPage() {
                 triggerCartAnimation({ x: pageX + btnWidth / 2, y: pageY + btnHeight / 2 });
             });
 
-            const response = await cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant);
-            
-            // Update the cart badge instantly with the new count from the response
-            if (response.data && response.data.cartCount !== undefined) {
-                setCartCount(response.data.cartCount);
-            }
-            
-            // Optionally, we can still fetch the full cart in the background but we don't need to await it
-            refreshCart();
-
-            Alert.alert(
-                "Added to Cart",
-                `${product.name} ${selectedVariant ? `(${selectedVariant})` : ''} has been added to your cart.`,
-                [
-                    { text: "Continue Shopping", style: "cancel" },
-                    { text: "View Cart", onPress: () => router.push('/cart') }
-                ]
+            const isNewItem = !cartItems.some((item: any) => 
+                item.productId === product.uid && 
+                (selectedVariant ? item.productVariant?.name === selectedVariant : true)
             );
+
+            if (isNewItem) {
+                setCartCount(cartCount + 1);
+            }
+
+            cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant).then(response => {
+                if (response.data && response.data.cartCount !== undefined) {
+                    setCartCount(response.data.cartCount);
+                }
+                refreshCart();
+            }).catch(error => {
+                console.error("❌ API Failed:", error);
+                if (isNewItem) setCartCount(cartCount);
+                Alert.alert("Error", "Failed to add item to cart. Please try again.");
+            });
+
+            setTimeout(() => {
+                Alert.alert(
+                    "Added to Cart",
+                    `${product.name} ${selectedVariant ? `(${selectedVariant})` : ''} has been added to your cart.`,
+                    [
+                        { text: "Continue Shopping", style: "cancel" },
+                        { text: "View Cart", onPress: () => router.push('/cart') }
+                    ]
+                );
+            }, 800);
         } catch (error: any) {
-            console.error("❌ API Failed:", error);
-            Alert.alert("Error", "Failed to add item to cart. Please try again.");
+            console.error("❌ Error:", error);
+            Alert.alert("Error", "Something went wrong.");
         }
     };
 

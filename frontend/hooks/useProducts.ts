@@ -1,6 +1,7 @@
 import { productAPI } from "@/api/api";
 import { GetProductsParams, Product } from "@/types/products";
 import { useCallback, useEffect, useState } from "react";
+import { cacheProducts } from "@/utils/productCache";
 
 interface UseProductsOptions extends GetProductsParams {
     initialFetch?: boolean;
@@ -17,35 +18,54 @@ interface UseProductsResult {
     updateParams: (newParams: Partial<GetProductsParams>) => void;
 }
 
-export const useProducts = (options: UseProductsOptions = {}): UseProductsResult => {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [total, setTotal] = useState(0);
-    const [hasMore, setHasMore] = useState(false);
+// Global cache for product queries to eliminate loading delays
+const queryCache: Record<string, { products: Product[], total: number, hasMore: boolean }> = {};
 
-    // Store current params in state to allow dynamic updates
-    const [params, setParams] = useState<GetProductsParams>({
-        limit: 20,
-        offset: 0,
-        ...options
-    });
+export const useProducts = (options: UseProductsOptions = {}): UseProductsResult => {
+    // Generate initial cache key
+    const initialParams = { limit: 20, offset: 0, ...options };
+    const initialCacheKey = JSON.stringify(initialParams);
+    const cachedData = queryCache[initialCacheKey];
+
+    const [products, setProducts] = useState<Product[]>(cachedData?.products || []);
+    // If we have cached data, we don't need to show the initial loading state
+    const [loading, setLoading] = useState(cachedData ? false : true);
+    const [error, setError] = useState<string | null>(null);
+    const [total, setTotal] = useState(cachedData?.total || 0);
+    const [hasMore, setHasMore] = useState(cachedData?.hasMore || false);
+
+    const [params, setParams] = useState<GetProductsParams>(initialParams);
 
     const fetchProducts = useCallback(async (currentParams: GetProductsParams, isLoadMore = false) => {
         try {
-            setLoading(true);
-            setError(null);
+            const cacheKey = JSON.stringify(currentParams);
+            const hasCache = !!queryCache[cacheKey];
             
-            if (!isLoadMore) {
+            // Only show loading if we are NOT loading more AND we don't have cached data for this query
+            if (!isLoadMore && !hasCache) {
+                setLoading(true);
                 setProducts([]);
             }
+            
+            setError(null);
 
             const response = await productAPI.getProducts(currentParams);
 
             if (isLoadMore) {
-                setProducts(prev => [...prev, ...response.data.products]);
+                setProducts(prev => {
+                    const newProducts = [...prev, ...response.data.products];
+                    // Update cache for load more? It's tricky with offset, usually we just cache page 0.
+                    return newProducts;
+                });
             } else {
                 setProducts(response.data.products);
+                cacheProducts(response.data.products);
+                // Save to cache for instant subsequent loads
+                queryCache[cacheKey] = {
+                    products: response.data.products,
+                    total: response.data.total,
+                    hasMore: response.data.pagination.hasMore
+                };
             }
 
             setTotal(response.data.total);
@@ -58,35 +78,33 @@ export const useProducts = (options: UseProductsOptions = {}): UseProductsResult
         }
     }, []);
 
-    // Initial fetch
-    // React to options changes (e.g. category switch)
     useEffect(() => {
-        const newParams = {
-            limit: 20,
-            offset: 0,
-            ...options
-        };
+        const newParams = { limit: 20, offset: 0, ...options };
+        const cacheKey = JSON.stringify(newParams);
 
-        // Only update and fetch if params have actually changed (deep comparison via stringify)
-        if (JSON.stringify(newParams) !== JSON.stringify(params)) {
+        if (cacheKey !== JSON.stringify(params)) {
             setParams(newParams);
+            
+            if (queryCache[cacheKey]) {
+                // Instantly load from cache to prevent skeleton flash
+                setProducts(queryCache[cacheKey].products);
+                setTotal(queryCache[cacheKey].total);
+                setHasMore(queryCache[cacheKey].hasMore);
+                setLoading(false);
+            }
+            
             if (options.initialFetch !== false) {
                 fetchProducts(newParams, false);
             }
-        } else if (options.initialFetch !== false && products.length === 0 && !loading && !error) {
-            // Initial fetch case if params matched default but no data yet (mount)
-            fetchProducts(newParams, false);
+        } else {
+            // Initial mount where params match the default state
+            if (options.initialFetch !== false) {
+                fetchProducts(newParams, false);
+            }
         }
-    }, [JSON.stringify(options)]); // Deep dependency check 
-    // NOTE: If params change via updateParams, we might want to refetch automatically?
-    // Let's make updateParams trigger fetch.
-
-    // Effect to refetch when params change (excluding offset for loadMore handling manually)
-    // Actually, handling this with useEffect on params object can be tricky if params object identity changes.
-    // Let's prefer manual triggering via refresh/updateParams.
+    }, [JSON.stringify(options)]); 
 
     const refresh = async () => {
-        // Reset offset to 0
         const newParams = { ...params, offset: 0 };
         setParams(newParams);
         await fetchProducts(newParams, false);
@@ -101,7 +119,6 @@ export const useProducts = (options: UseProductsOptions = {}): UseProductsResult
     };
 
     const updateParams = (newParams: Partial<GetProductsParams>) => {
-        // When updating filters (category/search), usually we want to reset offset to 0
         const updated = { ...params, ...newParams, offset: 0 };
         setParams(updated);
         fetchProducts(updated, false);

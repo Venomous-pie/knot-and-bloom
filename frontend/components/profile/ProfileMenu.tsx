@@ -319,6 +319,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         isActive={pathname === '/profile/notifications/settings'}
                         onPress={() => router.push('/profile/notifications/settings' as RelativePathString)}
                     />
+{/* Destructive actions hidden temporarily
                     <MenuItem
                         icon={<Trash2 size={20} color={theme.colors.error} />}
                         title="Request Account Deletion"
@@ -326,6 +327,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         onPress={() => router.push('/profile/account/delete-account' as RelativePathString)}
                         danger
                     />
+                    */}
                 </MenuSection>
 
                 {/* My Orders Section */}
@@ -501,6 +503,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
+        minHeight: 72,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.subtle,
     },

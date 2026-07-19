@@ -126,8 +126,9 @@ export default function ApplicationStatusPage() {
                         
                         <View style={styles.buttonContainer}>
                             <Pressable 
-                                style={({ pressed }) => [
+                                style={({ pressed, hovered }: any) => [
                                     styles.primaryBtn,
+                                    hovered && { backgroundColor: theme.colors.primary },
                                     pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
                                 ]}
                                 onPress={handleRefresh} 
@@ -140,10 +141,11 @@ export default function ApplicationStatusPage() {
                                 )}
                             </Pressable>
 
-                            <Pressable 
-                                style={({ pressed }) => [
+                                <Pressable 
+                                style={({ pressed, hovered }: any) => [
                                     styles.destructiveBtn,
-                                    pressed && { backgroundColor: theme.colors.errorLight }
+                                    hovered && { backgroundColor: theme.colors.subtle },
+                                    pressed && { backgroundColor: theme.colors.background }
                                 ]}
                                 onPress={() => setCancelModalVisible(true)}
                             >
@@ -168,8 +170,9 @@ export default function ApplicationStatusPage() {
                         
                         <View style={[styles.buttonContainer, { marginTop: 24 }]}>
                             <Pressable
-                                style={({ pressed }) => [
+                                style={({ pressed, hovered }: any) => [
                                     styles.primaryBtn,
+                                    hovered && { backgroundColor: theme.colors.primary },
                                     pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
                                 ]}
                                 onPress={() => router.push("/seller-dashboard/" as RelativePathString)}
@@ -202,8 +205,9 @@ export default function ApplicationStatusPage() {
                         
                         <View style={styles.buttonContainer}>
                             <Pressable
-                                style={({ pressed }) => [
+                                style={({ pressed, hovered }: any) => [
                                     styles.primaryBtn,
+                                    hovered && { backgroundColor: theme.colors.primary },
                                     pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
                                 ]}
                                 onPress={() => router.push("/seller/apply" as RelativePathString)}
@@ -211,10 +215,11 @@ export default function ApplicationStatusPage() {
                                 <Text style={styles.primaryBtnText}>Update Application</Text>
                             </Pressable>
 
-                            <Pressable 
-                                style={({ pressed }) => [
+                                <Pressable 
+                                style={({ pressed, hovered }: any) => [
                                     styles.destructiveBtn,
-                                    pressed && { backgroundColor: theme.colors.errorLight }
+                                    hovered && { backgroundColor: theme.colors.subtle },
+                                    pressed && { backgroundColor: theme.colors.background }
                                 ]}
                                 onPress={() => setCancelModalVisible(true)}
                             >
@@ -238,8 +243,9 @@ export default function ApplicationStatusPage() {
                         
                         <View style={[styles.buttonContainer, { marginTop: 24 }]}>
                             <Pressable
-                                style={({ pressed }) => [
+                                style={({ pressed, hovered }: any) => [
                                     styles.primaryBtn,
+                                    hovered && { backgroundColor: theme.colors.primary },
                                     pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
                                 ]}
                                 onPress={() => router.push("/seller/apply" as RelativePathString)}
@@ -409,10 +415,12 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
     buttonContainer: {
+        flexDirection: 'row',
         gap: 12,
         width: '100%',
     },
     primaryBtn: {
+        flex: 1,
         backgroundColor: theme.colors.primary,
         paddingHorizontal: 20,
         paddingVertical: 14,
@@ -423,15 +431,16 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     primaryBtnText: {
-        color: "white",
+        color: theme.colors.primaryText,
         fontSize: 15,
         fontWeight: "700",
         fontFamily: 'Quicksand',
     },
     destructiveBtn: {
+        flex: 1,
         backgroundColor: 'transparent',
         borderWidth: 1,
-        borderColor: theme.colors.error,
+        borderColor: theme.colors.border,
         paddingHorizontal: 20,
         paddingVertical: 14,
         borderRadius: 12,
@@ -439,7 +448,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     destructiveBtnText: {
-        color: theme.colors.error,
+        color: theme.colors.textSecondary,
         fontSize: 14,
         fontWeight: "600",
         fontFamily: 'Quicksand',

@@ -320,20 +320,28 @@ export default function ProductCategoryPage() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            {/* Breadcrumb Bar (Full Width) */}
-            <View style={styles.headerBar}>
-                <View style={styles.headerBarContent}>
-                    <Text style={styles.breadcrumbText}>
-                        <Text style={styles.breadcrumbLink} onPress={() => router.push('/' as any)}>Home</Text>
-                        <Text style={styles.breadcrumbSeparator}> › </Text>
-                        <Text style={styles.breadcrumbCurrent}>{categoryTitle}</Text>
+            {/* Breadcrumb Bar */}
+            <View style={styles.breadcrumbContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.breadcrumbItem}>
+                        <Pressable onPress={() => router.push('/' as any)}>
+                            <Text style={[styles.breadcrumbText, styles.breadcrumbTextClickable]}>
+                                Home
+                            </Text>
+                        </Pressable>
+                        <Text style={styles.breadcrumbSeparator}>/</Text>
+                    </View>
+                    <View style={styles.breadcrumbItem}>
+                        <Text style={[styles.breadcrumbText, styles.breadcrumbTextActive]}>
+                            {categoryTitle}
+                        </Text>
                         {!loading && (
-                            <Text style={styles.breadcrumbCount}>
+                            <Text style={[styles.breadcrumbText, styles.breadcrumbTextClickable]}>
                                 {' '}· {total} {total === 1 ? 'product' : 'products'}
                             </Text>
                         )}
-                    </Text>
-                </View>
+                    </View>
+                </ScrollView>
             </View>
 
             <Modal
@@ -392,38 +400,34 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         paddingHorizontal: theme.spacing.lg,
     },
-    headerBar: {
-        width: '100%',
-        backgroundColor: theme.colors.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    headerBarContent: {
-        maxWidth: 1200,
-        width: '100%',
-        alignSelf: 'center',
+    breadcrumbContainer: {
         paddingHorizontal: theme.spacing.lg,
-        paddingVertical: theme.spacing.md,
+        paddingTop: 16,
+        paddingBottom: 8,
+        width: '100%',
+        maxWidth: 1200,
+        alignSelf: 'center',
+    },
+    breadcrumbItem: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     breadcrumbText: {
-        fontSize: theme.typography.sizes.sm,
+        fontSize: 12,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    breadcrumbTextClickable: {
         color: theme.colors.textSecondary,
     },
-    breadcrumbLink: {
-        color: theme.colors.textLight,
+    breadcrumbTextActive: {
+        color: theme.colors.text,
+        fontWeight: '500',
     },
     breadcrumbSeparator: {
-        color: theme.colors.border,
-        marginHorizontal: theme.spacing.xs,
-    },
-    breadcrumbCurrent: {
-        color: theme.colors.text,
-        fontWeight: theme.typography.weights.medium as any,
-    },
-    breadcrumbCount: {
+        fontSize: 12,
         color: theme.colors.textLight,
+        marginHorizontal: 8,
     },
     mainLayout: {
         flex: 1,
@@ -432,7 +436,7 @@ const styles = StyleSheet.create({
     },
     sidebar: {
         width: 250,
-        paddingTop: theme.spacing.xl,
+        paddingTop: theme.spacing.sm,
         paddingRight: theme.spacing.lg,
     },
     sidebarScrollContent: {
@@ -518,7 +522,7 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     listContent: {
-        paddingTop: theme.spacing.xl,
+        paddingTop: theme.spacing.sm,
         paddingBottom: theme.spacing['2xl'],
     },
     columnWrapper: {

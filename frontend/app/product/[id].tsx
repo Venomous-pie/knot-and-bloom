@@ -24,6 +24,8 @@ import * as Clipboard from 'expo-clipboard';
 import { theme } from "@/constants/theme";
 import { User } from "@/types/user";
 import MakerCard from "@/components/product/MakerCard";
+import Footer from "@/components/home/Footer";
+import ProductPageSkeleton from "@/components/product/ProductPageSkeleton";
 
 const MOCK_REVIEWS = [
     {
@@ -149,15 +151,25 @@ export default function ProductDetailPage() {
         const fetchRecommendations = async () => {
             try {
                 const primaryCategory = product.categories?.[0];
-                const response = await productAPI.getProducts({
+                let response = await productAPI.getProducts({
                     category: primaryCategory,
                     sort: 'bestselling',
                     limit: 11, // Fetch 11 so we can filter out the current one and still have 10
                 });
 
-                const filtered = response.data.products
-                    .filter((p) => p.uid !== product.uid)
+                let filtered = response.data.products
+                    .filter((p: any) => p.uid !== product.uid)
                     .slice(0, 10);
+
+                if (filtered.length === 0) {
+                    response = await productAPI.getProducts({
+                        sort: 'bestselling',
+                        limit: 5,
+                    });
+                    filtered = response.data.products
+                        .filter((p: any) => p.uid !== product.uid)
+                        .slice(0, 5);
+                }
 
                 setRecommendations(filtered);
             } catch (e) {
@@ -238,11 +250,7 @@ export default function ProductDetailPage() {
     };
 
     if (loading) {
-        return (
-            <View style={styles.centered}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-            </View>
-        );
+        return <ProductPageSkeleton />;
     }
 
     if (error || !product) {
@@ -353,6 +361,43 @@ export default function ProductDetailPage() {
         );
     };
 
+    const renderReviews = () => (
+        <View style={styles.sectionContainer}>
+            <View style={[styles.sectionHeaderRow, { marginBottom: 16 }]}>
+                <Text style={styles.sectionTitle}>Customer Reviews ({MOCK_REVIEWS.length})</Text>
+                <Pressable>
+                    <Text style={styles.viewAllText}>View All &gt;</Text>
+                </Pressable>
+            </View>
+
+            {MOCK_REVIEWS.map((review, index) => (
+                <View key={review.id} style={[styles.reviewCard, index === MOCK_REVIEWS.length - 1 && { borderBottomWidth: 0 }]}>
+                    <View style={styles.reviewHeader}>
+                        <View style={styles.reviewerAvatar}>
+                            <Text style={styles.reviewerAvatarText}>{review.userName[0]}</Text>
+                        </View>
+                        <View style={styles.reviewerInfo}>
+                            <Text style={styles.reviewerName}>{review.userName}</Text>
+                            <View style={styles.starsRow}>
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                    <Ionicons key={i} name={i <= review.rating ? "star" : "star-outline"} size={12} color={theme.colors.starGold} />
+                                ))}
+                            </View>
+                        </View>
+                        <Text style={styles.reviewDate}>{review.date}</Text>
+                    </View>
+                    <Text style={styles.reviewText}>{review.text}</Text>
+                    <View style={styles.reviewFooter}>
+                        <Pressable style={styles.helpfulButton}>
+                            <Ionicons name="thumbs-up-outline" size={14} color={theme.colors.textSecondary} />
+                            <Text style={styles.helpfulText}>Helpful ({review.helpful})</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            ))}
+        </View>
+    );
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <Stack.Screen options={{ title: product.metaTitle || product.name || 'Product Details' }} />
@@ -399,33 +444,30 @@ export default function ProductDetailPage() {
                             </ScrollView>
                         )}
 
-                        {/* Seller Info (Desktop Only - Mobile handles this below description) */}
-                        {isDesktop && renderSellerInfo()}
+                        {/* Store / Seller Info */}
+                        <View style={{ marginTop: 16 }}>
+                            {renderSellerInfo()}
+                        </View>
 
                     </View>
 
                     {/* ================= RIGHT COLUMN ================= */}
                     <View style={isDesktop ? styles.rightColumnDesktop : styles.rightColumnMobile}>
 
-                        {/* Core Details: Name & Price */}
+                        {/* Core Details: Name, Rating, Price */}
                         <View style={styles.sectionContainer}>
                             <Text style={styles.productName}>{product.name}</Text>
 
-                            {product.sku && (
-                                <Pressable onPress={() => handleCopySKU(product.sku)} style={styles.skuContainer}>
-                                    <Text style={styles.skuText}>SKU: {product.sku}</Text>
-                                    {skuCopied ? (
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 2 }}>
-                                            <Ionicons name="checkmark-outline" size={14} color={theme.colors.success} />
-                                            <Text style={{ fontSize: 11, color: theme.colors.success, fontWeight: '600' }}>Copied!</Text>
-                                        </View>
-                                    ) : (
-                                        <Ionicons name="copy-outline" size={12} color={theme.colors.textLight} />
-                                    )}
-                                </Pressable>
-                            )}
+                            <View style={[styles.ratingSummary, { marginTop: 4, marginBottom: 12 }]}>
+                                <View style={styles.starsRow}>
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <Ionicons key={i} name={i <= 4 ? "star" : "star-half"} size={14} color={theme.colors.starGold} />
+                                    ))}
+                                </View>
+                                <Text style={styles.ratingText}>4.8 (124 reviews) | {product.soldCount} Sold</Text>
+                            </View>
 
-                            <View style={styles.priceSection}>
+                            <View style={[styles.priceSection, { marginBottom: 0 }]}>
                                 {priceCalc.hasDiscount ? (
                                     <View>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -439,15 +481,6 @@ export default function ProductDetailPage() {
                                 ) : (
                                     <Text style={styles.price}>₱{priceCalc.finalPrice.toFixed(2)}</Text>
                                 )}
-                            </View>
-
-                            <View style={styles.ratingSummary}>
-                                <View style={styles.starsRow}>
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <Ionicons key={i} name={i <= 4 ? "star" : "star-half"} size={14} color={theme.colors.starGold} />
-                                    ))}
-                                </View>
-                                <Text style={styles.ratingText}>4.8 (124 reviews) | {product.soldCount} Sold</Text>
                             </View>
                         </View>
 
@@ -532,21 +565,6 @@ export default function ProductDetailPage() {
                             )}
                         </View>
 
-                        {/* Shipping Info */}
-                        <View style={styles.sectionContainer}>
-                            <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.sectionTitle}>Shipping</Text>
-                                <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
-                            </View>
-                            <View style={styles.shippingInfoBlock}>
-                                <Ionicons name="airplane-outline" size={20} color={theme.colors.text} style={{ marginTop: 2 }} />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.shippingInfoTitle}>Standard Shipping</Text>
-                                    <Text style={styles.shippingInfoDesc}>Estimated Delivery: 3-5 Business Days</Text>
-                                    <Text style={styles.shippingInfoPrice}>₱60.00 (Free over ₱500)</Text>
-                                </View>
-                            </View>
-                        </View>
 
                         {/* Product Highlights / Specifications */}
                         {(product.materials || product.isBundle || (product.tags && product.tags.length > 0)) && (
@@ -577,6 +595,30 @@ export default function ProductDetailPage() {
                                             </Text>
                                         </View>
                                     )}
+                                    {!!product.fulfillmentType && (
+                                        <View style={styles.highlightRow}>
+                                            <Ionicons name="cube-outline" size={18} color={theme.colors.textSecondary} />
+                                            <Text style={styles.highlightText}>
+                                                <Text style={{ fontWeight: '600' }}>Fulfillment:</Text> {product.fulfillmentType === 'made_to_order' ? 'Made to Order' : 'Ready Stock'}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {!!product.processingTime && (
+                                        <View style={styles.highlightRow}>
+                                            <Ionicons name="time-outline" size={18} color={theme.colors.textSecondary} />
+                                            <Text style={styles.highlightText}>
+                                                <Text style={{ fontWeight: '600' }}>Processing Time:</Text> {product.processingTime}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    {!!product.isCustomOrderAllowed && (
+                                        <View style={styles.highlightRow}>
+                                            <Ionicons name="color-wand-outline" size={18} color={theme.colors.textSecondary} />
+                                            <Text style={styles.highlightText}>
+                                                <Text style={{ fontWeight: '600' }}>Customization:</Text> Available upon request
+                                            </Text>
+                                        </View>
+                                    )}
                                     {product.tags && product.tags.length > 0 && (
                                         <View style={[styles.highlightRow, { alignItems: 'flex-start' }]}>
                                             <Ionicons name="pricetags-outline" size={18} color={theme.colors.textSecondary} style={{ marginTop: 2 }} />
@@ -593,73 +635,109 @@ export default function ProductDetailPage() {
                             </View>
                         )}
 
-                        {/* Product Description (Collapsible) */}
-                        {product.description && (
-                            <View style={styles.sectionContainer}>
-                                <Text style={styles.sectionTitle}>Product Description</Text>
-                                <Text
-                                    style={styles.descriptionText}
-                                    numberOfLines={isDescriptionExpanded ? undefined : 4}
-                                >
-                                    {product.description}
-                                </Text>
-                                <Pressable
-                                    style={styles.readMoreButton}
-                                    onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                                >
-                                    <Text style={styles.readMoreText}>
-                                        {isDescriptionExpanded ? 'Show Less' : 'Read More'}
-                                    </Text>
-                                    <Ionicons
-                                        name={isDescriptionExpanded ? "chevron-up" : "chevron-down"}
-                                        size={16}
-                                        color={theme.colors.primary}
-                                    />
-                                </Pressable>
+                        {/* Shipping Info */}
+                        <View style={styles.sectionContainer}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>Shipping & Delivery</Text>
+                                <Ionicons name="chevron-forward" size={20} color={theme.colors.textLight} />
                             </View>
-                        )}
-
-                        {/* Seller Info (Mobile Only - Renders below description) */}
-                        {!isDesktop && renderSellerInfo()}
+                            <View style={styles.shippingInfoBlock}>
+                                <Ionicons name="airplane-outline" size={20} color={theme.colors.text} style={{ marginTop: 2 }} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.shippingInfoTitle}>Standard Shipping</Text>
+                                    <Text style={styles.shippingInfoDesc}>Estimated Delivery: 3-5 Business Days</Text>
+                                    <Text style={styles.shippingInfoPrice}>
+                                        {product.shippingFeeOverride != null ? `₱${Number(product.shippingFeeOverride).toFixed(2)}` : '₱60.00 (Free over ₱500)'}
+                                    </Text>
+                                </View>
+                            </View>
+                            {product.isLocalPickupAllowed && (
+                                <View style={[styles.shippingInfoBlock, { marginTop: theme.spacing.md }]}>
+                                    <Ionicons name="storefront-outline" size={20} color={theme.colors.text} style={{ marginTop: 2 }} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.shippingInfoTitle}>Local Pickup Available</Text>
+                                        <Text style={styles.shippingInfoDesc}>
+                                            {product.localPickupInstructions || 'Available for local pickup at the seller\'s location.'}
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
 
                     </View>
                 </View>
 
-                {/* ================= FULL WIDTH BOTTOM (Reviews) ================= */}
+                {/* ================= FULL WIDTH SECTION: Details & Reviews ================= */}
                 <View style={styles.fullWidthSection}>
-                    <View style={styles.sectionContainer}>
-                        <View style={[styles.sectionHeaderRow, { marginBottom: 16 }]}>
-                            <Text style={styles.sectionTitle}>Customer Reviews ({MOCK_REVIEWS.length})</Text>
-                            <Pressable>
-                                <Text style={styles.viewAllText}>View All &gt;</Text>
+                    {/* Product Description */}
+                    {product.description && (
+                        <View style={styles.sectionContainer}>
+                            <Text style={styles.sectionTitle}>Product Description</Text>
+                            <Text
+                                style={styles.descriptionText}
+                                numberOfLines={isDescriptionExpanded ? undefined : 4}
+                            >
+                                {product.description}
+                            </Text>
+                            <Pressable
+                                style={styles.readMoreButton}
+                                onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                            >
+                                <Text style={styles.readMoreText}>
+                                    {isDescriptionExpanded ? 'Show Less' : 'Read More'}
+                                </Text>
+                                <Ionicons
+                                    name={isDescriptionExpanded ? "chevron-up" : "chevron-down"}
+                                    size={16}
+                                    color={theme.colors.primary}
+                                />
                             </Pressable>
                         </View>
+                    )}
 
-                        {MOCK_REVIEWS.map((review, index) => (
-                            <View key={review.id} style={[styles.reviewCard, index === MOCK_REVIEWS.length - 1 && { borderBottomWidth: 0 }]}>
-                                <View style={styles.reviewHeader}>
-                                    <View style={styles.reviewerAvatar}>
-                                        <Text style={styles.reviewerAvatarText}>{review.userName[0]}</Text>
-                                    </View>
-                                    <View style={styles.reviewerInfo}>
-                                        <Text style={styles.reviewerName}>{review.userName}</Text>
-                                        <View style={styles.starsRow}>
-                                            {[1, 2, 3, 4, 5].map((i) => (
-                                                <Ionicons key={i} name={i <= review.rating ? "star" : "star-outline"} size={12} color={theme.colors.starGold} />
-                                            ))}
-                                        </View>
-                                    </View>
-                                    <Text style={styles.reviewDate}>{review.date}</Text>
+                    {/* Care Instructions */}
+                    {product.careInstructions && (
+                        <View style={styles.sectionContainer}>
+                            <Text style={styles.sectionTitle}>Care Instructions</Text>
+                            <Text style={styles.descriptionText}>
+                                {product.careInstructions}
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* ================= YOU MIGHT ALSO LIKE ================= */}
+                    {recommendations.length > 0 && (
+                        <View>
+                            <View style={styles.recommendationsHeader}>
+                                <View style={styles.recommendationsTitleRow}>
+                                    <Text style={styles.recommendationsTitle}>You Might Also Like</Text>
+                                    <Text style={styles.recommendationsSubtitle}>
+                                        {product.categories?.[0] ? `More from ${product.categories[0]}` : 'More picks for you'}
+                                    </Text>
                                 </View>
-                                <Text style={styles.reviewText}>{review.text}</Text>
-                                <View style={styles.reviewFooter}>
-                                    <Pressable style={styles.helpfulButton}>
-                                        <Ionicons name="thumbs-up-outline" size={14} color={theme.colors.textSecondary} />
-                                        <Text style={styles.helpfulText}>Helpful ({review.helpful})</Text>
-                                    </Pressable>
-                                </View>
+                                <Pressable onPress={() => router.push('/products/All' as any)}>
+                                    <Text style={styles.viewAllText}>View All &gt;</Text>
+                                </Pressable>
                             </View>
-                        ))}
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.recommendationsScrollContent}
+                            >
+                                {recommendations.map((rec) => (
+                                    <ProductCard
+                                        key={rec.uid}
+                                        product={rec}
+                                        style={styles.recommendationCard}
+                                    />
+                                ))}
+                            </ScrollView>
+                        </View>
+                    )}
+
+                    {/* Customer Reviews */}
+                    <View style={{ marginTop: 16 }}>
+                        {renderReviews()}
                     </View>
                 </View>
 
@@ -695,32 +773,9 @@ export default function ProductDetailPage() {
                     </View>
                 )}
 
-                {/* ================= YOU MIGHT ALSO LIKE ================= */}
-                {recommendations.length > 0 && (
-                    <View style={styles.fullWidthSection}>
-                        <View style={styles.recommendationsHeader}>
-                            <View style={styles.recommendationsTitleRow}>
-                                <Text style={styles.recommendationsTitle}>You Might Also Like</Text>
-                                <Text style={styles.recommendationsSubtitle}>
-                                    {product.categories?.[0] ? `More from ${product.categories[0]}` : 'More picks for you'}
-                                </Text>
-                            </View>
-                        </View>
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.recommendationsScrollContent}
-                        >
-                            {recommendations.map((rec) => (
-                                <ProductCard
-                                    key={rec.uid}
-                                    product={rec}
-                                    style={styles.recommendationCard}
-                                />
-                            ))}
-                        </ScrollView>
-                    </View>
-                )}
+
+                {/* ================= FOOTER ================= */}
+                <Footer />
 
             </ScrollView>
         </SafeAreaView>
@@ -760,7 +815,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     scrollContent: {
-        paddingBottom: 60,
+        // paddingBottom: 60, removed so footer sits flush
     },
     recommendationsHeader: {
         flexDirection: 'row',
@@ -856,8 +911,17 @@ const styles = StyleSheet.create({
         maxWidth: 1200,
         width: '100%',
         alignSelf: 'center',
-        padding: 24,
+        paddingHorizontal: 24,
+        paddingTop: 8,
+        paddingBottom: 24,
         gap: 40, // Generous spacing between columns
+    },
+    fullWidthSection: {
+        width: '100%',
+        maxWidth: 1200,
+        alignSelf: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
     },
     leftColumnDesktop: {
         flex: 1,
@@ -874,7 +938,7 @@ const styles = StyleSheet.create({
     },
     imageContainer: {
         width: '100%',
-        aspectRatio: 3 / 4,
+        aspectRatio: 1,
         backgroundColor: theme.colors.surface,
     },
     imageContainerDesktop: {
@@ -893,12 +957,14 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.subtle,
     },
     thumbnailStrip: {
-        margin: 12,
+        marginTop: 16,
+        marginBottom: 8,
         flexDirection: 'row',
-        paddingHorizontal: 16, // Only applies effectively on mobile unless overwritten
+        flexGrow: 0,
+        flexShrink: 0,
     },
     thumbnailBox: {
-        width: 60,
+        width: 80,
         height: 80,
         borderRadius: 8,
         backgroundColor: theme.colors.subtle,
@@ -1177,12 +1243,7 @@ const styles = StyleSheet.create({
         color: theme.colors.primary,
         fontFamily: theme.typography.fontFamily,
     },
-    fullWidthSection: {
-        width: '100%',
-        maxWidth: 1200,
-        alignSelf: 'center',
-        paddingHorizontal: 0, // Let section container handle inner padding, or add here for desktop
-    },
+
     reviewCard: {
         paddingVertical: 16,
         borderBottomWidth: 1,

@@ -87,6 +87,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
     gap: theme.spacing.lg,
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
   },
   gridMobile: {
     flexDirection: 'column',

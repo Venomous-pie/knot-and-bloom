@@ -36,8 +36,8 @@ export default function Index() {
           <NewArrivalsSection />
           <BestsellersSection />
           <CustomOrderBanner />
-          <Footer />
         </View>
+        <Footer />
       </ScrollView>
     </SafeAreaView>
   );

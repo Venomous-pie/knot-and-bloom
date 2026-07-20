@@ -111,9 +111,10 @@ export default function CartPage() {
         cartItems.forEach(item => {
             if (selectedItems.has(item.uid)) {
                 if (item.priceInfo) {
-                    total += item.priceInfo.lineTotal;
+                    const lineTotal = item.priceInfo.finalPrice * item.quantity;
+                    total += lineTotal;
                     if (item.priceInfo.hasDiscount) {
-                        savings += (item.priceInfo.effectivePrice * item.quantity) - item.priceInfo.lineTotal;
+                        savings += (item.priceInfo.effectivePrice * item.quantity) - lineTotal;
                     }
                 } else {
                     total += Number(item.product.basePrice) * item.quantity;

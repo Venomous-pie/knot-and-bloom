@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, TextInput, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/constants/theme';
 
@@ -28,27 +28,63 @@ export const CartBottomBar = ({
 }: CartBottomBarProps) => {
     const [showVoucher, setShowVoucher] = useState(false);
     const [voucherCode, setVoucherCode] = useState('');
+    const [voucherError, setVoucherError] = useState('');
+    const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+
+    const handleVoucherChange = (text: string) => {
+        setVoucherCode(text);
+        if (voucherError) setVoucherError('');
+    };
+
+    const handleApplyVoucher = () => {
+        if (!/^[A-Z0-9]{5,15}$/i.test(voucherCode)) {
+            setVoucherError("Invalid code format");
+            return;
+        }
+        setVoucherError("");
+        setIsApplyingVoucher(true);
+        
+        // Simulate API call for applying voucher
+        setTimeout(() => {
+            setIsApplyingVoucher(false);
+            setVoucherError("Voucher code is invalid or expired.");
+        }, 800);
+    };
 
     return (
         <View style={styles.container}>
             <View style={styles.content}>
                 {/* Layer 1: Platform Voucher ... Saved */}
                 <View style={styles.row}>
-                    <View style={styles.voucherSection}>
-                        <Pressable style={styles.voucherBtn} onPress={() => setShowVoucher(!showVoucher)}>
-                            <Ionicons name="ticket-outline" size={16} color="#B36979" />
-                            <Text style={styles.voucherBtnText}>Platform Voucher</Text>
-                            <Ionicons name={showVoucher ? "chevron-up" : "chevron-down"} size={12} color={theme.colors.textSecondary} />
-                        </Pressable>
-                        {showVoucher && (
+                    <View style={{ position: 'relative' }}>
+                        <View style={[styles.voucherSection, voucherError ? { borderColor: theme.colors.error } : null]}>
+                            <View style={styles.voucherIconWrapper}>
+                                <Ionicons name="ticket-outline" size={16} color={voucherError ? theme.colors.error : "#B36979"} />
+                            </View>
                             <TextInput
                                 style={styles.voucherInput}
-                                placeholder="Enter code"
+                                placeholder="Platform Voucher Code"
                                 placeholderTextColor={theme.colors.textLight}
                                 value={voucherCode}
-                                onChangeText={setVoucherCode}
+                                onChangeText={handleVoucherChange}
                             />
-                        )}
+                            {voucherCode.length > 0 && (
+                                <Pressable 
+                                    style={styles.voucherApplyBtn} 
+                                    onPress={handleApplyVoucher}
+                                    disabled={isApplyingVoucher}
+                                >
+                                    {isApplyingVoucher ? (
+                                        <ActivityIndicator size="small" color="#B36979" />
+                                    ) : (
+                                        <Text style={styles.voucherApplyText}>Apply</Text>
+                                    )}
+                                </Pressable>
+                            )}
+                        </View>
+                        {voucherError ? (
+                            <Text style={styles.voucherErrorText}>{voucherError}</Text>
+                        ) : null}
                     </View>
                     <View style={styles.savingsSection}>
                         <Ionicons name="pricetag" size={14} color={totalSavings > 0 ? '#B36979' : theme.colors.textLight} />
@@ -121,32 +157,54 @@ const styles = StyleSheet.create({
     voucherSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-    },
-    voucherBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
         borderWidth: 1,
         borderColor: theme.colors.border,
-        borderRadius: 6,
+        borderRadius: 8,
+        backgroundColor: '#FCFAF9',
+        overflow: 'hidden',
+        minWidth: 220,
     },
-    voucherBtnText: {
-        fontSize: 12,
-        color: '#B36979',
-        fontFamily: theme.typography.fontFamily,
+    voucherIconWrapper: {
+        paddingHorizontal: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRightWidth: 1,
+        borderRightColor: theme.colors.border,
+        backgroundColor: '#F4F4F8',
+        height: '100%',
     },
     voucherInput: {
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        fontSize: 12,
-        minWidth: 100,
+        flex: 1,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        fontSize: 13,
         fontFamily: theme.typography.fontFamily,
+        color: theme.colors.text,
+        borderWidth: 0,
+        ...Platform.select({
+            web: {
+                outlineStyle: 'none',
+            } as any,
+        }),
+    },
+    voucherApplyBtn: {
+        paddingHorizontal: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    voucherApplyText: {
+        color: '#B36979',
+        fontSize: 13,
+        fontWeight: '600',
+        fontFamily: theme.typography.fontFamily,
+    },
+    voucherErrorText: {
+        color: theme.colors.error,
+        fontSize: 10,
+        fontFamily: theme.typography.fontFamily,
+        position: 'absolute',
+        bottom: -16,
+        left: 4,
     },
     savingsSection: {
         flexDirection: 'row',

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, ActivityIndicator, useWindowDimensions, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/constants/theme';
 import { CartItem as CartItemType } from '@/types/cart';
+import { useDialog } from '@/contexts/DialogContext';
 
 interface CartItemProps {
     item: CartItemType;
@@ -24,6 +25,19 @@ export const CartItem = ({
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
     const [showVariants, setShowVariants] = useState(false);
+    const { confirm } = useDialog();
+
+    const handleRemoveItem = async () => {
+        const confirmed = await confirm({
+            title: "Remove Item",
+            message: "Are you sure you want to remove this item from your cart?",
+            confirmText: "Remove",
+            cancelText: "Cancel"
+        });
+        if (confirmed) {
+            onRemove(item.uid);
+        }
+    };
 
     const displayPrice = item.priceInfo?.finalPrice ?? Number(item.product.basePrice);
     const originalPrice = item.priceInfo?.effectivePrice ?? Number(item.product.basePrice);
@@ -132,7 +146,7 @@ export const CartItem = ({
 
                 {/* Actions: 12.5% */}
                 <View style={styles.actionsColumn}>
-                    <Pressable onPress={() => onRemove(item.uid)}>
+                    <Pressable onPress={handleRemoveItem}>
                         <Text style={styles.deleteText}>Delete</Text>
                     </Pressable>
                 </View>
@@ -183,7 +197,7 @@ export const CartItem = ({
                         </View>
                     </View>
                 </View>
-                <Pressable onPress={() => onRemove(item.uid)} style={styles.mobileDelete}><Ionicons name="trash-outline" size={18} color={theme.colors.error} /></Pressable>
+                <Pressable onPress={handleRemoveItem} style={styles.mobileDelete}><Ionicons name="trash-outline" size={18} color={theme.colors.error} /></Pressable>
             </View>
         </View>
     );

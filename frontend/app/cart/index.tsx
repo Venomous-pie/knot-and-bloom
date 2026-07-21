@@ -23,6 +23,7 @@ import { CartBottomBar } from "@/components/cart/CartBottomBar";
 import { CartTableHeader } from "@/components/cart/CartTableHeader";
 import { CartShopGroup } from "@/components/cart/CartShopGroup";
 import { CartPageSkeleton } from "@/components/cart/CartPageSkeleton";
+import { useDialog } from "@/contexts/DialogContext";
 
 export const FREE_SHIPPING_THRESHOLD = 500;
 
@@ -46,6 +47,7 @@ export default function CartPage() {
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
     const [checkoutLoading, setCheckoutLoading] = useState(false);
     const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
+    const { confirm } = useDialog();
 
     // Group items by seller
     const shopGroups: ShopGroup[] = useMemo(() => {
@@ -207,16 +209,19 @@ export default function CartPage() {
         else setSelectedItems(new Set(cartItems.map(i => i.uid)));
     };
 
-    const handleDeleteSelected = () => {
+    const handleDeleteSelected = async () => {
         if (selectedItems.size === 0) return;
-        Alert.alert("Delete Selected", `Remove ${selectedItems.size} item(s)?`, [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete", style: "destructive", onPress: () => {
-                    Array.from(selectedItems).forEach(id => handleRemoveItem(id));
-                }
-            }
-        ]);
+        
+        const confirmed = await confirm({
+            title: "Delete Selected",
+            message: `Remove ${selectedItems.size} item(s)?`,
+            confirmText: "Delete",
+            cancelText: "Cancel"
+        });
+        
+        if (confirmed) {
+            Array.from(selectedItems).forEach(id => handleRemoveItem(id));
+        }
     };
 
     const handleCheckout = () => {

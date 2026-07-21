@@ -150,7 +150,7 @@ export default function ProductPerformancePage() {
                 <View style={s.header}>
                     <View>
                         <Text style={s.title}>Product Performance</Text>
-                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Track views, sales, and conversion rates per item.</Text>
                     </View>
                     <View style={s.chip}>
                         <BarChart2 size={13} color={SUB} />

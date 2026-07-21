@@ -51,7 +51,7 @@ export default function SellerSettingsPage() {
                 <View style={styles.headerRow}>
                     <View>
                         <Text style={styles.headerTitle}>Seller Settings</Text>
-                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Manage your shop profile, preferences, and account settings.</Text>
                     </View>
                 </View>
             </View>

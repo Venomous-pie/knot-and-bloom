@@ -52,7 +52,7 @@ export default function CustomOrdersPage() {
                 <View style={s.header}>
                     <View>
                         <Text style={s.title}>Custom Orders</Text>
-                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Review and negotiate custom requests from buyers.</Text>
                     </View>
                     <View style={s.comingSoonPill}>
                         <Clock size={12} color={P} />

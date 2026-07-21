@@ -123,7 +123,7 @@ export default function SellerNotifications() {
                 <View style={styles.headerRow}>
                     <View>
                         <Text style={styles.title}>Notifications</Text>
-                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Stay updated on recent shop activities and alerts.</Text>
                     </View>
                     <TouchableOpacity onPress={markAllRead}>
                         <Text style={styles.linkText}>Mark all read</Text>

@@ -121,7 +121,7 @@ export default function SellerReviewsPage() {
                 <View style={s.header}>
                     <View>
                         <Text style={s.title}>Reviews & Ratings</Text>
-                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Monitor and respond to customer feedback and ratings.</Text>
                     </View>
                     <View style={s.chip}>
                         <Text style={s.chipTxt}>Last 30 days</Text>

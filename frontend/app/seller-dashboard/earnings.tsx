@@ -477,7 +477,7 @@ export default function SellerEarnings() {
                 <View style={styles.header}>
                     <View>
                         <Text style={styles.title}>Earnings & Payouts</Text>
-                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Track your balance, payouts, and revenue history.</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                         {(data?.balance.available || 0) <= 0 && (

@@ -390,7 +390,7 @@ export default function SellerOrders() {
                 <View style={s.headerRow}>
                     <View>
                         <Text style={s.pageTitle}>Orders</Text>
-                        <Text style={s.dateTxt}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={s.dateTxt}>View, manage, and fulfill your customer orders.</Text>
                         <Text style={s.pageSubtitle}>{orders.length} total orders</Text>
                     </View>
                     <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={s.navBtn}>

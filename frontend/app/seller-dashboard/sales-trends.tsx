@@ -115,7 +115,7 @@ export default function SalesTrendsPage() {
                 <View style={s.header}>
                     <View>
                         <Text style={s.title}>Sales Trends</Text>
-                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Analyze your store's sales performance over time.</Text>
                     </View>
                     {/* Period Toggle */}
                     <View style={s.toggleRow}>

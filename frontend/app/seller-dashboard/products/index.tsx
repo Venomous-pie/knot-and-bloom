@@ -477,7 +477,7 @@ export default function SellerProducts() {
                 <View style={styles.header}>
                     <View>
                         <Text style={styles.title}>Products</Text>
-                        <Text style={styles.dateTxt}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                        <Text style={styles.dateTxt}>Manage your catalog, inventory, and product listings.</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                         <TouchableOpacity style={styles.exportBtn} onPress={exportToCSV}>

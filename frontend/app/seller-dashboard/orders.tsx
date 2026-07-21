@@ -402,123 +402,126 @@ export default function SellerOrders() {
 
             {/* Main Content Area */}
             <View style={s.mainWrapper}>
+                <FlatList
+                    data={paginatedOrders}
+                    keyExtractor={item => String(item.uid)}
+                    renderItem={renderOrderRow}
+                    contentContainerStyle={s.listContent}
+                    showsVerticalScrollIndicator={false}
+                    ListHeaderComponent={
+                        <>
+                            {/* 2. Summary Stat Tiles */}
+                            <View style={s.statsGrid}>
+                                <StatCard
+                                    label="Overdue"
+                                    value={String(stats.overdueCount)}
+                                    icon={<AlertTriangle size={20} color={RED} />}
+                                    color={RED}
+                                    tooltip="Orders past their due date requiring immediate attention."
+                                    isLoading={loading && orders.length === 0}
+                                />
+                                <StatCard
+                                    label="Pending"
+                                    value={String(stats.pendingCount)}
+                                    icon={<Clock size={20} color={AMBER} />}
+                                    color={AMBER}
+                                    tooltip="Orders awaiting your confirmation to begin production."
+                                    isLoading={loading && orders.length === 0}
+                                />
+                                <StatCard
+                                    label="Processing"
+                                    value={String(stats.processingCount)}
+                                    icon={<Package size={20} color={P} />}
+                                    color={P}
+                                    tooltip="Orders currently being prepared or ready to ship."
+                                    isLoading={loading && orders.length === 0}
+                                />
+                                <StatCard
+                                    label="Earnings this week"
+                                    value={fmtMoney(stats.weeklyEarnings)}
+                                    icon={<TrendingUp size={20} color={GREEN} />}
+                                    color={GREEN}
+                                    tooltip="Your total earnings from completed orders this week."
+                                    isLoading={loading && orders.length === 0}
+                                />
+                            </View>
 
-                {/* 2. Summary Stat Tiles */}
-                <View style={s.statsGrid}>
-                    <StatCard
-                        label="Overdue"
-                        value={String(stats.overdueCount)}
-                        icon={<AlertTriangle size={20} color={RED} />}
-                        color={RED}
-                        tooltip="Orders past their due date requiring immediate attention."
-                        isLoading={loading && orders.length === 0}
-                    />
-                    <StatCard
-                        label="Pending"
-                        value={String(stats.pendingCount)}
-                        icon={<Clock size={20} color={AMBER} />}
-                        color={AMBER}
-                        tooltip="Orders awaiting your confirmation to begin production."
-                        isLoading={loading && orders.length === 0}
-                    />
-                    <StatCard
-                        label="Processing"
-                        value={String(stats.processingCount)}
-                        icon={<Package size={20} color={P} />}
-                        color={P}
-                        tooltip="Orders currently being prepared or ready to ship."
-                        isLoading={loading && orders.length === 0}
-                    />
-                    <StatCard
-                        label="Earnings this week"
-                        value={fmtMoney(stats.weeklyEarnings)}
-                        icon={<TrendingUp size={20} color={GREEN} />}
-                        color={GREEN}
-                        tooltip="Your total earnings from completed orders this week."
-                        isLoading={loading && orders.length === 0}
-                    />
-                </View>
+                            {/* 3. Filter/Search Bar */}
+                            <View style={s.filterContainer}>
+                                <View style={s.searchRow}>
+                                    <View style={s.searchBox}>
+                                        <Search size={16} color={SUB} />
+                                        <TextInput
+                                            style={s.searchInput}
+                                            placeholder="Search products or SKUs..."
+                                            placeholderTextColor={SUB}
+                                            value={searchQuery}
+                                            onChangeText={setSearchQuery}
+                                        />
+                                    </View>
+                                    <TouchableOpacity
+                                        style={s.sortBtn}
+                                        onPress={() => {
+                                            if (sortBy === 'NEWEST') setSortBy('OLDEST');
+                                            else if (sortBy === 'OLDEST') setSortBy('MOST_OVERDUE');
+                                            else setSortBy('NEWEST');
+                                        }}
+                                    >
+                                        <ArrowDownUp size={16} color={SUB} />
+                                        <Text style={s.sortBtnTxt}>
+                                            {sortBy === 'NEWEST' ? 'Newest First' : sortBy === 'OLDEST' ? 'Oldest First' : 'Most Overdue'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
 
-                {/* 3. Filter/Search Bar */}
-                <View style={s.filterContainer}>
-                    <View style={s.searchRow}>
-                        <View style={s.searchBox}>
-                            <Search size={16} color={SUB} />
-                            <TextInput
-                                style={s.searchInput}
-                                placeholder="Search products or SKUs..."
-                                placeholderTextColor={SUB}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                        </View>
-                        <TouchableOpacity
-                            style={s.sortBtn}
-                            onPress={() => {
-                                if (sortBy === 'NEWEST') setSortBy('OLDEST');
-                                else if (sortBy === 'OLDEST') setSortBy('MOST_OVERDUE');
-                                else setSortBy('NEWEST');
-                            }}
-                        >
-                            <ArrowDownUp size={16} color={SUB} />
-                            <Text style={s.sortBtnTxt}>
-                                {sortBy === 'NEWEST' ? 'Newest First' : sortBy === 'OLDEST' ? 'Oldest First' : 'Most Overdue'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                                <View style={s.tabsRow}>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsScroll}>
+                                        {['ALL', 'OVERDUE', 'PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED'].map(f => (
+                                            <TouchableOpacity
+                                                key={f}
+                                                style={[s.tab, statusFilter === f && s.tabActive]}
+                                                onPress={() => setStatusFilter(f)}
+                                            >
+                                                <Text style={[s.tabText, statusFilter === f && s.tabTextActive]}>
+                                                    {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            </View>
 
-                    <View style={s.tabsRow}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsScroll}>
-                            {['ALL', 'OVERDUE', 'PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED'].map(f => (
-                                <TouchableOpacity
-                                    key={f}
-                                    style={[s.tab, statusFilter === f && s.tabActive]}
-                                    onPress={() => setStatusFilter(f)}
-                                >
-                                    <Text style={[s.tabText, statusFilter === f && s.tabTextActive]}>
-                                        {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
-                                    </Text>
+                            {/* List Header Row */}
+                            <View style={s.listHeaderRow}>
+                                <TouchableOpacity style={s.checkboxArea} onPress={toggleSelectAll}>
+                                    {selectedIds.size > 0 && selectedIds.size === paginatedOrders.length ? (
+                                        <CheckSquare size={18} color={SUB} />
+                                    ) : (
+                                        <Square size={18} color={SUB} fill={BG} />
+                                    )}
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-                </View>
+                                <Text style={[s.listHeaderTxt, s.colId]}>Order ID</Text>
+                                <Text style={[s.listHeaderTxt, s.colMain]}>Customer & Items</Text>
+                                <Text style={[s.listHeaderTxt, s.colDue]}>Due Status</Text>
+                                <Text style={[s.listHeaderTxt, s.colEarnings, { textAlign: 'right' }]}>Est. Earnings</Text>
+                            </View>
 
-                {/* 5. Order List */}
-                <View style={[s.listWrapper, { marginTop: 8 }]}>
-                    <View style={s.listHeaderRow}>
-                        <TouchableOpacity style={s.checkboxArea} onPress={toggleSelectAll}>
-                            {selectedIds.size > 0 && selectedIds.size === paginatedOrders.length ? (
-                                <CheckSquare size={18} color={SUB} />
-                            ) : (
-                                <Square size={18} color={SUB} fill={BG} />
+                            {/* Skeleton Loading state inside FlatList Header */}
+                            {loading && orders.length === 0 && (
+                                <Animated.View style={{ opacity: pulseAnim, marginTop: 12, paddingHorizontal: 12 }}>
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <View key={i} style={{ height: 100, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 12 }} />
+                                    ))}
+                                </Animated.View>
                             )}
-                        </TouchableOpacity>
-                        <Text style={[s.listHeaderTxt, s.colId]}>Order ID</Text>
-                        <Text style={[s.listHeaderTxt, s.colMain]}>Customer & Items</Text>
-                        <Text style={[s.listHeaderTxt, s.colDue]}>Due Status</Text>
-                        <Text style={[s.listHeaderTxt, s.colEarnings, { textAlign: 'right' }]}>Est. Earnings</Text>
-                    </View>
-
-                    {loading && orders.length === 0 ? (
-                        <Animated.View style={{ opacity: pulseAnim, marginTop: 12, paddingHorizontal: 12 }}>
-                            {[1, 2, 3, 4, 5].map(i => (
-                                <View key={i} style={{ height: 100, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 12 }} />
-                            ))}
-                        </Animated.View>
-                    ) : (
-                        <FlatList
-                            data={paginatedOrders}
-                            keyExtractor={item => String(item.uid)}
-                            renderItem={renderOrderRow}
-                            contentContainerStyle={s.listContent}
-                            showsVerticalScrollIndicator={false}
-                            ListEmptyComponent={
-                                <Text style={s.emptyText}>No orders match your filters.</Text>
-                            }
-                        />
-                    )}
-                </View>
+                        </>
+                    }
+                    ListEmptyComponent={
+                        !loading ? (
+                            <Text style={s.emptyText}>No orders match your filters.</Text>
+                        ) : null
+                    }
+                />
 
                 {/* 6. Pagination */}
                 {totalPages > 1 && (

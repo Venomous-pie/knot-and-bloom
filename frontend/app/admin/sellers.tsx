@@ -20,18 +20,18 @@ function TooltipBtn({ label, style, onPress, children }: { label: string; style:
     return <TouchableOpacity style={style} onPress={onPress} accessibilityLabel={label}>{children}</TouchableOpacity>;
 }
 
-const P       = '#B36979';
+const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
-const BG      = '#F4F4F8';
-const CARD    = '#FFFFFF';
-const TEXT    = '#1A1A2E';
-const SUB     = '#6B7280';
-const BORDER  = '#F0F0F5';
-const GREEN   = '#10B981';
-const AMBER   = '#F59E0B';
-const RED     = '#EF4444';
-const INDIGO  = '#6366F1';
-const TEAL    = '#14B8A6';
+const BG = '#F4F4F8';
+const CARD = '#FFFFFF';
+const TEXT = '#1A1A2E';
+const SUB = '#6B7280';
+const BORDER = '#F0F0F5';
+const GREEN = '#10B981';
+const AMBER = '#F59E0B';
+const RED = '#EF4444';
+const INDIGO = '#6366F1';
+const TEAL = '#14B8A6';
 
 interface Seller {
     uid: number;
@@ -49,12 +49,12 @@ export default function AdminSellers() {
     const [sellers, setSellers] = useState<Seller[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    
+
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('list');
     const [containerWidth, setContainerWidth] = useState(900);
-    
+
     // Modal state
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
@@ -82,7 +82,8 @@ export default function AdminSellers() {
         try {
             setLoading(true);
             const res = await sellerAPI.getSellers();
-            setSellers(res.data.sellers ?? res.data ?? []);
+            const data = res.data as any;
+            setSellers(data.sellers ?? data ?? []);
         } catch (error) {
             console.error(error);
             Alert.alert("Error", "Failed to load sellers");
@@ -156,7 +157,7 @@ export default function AdminSellers() {
 
     const renderItem = ({ item }: { item: Seller }) => {
         const statusColor = getStatusColor(item.status);
-        
+
         if (viewMode === 'grid') {
             return (
                 <View style={[s.gridCard, { width: cardWidth }]}>
@@ -173,7 +174,7 @@ export default function AdminSellers() {
                         <Text style={s.email} numberOfLines={1}>{item.email}</Text>
                         <Text style={s.date}>Applied: {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
                     </View>
-                    
+
                     <View style={s.gridActions}>
                         {item.status === 'PENDING' && (
                             <>
@@ -260,7 +261,7 @@ export default function AdminSellers() {
                         <Text style={s.date}>Applied: {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text>
                     </View>
                 </View>
-                
+
                 <View style={s.actions}>
                     {item.status === 'PENDING' && (
                         <>
@@ -300,7 +301,7 @@ export default function AdminSellers() {
     return (
         <View style={s.container}>
             <Stack.Screen options={{ title: "Manage Sellers" }} />
-            
+
             {/* Header Bar */}
             <View style={s.headerContainer}>
                 <View style={s.header}>
@@ -475,14 +476,14 @@ const s = StyleSheet.create({
     title: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
     subtitle: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4 },
     contentWrapper: { flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' },
-    
+
     statRow: { flexDirection: 'row', gap: 16, marginBottom: 24, zIndex: 100, flexWrap: 'wrap' },
-    
+
     filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 12 },
     searchContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: BORDER, height: 44 },
     searchIcon: { marginRight: 8 },
     searchInput: { flex: 1, height: '100%', fontFamily: 'Quicksand', color: TEXT, outlineStyle: 'none' as any },
-    
+
     filterBarContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
     tabsContainer: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: BG, borderWidth: 1, borderColor: BORDER, gap: 6 },
@@ -508,7 +509,7 @@ const s = StyleSheet.create({
     badgeText: { fontWeight: '700', fontSize: 10, fontFamily: 'Quicksand', letterSpacing: 0.5 },
     email: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginBottom: 2 },
     date: { fontSize: 11, color: SUB, fontFamily: 'Quicksand' },
-    
+
     actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     primaryBtn: { backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
     primaryBtnText: { color: 'white', fontWeight: '700', fontSize: 13, fontFamily: 'Quicksand' },

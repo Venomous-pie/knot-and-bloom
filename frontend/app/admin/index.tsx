@@ -57,6 +57,16 @@ export default function AdminDashboard() {
     return (
         <View style={s.container}>
             <Stack.Screen options={{ title: "Admin Dashboard" }} />
+
+            {/* Header Bar */}
+            <View style={s.headerContainer}>
+                <View style={s.header}>
+                    <View>
+                        <Text style={s.title}>{greeting}</Text>
+                        <Text style={s.subtitle}>{today}</Text>
+                    </View>
+                </View>
+            </View>
             
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -65,12 +75,6 @@ export default function AdminDashboard() {
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
                 }
             >
-                {/* Header Section */}
-                <View style={s.headerSection}>
-                    <Text style={s.greeting}>{greeting}</Text>
-                    <Text style={s.date}>{today}</Text>
-                </View>
-
                 {/* Top Stats Row */}
                 <View style={s.statsGrid}>
                     <StatCard 
@@ -164,26 +168,39 @@ const s = StyleSheet.create({
         flex: 1,
         backgroundColor: '#F4F4F8',
     },
-    scrollContent: {
-        padding: 32,
-        maxWidth: 1400,
-        alignSelf: 'center',
+    headerContainer: {
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F5',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        zIndex: 100,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        maxWidth: 1280,
         width: '100%',
+        alignSelf: 'center',
     },
-    headerSection: {
-        marginBottom: 24,
-    },
-    greeting: {
-        fontSize: 28,
+    title: {
+        fontSize: 24,
         fontWeight: '700',
         color: '#1A1A2E',
         fontFamily: 'Quicksand',
-        marginBottom: 4,
     },
-    date: {
-        fontSize: 14,
+    subtitle: {
+        fontSize: 13,
         color: '#6B7280',
         fontFamily: 'Quicksand',
+        marginTop: 4,
+    },
+    scrollContent: {
+        padding: 20,
+        maxWidth: 1400,
+        alignSelf: 'center',
+        width: '100%',
     },
     statsGrid: {
         flexDirection: 'row',

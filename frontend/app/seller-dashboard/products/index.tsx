@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View, Animated, useWindowDimensions, TextInput, ScrollView } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View, Animated, useWindowDimensions, TextInput, ScrollView, RefreshControl } from 'react-native';
 import { sellerProductsAPI } from '../../../api/api';
 import InfoBox from '../../../components/ui/InfoBox';
 import Tooltip from '../../../components/ui/Tooltip';
@@ -84,6 +84,7 @@ export default function SellerProducts() {
         return () => anim?.stop();
     }, [loading]);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Filters & Pagination
@@ -135,6 +136,7 @@ export default function SellerProducts() {
             console.error(err);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -490,156 +492,165 @@ export default function SellerProducts() {
                 </View>
             </View>
             <View style={{ paddingHorizontal: 24, paddingTop: 24, flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
+                <FlatList
+                    data={products}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.uid.toString()}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    key={viewMode === 'grid' ? `grid-${numCols}` : 'list'} // Force re-render on width change
+                    numColumns={numCols}
+                    columnWrapperStyle={viewMode === 'grid' ? { gap: gridGap } : undefined}
+                    onEndReached={loadMore}
+                    onEndReachedThreshold={0.5}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadProducts(true); }} tintColor={P} colors={[P]} />
+                    }
+                    ListHeaderComponent={
+                        <>
+                            {/* Stat Bar */}
+                            <View style={[styles.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 10 }]}>
+                                <StatCard
+                                    label="Total Products" value={String(stats?.totalProducts ?? 0)}
+                                    icon={<Package size={20} color={P} />} color={P} isLoading={!stats}
+                                    tooltip="Total number of products in your catalog"
+                                />
+                                <StatCard
+                                    label="Avg. Optimization" value={`${stats?.avgOptimizationScore ?? 0}%`}
+                                    icon={<Activity size={20} color={GREEN} />} color={GREEN} isLoading={!stats}
+                                    tooltip="Average optimization score across all your products"
+                                />
+                                <StatCard
+                                    label="Low Stock Items" value={String(stats?.lowStockCount ?? 0)}
+                                    icon={<AlertTriangle size={20} color={AMBER} />} color={AMBER} isLoading={!stats}
+                                    tooltip="Products with 5 or fewer items remaining in stock"
+                                />
+                                <StatCard
+                                    label="Pending Approval" value={String(stats?.pendingCount ?? 0)}
+                                    icon={<ClipboardList size={20} color={INDIGO} />} color={INDIGO} isLoading={!stats}
+                                    tooltip="Products currently under review by an administrator"
+                                />
+                            </View>
 
-                {/* Stat Bar */}
-                <View style={[styles.statRow, { flexDirection: isDesktop ? 'row' : 'row', flexWrap: isDesktop ? 'nowrap' : 'wrap', zIndex: 10 }]}>
-                    <StatCard
-                        label="Total Products" value={String(stats?.totalProducts ?? 0)}
-                        icon={<Package size={20} color={P} />} color={P} isLoading={!stats}
-                        tooltip="Total number of products in your catalog"
-                    />
-                    <StatCard
-                        label="Avg. Optimization" value={`${stats?.avgOptimizationScore ?? 0}%`}
-                        icon={<Activity size={20} color={GREEN} />} color={GREEN} isLoading={!stats}
-                        tooltip="Average optimization score across all your products"
-                    />
-                    <StatCard
-                        label="Low Stock Items" value={String(stats?.lowStockCount ?? 0)}
-                        icon={<AlertTriangle size={20} color={AMBER} />} color={AMBER} isLoading={!stats}
-                        tooltip="Products with 5 or fewer items remaining in stock"
-                    />
-                    <StatCard
-                        label="Pending Approval" value={String(stats?.pendingCount ?? 0)}
-                        icon={<ClipboardList size={20} color={INDIGO} />} color={INDIGO} isLoading={!stats}
-                        tooltip="Products currently under review by an administrator"
-                    />
-                </View>
+                            {/* Navigation & Filters Row */}
+                            <View style={styles.filterBar}>
+                                {/* Search */}
+                                <View style={styles.searchContainer}>
+                                    <Search size={18} color={SUB} style={styles.searchIcon} />
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        placeholder="Search products or SKUs..."
+                                        placeholderTextColor={SUB}
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                    />
+                                </View>
+                            </View>
 
-                {/* Navigation & Filters Row */}
-                <View style={styles.filterBar}>
-                    {/* Search */}
-                    <View style={styles.searchContainer}>
-                        <Search size={18} color={SUB} style={styles.searchIcon} />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Search products or SKUs..."
-                            placeholderTextColor={SUB}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                    </View>
-                </View>
+                            {/* Status Tabs & Filters Dropdown */}
+                            <View style={[styles.secondaryFilterBar, { justifyContent: 'space-between', zIndex: 100 }]}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
+                                    {STATUS_TABS.map(tab => (
+                                        <Pressable
+                                            key={tab.key}
+                                            style={[styles.tab, statusFilter === tab.key && styles.tabActive]}
+                                            onPress={() => setStatusFilter(tab.key)}
+                                        >
+                                            <Text style={[styles.tabText, statusFilter === tab.key && styles.tabTextActive]}>
+                                                {tab.label}
+                                            </Text>
+                                        </Pressable>
+                                    ))}
+                                </ScrollView>
 
-                {/* Status Tabs & Filters Dropdown */}
-                <View style={[styles.secondaryFilterBar, { justifyContent: 'space-between', zIndex: 100 }]}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={{ gap: 8, paddingRight: 20 }}>
-                        {STATUS_TABS.map(tab => (
-                            <Pressable
-                                key={tab.key}
-                                style={[styles.tab, statusFilter === tab.key && styles.tabActive]}
-                                onPress={() => setStatusFilter(tab.key)}
-                            >
-                                <Text style={[styles.tabText, statusFilter === tab.key && styles.tabTextActive]}>
-                                    {tab.label}
-                                </Text>
-                            </Pressable>
-                        ))}
-                    </ScrollView>
+                                <View style={styles.controlsRight}>
+                                    {/* Sort Dropdown */}
+                                    <DropdownMenu
+                                        isOpen={showFilters}
+                                        onOpenChange={setShowFilters}
+                                        style={[styles.filterBtn, showFilters && styles.filterBtnActive]}
+                                        items={SORT_OPTIONS.map(opt => ({
+                                            title: opt.label,
+                                            icon: <opt.icon size={16} color={sortBy === opt.value ? P : SUB} />,
+                                            onPress: () => setSortBy(opt.value),
+                                        }))}
+                                    >
+                                        <Filter size={18} color={showFilters ? P : SUB} />
+                                    </DropdownMenu>
 
-                    <View style={styles.controlsRight}>
-                        {/* Sort Dropdown */}
-                        <DropdownMenu
-                            isOpen={showFilters}
-                            onOpenChange={setShowFilters}
-                            style={[styles.filterBtn, showFilters && styles.filterBtnActive]}
-                            items={SORT_OPTIONS.map(opt => ({
-                                title: opt.label,
-                                icon: <opt.icon size={16} color={sortBy === opt.value ? P : SUB} />,
-                                onPress: () => setSortBy(opt.value),
-                            }))}
-                        >
-                            <Filter size={18} color={showFilters ? P : SUB} />
-                        </DropdownMenu>
+                                    {/* View Toggle */}
+                                    <View style={styles.viewToggle}>
+                                        <TouchableOpacity onPress={() => setViewMode('list')} style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
+                                            <List size={18} color={viewMode === 'list' ? P : SUB} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
+                                            <LayoutGrid size={18} color={viewMode === 'grid' ? P : SUB} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => setViewMode('compact')} style={[styles.viewBtn, viewMode === 'compact' && styles.viewBtnActive]}>
+                                            <AlignJustify size={18} color={viewMode === 'compact' ? P : SUB} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </View>
 
-                        {/* View Toggle */}
-                        <View style={styles.viewToggle}>
-                            <TouchableOpacity onPress={() => setViewMode('list')} style={[styles.viewBtn, viewMode === 'list' && styles.viewBtnActive]}>
-                                <List size={18} color={viewMode === 'list' ? P : SUB} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setViewMode('grid')} style={[styles.viewBtn, viewMode === 'grid' && styles.viewBtnActive]}>
-                                <LayoutGrid size={18} color={viewMode === 'grid' ? P : SUB} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setViewMode('compact')} style={[styles.viewBtn, viewMode === 'compact' && styles.viewBtnActive]}>
-                                <AlignJustify size={18} color={viewMode === 'compact' ? P : SUB} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
+                            {/* Info Banner for Pending Products */}
+                            {hasPendingProducts && statusFilter !== 'ACTIVE' && (
+                                <InfoBox
+                                    message='Products with "Pending" status are awaiting admin approval and won&apos;t appear in the public shop yet.'
+                                    type="info"
+                                    style={{ marginBottom: 16 }}
+                                />
+                            )}
 
-                {/* Info Banner for Pending Products */}
-                {hasPendingProducts && statusFilter !== 'ACTIVE' && (
-                    <InfoBox
-                        message='Products with "Pending" status are awaiting admin approval and won&apos;t appear in the public shop yet.'
-                        type="info"
-                        style={{ marginBottom: 16 }}
-                    />
-                )}
+                            {viewMode === 'compact' && (
+                                <View style={styles.listHeaderRow}>
+                                    {selectionMode && <View style={{ width: 36 }} />}
+                                    <Text style={[styles.listHeaderTxt, styles.colMain]}>Product</Text>
+                                    <Text style={[styles.listHeaderTxt, styles.colStatus]}>Status</Text>
+                                    <Text style={[styles.listHeaderTxt, styles.colStock]}>Stock</Text>
+                                    <Text style={[styles.listHeaderTxt, styles.colOpt]}>Optimization</Text>
+                                    {!selectionMode && <Text style={[styles.listHeaderTxt, styles.colActions, { textAlign: 'right' }]}>Actions</Text>}
+                                </View>
+                            )}
 
-                {viewMode === 'compact' && (
-                    <View style={styles.listHeaderRow}>
-                        {selectionMode && <View style={{ width: 36 }} />}
-                        <Text style={[styles.listHeaderTxt, styles.colMain]}>Product</Text>
-                        <Text style={[styles.listHeaderTxt, styles.colStatus]}>Status</Text>
-                        <Text style={[styles.listHeaderTxt, styles.colStock]}>Stock</Text>
-                        <Text style={[styles.listHeaderTxt, styles.colOpt]}>Optimization</Text>
-                        {!selectionMode && <Text style={[styles.listHeaderTxt, styles.colActions, { textAlign: 'right' }]}>Actions</Text>}
-                    </View>
-                )}
-
-                {loading && products.length === 0 ? (
-                    <Animated.View style={{ opacity: pulseAnim, width: '100%', marginTop: 12, flexDirection: viewMode === 'grid' ? 'row' : 'column', flexWrap: 'wrap', gap: viewMode === 'grid' ? gridGap : 0 }}>
-                        {[1, 2, 3, 4, 5, 6].map(i => (
-                            <View key={i} style={{ 
-                                height: viewMode === 'grid' ? 250 : (viewMode === 'compact' ? 64 : 120), 
-                                width: viewMode === 'grid' ? cardWidth : '100%',
-                                backgroundColor: '#E2E8F0', 
-                                borderRadius: 12, 
-                                marginBottom: viewMode === 'grid' ? 0 : (viewMode === 'compact' ? 8 : 16) 
-                            }} />
-                        ))}
-                    </Animated.View>
-                ) : error ? (
-                    <View style={styles.center}>
-                        <Text style={styles.errorText}>{error}</Text>
-                        <TouchableOpacity onPress={() => loadProducts(true)} style={styles.retryBtn}>
-                            <Text style={{ fontFamily: 'Quicksand', fontWeight: '600' }}>Retry</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={products}
-                        renderItem={renderItem}
-                        keyExtractor={(item) => item.uid.toString()}
-                        contentContainerStyle={styles.listContent}
-                        showsVerticalScrollIndicator={false}
-                        key={viewMode === 'grid' ? `grid-${numCols}` : 'list'} // Force re-render on width change
-                        numColumns={numCols}
-                        columnWrapperStyle={viewMode === 'grid' ? { gap: gridGap } : undefined}
-                        onEndReached={loadMore}
-                        onEndReachedThreshold={0.5}
-                        ListFooterComponent={
-                            loadingMore ? <View style={{ padding: 20 }}><ActivityIndicator size="small" color={SUB} /></View> : null
-                        }
-                        ListEmptyComponent={
+                            {loading && products.length === 0 && (
+                                <Animated.View style={{ opacity: pulseAnim, width: '100%', marginTop: 12, flexDirection: viewMode === 'grid' ? 'row' : 'column', flexWrap: 'wrap', gap: viewMode === 'grid' ? gridGap : 0 }}>
+                                    {[1, 2, 3, 4, 5, 6].map(i => (
+                                        <View key={i} style={{ 
+                                            height: viewMode === 'grid' ? 250 : (viewMode === 'compact' ? 64 : 120), 
+                                            width: viewMode === 'grid' ? cardWidth : '100%',
+                                            backgroundColor: '#E2E8F0', 
+                                            borderRadius: 12, 
+                                            marginBottom: viewMode === 'grid' ? 0 : (viewMode === 'compact' ? 8 : 16) 
+                                        }} />
+                                    ))}
+                                </Animated.View>
+                            )}
+                            
+                            {error ? (
+                                <View style={styles.center}>
+                                    <Text style={styles.errorText}>{error}</Text>
+                                    <TouchableOpacity onPress={() => loadProducts(true)} style={styles.retryBtn}>
+                                        <Text style={{ fontFamily: 'Quicksand', fontWeight: '600' }}>Retry</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : null}
+                        </>
+                    }
+                    ListFooterComponent={
+                        loadingMore ? <View style={{ padding: 20 }}><ActivityIndicator size="small" color={SUB} /></View> : null
+                    }
+                    ListEmptyComponent={
+                        !loading && !error ? (
                             <View style={styles.emptyState}>
                                 <Text style={styles.emptyText}>No products found.</Text>
                                 <Text style={styles.emptySubtext}>
                                     Try adjusting your search or filters.
                                 </Text>
                             </View>
-                        }
-                    />
-                )}
+                        ) : null
+                    }
+                />
 
                 {/* Bulk Action Bar */}
                 {selectionMode && (

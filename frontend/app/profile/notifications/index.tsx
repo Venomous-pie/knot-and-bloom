@@ -293,6 +293,18 @@ export default function NotificationsPage() {
                                                 {parsed.closing || 'Warm regards,'}
                                             </Text>
                                             <Text style={styles.letterSignature}>Knot & Bloom Team</Text>
+
+                                            {user?.role === 'ADMIN' && notification.title === 'New Seller Application' && (
+                                                <Pressable
+                                                    style={styles.adminCtaBtn}
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        router.push('/admin/sellers' as RelativePathString);
+                                                    }}
+                                                >
+                                                    <Text style={styles.adminCtaText}>Review Application</Text>
+                                                </Pressable>
+                                            )}
                                         </View>
                                     )}
                                     {!notification.isRead && <View style={styles.unreadDot} />}
@@ -536,4 +548,18 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
         fontFamily: 'Quicksand',
     },
+    adminCtaBtn: {
+        marginTop: 20,
+        backgroundColor: theme.colors.primary,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignSelf: 'flex-end',
+    },
+    adminCtaText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontFamily: 'Quicksand',
+        fontSize: 14,
+    }
 });

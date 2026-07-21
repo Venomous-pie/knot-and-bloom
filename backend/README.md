@@ -13,6 +13,49 @@
 
 ---
 
+## 🚀 Getting Started (Onboarding)
+
+Welcome to the backend! Follow these steps to get your local environment running:
+
+### 1. Prerequisites
+- **Node.js**: v18 or newer recommended
+- **PostgreSQL**: You will connect to the hosted Supabase instance (details below)
+
+### 2. Installation
+Clone the repository and install dependencies:
+```bash
+cd knot-and-bloom/backend
+npm install
+```
+
+### 3. Environment Setup
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
+Open `.env` and fill in the required keys. 
+- **Database/Supabase**: Ask your team lead for the shared Supabase URL and Keys (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
+- **Google OAuth**: Ask for the client ID and secret for Google login.
+- **ImageKit**: Ask for the ImageKit private key for image uploads.
+- **AI Services**: Ask for the Gemini API key.
+
+### 4. Database Setup
+Once your `.env` is ready, generate the Prisma client:
+```bash
+npx prisma generate
+```
+
+*(Note: Migrations are typically handled by the team lead, but if you need to run them locally against your own DB: `npx prisma migrate dev`)*
+
+### 5. Running Locally
+Start the development server with hot-reload:
+```bash
+npm run dev
+```
+The server should now be running at `http://localhost:3030`.
+
+---
+
 ## Architecture Overview
 
 ```
@@ -225,21 +268,16 @@ npm test
 
 ## Environment Variables
 
-```env
-# Database
-DATABASE_URL="postgresql://..."
+See `.env.example` for the full structure. Key sections include:
 
-# JWT
-JWT_SECRET="your-secret-key"
-JWT_EXPIRES_IN="7d"
-
-# Hugging Face (AI)
-HUGGINGFACE_API_KEY="..."
-
-# Server
-PORT=3030
-NODE_ENV="development"
-```
+- **SERVER**: `PORT`, `NODE_ENV`
+- **DATABASE**: `DATABASE_URL` (pooler), `DIRECT_URL` (migrations)
+- **SUPABASE**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- **AUTHENTICATION**: `JWT_SECRET`, `JWT_EXPIRES_IN`
+- **GOOGLE OAUTH**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`
+- **CORS**: `CORS_ORIGINS` (allowed frontend URLs)
+- **IMAGEKIT**: `IMAGEKIT_PRIVATE_KEY`
+- **AI / ML SERVICES**: `GEMINI_API_KEY`
 
 ---
 

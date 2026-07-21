@@ -432,6 +432,7 @@ export const sellerAPI = {
     cancelApplication: () => apiClient.delete('/sellers/me/application'),
     getDashboardStats: () => apiClient.get<any>('/sellers/me/dashboard-stats').then(res => res.data),
     getSidebarStats: () => apiClient.get<any>('/sellers/me/sidebar-stats').then(res => res.data),
+    getAdminSidebarStats: () => apiClient.get<{ pendingSellers: number; pendingProducts: number }>('/sellers/admin/sidebar-stats').then(res => res.data),
     onboard: (data: any) => apiClient.post('/sellers/onboard', data),
 };
 

@@ -1,261 +1,301 @@
-import { useAuth } from "@/contexts/AuthContext";
-import { earningsAPI } from "@/api/api";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { Users, DollarSign, Package, Clock, AlertTriangle } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
+import StatCard from '@/components/ui/StatCard';
+import { Stack } from 'expo-router';
+import InfoBox from '@/components/ui/InfoBox';
 
-export default function AdminDashboardPage() {
-    const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
-    const [stats, setStats] = useState<any>(null);
-    const [statsLoading, setStatsLoading] = useState(true);
+export default function AdminDashboard() {
+    const { user } = useAuth();
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    
+    // Placeholder stats for now
+    const [stats, setStats] = useState({
+        totalRevenue: 0,
+        activeSellers: 0,
+        pendingSellers: 0,
+        activeProducts: 0
+    });
 
     const fetchStats = async () => {
         try {
-            setStatsLoading(true);
-            const res = await earningsAPI.getAdminStats();
-            setStats(res.data);
-        } catch (e) {
-            console.error("Failed to fetch admin stats", e);
+            setLoading(true);
+            // In the future, this will be an actual API call
+            // const res = await adminAPI.getDashboardStats();
+            // setStats(res.data);
+            
+            // Mock data for visual setup
+            setStats({
+                totalRevenue: 15420.50,
+                activeSellers: 42,
+                pendingSellers: 3,
+                activeProducts: 156
+            });
+        } catch (error) {
+            console.error(error);
         } finally {
-            setStatsLoading(false);
+            setLoading(false);
         }
     };
 
-    // Auth Check
     useEffect(() => {
-        if (!authLoading) {
-            if (!user) {
-                router.replace('/auth/login');
-            } else if (user.role !== 'ADMIN') {
-                router.replace('/');
-            }
-        }
-    }, [user, authLoading]);
+        fetchStats();
+    }, []);
 
-    // Fetch Stats on Focus
-    useFocusEffect(
-        React.useCallback(() => {
-            if (user?.role === 'ADMIN') {
-                fetchStats();
-            }
-        }, [user])
-    );
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchStats();
+        setRefreshing(false);
+    };
 
-    if (authLoading || (user?.role !== 'ADMIN')) {
-        return (
-            <View style={styles.centered}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-            </View>
-        );
-    }
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const greeting = `Good morning, ${user?.name?.split(' ')[0] || 'Admin'}!`;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.title}>Admin Control Center</Text>
-                    <Text style={styles.subtitle}>Platform overview and moderation</Text>
+        <View style={s.container}>
+            <Stack.Screen options={{ title: "Admin Dashboard" }} />
+            
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={s.scrollContent}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+                }
+            >
+                {/* Header Section */}
+                <View style={s.headerSection}>
+                    <Text style={s.greeting}>{greeting}</Text>
+                    <Text style={s.date}>{today}</Text>
                 </View>
 
-                {/* Platform Metrics */}
-                <Text style={styles.sectionTitle}>Platform Metrics</Text>
-                {statsLoading ? (
-                    <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
-                ) : stats ? (
-                    <View style={styles.metricsContainer}>
-                        <View style={styles.metricCard}>
-                            <Text style={styles.metricLabel}>Platform Revenue</Text>
-                            <Text style={styles.metricValue}>₱{Number(stats.revenue || 0).toLocaleString()}</Text>
-                            <Text style={styles.metricSub}>From 5% Fees</Text>
-                        </View>
-                        <View style={styles.metricCard}>
-                            <Text style={styles.metricLabel}>Total GMV</Text>
-                            <Text style={styles.metricValue}>₱{Number(stats.gmv || 0).toLocaleString()}</Text>
-                            <Text style={styles.metricSub}>Gross Sales</Text>
-                        </View>
-                        <View style={[styles.metricCard, stats.pendingWithdrawals > 0 && { borderColor: '#F59E0B', borderWidth: 2 }]}>
-                            <Text style={styles.metricLabel}>Pending Payouts</Text>
-                            <Text style={[styles.metricValue, stats.pendingWithdrawals > 0 && { color: '#F59E0B' }]}>
-                                {stats.pendingWithdrawals}
-                            </Text>
-                            <Text style={styles.metricSub}>Requests</Text>
+                {/* Top Stats Row */}
+                <View style={s.statsGrid}>
+                    <StatCard 
+                        label="Total Revenue" 
+                        value={`₱${stats.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
+                        icon={<DollarSign size={20} color={theme.colors.primary} />} 
+                        color={theme.colors.primary} 
+                        isLoading={loading} 
+                    />
+                    <StatCard 
+                        label="Active Sellers" 
+                        value={stats.activeSellers.toString()} 
+                        icon={<Users size={20} color={theme.colors.secondary} />} 
+                        color={theme.colors.secondary} 
+                        isLoading={loading} 
+                    />
+                    <StatCard 
+                        label="Pending Sellers" 
+                        value={stats.pendingSellers.toString()} 
+                        icon={<Clock size={20} color="#F59E0B" />} 
+                        color="#F59E0B" 
+                        isLoading={loading} 
+                    />
+                    <StatCard 
+                        label="Active Products" 
+                        value={stats.activeProducts.toString()} 
+                        icon={<Package size={20} color="#10B981" />} 
+                        color="#10B981" 
+                        isLoading={loading} 
+                    />
+                </View>
+
+                {/* Main Content Layout */}
+                <View style={s.mainLayout}>
+                    {/* Left Column: Charts/Trends */}
+                    <View style={s.leftColumn}>
+                        <View style={s.card}>
+                            <View style={s.cardHeader}>
+                                <Text style={s.cardTitle}>Platform Revenue Trends</Text>
+                                <View style={s.badge}>
+                                    <Text style={s.badgeText}>Monthly</Text>
+                                </View>
+                            </View>
+                            <View style={s.chartPlaceholder}>
+                                <Text style={s.placeholderText}>Chart Visualization Coming Soon</Text>
+                            </View>
                         </View>
                     </View>
-                ) : (
-                    <Text style={styles.emptyText}>Unable to load platform metrics.</Text>
-                )}
 
-                {/* Moderation Quick Actions */}
-                <Text style={styles.sectionTitle}>Moderation</Text>
-                <View style={styles.actionGrid}>
-                    <Pressable
-                        style={[styles.actionCard, { borderLeftColor: '#F59E0B' }]}
-                        onPress={() => router.push('/admin/products' as any)}
-                    >
-                        <Text style={styles.actionEmoji}>📋</Text>
-                        <Text style={styles.actionTitle}>Review Products</Text>
-                        <Text style={styles.actionDesc}>Approve, reject, or suspend seller product listings</Text>
-                    </Pressable>
+                    {/* Right Column: Actions / Activity */}
+                    <View style={s.rightColumn}>
+                        <View style={s.card}>
+                            <View style={s.cardHeader}>
+                                <Text style={s.cardTitle}>Pending Actions</Text>
+                                <Text style={s.viewAllBtn}>View All</Text>
+                            </View>
 
-                    <Pressable
-                        style={[styles.actionCard, { borderLeftColor: '#4CAF50' }]}
-                        onPress={() => router.push('/admin/sellers')}
-                    >
-                        <Text style={styles.actionEmoji}>👥</Text>
-                        <Text style={styles.actionTitle}>Manage Sellers</Text>
-                        <Text style={styles.actionDesc}>Review seller applications and manage accounts</Text>
-                    </Pressable>
-                </View>
+                            <View style={s.actionList}>
+                                <View style={s.actionItem}>
+                                    <View style={[s.actionIconBg, { backgroundColor: '#F59E0B20' }]}>
+                                        <Clock size={16} color="#F59E0B" />
+                                    </View>
+                                    <View style={s.actionTextContainer}>
+                                        <Text style={s.actionTitle}>Seller Applications</Text>
+                                        <Text style={s.actionSub}>Awaiting your approval.</Text>
+                                    </View>
+                                    <Text style={s.actionCount}>{stats.pendingSellers}</Text>
+                                </View>
 
-                {/* Quick Links */}
-                <Text style={styles.sectionTitle}>Quick Links</Text>
-                <View style={styles.linkRow}>
-                    <Pressable style={styles.linkBtn} onPress={() => router.push('/' as any)}>
-                        <Text style={styles.linkBtnText}>🏠 View Storefront</Text>
-                    </Pressable>
-                    {user?.sellerId && (
-                        <Pressable style={styles.linkBtn} onPress={() => router.push('/seller-dashboard' as any)}>
-                            <Text style={styles.linkBtnText}>📊 Seller Dashboard</Text>
-                        </Pressable>
-                    )}
+                                <View style={s.actionItem}>
+                                    <View style={[s.actionIconBg, { backgroundColor: '#6366F120' }]}>
+                                        <AlertTriangle size={16} color="#6366F1" />
+                                    </View>
+                                    <View style={s.actionTextContainer}>
+                                        <Text style={s.actionTitle}>Reported Products</Text>
+                                        <Text style={s.actionSub}>Require moderation.</Text>
+                                    </View>
+                                    <Text style={s.actionCount}>0</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: '#F4F4F8',
     },
     scrollContent: {
-        padding: 20,
-        paddingBottom: 40,
+        padding: 32,
+        maxWidth: 1400,
+        alignSelf: 'center',
+        width: '100%',
     },
-    centered: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center"
-    },
-    header: {
+    headerSection: {
         marginBottom: 24,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: theme.colors.text,
+    greeting: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#1A1A2E',
+        fontFamily: 'Quicksand',
+        marginBottom: 4,
     },
-    subtitle: {
+    date: {
         fontSize: 14,
-        color: theme.colors.textSecondary,
-        marginTop: 4,
+        color: '#6B7280',
+        fontFamily: 'Quicksand',
     },
-    sectionTitle: {
+    statsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16,
+        marginBottom: 24,
+    },
+    mainLayout: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 24,
+    },
+    leftColumn: {
+        flex: 2,
+        minWidth: 400,
+    },
+    rightColumn: {
+        flex: 1,
+        minWidth: 300,
+    },
+    card: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 12,
+        elevation: 2,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#F0F0F5',
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    cardTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1A1A2E',
+        fontFamily: 'Quicksand',
+    },
+    badge: {
+        backgroundColor: '#FDEEF1',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    badgeText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#B36979',
+        fontFamily: 'Quicksand',
+    },
+    viewAllBtn: {
         fontSize: 13,
         fontWeight: '700',
-        color: theme.colors.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        marginBottom: 12,
-        marginTop: 8,
+        color: '#B36979',
+        fontFamily: 'Quicksand',
     },
-    metricsContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
+    chartPlaceholder: {
+        height: 300,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    metricCard: {
-        flex: 1,
-        backgroundColor: 'white',
-        padding: 16,
-        borderRadius: 12,
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    metricLabel: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        marginBottom: 4,
+    placeholderText: {
+        color: '#9CA3AF',
+        fontFamily: 'Quicksand',
         fontWeight: '600',
     },
-    metricValue: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: theme.colors.text,
+    actionList: {
+        gap: 20,
     },
-    metricSub: {
-        fontSize: 10,
-        color: theme.colors.textLight,
-        marginTop: 2,
+    actionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    actionGrid: {
-        gap: 12,
-        marginBottom: 24,
+    actionIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
     },
-    actionCard: {
-        backgroundColor: 'white',
-        padding: 20,
-        borderRadius: 12,
-        borderLeftWidth: 4,
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    actionEmoji: {
-        fontSize: 24,
-        marginBottom: 8,
+    actionTextContainer: {
+        flex: 1,
     },
     actionTitle: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '700',
-        color: theme.colors.text,
-        marginBottom: 4,
+        color: '#1A1A2E',
+        fontFamily: 'Quicksand',
+        marginBottom: 2,
     },
-    actionDesc: {
-        fontSize: 13,
-        color: theme.colors.textSecondary,
-        lineHeight: 18,
+    actionSub: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontFamily: 'Quicksand',
     },
-    linkRow: {
-        flexDirection: 'row',
-        gap: 12,
-        flexWrap: 'wrap',
-    },
-    linkBtn: {
-        backgroundColor: 'white',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-    },
-    linkBtnText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: theme.colors.text,
-    },
-    emptyText: {
-        textAlign: 'center',
-        marginTop: 20,
-        marginBottom: 24,
-        color: theme.colors.textSecondary,
-        fontSize: 14,
+    actionCount: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1A1A2E',
+        fontFamily: 'Quicksand',
     },
 });

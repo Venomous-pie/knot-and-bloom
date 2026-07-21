@@ -1032,6 +1032,29 @@ export const sellerController = {
             console.error('Sidebar Stats Error:', error);
             res.status(500).json({ error: "Failed to fetch sidebar stats" });
         }
+    },
+
+    // Admin Sidebar Stats
+    async getAdminSidebarStats(req: Request, res: Response) {
+        try {
+            if (!req.user || req.user.role !== 'ADMIN') return res.status(401).json({ error: "Unauthorized" });
+
+            const pendingSellers = await prisma.seller.count({
+                where: { status: 'PENDING' }
+            });
+
+            const pendingProducts = await prisma.product.count({
+                where: { status: 'PENDING', deletedAt: null }
+            });
+
+            res.json({
+                pendingSellers,
+                pendingProducts
+            });
+        } catch (error) {
+            console.error('Admin Sidebar Stats Error:', error);
+            res.status(500).json({ error: "Failed to fetch admin sidebar stats" });
+        }
     }
 };
  

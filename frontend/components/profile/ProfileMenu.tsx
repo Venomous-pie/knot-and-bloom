@@ -23,10 +23,12 @@ import {
     MapPin,
     Megaphone,
     Package,
+    Shield,
     ShoppingBag,
     LayoutDashboard,
     Settings,
     Star,
+    Users,
     DollarSign,
     Trash2,
     User,
@@ -222,6 +224,26 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                             </Text>
                         </View>
                     </Pressable>
+                )}
+
+                {/* Platform Admin Section */}
+                {user.role === 'ADMIN' && (
+                    <MenuSection title="Platform Admin">
+                        <MenuItem
+                            icon={<Shield size={20} />}
+                            title="Admin Dashboard"
+                            subtitle="Platform overview & stats"
+                            isActive={pathname === '/admin'}
+                            onPress={() => router.push('/admin' as RelativePathString)}
+                        />
+                        <MenuItem
+                            icon={<Users size={20} />}
+                            title="Manage Sellers"
+                            subtitle="Review applications & accounts"
+                            isActive={pathname === '/admin/sellers'}
+                            onPress={() => router.push('/admin/sellers' as RelativePathString)}
+                        />
+                    </MenuSection>
                 )}
 
                 {/* Seller Store Section */}

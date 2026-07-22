@@ -47,60 +47,77 @@ export const theme = {
         logoRed: '#dd1537ff',
         logoBlue: '#3785ebff',
         logoCyan: '#00c3ffff',
-    },
-    typography: {
-        fontFamily: 'Quicksand', // If available, otherwise system default
-        sizes: {
-            xs: 12,
-            sm: 14,
-            base: 16,
-            lg: 18,
-            xl: 20,
-            '2xl': 24,
-            '3xl': 30,
+
+        // Order Status
+        statusColors: {
+            PENDING: { fg: '#8D6E63', bg: '#EFEBE9' }, // Soft Brown
+            CONFIRMED: { fg: '#5C6BC0', bg: '#E8EAF6' }, // Soft Indigo
+            PROCESSING: { fg: '#5C6BC0', bg: '#E8EAF6' },
+            IN_PRODUCTION: { fg: '#7E57C2', bg: '#EDE7F6' }, // Soft Deep Purple
+            READY_TO_SHIP: { fg: '#26A69A', bg: '#E0F2F1' }, // Soft Teal
+            SHIPPED: { fg: '#7E57C2', bg: '#EDE7F6' },
+            DELIVERED: { fg: '#66BB6A', bg: '#E8F5E9' }, // Soft Green
+            COMPLETED: { fg: '#66BB6A', bg: '#E8F5E9' },
+            CANCELLED: { fg: '#EF5350', bg: '#FFEBEE' }, // Soft Red
+            REFUNDED: { fg: '#FF7043', bg: '#FBE9E7' }, // Soft Orange
+            DISPUTED: { fg: '#FFA726', bg: '#FFF3E0' }, // Soft Amber
+            DEFAULT: { fg: '#78909C', bg: '#ECEFF1' }, // Blue Grey
         },
-        weights: {
-            normal: '400',
-            medium: '500',
-            semibold: '600',
-            bold: '700',
-        }
-    },
-    borderRadius: {
-        sm: 8,
-        md: 12,
-        lg: 16,
-        full: 9999,
-    },
-    spacing: {
-        xs: 4,
-        sm: 8,
-        md: 16,
-        lg: 24,
-        xl: 32,
-        '2xl': 48,
-    },
-    shadows: {
-        sm: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.05,
-            shadowRadius: 2,
-            elevation: 2,
+
+        typography: {
+            fontFamily: 'Quicksand', // If available, otherwise system default
+            sizes: {
+                xs: 12,
+                sm: 14,
+                base: 16,
+                lg: 18,
+                xl: 20,
+                '2xl': 24,
+                '3xl': 30,
+            },
+            weights: {
+                normal: '400',
+                medium: '500',
+                semibold: '600',
+                bold: '700',
+            }
         },
-        md: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 4,
+        borderRadius: {
+            sm: 8,
+            md: 12,
+            lg: 16,
+            full: 9999,
         },
-        lg: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 8,
+        spacing: {
+            xs: 4,
+            sm: 8,
+            md: 16,
+            lg: 24,
+            xl: 32,
+            '2xl': 48,
+        },
+        shadows: {
+            sm: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+                elevation: 2,
+            },
+            md: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 4,
+            },
+            lg: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                elevation: 8,
+            }
         }
     }
 };

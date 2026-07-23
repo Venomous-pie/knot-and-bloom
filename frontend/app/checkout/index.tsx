@@ -349,11 +349,8 @@ function CheckoutContent() {
 
         // 1. Set Shipping Info
         const shippingData = {
-            fullName: selectedAddress.fullName,
+            ...selectedAddress,
             address: selectedAddress.streetAddress, // simplified mapping
-            city: selectedAddress.city,
-            postalCode: selectedAddress.postalCode,
-            phone: selectedAddress.phone,
             notes: JSON.stringify(sellerNotes), // Pass the map as string
         };
         setShippingInfo(shippingData);

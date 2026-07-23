@@ -486,11 +486,23 @@ export default function ProductDetailPage() {
 
                             <View style={[styles.ratingSummary, { marginTop: 4, marginBottom: 12 }]}>
                                 <View style={styles.starsRow}>
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <Ionicons key={i} name={i <= 4 ? "star" : "star-half"} size={14} color={theme.colors.starGold} />
-                                    ))}
+                                    {[1, 2, 3, 4, 5].map((i) => {
+                                        const rating = product.rating || 0;
+                                        const isFilled = i <= Math.floor(rating);
+                                        const isHalf = !isFilled && i === Math.ceil(rating) && (rating % 1) !== 0;
+                                        return (
+                                            <Ionicons 
+                                                key={i} 
+                                                name={isFilled ? "star" : isHalf ? "star-half" : "star-outline"} 
+                                                size={14} 
+                                                color={theme.colors.starGold} 
+                                            />
+                                        );
+                                    })}
                                 </View>
-                                <Text style={styles.ratingText}>4.8 (124 reviews) | {product.soldCount} Sold</Text>
+                                <Text style={styles.ratingText}>
+                                    {(product.rating || 0).toFixed(1)} ({(product.reviewCount || 0)} reviews) | {product.soldCount} Sold
+                                </Text>
                             </View>
 
                             <View style={[styles.priceSection, { marginBottom: 0 }]}>

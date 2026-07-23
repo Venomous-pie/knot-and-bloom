@@ -323,3 +323,23 @@ Custom error classes:
 - `UnauthorizedError` (401)
 
 All routes use try-catch → Express error middleware
+
+---
+
+## Troubleshooting
+
+### Prisma Error: P1001 (Can't reach database server)
+
+**Problem:** 
+When running `npx prisma db pull`, `npx prisma migrate dev`, or starting the server, you receive an error like:
+`Error: P1001: Can't reach database server at 'aws-X-ap-south-X.pooler.supabase.com:5432'`
+
+This usually happens on consumer ISPs (especially Globe Broadband or PLDT in the Philippines). The underlying issue is that the Prisma Rust Query Engine hangs because:
+1. The ISP is aggressively blocking outbound database ports (like `5432` or `6543`).
+2. The ISP uses a broken DNS64/NAT64 setup. The engine resolves the Supabase pooler to an IPv6 address, but the ISP's IPv6 routing blackholes the traffic, causing the connection attempt to time out.
+
+**Solution:**
+Because this is a network-level restriction enforced by the ISP and Prisma's native engine behavior, it cannot be fixed via code.
+1. **Option A (Recommended):** Use a free VPN like [Cloudflare WARP (1.1.1.1)](https://1.1.1.1/) to encrypt your DNS and traffic, bypassing the ISP's restrictions. 
+2. **Option B:** Switch to a different network, such as a mobile hotspot (e.g., Smart/Dito).
+3. Confirm in your Supabase Dashboard that **Network Restrictions** are disabled (Database → Settings → Network restrictions).

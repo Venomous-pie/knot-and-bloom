@@ -1,318 +1,382 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, useWindowDimensions, Image, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, useWindowDimensions, Animated, Image } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { ShoppingBag, Image as ImageIcon, Sparkles, Heart, Star } from 'lucide-react-native';
-
+import { ShoppingBag, Star, ShieldCheck, Heart, Users } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { HERO_IMAGES } from '@/assets/hero-images';
 
-const Chain = ({ style }: { style: any }) => (
-  <View style={[styles.chainWrapper, style]}>
-    {Array.from({ length: 5 }).map((_, i) => (
-      <View key={i} style={styles.chainLink} />
-    ))}
-    <View style={styles.chainPin} />
-  </View>
-);
-
 export default function HeroSection() {
-  const { width } = useWindowDimensions();
-  const isMobile = width < 768;
-  const router = useRouter();
+    const { width } = useWindowDimensions();
+    const isMobile = width < 1024;
+    const router = useRouter();
 
-  const [currentIndex, setCurrentIndex] = useState(() => Math.floor(Math.random() * HERO_IMAGES.length));
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const swayAnim = useRef(new Animated.Value(0)).current;
+    const [images] = useState(() => {
+        const shuffled = [...HERO_IMAGES].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 3);
+    });
 
-  useEffect(() => {
-    // Extremely subtle, slow sway animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(swayAnim, {
-          toValue: 1,
-          duration: 6000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(swayAnim, {
-          toValue: -1,
-          duration: 12000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(swayAnim, {
-          toValue: 0,
-          duration: 6000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    // Animations
+    const fadeAnim1 = useRef(new Animated.Value(0)).current;
+    const fadeAnim2 = useRef(new Animated.Value(0)).current;
+    const fadeAnim3 = useRef(new Animated.Value(0)).current;
+    const fadeAnim4 = useRef(new Animated.Value(0)).current;
+    
+    const drop1 = useRef(new Animated.Value(-50)).current;
+    const drop2 = useRef(new Animated.Value(-50)).current;
+    const drop3 = useRef(new Animated.Value(-50)).current;
+    const polaroidOpacity1 = useRef(new Animated.Value(0)).current;
+    const polaroidOpacity2 = useRef(new Animated.Value(0)).current;
+    const polaroidOpacity3 = useRef(new Animated.Value(0)).current;
 
-    const timer = setInterval(() => {
-      // Smooth fade out
-      Animated.timing(fadeAnim, {
-        toValue: 0.5, // Don't fade entirely to black, just dip
-        duration: 400,
-        useNativeDriver: true,
-      }).start(() => {
-        // Swap image while faded
-        setCurrentIndex((prevIndex) => {
-          let next;
-          do {
-            next = Math.floor(Math.random() * HERO_IMAGES.length);
-          } while (next === prevIndex);
-          return next;
-        });
+    useEffect(() => {
+        // Text fade in sequence
+        Animated.stagger(200, [
+            Animated.timing(fadeAnim1, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.timing(fadeAnim2, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.timing(fadeAnim3, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.timing(fadeAnim4, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ]).start();
 
-        // Smooth fade back in
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }).start();
-      });
-    }, 4000); // Change image every 4 seconds
-
-    return () => clearInterval(timer);
-  }, []);
-
-  const swayRotation = swayAnim.interpolate({
-    inputRange: [-1, 1],
-    outputRange: ['-0.5deg', '0.5deg'] // Extremely subtle, barely noticeable sway
-  });
-
-  return (
-    <View style={[styles.container, isMobile ? styles.containerMobile : styles.containerDesktop]}>
-      {/* Background Pattern */}
-      <View style={[StyleSheet.absoluteFill, { overflow: 'hidden', borderRadius: theme.borderRadius.lg }]} pointerEvents="none">
-        <View style={{ position: 'absolute', top: -20, left: '5%', opacity: 0.03, transform: [{ rotate: '-15deg' }] }}>
-          <Sparkles size={160} color={theme.colors.primary} />
-        </View>
-        <View style={{ position: 'absolute', bottom: -40, left: '25%', opacity: 0.04, transform: [{ rotate: '25deg' }] }}>
-          <Heart size={200} color={theme.colors.secondary} />
-        </View>
-        <View style={{ position: 'absolute', top: '20%', right: '45%', opacity: 0.03, transform: [{ rotate: '45deg' }] }}>
-          <Star size={120} color={theme.colors.primaryDark} />
-        </View>
-      </View>
-
-      {/* Left Content */}
-      <View style={[styles.contentSection, isMobile ? styles.contentMobile : styles.contentDesktop]}>
-        <Text style={styles.headline}>Handmade things,{'\n'}heartfelt stories.</Text>
-        <Text style={styles.tagline}>The kind of gift they'll actually keep.</Text>
-
-        <View style={styles.buttonContainer}>
-          <Pressable
-            style={({ pressed, hovered }: any) => [
-              styles.button,
-              styles.primaryButton,
-              hovered && { backgroundColor: theme.colors.primaryDark, transform: [{ scale: 1.02 }] },
-              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
-            ]}
-            onPress={() => router.push('/products/all-products' as any)}
-          >
-            <ShoppingBag size={18} color={theme.colors.surface} style={{ marginRight: theme.spacing.sm }} />
-            <Text style={[styles.buttonText, styles.primaryButtonText]}>SHOP NOW</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed, hovered }: any) => [
-              styles.button,
-              styles.secondaryButton,
-              hovered && { backgroundColor: theme.colors.subtle, transform: [{ scale: 1.02 }] },
-              pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
-            ]}
-            onPress={() => router.push('/makers' as any)}
-          >
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>CUSTOM ORDER</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Right Content / Image Collage Slideshow */}
-      <Animated.View style={[
-        isMobile ? styles.imageMobile : styles.imageDesktop, 
-        { 
-          position: 'relative', 
-          marginTop: isMobile ? theme.spacing.xl : 0,
-          transform: [{ rotate: swayRotation }],
-          transformOrigin: 'top center' as any
+        if (!isMobile) {
+            // Polaroid drop stagger
+            Animated.stagger(250, [
+                Animated.parallel([
+                    Animated.spring(drop1, { toValue: 0, tension: 50, friction: 6, useNativeDriver: true }),
+                    Animated.timing(polaroidOpacity1, { toValue: 1, duration: 400, useNativeDriver: true }),
+                ]),
+                Animated.parallel([
+                    Animated.spring(drop2, { toValue: 0, tension: 50, friction: 6, useNativeDriver: true }),
+                    Animated.timing(polaroidOpacity2, { toValue: 1, duration: 400, useNativeDriver: true }),
+                ]),
+                Animated.parallel([
+                    Animated.spring(drop3, { toValue: 0, tension: 50, friction: 6, useNativeDriver: true }),
+                    Animated.timing(polaroidOpacity3, { toValue: 1, duration: 400, useNativeDriver: true }),
+                ]),
+            ]).start();
+        } else {
+             Animated.parallel([
+                Animated.spring(drop1, { toValue: 0, tension: 50, friction: 6, useNativeDriver: true }),
+                Animated.timing(polaroidOpacity1, { toValue: 1, duration: 400, useNativeDriver: true }),
+            ]).start();
         }
-      ]}>
-        {!isMobile && (
-          <>
-            <Chain style={{ left: '20%' }} />
-            <Chain style={{ right: '20%' }} />
-          </>
-        )}
-        
-        <View style={[styles.imageSection, { flex: 1, padding: 0, backgroundColor: '#000', width: '100%' }]}>
-          <Animated.Image
-            source={HERO_IMAGES[currentIndex]}
-            style={[styles.image, { opacity: fadeAnim }]}
-          />
+    }, [isMobile]);
+
+    return (
+        <View style={styles.container}>
+            <LinearGradient
+                colors={['#FCFAF9', '#F9F0F2']}
+                style={StyleSheet.absoluteFill}
+            />
+            
+            <View style={[styles.contentWrapper, isMobile ? styles.contentWrapperMobile : styles.contentWrapperDesktop]}>
+                
+                {/* Left Panel */}
+                <View style={[styles.leftPanel, isMobile && styles.leftPanelMobile]}>
+                    <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: fadeAnim1.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                         <Text style={[styles.headline, isMobile && styles.headlineMobile]}>
+                            Handmade things,
+                         </Text>
+                    </Animated.View>
+                    <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                         <Text style={[styles.headline, isMobile && styles.headlineMobile, { color: theme.colors.primary }]}>
+                            heartfelt stories.
+                         </Text>
+                    </Animated.View>
+                    <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                        <Text style={[styles.tagline, isMobile && styles.taglineMobile]}>
+                            The kind of gift they'll actually keep.
+                        </Text>
+                    </Animated.View>
+                    
+                    <Animated.View style={[styles.actions, isMobile && styles.actionsMobile, { opacity: fadeAnim4 }]}>
+                        <Pressable 
+                            style={({ pressed, hovered }: any) => [
+                                styles.primaryBtn,
+                                hovered && { backgroundColor: theme.colors.primaryDark, transform: [{ translateY: -2 }] },
+                                pressed && { transform: [{ scale: 0.98 }] }
+                            ]}
+                            onPress={() => router.push('/products/all-products' as any)}
+                        >
+                            <ShoppingBag size={18} color="white" />
+                            <Text style={styles.primaryBtnText}>SHOP NOW</Text>
+                        </Pressable>
+                        <Pressable 
+                            style={({ pressed, hovered }: any) => [
+                                styles.outlineBtn,
+                                hovered && { backgroundColor: theme.colors.primaryLight, transform: [{ translateY: -2 }] },
+                                pressed && { transform: [{ scale: 0.98 }] }
+                            ]}
+                            onPress={() => router.push('/makers' as any)}
+                        >
+                            <Text style={styles.outlineBtnText}>CUSTOM ORDER</Text>
+                        </Pressable>
+                    </Animated.View>
+
+                    {/* Trust badges */}
+                    <Animated.View style={[styles.trustStrip, { opacity: fadeAnim4 }]}>
+                        <View style={styles.trustItem}>
+                            <Heart size={16} color={theme.colors.primary} />
+                            <Text style={styles.trustText}>Handcrafted</Text>
+                        </View>
+                        <View style={styles.trustItem}>
+                            <Users size={16} color={theme.colors.primary} />
+                            <Text style={styles.trustText}>Filipino Makers</Text>
+                        </View>
+                        <View style={styles.trustItem}>
+                            <ShieldCheck size={16} color={theme.colors.primary} />
+                            <Text style={styles.trustText}>Secure Checkout</Text>
+                        </View>
+                    </Animated.View>
+                </View>
+
+                {/* Right Panel */}
+                <View style={[styles.rightPanel, isMobile && styles.rightPanelMobile]}>
+                    {!isMobile ? (
+                        <View style={styles.collageContainer}>
+                            {/* Card 3 (Back) */}
+                            <Animated.View style={[styles.polaroid, styles.polaroid3, { opacity: polaroidOpacity3, transform: [{ translateY: drop3 }, { rotate: '8deg' }] }]}>
+                                <Image source={images[2]} style={styles.polaroidImage} />
+                            </Animated.View>
+                            {/* Card 2 (Middle) */}
+                            <Animated.View style={[styles.polaroid, styles.polaroid2, { opacity: polaroidOpacity2, transform: [{ translateY: drop2 }, { rotate: '-6deg' }] }]}>
+                                <Image source={images[1]} style={styles.polaroidImage} />
+                            </Animated.View>
+                            {/* Card 1 (Front) */}
+                            <Animated.View style={[styles.polaroid, styles.polaroid1, { opacity: polaroidOpacity1, transform: [{ translateY: drop1 }, { rotate: '2deg' }] }]}>
+                                <Image source={images[0]} style={styles.polaroidImage} />
+                            </Animated.View>
+                            
+                            {/* Social Proof Pill */}
+                            <Animated.View style={[styles.socialPill, { opacity: polaroidOpacity1 }]}>
+                                <Star size={16} color="#F59E0B" fill="#F59E0B" />
+                                <Text style={styles.socialText}><Text style={{fontWeight: '700'}}>4.8</Text> · 2,000+ handmade items</Text>
+                            </Animated.View>
+                        </View>
+                    ) : (
+                        <View style={styles.mobileImageContainer}>
+                            <Animated.View style={[styles.polaroid, { opacity: polaroidOpacity1, transform: [{ translateY: drop1 }] }]}>
+                                <Image source={images[0]} style={styles.polaroidImage} />
+                            </Animated.View>
+                            <Animated.View style={[styles.socialPill, styles.socialPillMobile, { opacity: polaroidOpacity1 }]}>
+                                <Star size={16} color="#F59E0B" fill="#F59E0B" />
+                                <Text style={styles.socialText}><Text style={{fontWeight: '700'}}>4.8</Text> · 2,000+ items</Text>
+                            </Animated.View>
+                        </View>
+                    )}
+                </View>
+
+            </View>
         </View>
-      </Animated.View>
-    </View>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    gap: theme.spacing.lg,
-    overflow: 'hidden',
-  },
-  containerMobile: {
-    flexDirection: 'column',
-  },
-  containerDesktop: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    padding: theme.spacing['2xl'],
-    minHeight: 500,
-  },
-  contentSection: {
-    justifyContent: 'center',
-    gap: theme.spacing.md,
-  },
-  contentMobile: {
-    alignItems: 'center',
-    textAlign: 'center',
-  },
-  contentDesktop: {
-    flex: 1,
-    paddingRight: theme.spacing.xl,
-  },
-  headline: {
-    fontSize: 40,
-    fontWeight: theme.typography.weights.bold as any,
-    color: theme.colors.text,
-    fontFamily: theme.typography.fontFamily,
-    lineHeight: 48,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.lg,
-    lineHeight: 28,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  button: {
-    flexDirection: 'row',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.xl,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-    ...theme.shadows.sm,
-  },
-  primaryButtonText: {
-    color: theme.colors.surface,
-    fontWeight: theme.typography.weights.bold as any,
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    borderColor: theme.colors.border,
-  },
-  secondaryButtonText: {
-    color: theme.colors.textSecondary,
-    fontWeight: theme.typography.weights.semibold as any,
-  },
-  buttonText: {
-    fontSize: theme.typography.sizes.sm,
-    letterSpacing: 1,
-  },
-  imageSection: {
-    backgroundColor: theme.colors.backgroundAlt,
-    borderRadius: theme.borderRadius.lg,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  imageMobile: {
-    width: '100%',
-    aspectRatio: 1,
-    marginTop: theme.spacing.lg,
-  },
-  imageDesktop: {
-    flex: 1,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  dotsContainer: {
-    position: 'absolute',
-    bottom: theme.spacing.lg,
-    flexDirection: 'row',
-    alignSelf: 'center',
-    gap: theme.spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  activeDot: {
-    backgroundColor: '#fff',
-    transform: [{ scale: 1.4 }],
-  },
-  chainWrapper: {
-    position: 'absolute',
-    top: -50, // Extends up to the very top edge of the hero padding
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  chainLink: {
-    width: 14,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 2.5,
-    borderColor: '#d1d5db', // Silver metallic color
-    marginTop: -8, // Creates the linked overlap effect
-  },
-  chainPin: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#9ca3af',
-    marginTop: -4,
-    borderWidth: 3,
-    borderColor: '#fff',
-    ...theme.shadows.sm,
-  },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.xl,
-    gap: theme.spacing.sm,
-  },
-  imagePlaceholderText: {
-    color: theme.colors.textSecondary,
-    fontWeight: theme.typography.weights.bold as any,
-    fontSize: theme.typography.sizes.base,
-    letterSpacing: 1,
-    textAlign: 'center',
-    marginTop: theme.spacing.md,
-  },
-  imagePlaceholderSubText: {
-    color: theme.colors.textLight,
-    textAlign: 'center',
-  }
+    container: {
+        width: '100%',
+        minHeight: 600,
+        overflow: 'hidden',
+    },
+    contentWrapper: {
+        flex: 1,
+        maxWidth: 1280,
+        width: '100%',
+        alignSelf: 'center',
+        paddingHorizontal: 24,
+    },
+    contentWrapperDesktop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 80,
+    },
+    contentWrapperMobile: {
+        flexDirection: 'column',
+        paddingVertical: 40,
+        paddingHorizontal: 16,
+    },
+    leftPanel: {
+        flex: 1,
+        zIndex: 10,
+    },
+    leftPanelMobile: {
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    headline: {
+        fontSize: 56,
+        fontWeight: '700',
+        fontFamily: 'Quicksand',
+        color: '#1A1A2E',
+        lineHeight: 64,
+        letterSpacing: -1,
+    },
+    headlineMobile: {
+        fontSize: 40,
+        lineHeight: 48,
+        textAlign: 'center',
+    },
+    tagline: {
+        fontSize: 20,
+        fontFamily: 'Quicksand',
+        color: '#6B7280',
+        marginTop: 16,
+        marginBottom: 32,
+    },
+    taglineMobile: {
+        fontSize: 18,
+        textAlign: 'center',
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 48,
+    },
+    actionsMobile: {
+        flexDirection: 'column',
+        width: '100%',
+        alignItems: 'center',
+    },
+    primaryBtn: {
+        backgroundColor: theme.colors.primary,
+        paddingHorizontal: 28,
+        paddingVertical: 16,
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    primaryBtnText: {
+        color: 'white',
+        fontWeight: '700',
+        fontSize: 15,
+        fontFamily: 'Quicksand',
+        letterSpacing: 0.5,
+    },
+    outlineBtn: {
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: theme.colors.primary,
+        paddingHorizontal: 28,
+        paddingVertical: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    outlineBtnText: {
+        color: theme.colors.primary,
+        fontWeight: '700',
+        fontSize: 15,
+        fontFamily: 'Quicksand',
+        letterSpacing: 0.5,
+    },
+    trustStrip: {
+        flexDirection: 'row',
+        gap: 24,
+        flexWrap: 'wrap',
+    },
+    trustItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    trustText: {
+        fontSize: 13,
+        fontFamily: 'Quicksand',
+        fontWeight: '600',
+        color: '#4B5563',
+    },
+    rightPanel: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 400,
+    },
+    rightPanelMobile: {
+        width: '100%',
+    },
+    collageContainer: {
+        width: 400,
+        height: 400,
+        position: 'relative',
+    },
+    polaroid: {
+        backgroundColor: 'white',
+        padding: 12,
+        paddingBottom: 40,
+        borderRadius: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 5,
+    },
+    polaroidImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 2,
+        resizeMode: 'cover',
+    },
+    polaroid1: {
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        width: 260,
+        height: 320,
+        zIndex: 3,
+    },
+    polaroid2: {
+        position: 'absolute',
+        top: -10,
+        left: 120,
+        width: 240,
+        height: 290,
+        zIndex: 2,
+    },
+    polaroid3: {
+        position: 'absolute',
+        top: 60,
+        left: 160,
+        width: 220,
+        height: 270,
+        zIndex: 1,
+    },
+    mobileImageContainer: {
+        width: '100%',
+        aspectRatio: 0.8,
+        position: 'relative',
+        alignItems: 'center',
+    },
+    socialPill: {
+        position: 'absolute',
+        bottom: 10,
+        left: -30,
+        backgroundColor: 'white',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 999,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 4,
+        zIndex: 10,
+    },
+    socialPillMobile: {
+        bottom: -20,
+        left: 20,
+    },
+    socialText: {
+        fontSize: 13,
+        fontFamily: 'Quicksand',
+        color: '#4B5563',
+    },
 });

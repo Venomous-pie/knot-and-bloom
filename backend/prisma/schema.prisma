@@ -26,8 +26,6 @@ model Product {
   status                  ProductStatus    @default(PENDING)
   version                 Int              @default(0)
   isCodAllowed            Boolean          @default(true)
-  isBundle                Boolean          @default(false)
-  bundleQuantity          Int?
   materials               String?
   metaDescription         String?
   metaTitle               String?
@@ -45,6 +43,8 @@ model Product {
   processingTime          String?
   shippingFeeOverride     Decimal?
   videoUrl                String?
+  bundleQuantity          Int?
+  isBundle                Boolean          @default(false)
   cartItems               CartItem[]
   orderItems              OrderItem[]
   seller                  Seller?          @relation(fields: [sellerId], references: [uid])
@@ -248,10 +248,10 @@ model Seller {
   rating              Decimal             @default(0)
   rejectionReason     String?
   socialMediaLink     String?
-  sampleItems         String[]
-  salesChannels       String[]
-  monthlyOrders       String?
   totalWithdrawn      Decimal             @default(0)
+  monthlyOrders       String?
+  salesChannels       String[]
+  sampleItems         String[]
   orders              Order[]
   orderItems          OrderItem[]
   products            Product[]

@@ -52,18 +52,9 @@ const PORT = process.env.PORT || 3030;
 app.use(helmet()); // Sets security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
 app.use(requestLogger); // Structured JSON request logging for observability
 
-// Global rate limiter: 100 requests per minute per IP
-const globalLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, error: 'Too many requests, please try again later.' },
-    store: new PrismaRateLimitStore(),
-});
-app.use(globalLimiter);
-
-// CORS: Use CORS_ORIGINS env var in production, fallback to dev origins
+// CORS must be registered BEFORE the rate limiter so that rate-limited (429)
+// responses still include Access-Control-Allow-Origin headers. Without this,
+// the browser misreports rate-limit errors as CORS errors.
 const defaultOrigins = [
     'http://localhost:8081', // Expo Web
     'http://localhost:19000', // Expo
@@ -80,6 +71,17 @@ app.use(cors({
     origin: allowedOrigins,
     credentials: true
 }));
+
+// Global rate limiter: 100 requests per minute per IP
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many requests, please try again later.' },
+    store: new PrismaRateLimitStore(),
+});
+app.use(globalLimiter);
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));

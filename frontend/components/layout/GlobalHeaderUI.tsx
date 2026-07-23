@@ -11,7 +11,7 @@ import { NavLinks } from "@/components/layout/NavLinks";
 import { MobileNavbar } from "@/components/layout/MobileNavbar";
 import { Product } from "@/types/products";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
-import { ChevronLeft, Handbag, Heart, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell } from "lucide-react-native";
+import { ChevronLeft, Handbag, Heart, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import SearchBarDropdown from "../ui/SearchResults";
@@ -29,7 +29,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         height: 64,
-        paddingHorizontal: 16,
+        paddingHorizontal: 24,
+        maxWidth: 1280,
+        width: '100%',
+        alignSelf: 'center',
+        gap: 20,
     },
     headerBespoke: {
         height: 60,
@@ -65,13 +69,13 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     searchBar: {
-        height: 35,
-        maxWidth: 200,
+        height: 40,
+        maxWidth: 280,
         borderWidth: 1,
-        borderColor: 'transparent',
+        borderColor: theme.colors.border,
         backgroundColor: theme.colors.subtle,
         borderRadius: 9999,
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 0,
@@ -93,10 +97,10 @@ const styles = StyleSheet.create({
     },
     rightIcons: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 10,
+        justifyContent: 'flex-end',
+        gap: 16,
         alignContent: "center",
-        alignItems: 'center'
+        alignItems: 'center',
     },
 });
 
@@ -273,80 +277,80 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
     // Desktop Layout
     if (isBespokePage) {
         return (
-            <View style={[styles.headerDesktop, { paddingHorizontal: width * navMargin }]}>
-                <Link href='/' asChild>
-                    <Pressable style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
-                        <Image source={require('@/assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
-                        <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>Knot</Text>
-                        <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>&Bloom</Text>
+            <View style={styles.container}>
+                <View style={styles.headerDesktop}>
+                    <Link href='/' asChild>
+                        <Pressable style={{ flexDirection: 'row', gap: 0, alignItems: 'center' }}>
+                            <Image source={require('@/assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
+                            <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>Knot</Text>
+                            <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>&Bloom</Text>
+                        </Pressable>
+                    </Link>
+                    <Pressable onPress={() => router.push('/customer-service/chat' as RelativePathString)}>
+                        <Text style={{ color: theme.colors.primary, fontSize: 14, textDecorationLine: 'none' }}>Need Assistance?</Text>
                     </Pressable>
-                </Link>
-                <Pressable onPress={() => router.push('/customer-service/chat' as RelativePathString)}>
-                    <Text style={{ color: theme.colors.primary, fontSize: 14, textDecorationLine: 'none' }}>Need Assistance?</Text>
-                </Pressable>
+                </View>
             </View>
         );
     }
 
     return (
         <View style={styles.container}>
-            <View style={[styles.headerDesktop, { paddingHorizontal: width * navMargin }]}>
+            <View style={styles.headerDesktop}>
                 {/* Left: Logo */}
-                <Link href='/' asChild>
-                    <Pressable style={{ flexDirection: 'row', gap: 0, alignItems: 'center', position: 'relative', zIndex: 10 }}>
-                        <Image source={require('@/assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
-                        <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>Knot</Text>
-                        <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>&Bloom</Text>
-                    </Pressable>
-                </Link>
+                <View style={{ alignItems: 'flex-start' }}>
+                    <Link href='/' asChild>
+                        <Pressable style={{ flexDirection: 'row', gap: 0, alignItems: 'center', position: 'relative', zIndex: 10 }}>
+                            <Image source={require('@/assets/yarn.png')} style={{ width: 40, height: 40 }} resizeMode='contain' />
+                            <Text style={{ fontFamily: 'Lovingly', color: theme.colors.primary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>Knot</Text>
+                            <Text style={{ fontFamily: 'Lovingly', color: theme.colors.secondary, marginTop: 10, fontWeight: 'bold', fontSize: 14 }}>&Bloom</Text>
+                        </Pressable>
+                    </Link>
+                </View>
 
                 {/* Center: Nav Links */}
-                <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center', pointerEvents: 'box-none' }}>
-                    <View pointerEvents="auto">
-                        <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
-                    </View>
+                <View style={{ alignItems: 'center' }}>
+                    <NavLinks activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
                 </View>
 
                 {/* Right: Icons */}
                 <View style={styles.rightIcons}>
-                    <View style={[styles.navlinkContainer, { position: 'relative', zIndex: 10 }]}>
-                        <Animated.View style={[
+                    <View style={{ position: 'relative', zIndex: 10, justifyContent: 'center' }}>
+                        <View style={[
                             styles.searchBar,
                             isFocused && styles.isFocused,
-                            { width: navSearchWidth, backgroundColor: searchBarBg }
+                            { width: width < 1280 ? 160 : 240 }
                         ]}>
-                            <Pressable onPress={toggleDesktopSearch} style={{ padding: 10 }}>
-                                <Search size={18} color={isFocused ? theme.colors.textLight : theme.colors.shadow} />
+                            <Pressable onPress={() => desktopInputRef.current?.focus()} style={{ paddingLeft: 12, paddingRight: 6 }}>
+                                <Search size={16} color={isFocused ? theme.colors.text : theme.colors.textLight} />
                             </Pressable>
-                            <Animated.View style={{ flex: 1, opacity: inputOpacity }}>
+                            <View style={{ flex: 1 }}>
                                 <TextInput
                                     ref={desktopInputRef}
-                                    style={[styles.searchInput, { width: '100%', height: '100%', paddingLeft: 10 }]}
+                                    style={[styles.searchInput, { width: '100%', height: '100%', paddingLeft: 2, fontFamily: 'Quicksand' }]}
                                     placeholder="Search for products..."
                                     placeholderTextColor={theme.colors.textLight}
                                     onFocus={() => setIsFocused(true)}
-                                    onBlur={() => {
-                                        setIsFocused(false);
-                                        isCollapsing.current = true;
-                                        setTimeout(() => { isCollapsing.current = false; }, 200);
-                                        collapseDesktopSearch();
-                                    }}
+                                    onBlur={() => setIsFocused(false)}
                                     onChangeText={(text) => {
                                         setSearchQuery(text);
                                         handleSearch(text);
                                     }}
                                     value={searchQuery}
                                 />
-                            </Animated.View>
-                        </Animated.View>
+                            </View>
+                            {searchQuery.length > 0 && (
+                                <Pressable onPress={() => { setSearchQuery(''); handleSearch(''); desktopInputRef.current?.focus(); }} style={{ paddingRight: 10, paddingLeft: 5 }}>
+                                    <X size={16} color={theme.colors.textLight} />
+                                </Pressable>
+                            )}
+                        </View>
                         {products.length > 0 && (
                             <View style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 5 }}>
                                 <SearchBarDropdown products={products} onClose={() => setProducts([])} />
                             </View>
                         )}
                     </View>
-
-                    <View style={{ width: 1, height: 18, backgroundColor: theme.colors.border, marginRight: 6 }} />
 
                     <DropdownMenu
                         items={[]}
@@ -470,7 +474,7 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                             onPress={() => router.push("/auth/login" as RelativePathString)}
                         >
                             {({ hovered }) => (
-                                <Text style={{ color: hovered ? 'white' : theme.colors.primary }}>Sign In</Text>
+                                <Text style={{ color: hovered ? 'white' : theme.colors.primary, fontFamily: 'Quicksand', fontWeight: '600' }}>Sign In</Text>
                             )}
                         </Pressable>
                     )}

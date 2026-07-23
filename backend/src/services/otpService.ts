@@ -1,5 +1,6 @@
 import prisma from '../utils/prismaUtils.js';
 import ErrorHandler from '../error/errorHandler.js';
+import { sendEmail } from '../utils/emailUtils.js';
 
 export class OtpService {
     /**
@@ -7,9 +8,10 @@ export class OtpService {
      * In simulation mode, this also logs the OTP to the console.
      */
     static async generateAndSendOTP(target: string, type: 'REGISTRATION' | 'PASSWORD_RESET'): Promise<void> {
+        const isEmail = target.includes('@');
+
         // 1. Check if user exists (for REGISTRATION)
         if (type === 'REGISTRATION') {
-            const isEmail = target.includes('@');
             const existingCustomer = await prisma.customer.findFirst({
                 where: isEmail ? { email: target } : { phone: target }
             });
@@ -59,7 +61,23 @@ export class OtpService {
         console.log(`[OTP SIMULATION] Code for ${target}: ${code}`);
         console.log(`==================================================\n`);
 
-        // TODO: Integrate real SMS provider here (Twilio/Firebase/SNS)
+        // 5. Send actual email or SMS
+        if (isEmail) {
+            const subject = type === 'REGISTRATION' ? 'Your Registration Code' : 'Your Password Reset Code';
+            const text = `Your verification code is: ${code}\nThis code will expire in 5 minutes.`;
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+                    <h2 style="color: #2c3e50;">Knot & Bloom Verification</h2>
+                    <p>Your verification code is:</p>
+                    <h1 style="font-size: 32px; letter-spacing: 4px; color: #2c3e50; background: #f5f5f5; padding: 15px; text-align: center; border-radius: 8px;">${code}</h1>
+                    <p>This code will expire in <strong>5 minutes</strong>.</p>
+                    <p style="font-size: 14px; color: #7f8c8d; margin-top: 30px;">If you did not request this code, please ignore this email.</p>
+                </div>
+            `;
+            await sendEmail(target, subject, text, html);
+        } else {
+            // TODO: Integrate real SMS provider here (Twilio/Firebase/SNS)
+        }
     }
 
     /**

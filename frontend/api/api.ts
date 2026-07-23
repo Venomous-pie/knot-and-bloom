@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import type { CreateProductData, GetProductsParams, GetProductsResponse, Product } from '../types/products';
 import { authEvents } from '@/utils/authEvents';
+import { getAuthToken, getRefreshToken, updateTokens } from '@/utils/tokenStore';
 
 // Base URL for the API - uses EXPO_PUBLIC_API_URL env var with localhost fallback
 const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api`;
@@ -17,9 +18,9 @@ const api: AxiosInstance = axios.create({
 // Request interceptor for adding auth tokens or other headers
 api.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-        // Add authorization token if available
+        // Add authorization token if available (memory-first via tokenStore)
         try {
-            const token = await AsyncStorage.getItem('authToken');
+            const token = await getAuthToken();
             if (token && config.headers) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
@@ -85,13 +86,13 @@ api.interceptors.response.use(
                     isRefreshing = true;
 
                     try {
-                        const refreshToken = await AsyncStorage.getItem('refreshToken');
+                        const refreshToken = await getRefreshToken();
                         if (refreshToken) {
                             const response = await api.post('/auth/refresh', { refreshToken });
                             const { token: newToken, refreshToken: newRefreshToken } = response.data;
 
-                            await AsyncStorage.setItem('authToken', newToken);
-                            await AsyncStorage.setItem('refreshToken', newRefreshToken);
+                            // Write back to whichever tier the session currently lives in
+                            await updateTokens(newToken, newRefreshToken);
 
                             processQueue(null, newToken);
                             originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -99,7 +100,8 @@ api.interceptors.response.use(
                         }
                     } catch (refreshError) {
                         processQueue(refreshError, null);
-                        await AsyncStorage.removeItem('refreshToken');
+                        // Clear the refresh token from whichever tier holds it
+                        await updateTokens('', '').catch(() => {});
                     } finally {
                         isRefreshing = false;
                     }

@@ -66,6 +66,7 @@ export default function BespokeAuthForm({
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
     const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
     const [loginAttempts, setLoginAttempts] = useState(0);
 
@@ -201,7 +202,7 @@ export default function BespokeAuthForm({
                     password,
                     ...(authMethod === 'email' ? { email: email.trim().toLowerCase() } : { phone: phoneNumber })
                 };
-                await login(payload, returnTo);
+                await login(payload, returnTo, rememberMe);
                 setLoginAttempts(0);
             }
         } catch (err: any) {
@@ -851,6 +852,33 @@ export default function BespokeAuthForm({
                                     </View>
                                 </View>
 
+                                {/* Remember Me — login only */}
+                                {!isSignUp && (
+                                    <View style={styles.rememberMeRow}>
+                                        <Pressable
+                                            onPress={() => setRememberMe(v => !v)}
+                                            style={styles.rememberMeCheckbox}
+                                            accessibilityRole="checkbox"
+                                            accessibilityState={{ checked: rememberMe }}
+                                        >
+                                            <View style={[
+                                                styles.checkboxBox,
+                                                rememberMe && styles.checkboxBoxChecked,
+                                            ]}>
+                                                {rememberMe && (
+                                                    <Text style={styles.checkboxTick}>✓</Text>
+                                                )}
+                                            </View>
+                                            <Text style={[styles.checkboxLabel, { fontFamily: 'Quicksand' }]}>
+                                                Remember me
+                                            </Text>
+                                        </Pressable>
+                                        <Text style={styles.rememberMeHint}>
+                                            {rememberMe ? 'Session saved across app restarts' : 'Session ends when you close the app'}
+                                        </Text>
+                                    </View>
+                                )}
+
                                 {isSignUp && (
                                     <View style={styles.checkboxContainer}>
                                         <Switch
@@ -1287,6 +1315,42 @@ const styles = StyleSheet.create({
     linkText: {
         color: theme.colors.primary,
         fontWeight: "600",
+    },
+    rememberMeRow: {
+        gap: 6,
+        marginTop: 2,
+    },
+    rememberMeCheckbox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    checkboxBox: {
+        width: 20,
+        height: 20,
+        borderRadius: 5,
+        borderWidth: 2,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.backgroundAlt,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxBoxChecked: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    checkboxTick: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: '700',
+        lineHeight: 16,
+    },
+    rememberMeHint: {
+        fontSize: 11,
+        color: theme.colors.textLight,
+        marginLeft: 30,
+        fontFamily: 'Quicksand',
+        fontStyle: 'italic',
     },
     submitButton: {
         backgroundColor: theme.colors.primary,

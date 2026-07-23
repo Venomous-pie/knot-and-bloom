@@ -4,11 +4,12 @@ import type { AuthContextType, User } from '@/types/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RelativePathString, useRouter, useSegments } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { clearSession, getAuthToken, getAuthUser, getRefreshToken, saveSession, updateTokens } from '@/utils/tokenStore';
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
-    login: async (data: any, returnTo?: string) => { },
+    login: async (data: any, returnTo?: string, rememberMe?: boolean) => { },
     register: async (data: any) => { },
     logout: async () => { },
     refreshUser: async () => { },
@@ -58,8 +59,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const loadUser = async () => {
         try {
-            const token = await AsyncStorage.getItem('authToken');
-            const userData = await AsyncStorage.getItem('authUser');
+            const token = await getAuthToken();
+            const userData = await getAuthUser();
 
             if (token && userData) {
                 const parsedUser = JSON.parse(userData);
@@ -76,16 +77,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
-    const login = async (data: any, returnTo?: string) => {
+    const login = async (data: any, returnTo?: string, rememberMe: boolean = true) => {
         try {
             const response = await authAPI.login(data);
             const { token, refreshToken, customer, data: legacyUser } = response.data;
             const user = customer || legacyUser;
 
             if (token && user) {
-                await AsyncStorage.setItem('authToken', token);
-                if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
-                await AsyncStorage.setItem('authUser', JSON.stringify(user));
+                await saveSession(token, JSON.stringify(user), refreshToken, rememberMe);
                 setUser(user);
                 setToken(token);
 
@@ -109,9 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const finalUser = user || customer;
 
             if (token && finalUser) {
-                await AsyncStorage.setItem('authToken', token);
-                if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
-                await AsyncStorage.setItem('authUser', JSON.stringify(finalUser));
+                await saveSession(token, JSON.stringify(finalUser), refreshToken, true);
                 setUser(finalUser);
                 setToken(token);
                 router.replace('/');
@@ -123,13 +120,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const logout = async () => {
         try {
-            const refreshToken = await AsyncStorage.getItem('refreshToken');
+            const refreshToken = await getRefreshToken();
             if (refreshToken) {
-                // Revoke refresh token server-side (best effort, don't block on failure)
                 authAPI.logout(refreshToken).catch(() => {});
             }
         } catch (e) { /* ignore */ }
-        await AsyncStorage.multiRemove(['authToken', 'authUser', 'refreshToken']);
+        await clearSession();
         setUser(null);
         setToken(null);
         router.replace('/auth/login' as RelativePathString);
@@ -137,7 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const refreshUser = async () => {
         try {
-            const currentToken = await AsyncStorage.getItem('authToken');
+            const currentToken = await getAuthToken();
             if (!currentToken) return;
 
             const response = await api.get('/customers/profile');
@@ -145,12 +141,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const newToken = response.data.token;
 
             if (userData) {
-                await AsyncStorage.setItem('authUser', JSON.stringify(userData));
+                const currentRefreshToken = await getRefreshToken();
+                // Preserve the tier: persisted if AsyncStorage has a token, memory otherwise
+                const isPersisted = (await AsyncStorage.getItem('authToken')) !== null;
+                await saveSession(
+                    newToken || currentToken,
+                    JSON.stringify(userData),
+                    currentRefreshToken ?? undefined,
+                    isPersisted,
+                );
                 setUser(userData);
-            }
-            if (newToken) {
-                await AsyncStorage.setItem('authToken', newToken);
-                setToken(newToken);
+                if (newToken) setToken(newToken);
             }
         } catch (error) {
             console.error("Failed to refresh user", error);
@@ -164,9 +165,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const user = customer || legacyUser;
 
             if (authToken && user) {
-                await AsyncStorage.setItem('authToken', authToken);
-                if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
-                await AsyncStorage.setItem('authUser', JSON.stringify(user));
+                // Google sign-in always persists (user explicitly chose an account)
+                await saveSession(authToken, JSON.stringify(user), refreshToken, true);
                 setUser(user);
                 setToken(authToken);
 

@@ -111,7 +111,20 @@ const getCart = async (req: Request, res: Response): Promise<void> => {
             include: {
                 items: {
                     include: {
-                        product: true,
+                        product: {
+                            include: {
+                                seller: {
+                                    select: {
+                                        uid: true,
+                                        name: true,
+                                        slug: true,
+                                        logo: true,
+                                        freeShippingEnabled: true,
+                                        freeShippingThreshold: true,
+                                    }
+                                }
+                            }
+                        },
                         productVariant: true
                     },
                     orderBy: {

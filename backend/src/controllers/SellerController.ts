@@ -9,6 +9,9 @@ import prisma from '../utils/prismaUtils.js';
 import { ensureAdminSellerProfile } from '../utils/sellerUtils.js';
 import { sellerSchema, registerSellerSchema } from '../validators/sellerValidator.js';
 import { supabaseService } from '../services/SupabaseService.js';
+import { computeShippingFee } from '../utils/shippingUtils.js';
+import type { ShippingConfig } from '../utils/shippingUtils.js';
+import { getShippingConfig } from '../utils/platformConfigUtils.js';
 
 export const sellerController = {
     // Flow B: Direct Register as Seller (Public)
@@ -167,7 +170,7 @@ export const sellerController = {
                                 customerId: admin.uid,
                                 title: 'New Seller Application',
                                 message: `A new seller (${data.name}) has reapplied and is waiting for approval.`,
-                                type: 'system'
+                                type: 'admin'
                             }))
                         });
                         admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
@@ -222,7 +225,7 @@ export const sellerController = {
                         customerId: admin.uid,
                         title: 'New Seller Application',
                         message: `A new seller (${data.name}) has applied and is waiting for approval.`,
-                        type: 'system'
+                        type: 'admin'
                     }))
                 });
                 admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
@@ -1012,7 +1015,8 @@ export const sellerController = {
             const unreadNotifications = await prisma.notification.count({
                 where: {
                     customerId: user.id,
-                    isRead: false
+                    isRead: false,
+                    type: { not: 'admin' }
                 }
             });
 
@@ -1054,6 +1058,103 @@ export const sellerController = {
         } catch (error) {
             console.error('Admin Sidebar Stats Error:', error);
             res.status(500).json({ error: "Failed to fetch admin sidebar stats" });
+        }
+    },
+
+    // Update Shipping Settings
+    async updateShippingSettings(req: Request, res: Response) {
+        try {
+            if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+            const user = req.user as AuthPayload;
+
+            let sellerId = user.sellerId;
+            if (!sellerId) {
+                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                if (seller) sellerId = seller.uid;
+            }
+
+            if (!sellerId) return res.status(404).json({ error: "Seller profile not found" });
+
+            const { selfDeliveryEnabled, vehicleType, meetUpPoint, sellerCitymunCode, sellerProvCode, sellerRegCode, freeShippingEnabled, freeShippingThreshold } = req.body;
+
+            if (freeShippingEnabled && (freeShippingThreshold === undefined || freeShippingThreshold === null || Number(freeShippingThreshold) <= 0)) {
+                return res.status(400).json({ error: "A valid minimum order threshold greater than 0 is required to enable free shipping." });
+            }
+
+            const updatedSeller = await prisma.seller.update({
+                where: { uid: sellerId },
+                data: {
+                    selfDeliveryEnabled,
+                    vehicleType,
+                    meetUpPoint,
+                    sellerCitymunCode,
+                    sellerProvCode,
+                    sellerRegCode,
+                    freeShippingEnabled: freeShippingEnabled || false,
+                    freeShippingThreshold: freeShippingEnabled ? Number(freeShippingThreshold) : null
+                }
+            });
+
+            res.json({ success: true, seller: updatedSeller });
+        } catch (error) {
+            console.error('Update Shipping Settings Error:', error);
+            res.status(500).json({ error: "Failed to update shipping settings" });
+        }
+    },
+
+    // Get Shipping Preview — returns estimated delivery rates for each zone tier
+    async getShippingPreview(req: Request, res: Response) {
+        try {
+            if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+            const user = req.user as AuthPayload;
+
+            let sellerId = user.sellerId;
+            if (!sellerId) {
+                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                if (seller) sellerId = seller.uid;
+            }
+            if (!sellerId) return res.status(404).json({ error: "Seller profile not found" });
+
+            const seller = await prisma.seller.findUnique({
+                where: { uid: sellerId },
+                select: { selfDeliveryEnabled: true, vehicleType: true }
+            });
+            if (!seller) return res.status(404).json({ error: "Seller not found" });
+
+            const config: ShippingConfig = await getShippingConfig();
+
+            // Distance proxy per tier: Tier 1 = 5km, Tier 2 = 20km, Tier 3+ = 9999 (beyond self-delivery radius)
+            const TIER_DISTANCES: Record<number, number> = { 1: 5, 2: 20, 3: 9999, 4: 9999, 5: 9999 };
+            const TIER_LABELS: Record<number, string> = {
+                1: 'Same municipality',
+                2: 'Neighboring municipality',
+                3: 'Same province',
+                4: 'Same region',
+                5: 'Inter-island',
+            };
+
+            const rates = [1, 2, 3, 4, 5].map((tier) => {
+                const distanceKm: number | null = TIER_DISTANCES[tier] ?? null;
+                const result = computeShippingFee(
+                    'DELIVERY',
+                    { selfDeliveryEnabled: seller.selfDeliveryEnabled, vehicleType: seller.vehicleType },
+                    tier,
+                    distanceKm,
+                    config
+                );
+                return {
+                    tier,
+                    label: TIER_LABELS[tier],
+                    fee: result.fee,
+                    resolvedType: result.resolvedType,
+                    breakdown: result.breakdown,
+                };
+            });
+
+            res.json({ success: true, rates });
+        } catch (error) {
+            console.error('Shipping Preview Error:', error);
+            res.status(500).json({ error: "Failed to fetch shipping preview" });
         }
     }
 };

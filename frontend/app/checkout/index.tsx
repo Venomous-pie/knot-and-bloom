@@ -24,14 +24,15 @@ import AddressSelector from '@/components/checkout/AddressSelector';
 import AddressForm from '@/components/checkout/AddressForm';
 import { Address } from '@/components/checkout/AddressCard';
 import { theme } from '@/constants/theme';
-import { FREE_SHIPPING_THRESHOLD } from '../cart';
 
 import { CheckoutAddressSection } from '@/components/checkout/CheckoutAddressSection';
-import { CheckoutProductList } from '@/components/checkout/CheckoutProductList';
+import { CheckoutSellerGroup } from '@/components/checkout/CheckoutSellerGroup';
 import { AddressMapPicker } from '@/components/checkout/AddressMapPicker';
 import { CheckoutSessionExpiredDialog } from '@/components/checkout/CheckoutSessionExpiredDialog';
 import { CheckoutPaymentSection } from '@/components/checkout/CheckoutPaymentSection';
 import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
+import { CheckoutSkeleton } from '@/components/checkout/CheckoutSkeleton';
+import { TrustBadge } from '@/components/checkout/TrustBadge';
 
 export default function CheckoutPage() {
     return (
@@ -57,9 +58,12 @@ function CheckoutContent() {
         isProcessing,
         totalAmount,
         lockedPrices,
-        shippingInfo,
         setShippingInfo,
         error: checkoutError,
+        choices,
+        setChoices,
+        shippingEstimates,
+        estimateShipping,
 
         statusMessage,
         initiateCheckout,
@@ -75,8 +79,13 @@ function CheckoutContent() {
     const codDepositPercent = codInfo?.depositPercent ?? 0;
 
     // Shipping Fee Logic
-    const shippingFee = totalAmount >= FREE_SHIPPING_THRESHOLD ? 0 : 60.00;
-    const hasFreeShipping = shippingFee === 0;
+    const shippingFee = React.useMemo(() => {
+        if (!shippingEstimates) return 0;
+        return Object.values(shippingEstimates).reduce((sum: number, est: any) => sum + (est.fee || 0), 0);
+    }, [shippingEstimates]);
+    
+    // Total Amount doesn't dictate free shipping anymore, but we can keep it as false for now
+    const hasFreeShipping = false;
 
 
     // Dynamic Delivery Estimate
@@ -107,12 +116,35 @@ function CheckoutContent() {
     const [loadingAddr, setLoadingAddr] = useState(true);
     const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
 
+    // Group items by seller
+    const itemsBySeller = React.useMemo(() => {
+        const map = new Map<number, any>();
+        const names = new Map<number, string>();
+        const locations = new Map<number, string | null>();
+        lockedPrices.forEach(item => {
+            const sellerId = item.sellerId || 0; // 0 for Knot&Bloom or default
+            if (!map.has(sellerId)) {
+                map.set(sellerId, []);
+                names.set(sellerId, item.sellerName || 'Knot & Bloom');
+                locations.set(sellerId, item.sellerLocation || null);
+            }
+            map.get(sellerId)!.push(item);
+        });
+        return Array.from(map.entries()).map(([id, items]) => ({
+            sellerId: id,
+            sellerName: names.get(id) || '',
+            sellerLocation: locations.get(id) || null,
+            items
+        }));
+    }, [lockedPrices]);
+
     // UI Mode: 'checkout' | 'address_selection' | 'address_form'
     const [viewMode, setViewMode] = useState<'checkout' | 'address_selection' | 'address_form' | 'map_picker'>('checkout');
     // Address Form Mode
     const [addrFormMode, setAddrFormMode] = useState<'create' | 'edit'>('create');
     const [editingAddr, setEditingAddr] = useState<Address | null>(null);
     const [isSavingAddr, setIsSavingAddr] = useState(false);
+    const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
     // Modal animation
     const modalVisible = viewMode !== 'checkout';
@@ -189,8 +221,8 @@ function CheckoutContent() {
     }, [modalVisible]);
 
     // Payment method
-    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'card'>('cod');
-    const [deliveryNotes, setDeliveryNotes] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'maribank'>('cod');
+    const [sellerNotes, setSellerNotes] = useState<Record<number, string>>({});
 
     // Session Expiration State
     const [showExpirationDialog, setShowExpirationDialog] = useState(false);
@@ -206,8 +238,15 @@ function CheckoutContent() {
     // --------------------------------------------------------------------------
     // Checkout Initialization
     // --------------------------------------------------------------------------
+
     useEffect(() => {
-        const init = async () => {
+        if (selectedAddress) {
+            estimateShipping(selectedAddress);
+        }
+    }, [selectedAddress, choices, estimateShipping]);
+
+    useEffect(() => {
+        const loadCheckout = async () => {
             if (user?.uid && items && typeof items === 'string') {
                 const itemIds = items.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
                 if (itemIds.length > 0) {
@@ -221,7 +260,7 @@ function CheckoutContent() {
                 }
             }
         };
-        init();
+        loadCheckout();
     }, [user, items]);
 
     // --------------------------------------------------------------------------
@@ -315,7 +354,7 @@ function CheckoutContent() {
             city: selectedAddress.city,
             postalCode: selectedAddress.postalCode,
             phone: selectedAddress.phone,
-            notes: deliveryNotes,
+            notes: JSON.stringify(sellerNotes), // Pass the map as string
         };
         setShippingInfo(shippingData);
 
@@ -347,7 +386,7 @@ function CheckoutContent() {
             // Map frontend payment method to backend expected values
             let backendPaymentMethod = 'MOCK_WALLET'; // Default fallback
             if (paymentMethod === 'cod') backendPaymentMethod = 'COD';
-            else if (paymentMethod === 'card') backendPaymentMethod = 'MOCK_CARD';
+            else if (paymentMethod === 'maribank') backendPaymentMethod = 'MOCK_BANK';
             else if (paymentMethod === 'gcash' || paymentMethod === 'paymaya') backendPaymentMethod = 'MOCK_WALLET';
 
             const result = await processPayment(backendPaymentMethod);
@@ -468,20 +507,27 @@ function CheckoutContent() {
                                 </ScrollView>
                             </>
                         ) : displayMode === 'address_form' ? (
-                            <>
-                                <View style={styles.modalHeader}>
-                                    <Pressable
-                                        onPress={() => setViewMode('address_selection')}
-                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                                    >
-                                        <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
-                                        <Text style={styles.modalTitle}>
-                                            {addrFormMode === 'create' ? 'Add Address' : 'Edit Address'}
-                                        </Text>
-                                    </Pressable>
-                                </View>
-                                <ScrollView showsVerticalScrollIndicator={false}>
+                                <>
+                                    {/* Sticky Header — hidden when location picker is open */}
+                                    {!isLocationPickerOpen && (
+                                        <View style={styles.modalHeader}>
+                                            <Pressable
+                                                onPress={() => setViewMode('address_selection')}
+                                                style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                                            >
+                                                <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
+                                                <Text style={styles.modalTitle}>
+                                                    {addrFormMode === 'create' ? 'Add Address' : 'Edit Address'}
+                                                </Text>
+                                            </Pressable>
+                                            <Pressable onPress={closeModal} style={styles.modalCloseBtn}>
+                                                <Ionicons name="close" size={20} color={theme.colors.text} />
+                                            </Pressable>
+                                        </View>
+                                    )}
+                                    <ScrollView showsVerticalScrollIndicator={false}>
                                     <AddressForm
+                                        onLocationPickerChange={setIsLocationPickerOpen}
                                         mode={addrFormMode}
                                         initialData={editingAddr ? {
                                             label: editingAddr.label ?? undefined,
@@ -515,7 +561,7 @@ function CheckoutContent() {
                                         isFirstAddress={addresses.length === 0}
                                     />
                                 </ScrollView>
-                            </>
+                                </>
                         ) : (
                             <View style={{ flex: 1 }}>
                                 <AddressMapPicker
@@ -564,95 +610,108 @@ function CheckoutContent() {
 
             <View style={styles.contentContainer}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <View style={isDesktop ? styles.mainLayoutDesktop : styles.mainLayout}>
+                    {lockedPrices.length === 0 ? (
+                        <CheckoutSkeleton />
+                    ) : (
+                        <View style={isDesktop ? styles.mainLayoutDesktop : styles.mainLayout}>
 
-                        {/* Main Column */}
-                        <View style={styles.leftColumn}>
+                            {/* Main Content Column */}
+                            <View style={styles.leftColumn}>
+                            
                             {/* 1. Address Section */}
                             <CheckoutAddressSection
                                 selectedAddress={selectedAddress}
                                 onChange={() => setViewMode('address_selection')}
                             />
 
-                            {/* 2. Product List */}
-                            <CheckoutProductList items={lockedPrices} />
+                            {/* 2. Sellers and Products */}
+                            {itemsBySeller.map(group => (
+                                <CheckoutSellerGroup
+                                    key={group.sellerId}
+                                    sellerId={group.sellerId}
+                                    sellerName={group.sellerName}
+                                    sellerLocation={group.sellerLocation}
+                                    items={group.items}
+                                    choice={choices[group.sellerId] || 'DELIVERY'}
+                                    onChoiceChange={(choice) => setChoices({ [group.sellerId]: choice })}
+                                    shippingEstimate={shippingEstimates ? shippingEstimates[group.sellerId] : undefined}
+                                    note={sellerNotes[group.sellerId] || ''}
+                                    onNoteChange={(text) => setSellerNotes(prev => ({ ...prev, [group.sellerId]: text }))}
+                                />
+                            ))}
 
-                            {/* 3. Shipping Options */}
-                            <View style={styles.sectionContainer}>
-                                <View style={styles.sectionHeader}>
-                                    <Truck size={20} color={theme.colors.primary} />
-                                    <Text style={styles.sectionTitle}>Shipping Option</Text>
-                                </View>
+                            {/* TrustBadge for Mobile at bottom of scrolling content */}
+                            {!isDesktop && <TrustBadge />}
 
-                                {/* Professional Free Shipping Indicator */}
-                                {hasFreeShipping && (
-                                    <View style={{ marginBottom: 8 }}>
-                                        <Text style={{ fontSize: 13, color: theme.colors.primary, fontWeight: '500', fontFamily: theme.typography.fontFamily }}>Standard Local Shipping is on us.</Text>
-                                    </View>
-                                )}
+                            </View>
 
-                                <View style={[styles.shippingOptionRow, hasFreeShipping && styles.shippingOptionRowActive]}>
-                                    <View style={{ flex: 1 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                            <Text style={styles.shippingName}>Standard Local Delivery</Text>
-                                            {hasFreeShipping && (
-                                                <View style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '600', fontFamily: theme.typography.fontFamily, letterSpacing: 0.5 }}>FREE</Text>
-                                                </View>
-                                            )}
+                            {/* Right Sticky Column (Desktop Only) */}
+                            {isDesktop && (
+                                <View style={styles.rightColumn}>
+                                    {/* Payment Method */}
+                                    <View style={styles.sectionContainer}>
+                                        <View style={styles.sectionHeader}>
+                                            <Truck size={20} color={theme.colors.primary} />
+                                            <Text style={styles.sectionTitle}>Payment Method</Text>
                                         </View>
-                                        <Text style={styles.shippingTime}>Get by {deliveryDateStr} (Seller ships in {shipTimeStr})</Text>
+                                        <CheckoutPaymentSection
+                                            paymentMethod={paymentMethod}
+                                            onSelect={setPaymentMethod}
+                                            isCodAllowed={isCodAllowed}
+                                            codDepositPercent={codDepositPercent}
+                                            codReason={codInfo?.reason}
+                                            totalAmount={totalAmount}
+                                            shippingFee={shippingFee}
+                                        />
                                     </View>
-                                    <View style={{ alignItems: 'flex-end' }}>
-                                        {hasFreeShipping ? (
-                                            <>
-                                                <Text style={styles.shippingPriceStrikethrough}>₱60.00</Text>
-                                                <Text style={styles.shippingPriceFreeProfessional}>₱0.00</Text>
-                                            </>
-                                        ) : (
-                                            <Text style={styles.shippingPrice}>₱60.00</Text>
-                                        )}
-                                    </View>
-                                </View>
-                                <TextInput
-                                    placeholder="Message for seller/courier..."
-                                    style={styles.messageInput}
-                                    value={deliveryNotes}
-                                    onChangeText={setDeliveryNotes}
-                                />
-                            </View>
 
-                            {/* 4. Payment Method */}
-                            <View style={styles.sectionContainer}>
-                                <View style={styles.sectionHeader}>
-                                    <Truck size={20} color={theme.colors.primary} />
-                                    <Text style={styles.sectionTitle}>Payment Method</Text>
+                                        <CheckoutOrderSummary
+                                            totalAmount={totalAmount}
+                                            shippingFee={shippingFee}
+                                            hasFreeShipping={hasFreeShipping}
+                                            paymentMethod={paymentMethod}
+                                            codDepositPercent={codDepositPercent}
+                                            isProcessing={isProcessing}
+                                            onPlaceOrder={handlePlaceOrder}
+                                        />
+                                    <TrustBadge />
                                 </View>
-                                <CheckoutPaymentSection
-                                    paymentMethod={paymentMethod}
-                                    onSelect={setPaymentMethod}
-                                    isCodAllowed={isCodAllowed}
-                                    codDepositPercent={codDepositPercent}
-                                    codReason={codInfo?.reason}
-                                    totalAmount={totalAmount}
-                                    shippingFee={shippingFee}
-                                />
-                            </View>
+                            )}
+                        </View>
+                    )}
+                </ScrollView>
 
-                            {/* 5. Order Summary */}
-                            <CheckoutOrderSummary
+                {/* Sticky Footer (Mobile Only) */}
+                {!isDesktop && lockedPrices.length > 0 && (
+                    <View style={styles.stickyFooter}>
+                        {/* Mobile Payment Method */}
+                        <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+                            <View style={[styles.sectionHeader, { marginBottom: 8 }]}>
+                                <Truck size={16} color={theme.colors.primary} />
+                                <Text style={[styles.sectionTitle, { fontSize: 14 }]}>Payment Method</Text>
+                            </View>
+                            <CheckoutPaymentSection
+                                paymentMethod={paymentMethod}
+                                onSelect={setPaymentMethod}
+                                isCodAllowed={isCodAllowed}
+                                codDepositPercent={codDepositPercent}
+                                codReason={codInfo?.reason}
                                 totalAmount={totalAmount}
                                 shippingFee={shippingFee}
-                                hasFreeShipping={hasFreeShipping}
-                                paymentMethod={paymentMethod}
-                                codDepositPercent={codDepositPercent}
-                                isProcessing={isProcessing}
-                                onPlaceOrder={handlePlaceOrder}
                             />
-
                         </View>
+                        <CheckoutOrderSummary
+                            totalAmount={totalAmount}
+                            shippingFee={shippingFee}
+                            hasFreeShipping={hasFreeShipping}
+                            paymentMethod={paymentMethod}
+                            codDepositPercent={codDepositPercent}
+                            isProcessing={isProcessing}
+                            onPlaceOrder={handlePlaceOrder}
+                            isStickyLayout={true}
+                        />
                     </View>
-                </ScrollView>
+                )}
             </View>
 
             {/* Error Banner */}
@@ -704,18 +763,39 @@ const styles = StyleSheet.create({
     },
     mainLayout: {
         flexDirection: 'column',
-    },
-    mainLayoutDesktop: {
-        flexDirection: 'column',
         alignSelf: 'center',
         width: '100%',
-        maxWidth: 1100, // Matches standard desktop container width
+        maxWidth: 1100,
         padding: theme.spacing.lg,
         gap: theme.spacing.lg,
     },
+    mainLayoutDesktop: {
+        flexDirection: 'row',
+        alignSelf: 'center',
+        width: '100%',
+        maxWidth: 1100,
+        padding: theme.spacing.lg,
+        gap: theme.spacing.lg,
+        alignItems: 'flex-start',
+    },
     leftColumn: {
+        flex: 1,
         width: '100%',
         gap: theme.spacing.lg,
+    },
+    rightColumn: {
+        width: '100%',
+        maxWidth: 380,
+        position: 'sticky' as any,
+        top: 24,
+        gap: theme.spacing.lg,
+    },
+    stickyFooter: {
+        backgroundColor: theme.colors.surface,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        paddingBottom: 20, // SafeArea padding
+        ...theme.shadows.lg,
     },
     sectionContainer: {
         backgroundColor: theme.colors.surface,

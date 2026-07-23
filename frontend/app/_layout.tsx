@@ -5,6 +5,7 @@ import { WishlistProvider } from "@/contexts/WishlistContext";
 import { DialogProvider } from "@/contexts/DialogContext";
 import { SellerSettingsProvider } from "@/contexts/SellerSettingsContext";
 import AuthToast from "@/components/auth/AuthToast";
+import GlobalToast from "@/components/ui/GlobalToast";
 import CartAnimationOverlay from "@/components/cart/CartAnimationOverlay";
 import OnboardingManager from "@/components/seller/OnboardingManager";
 import GlobalAIChat from "@/components/layout/GlobalAIChat";
@@ -93,6 +94,7 @@ export default function RootLayout() {
                   <CartAnimationOverlay />
                   <OnboardingManager />
                   <AuthToast />
+                  <GlobalToast />
                   <GlobalAIChat />
                 </SellerSettingsProvider>
               </DialogProvider>

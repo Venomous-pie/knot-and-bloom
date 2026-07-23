@@ -9,7 +9,9 @@ import { PaymentService } from '../services/PaymentService.js';
 import { supabaseService } from '../services/SupabaseService.js';
 import { SellerService } from '../services/SellerService.js';
 import { generateOrderReference } from '../utils/orderUtils.js';
-import { groupItemsBySeller, calculateShippingFee, buildOrderedProducts } from '../utils/checkoutHelpers.js';
+import { groupItemsBySeller, buildOrderedProducts, resolveSellerShipping } from '../utils/checkoutHelpers.js';
+import { getShippingConfig } from '../utils/platformConfigUtils.js';
+import { ShipmentType, VehicleType } from '../../generated/prisma/client.js';
 
 import type {
     LockedPriceItem,
@@ -21,9 +23,9 @@ const SESSION_EXPIRY_MS = 15 * 60 * 1000;
 // Payment timeout (45 seconds)
 const PAYMENT_TIMEOUT_MS = 45000;
 
-// Shipping fee constants
-const FREE_SHIPPING_THRESHOLD = 500; // Free shipping for orders >= 500
-const STANDARD_SHIPPING_FEE = 60; // Standard shipping fee in PHP
+// Shipping fee constants (legacy, mostly replaced)
+const FREE_SHIPPING_THRESHOLD = 500;
+const STANDARD_SHIPPING_FEE = 60;
 
 const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -142,6 +144,7 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
                     image: item.productVariant?.images?.[0] ?? item.product.image ?? null,
                     sellerId: item.product.sellerId ?? null,
                     sellerName: item.product.seller?.name ?? null,
+                    sellerLocation: item.product.seller?.location ?? item.product.seller?.businessAddress ?? null,
                 };
             });
 
@@ -630,10 +633,61 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
     }
 };
 
+const estimateShipping = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { sessionId } = req.params;
+        const { shippingAddress, choices } = req.body;
+
+        if (!shippingAddress || !choices) {
+            res.status(400).json({ success: false, error: 'BAD_REQUEST', message: 'Missing address or choices' });
+            return;
+        }
+
+        const session = await prisma.checkoutSession.findUnique({
+            where: { uid: Number(sessionId) },
+        });
+
+        if (!session) {
+            res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Session not found' });
+            return;
+        }
+
+        const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
+        const sellerIds = [...new Set(lockedPrices.map(i => i.sellerId).filter(id => id !== null))];
+        
+        const sellers = await prisma.seller.findMany({
+            where: { uid: { in: sellerIds as number[] } }
+        });
+
+        const config = await getShippingConfig();
+        const estimates: Record<number, any> = {};
+
+        for (const seller of sellers) {
+            const sellerItems = lockedPrices.filter(i => i.sellerId === seller.uid);
+            const sellerSubtotal = sellerItems.reduce((sum, item) => sum + (item.quantity * item.finalPrice), 0);
+
+            const choice = choices[seller.uid] || 'DELIVERY';
+            const result = await resolveSellerShipping(
+                seller as any,
+                shippingAddress,
+                choice,
+                config,
+                sellerSubtotal
+            );
+            estimates[seller.uid] = result;
+        }
+
+        res.status(200).json({ success: true, estimates });
+    } catch (error) {
+        console.error('Error estimating shipping:', error);
+        res.status(500).json({ success: false, error: 'INTERNAL_ERROR', message: 'Failed to estimate shipping' });
+    }
+};
+
 const completeCheckout = async (req: Request, res: Response): Promise<void> => {
     try {
         const { sessionId } = req.params;
-        const { paymentId, idempotencyKey, shippingAddress } = req.body;
+        const { paymentId, idempotencyKey, shippingAddress, choices } = req.body;
 
         const session = await prisma.checkoutSession.findUnique({
             where: { uid: Number(sessionId) },
@@ -745,6 +799,8 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 }
             }
 
+            const config = await getShippingConfig();
+
             // Create an Order for each seller group
             for (const [sellerId, sellerItems] of itemsBySeller) {
                 orderIndex++;
@@ -761,8 +817,18 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 const sellerEarnings = Number((orderTotal - platformFee).toFixed(2));
 
                 // Calculate shipping fee server-side
-                const checkoutTotal = Number(session.totalAmount);
-                const orderShippingFee = orderIndex === 1 ? calculateShippingFee(checkoutTotal) : 0;
+                const buyerChoice = (choices && choices[sellerId!]) ? choices[sellerId!] : 'DELIVERY';
+                const sellerSubtotal = sellerItems.reduce((sum, item) => sum + (item.quantity * item.finalPrice), 0);
+
+                const shippingResult = await resolveSellerShipping(
+                    seller as any,
+                    shippingAddress,
+                    buyerChoice,
+                    config,
+                    sellerSubtotal
+                );
+
+                const orderShippingFee = shippingResult.fee;
                 const orderTotalWithShipping = orderTotal + orderShippingFee;
 
                 const newOrder = await tx.order.create({
@@ -799,6 +865,19 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                             }))
                         }
                     },
+                });
+
+                // Create OrderShipment
+                await tx.orderShipment.create({
+                    data: {
+                        orderId: newOrder.uid,
+                        sellerId: sellerId!,
+                        fulfillmentType: shippingResult.resolvedType,
+                        zoneTier: shippingResult.zoneTier,
+                        shippingFee: shippingResult.fee,
+                        computedFuelCost: shippingResult.fuelCost,
+                        meetUpSnapshot: shippingResult.meetUpSnapshot
+                    }
                 });
 
                 // Update Seller Pending Balance
@@ -980,4 +1059,5 @@ export default {
     completeCheckout,
     cancelCheckout,
     getPaymentMethods,
+    estimateShipping,
 };

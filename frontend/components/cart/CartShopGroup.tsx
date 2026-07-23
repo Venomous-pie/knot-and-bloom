@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BadgeCheck } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { CartItem as CartItemType } from '@/types/cart';
 import { CartItem } from './CartItem';
+import { FreeShippingProgress } from './FreeShippingProgress';
 
 interface CartShopGroupProps {
     sellerName: string;
     isOfficialShop?: boolean;
+    freeShippingEnabled?: boolean;
+    freeShippingThreshold?: number | null;
     items: CartItemType[];
     selectedItems: Set<number>;
     updatingItems: Set<number>;
@@ -23,6 +26,8 @@ interface CartShopGroupProps {
 export const CartShopGroup = ({
     sellerName,
     isOfficialShop = false,
+    freeShippingEnabled,
+    freeShippingThreshold,
     items,
     selectedItems,
     updatingItems,
@@ -34,6 +39,21 @@ export const CartShopGroup = ({
     onVoucherChange
 }: CartShopGroupProps) => {
     const allSelected = items.every(item => selectedItems.has(item.uid));
+    
+    // Calculate this shop's subtotal based ONLY on selected items
+    const shopSubtotal = useMemo(() => {
+        return items.reduce((sum, item) => {
+            if (selectedItems.has(item.uid)) {
+                return sum + ((item.priceInfo?.finalPrice || item.price) * item.quantity);
+            }
+            return sum;
+        }, 0);
+    }, [items, selectedItems]);
+
+    // Only show the progress bar if there is at least one item selected in this shop
+    const hasSelectedItems = items.some(item => selectedItems.has(item.uid));
+
+    const showFreeShipping = !!(freeShippingEnabled && freeShippingThreshold && freeShippingThreshold > 0);
 
     return (
         <View style={styles.card}>
@@ -53,6 +73,14 @@ export const CartShopGroup = ({
                     )}
                 </Pressable>
             </View>
+
+            {/* Free Shipping Progress per Seller */}
+            {hasSelectedItems && showFreeShipping && (
+                <FreeShippingProgress 
+                    currentTotal={shopSubtotal} 
+                    threshold={freeShippingThreshold || 0} 
+                />
+            )}
 
             {/* Items */}
             {items.map(item => (

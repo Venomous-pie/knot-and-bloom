@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { toastEvents } from '@/utils/toastEvents';
 
 interface SellerSettings {
     aiDescriptionEnabled: boolean;
@@ -51,6 +52,7 @@ export const SellerSettingsProvider = ({ children }: { children: React.ReactNode
         setSettings(updated);
         try {
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            toastEvents.emit({ message: 'Settings saved.', type: 'SUCCESS' });
         } catch (error) {
             console.error('Failed to save seller settings', error);
         }

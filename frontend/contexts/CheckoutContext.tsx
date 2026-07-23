@@ -45,6 +45,8 @@ export interface CheckoutState {
         disabledBy?: string[] | null;
         reason?: string | null;
     } | null;
+    choices: Record<number, string>;
+    shippingEstimates: Record<number, any> | null;
 }
 
 interface CheckoutContextType extends CheckoutState {
@@ -57,6 +59,8 @@ interface CheckoutContextType extends CheckoutState {
     setStep: (step: CheckoutStep) => void;
     clearError: () => void;
     resetCheckout: () => void;
+    setChoices: (choices: Record<number, string>) => void;
+    estimateShipping: (address: any) => Promise<void>;
 }
 
 const initialState: CheckoutState = {
@@ -76,6 +80,8 @@ const initialState: CheckoutState = {
     priceChanges: null,
     sellerMetrics: null,
     codInfo: null,
+    choices: {},
+    shippingEstimates: null,
 };
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
@@ -132,6 +138,22 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
     const clearError = useCallback(() => {
         setState(prev => ({ ...prev, error: null }));
     }, []);
+
+    const setChoices = useCallback((newChoices: Record<number, string>) => {
+        setState(prev => ({ ...prev, choices: { ...prev.choices, ...newChoices } }));
+    }, []);
+
+    const estimateShipping = useCallback(async (address: any) => {
+        if (!state.sessionId) return;
+        try {
+            const response = await checkoutAPI.estimateShipping(state.sessionId, address, state.choices);
+            if (response.data.success) {
+                setState(prev => ({ ...prev, shippingEstimates: response.data.estimates }));
+            }
+        } catch (error) {
+            console.error('Error estimating shipping', error);
+        }
+    }, [state.sessionId, state.choices]);
 
     const resetCheckout = useCallback(async () => {
         await AsyncStorage.removeItem('checkoutSession');
@@ -297,7 +319,13 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 error: null,
             }));
 
-            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse, undefined, shippingInfoToUse);
+            // Convert string keys to proper structure if needed, or just pass choices
+            const stringifiedChoices: Record<string, string> = {};
+            for (const [k, v] of Object.entries(state.choices)) {
+                stringifiedChoices[k.toString()] = v;
+            }
+
+            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse, undefined, shippingInfoToUse, stringifiedChoices);
             const data = response.data;
 
             if (data.success && (data.orderId || data.orderIds)) {
@@ -353,6 +381,8 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 setStep,
                 clearError,
                 resetCheckout,
+                setChoices,
+                estimateShipping,
             }}
         >
             {children}

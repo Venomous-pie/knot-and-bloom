@@ -18,11 +18,11 @@ export const FreeShippingProgress = ({ currentTotal, threshold }: FreeShippingPr
             <View style={styles.header}>
                 {isEligible ? (
                     <Text style={styles.successText}>
-                        <Ionicons name="gift-outline" size={16} /> You've unlocked free shipping!
+                        <Ionicons name="gift-outline" size={16} /> Free shipping from this shop!
                     </Text>
                 ) : (
                     <Text style={styles.text}>
-                        Add <Text style={styles.bold}>₱{remaining.toFixed(2)}</Text> for <Text style={styles.highlight}>Free Shipping</Text>
+                        Add <Text style={styles.bold}>₱{remaining.toFixed(2)}</Text> for <Text style={styles.highlight}>Free Shipping</Text> from this shop
                     </Text>
                 )}
             </View>

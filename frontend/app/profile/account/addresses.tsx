@@ -206,18 +206,18 @@ export default function AddressesPage() {
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}>
                         {viewMode === 'form' ? (
-                            <>
-                                <View style={styles.modalHeader}>
-                                    <Text style={styles.modalTitle}>
-                                        {editingAddress?.uid ? 'Edit Address' : 'Add Address'}
-                                    </Text>
-                                    <Pressable onPress={() => setShowModal(false)}>
-                                        <Text style={styles.modalClose}>✕</Text>
-                                    </Pressable>
-                                </View>
-
                                 <View style={{ flex: 1, paddingHorizontal: 0 }}>
                                     <AddressForm
+                                        renderHeader={() => (
+                                            <View style={styles.modalHeader}>
+                                                <Text style={styles.modalTitle}>
+                                                    {editingAddress?.uid ? 'Edit Address' : 'Add Address'}
+                                                </Text>
+                                                <Pressable onPress={() => setShowModal(false)}>
+                                                    <Text style={styles.modalClose}>✕</Text>
+                                                </Pressable>
+                                            </View>
+                                        )}
                                         mode={editingAddress?.uid ? 'edit' : 'create'}
                                         initialData={{
                                             label: editingAddress?.label || undefined,
@@ -240,7 +240,6 @@ export default function AddressesPage() {
                                         showSaveCheckbox={false}
                                     />
                                 </View>
-                            </>
                         ) : (
                             /* Map View */
                             <View style={{ flex: 1 }}>

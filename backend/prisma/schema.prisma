@@ -159,6 +159,7 @@ model Order {
   items                   OrderItem[]
   timeline                OrderTimeline[]
   payments                Payment[]
+  shipments               OrderShipment[]
 }
 
 model CheckoutSession {
@@ -252,11 +253,20 @@ model Seller {
   monthlyOrders       String?
   salesChannels       String[]
   sampleItems         String[]
+  vehicleType         VehicleType?
+  selfDeliveryEnabled Boolean             @default(false)
+  freeShippingEnabled Boolean             @default(false)
+  freeShippingThreshold Decimal?
+  meetUpPoint         String?
+  sellerCitymunCode   String?
+  sellerProvCode      String?
+  sellerRegCode       String?
   orders              Order[]
   orderItems          OrderItem[]
   products            Product[]
   customer            Customer            @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
   withdrawalRequests  WithdrawalRequest[]
+  shipments           OrderShipment[]
 
   @@index([customerId, hasSeenWelcomeModal])
 }
@@ -298,6 +308,8 @@ model Address {
   barangay      String?
   province      String?
   region        String?
+  landmark         String?
+  zoneTierOverride Int?
   customer      Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
 
   @@index([customerId])
@@ -430,6 +442,32 @@ model RateLimit {
   @@index([expiresAt])
 }
 
+model OrderShipment {
+  uid              Int              @id @default(autoincrement())
+  orderId          Int
+  sellerId         Int
+  fulfillmentType  ShipmentType     
+  zoneTier         Int              
+  shippingFee      Decimal          
+  computedFuelCost Decimal          @default(0) 
+  meetUpSnapshot   String?          
+  status           ShipmentStatus   @default(PENDING)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  order            Order            @relation(fields: [orderId], references: [uid], onDelete: Cascade)
+  seller           Seller           @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([sellerId])
+}
+
+model PlatformConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy Int?     
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -502,4 +540,25 @@ enum WithdrawalStatus {
   APPROVED
   REJECTED
   PROCESSED
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  TRICYCLE
+  MULTICAB
+  NONE
+}
+
+enum ShipmentType {
+  PICKUP
+  SELF_DELIVERY
+  THIRD_PARTY
+}
+
+enum ShipmentStatus {
+  PENDING
+  IN_TRANSIT
+  DELAYED_WEATHER
+  COMPLETED
+  FAILED
 }

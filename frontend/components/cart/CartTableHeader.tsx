@@ -48,6 +48,7 @@ export const CartTableHeader = ({ allSelected, onToggleSelectAll }: CartTableHea
 const styles = StyleSheet.create({
     container: {
         backgroundColor: theme.colors.surface,
+        marginTop: theme.spacing.lg,
         marginBottom: theme.spacing.sm,
         borderRadius: theme.borderRadius.md,
         ...theme.shadows.sm,

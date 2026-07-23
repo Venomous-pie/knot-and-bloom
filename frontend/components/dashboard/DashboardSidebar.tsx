@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
-import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle } from 'lucide-react-native';
+import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, Truck } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { sellerAPI } from '@/api/api';
 import { theme } from '@/constants/theme';
@@ -38,6 +38,7 @@ export default function DashboardSidebar() {
     ];
 
     const globalItems = [
+        { label: 'Shipping & Fulfillment', route: '/seller-dashboard/shipping', icon: Truck },
         { label: 'Notifications', route: '/seller-dashboard/notifications', icon: Bell, badge: sidebarStats.unreadNotifications > 0 ? { type: 'count', count: sidebarStats.unreadNotifications } : null },
         { label: 'Shop Home', route: '/', icon: Home },
         { label: 'Store Settings', route: '/seller-dashboard/settings', icon: Settings },

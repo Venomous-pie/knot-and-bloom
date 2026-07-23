@@ -77,7 +77,6 @@ export const CheckoutAddressSection: React.FC<CheckoutAddressSectionProps> = ({
 const styles = StyleSheet.create({
     container: {
         backgroundColor: theme.colors.surface,
-        marginTop: theme.spacing.md,
         borderRadius: theme.borderRadius.lg,
         ...theme.shadows.sm,
         overflow: 'hidden',

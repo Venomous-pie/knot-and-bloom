@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, useWindowDimensions, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { LockedPriceItem } from '@/api/api'; // Or import from Context if needed
 
@@ -9,11 +10,13 @@ interface CartItem extends Omit<LockedPriceItem, 'image'> {
 
 interface CheckoutProductListProps {
     items: CartItem[];
+    shopTotal?: number;
 }
 
-export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items }) => {
+export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items, shopTotal }) => {
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
+    const router = useRouter();
 
     return (
         <View style={styles.container}>
@@ -32,7 +35,10 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items 
                 <View key={item.itemUid} style={styles.itemRow}>
                     {/* Product Info */}
                     <View style={styles.productInfo}>
-                        <View style={styles.imageContainer}>
+                        <Pressable 
+                            style={styles.imageContainer}
+                            onPress={() => router.push(`/product/${item.productId}`)}
+                        >
                             {item.image ? (
                                 <Image source={{ uri: item.image }} style={styles.image} />
                             ) : (
@@ -40,9 +46,11 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items 
                                     <Text>📦</Text>
                                 </View>
                             )}
-                        </View>
+                        </Pressable>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.productName} numberOfLines={2}>{item.productName}</Text>
+                            <Pressable onPress={() => router.push(`/product/${item.productId}`)}>
+                                <Text style={styles.productName} numberOfLines={2}>{item.productName}</Text>
+                            </Pressable>
                             {/* Variant name might be null/undefined, handle safely */}
                             <Text style={styles.variantName}>
                                 {item.variantName ? `Variation: ${item.variantName}` : ''}
@@ -52,7 +60,7 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items 
                                 <View style={styles.mobileDetails}>
                                     <Text style={styles.mobilePrice}>₱{item.unitPrice.toFixed(2)}</Text>
                                     <Text style={styles.mobileQty}>x{item.quantity}</Text>
-                                    <Text style={styles.mobileSubtotal}>₱{item.finalPrice.toFixed(2)}</Text>
+                                    <Text style={styles.mobileSubtotal}>₱{(item.finalPrice * item.quantity).toFixed(2)}</Text>
                                 </View>
                             )}
                         </View>
@@ -68,12 +76,21 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items 
                                 <Text style={styles.colText}>{item.quantity}</Text>
                             </View>
                             <View style={[styles.column, { alignItems: 'flex-end' }]}>
-                                <Text style={styles.subtotalText}>₱{item.finalPrice.toFixed(2)}</Text>
+                                <Text style={styles.subtotalText}>₱{(item.finalPrice * item.quantity).toFixed(2)}</Text>
                             </View>
                         </>
                     )}
                 </View>
             ))}
+            {shopTotal !== undefined && (
+                <View style={styles.shopTotalContainer}>
+                    <Text style={styles.shopTotalLabel}>Shop Subtotal:</Text>
+                    <Text style={styles.shopTotalAmount}>
+                        <Text style={{ fontWeight: '400' }}>₱</Text>
+                        {shopTotal.toFixed(2)}
+                    </Text>
+                </View>
+            )}
         </View>
     );
 };
@@ -176,5 +193,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: theme.colors.primary,
+    },
+    shopTotalContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: 12,
+        paddingTop: theme.spacing.lg,
+    },
+    shopTotalLabel: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    shopTotalAmount: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.colors.primary,
+        fontFamily: theme.typography.fontFamily,
     },
 });

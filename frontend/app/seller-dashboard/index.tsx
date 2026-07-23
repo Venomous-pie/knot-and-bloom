@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { LineChart } from 'react-native-gifted-charts';
 import {
     Package, ShoppingBag, DollarSign, Bell, RefreshCw,
-    TrendingUp, TrendingDown, Star, CheckCircle, Clock, XCircle, Settings, Users, AlertCircle, ChevronRight
+    TrendingUp, TrendingDown, Star, CheckCircle, Clock, XCircle, Settings, Users, AlertCircle, ChevronRight, Truck
 } from 'lucide-react-native';
 import Tooltip from '../../components/ui/Tooltip';
 import StatCard from '../../components/ui/StatCard';
@@ -435,7 +435,7 @@ export default function SellerDashboardHome() {
                     <Text style={{ fontSize: 14, color: SUB, fontFamily: 'Quicksand', lineHeight: 22 }}>Complete these essential steps to launch your store and start receiving orders from customers.</Text>
                 </View>
                 <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563', fontFamily: 'Quicksand' }}>0 / 3 Done</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563', fontFamily: 'Quicksand' }}>0 / 4 Done</Text>
                 </View>
             </View>
 
@@ -470,10 +470,25 @@ export default function SellerDashboardHome() {
 
                 <View style={{ height: 1, backgroundColor: BORDER }} />
 
-                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/settings' as any)}>
+                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/shipping' as any)}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                         <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
-                            <Users size={20} color={AMBER} />
+                            <Truck size={20} color={AMBER} />
+                        </View>
+                        <View>
+                            <Text style={s.onboardingRowTxt}>Configure shipping</Text>
+                            <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Set your delivery vehicle and meetup points.</Text>
+                        </View>
+                    </View>
+                    <ChevronRight size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+
+                <View style={{ height: 1, backgroundColor: BORDER }} />
+
+                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/settings' as any)}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center' }}>
+                            <Users size={20} color={GREEN} />
                         </View>
                         <View>
                             <Text style={s.onboardingRowTxt}>Share your store link</Text>

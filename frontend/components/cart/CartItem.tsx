@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, ActivityIndicator, useWindowDimensions, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { CartItem as CartItemType } from '@/types/cart';
 import { useDialog } from '@/contexts/DialogContext';
@@ -22,6 +23,7 @@ export const CartItem = ({
     onRemove,
     updating = false
 }: CartItemProps) => {
+    const router = useRouter();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
     const [showVariants, setShowVariants] = useState(false);
@@ -60,15 +62,20 @@ export const CartItem = ({
                             {isSelected && <Ionicons name="checkmark" size={12} color="white" />}
                         </View>
                     </Pressable>
-                    <View style={styles.imageContainer}>
+                    <Pressable 
+                        style={styles.imageContainer}
+                        onPress={() => router.push(`/product/${item.productId}`)}
+                    >
                         {imageUrl ? (
                             <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
                         ) : (
                             <View style={styles.placeholder}><Text>📦</Text></View>
                         )}
-                    </View>
+                    </Pressable>
                     <View style={styles.productDetails}>
-                        <Text style={styles.productName} numberOfLines={2}>{item.product.name}</Text>
+                        <Pressable onPress={() => router.push(`/product/${item.productId}`)}>
+                            <Text style={styles.productName} numberOfLines={2}>{item.product.name}</Text>
+                        </Pressable>
                         <View style={{ position: 'relative' }}>
                             <Pressable
                                 style={styles.variationBtn}
@@ -163,11 +170,16 @@ export const CartItem = ({
                         {isSelected && <Ionicons name="checkmark" size={12} color="white" />}
                     </View>
                 </Pressable>
-                <View style={styles.imageContainer}>
+                <Pressable 
+                    style={styles.imageContainer}
+                    onPress={() => router.push(`/product/${item.productId}`)}
+                >
                     {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" /> : <View style={styles.placeholder}><Text>📦</Text></View>}
-                </View>
+                </Pressable>
                 <View style={styles.mobileDetails}>
-                    <Text style={styles.productName} numberOfLines={2}>{item.product.name}</Text>
+                    <Pressable onPress={() => router.push(`/product/${item.productId}`)}>
+                        <Text style={styles.productName} numberOfLines={2}>{item.product.name}</Text>
+                    </Pressable>
                     <Pressable
                         style={styles.mobileVariationBtn}
                         onPress={() => hasVariants && setShowVariants(!showVariants)}

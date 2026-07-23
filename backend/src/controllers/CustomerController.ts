@@ -14,7 +14,6 @@ import {
     customerLoginSchema,
     customerSchema,
     customerUpdateSchema,
-
     type CustomerInput,
     type CustomerLoginInput,
     type CustomerUpdateInput,

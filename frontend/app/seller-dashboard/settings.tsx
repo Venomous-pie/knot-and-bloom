@@ -56,8 +56,8 @@ export default function SellerSettingsPage() {
                 </View>
             </View>
 
-            <View style={{ flex: 1, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
-                <ScrollView contentContainerStyle={styles.content}>
+            <View style={{ flex: 1 }}>
+                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
                 {/* Shop Profile Section */}
                 <Text style={styles.sectionLabel}>Shop Profile</Text>

@@ -499,6 +499,7 @@ export default function SellerEarnings() {
             <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={[styles.scrollContent, { padding: 24, maxWidth: 1280, width: '100%', alignSelf: 'center' }]}
+                showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEarnings(); }} />}
             >
                 {StatsSection}

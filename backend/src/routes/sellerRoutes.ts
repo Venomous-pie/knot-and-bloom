@@ -37,4 +37,8 @@ router.patch('/me/welcome-seen', authenticate, sellerController.markWelcomeSeen)
 // Seller Dashboard (Shared with Admin)
 router.get('/:id/orders', authenticate, authorize([Role.SELLER, Role.ADMIN]), sellerController.getSellerOrders);
 
+// Seller Shipping Settings
+router.patch('/me/shipping-settings', authenticate, authorize([Role.SELLER, Role.ADMIN]), sellerController.updateShippingSettings);
+router.get('/me/shipping-preview', authenticate, authorize([Role.SELLER, Role.ADMIN]), sellerController.getShippingPreview);
+
 export default router;

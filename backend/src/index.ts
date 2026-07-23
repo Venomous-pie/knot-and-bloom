@@ -28,6 +28,7 @@ import locationRoutes from './routes/locationRoutes.js';
 import servicesRoutes from './routes/servicesRoutes.js';
 import earningsRoutes from './routes/earningsRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
@@ -114,6 +115,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/services', servicesRoutes);
 app.use('/api/earnings', earningsRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 

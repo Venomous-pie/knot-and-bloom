@@ -16,6 +16,9 @@ router.get('/:sessionId', CheckoutController.getCheckoutSession);
 // Validate checkout before payment
 router.post('/:sessionId/validate', CheckoutController.validateCheckout);
 
+// Estimate shipping fee
+router.post('/:sessionId/estimate-shipping', CheckoutController.estimateShipping);
+
 // Process payment
 router.post('/:sessionId/pay', CheckoutController.processPayment);
 

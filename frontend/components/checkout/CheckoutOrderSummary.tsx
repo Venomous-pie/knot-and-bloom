@@ -1,9 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { TrustBadge } from '@/components/checkout/TrustBadge';
 import { theme } from '@/constants/theme';
 
-type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'card';
+type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'maribank' | 'card';
 
 interface CheckoutOrderSummaryProps {
     totalAmount: number;
@@ -13,6 +12,7 @@ interface CheckoutOrderSummaryProps {
     codDepositPercent: number;
     isProcessing: boolean;
     onPlaceOrder: () => void;
+    isStickyLayout?: boolean;
 }
 
 export function CheckoutOrderSummary({
@@ -23,6 +23,7 @@ export function CheckoutOrderSummary({
     codDepositPercent,
     isProcessing,
     onPlaceOrder,
+    isStickyLayout = false,
 }: CheckoutOrderSummaryProps) {
     const grandTotal = totalAmount + shippingFee;
 
@@ -33,7 +34,7 @@ export function CheckoutOrderSummary({
         : 'Place Order';
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, isStickyLayout && styles.stickyContainer]}>
             {/* Subtotal */}
             <View style={styles.row}>
                 <Text style={styles.label}>Merchandise Subtotal:</Text>
@@ -56,7 +57,10 @@ export function CheckoutOrderSummary({
             {/* Total */}
             <View style={[styles.row, styles.totalRow]}>
                 <Text style={styles.totalLabel}>Total Payment:</Text>
-                <Text style={styles.totalAmount}>₱{grandTotal.toFixed(2)}</Text>
+                <Text style={styles.totalAmount}>
+                    <Text style={{ fontWeight: '400' }}>₱</Text>
+                    {grandTotal.toFixed(2)}
+                </Text>
             </View>
 
             {/* Action Button */}
@@ -72,8 +76,6 @@ export function CheckoutOrderSummary({
                     }
                 </Pressable>
             </View>
-
-            <TrustBadge />
         </View>
     );
 }
@@ -84,11 +86,17 @@ const styles = StyleSheet.create({
         padding: theme.spacing.lg,
         borderRadius: 16,
         ...theme.shadows.sm,
-        marginTop: theme.spacing.md,
+    },
+    stickyContainer: {
+        borderRadius: 0,
+        marginTop: 0,
+        shadowOpacity: 0,
+        elevation: 0,
+        padding: 0,
     },
     row: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
         gap: 16,
         alignItems: 'center',
         marginBottom: 8,
@@ -128,7 +136,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     actionRow: {
-        alignItems: 'flex-end',
+        alignItems: 'stretch',
         marginTop: 24,
     },
     placeOrderButton: {
@@ -139,7 +147,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         ...theme.shadows.md,
-        minWidth: 200,
+        width: '100%',
     },
     placeOrderText: {
         color: 'white',

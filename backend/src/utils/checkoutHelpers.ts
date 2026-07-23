@@ -15,9 +15,79 @@ export function groupItemsBySeller(items: LockedPriceItem[]): Map<number | null,
     return map;
 }
 
-/** Calculate shipping fee based on the total checkout amount. */
-export function calculateShippingFee(checkoutTotal: number): number {
-    return checkoutTotal >= FREE_SHIPPING_THRESHOLD ? 0 : STANDARD_SHIPPING_FEE;
+import { resolveZoneTier, computeShippingFee, type ShippingConfig, type SellerShippingProfile } from './shippingUtils.js';
+import type { ShipmentType } from '../../generated/prisma/client.js';
+
+export interface BuyerAddressProfile {
+    citymunCode?: string | null;
+    provCode?: string | null;
+    regCode?: string | null;
+    zoneTierOverride?: number | null;
+}
+
+export interface SellerShippingResult {
+    zoneTier: number;
+    fee: number;
+    fuelCost: number;
+    resolvedType: ShipmentType;
+    meetUpSnapshot: string | null;
+    breakdown: string[];
+}
+
+/** Resolves the shipping fee and fulfillment type for a single seller. */
+export async function resolveSellerShipping(
+    sellerProfile: SellerShippingProfile & { sellerCitymunCode?: string | null, sellerProvCode?: string | null, sellerRegCode?: string | null, meetUpPoint?: string | null, freeShippingEnabled?: boolean, freeShippingThreshold?: any },
+    buyerAddress: BuyerAddressProfile,
+    buyerChoice: 'PICKUP' | 'DELIVERY',
+    config: ShippingConfig,
+    sellerSubtotal: number
+): Promise<SellerShippingResult> {
+    if (buyerChoice === 'PICKUP') {
+        return {
+            zoneTier: 1, // Doesn't matter for pickup
+            fee: 0,
+            fuelCost: 0,
+            resolvedType: 'PICKUP',
+            meetUpSnapshot: sellerProfile.meetUpPoint || null,
+            breakdown: ['Buyer chose pickup. Shipping fee waived.'],
+        };
+    }
+
+    // Default to Tier 3 if location data is missing on either side
+    let zoneTier = 3;
+    if (sellerProfile.sellerCitymunCode && sellerProfile.sellerProvCode && sellerProfile.sellerRegCode &&
+        buyerAddress.citymunCode && buyerAddress.provCode && buyerAddress.regCode) {
+        zoneTier = resolveZoneTier(
+            sellerProfile.sellerCitymunCode, sellerProfile.sellerProvCode, sellerProfile.sellerRegCode,
+            buyerAddress.citymunCode, buyerAddress.provCode, buyerAddress.regCode,
+            buyerAddress.zoneTierOverride
+        );
+    } else if (buyerAddress.zoneTierOverride) {
+        zoneTier = buyerAddress.zoneTierOverride;
+    }
+
+    const result = computeShippingFee(buyerChoice, sellerProfile, zoneTier, null, config);
+
+    // Apply Free Shipping Threshold if enabled and met
+    let finalFee = result.fee;
+    let finalBreakdown = [...result.breakdown];
+    if (sellerProfile.freeShippingEnabled && sellerProfile.freeShippingThreshold != null) {
+        if (sellerSubtotal >= Number(sellerProfile.freeShippingThreshold)) {
+            finalBreakdown.push(`Subtotal (₱${sellerSubtotal.toFixed(2)}) met Free Shipping threshold (₱${Number(sellerProfile.freeShippingThreshold).toFixed(2)}). Fee waived.`);
+            finalFee = 0;
+        } else {
+            finalBreakdown.push(`Subtotal (₱${sellerSubtotal.toFixed(2)}) did not meet Free Shipping threshold (₱${Number(sellerProfile.freeShippingThreshold).toFixed(2)}).`);
+        }
+    }
+
+    return {
+        zoneTier,
+        fee: finalFee,
+        fuelCost: result.fuelCost,
+        resolvedType: result.resolvedType,
+        meetUpSnapshot: null,
+        breakdown: finalBreakdown,
+    };
 }
 
 /** Build the ordered-products snapshot array for order storage. */

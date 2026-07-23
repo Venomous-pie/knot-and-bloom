@@ -71,13 +71,14 @@ const updateNotificationSettings = async (userId: number, input: unknown) => {
 /**
  * Get notifications for a user
  */
-const getNotifications = async (userId: number, options?: { unreadOnly?: boolean; limit?: number; offset?: number }) => {
-    const { unreadOnly = false, limit = 50, offset = 0 } = options || {};
+const getNotifications = async (userId: number, options?: { unreadOnly?: boolean; limit?: number; offset?: number; excludeType?: string }) => {
+    const { unreadOnly = false, limit = 50, offset = 0, excludeType } = options || {};
 
     const notifications = await prisma.notification.findMany({
         where: {
             customerId: userId,
-            ...(unreadOnly && { isRead: false })
+            ...(unreadOnly && { isRead: false }),
+            ...(excludeType && { type: { not: excludeType } })
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -87,12 +88,17 @@ const getNotifications = async (userId: number, options?: { unreadOnly?: boolean
     const totalCount = await prisma.notification.count({
         where: {
             customerId: userId,
-            ...(unreadOnly && { isRead: false })
+            ...(unreadOnly && { isRead: false }),
+            ...(excludeType && { type: { not: excludeType } })
         }
     });
 
     const unreadCount = await prisma.notification.count({
-        where: { customerId: userId, isRead: false }
+        where: { 
+            customerId: userId, 
+            isRead: false,
+            ...(excludeType && { type: { not: excludeType } })
+        }
     });
 
     return { notifications, totalCount, unreadCount };

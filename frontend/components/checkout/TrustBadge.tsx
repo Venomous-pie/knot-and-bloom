@@ -43,7 +43,6 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.surface,
         borderRadius: theme.borderRadius.lg,
         padding: theme.spacing.md,
-        marginTop: theme.spacing.md,
         borderWidth: 1,
         borderColor: theme.colors.primaryLight,
         ...theme.shadows.sm,
@@ -69,7 +68,7 @@ const styles = StyleSheet.create({
     },
     timeline: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
         paddingHorizontal: 12,
     },
@@ -96,7 +95,7 @@ const styles = StyleSheet.create({
         height: 2,
         backgroundColor: theme.colors.border,
         marginHorizontal: 4,
-        marginBottom: 14, // align with dot
+        marginTop: 4,
     },
     lineActive: {
         backgroundColor: theme.colors.primary,

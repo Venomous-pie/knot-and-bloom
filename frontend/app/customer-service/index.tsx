@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image, Platform, useWindowDimensions, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Phone, MapPin, MessageCircle, ChevronDown, ChevronUp, Send } from 'lucide-react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 
 export default function CustomerServicePage() {
+    const router = useRouter();
     const { width } = useWindowDimensions();
     const isDesktop = width > 768;
     const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -23,8 +24,10 @@ export default function CustomerServicePage() {
             answer: "We accept returns within 30 days of purchase for unused items in their original packaging. Custom or personalized items are final sale."
         },
         {
-            question: "Do you ship internationally?",
-            answer: "Yes, we ship to select countries worldwide. Shipping costs and delivery times vary by location and are calculated at checkout."
+            question: "How are shipping fees calculated?",
+            answer: "Shipping fees are based on the seller's location and their delivery capabilities. You can choose between Delivery or Pickup per seller.",
+            actionLabel: "Read the full Shipping & Fulfillment Guide",
+            actionRoute: "/customer-service/shipping"
         },
         {
             question: "Can I contact the seller directly?",
@@ -138,7 +141,16 @@ export default function CustomerServicePage() {
                                             )}
                                         </TouchableOpacity>
                                         {openFaq === index && (
-                                            <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                                            <View>
+                                                <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                                                {faq.actionLabel && faq.actionRoute && (
+                                                    <TouchableOpacity onPress={() => router.push(faq.actionRoute as any)}>
+                                                        <Text style={{ marginTop: 8, color: '#B36979', fontWeight: '600', fontFamily: 'Quicksand' }}>
+                                                            {faq.actionLabel} &rarr;
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
                                         )}
                                     </View>
                                 ))}

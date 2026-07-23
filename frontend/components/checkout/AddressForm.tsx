@@ -38,6 +38,8 @@ interface AddressFormProps {
     mode?: 'create' | 'edit';
     onOpenMap?: () => void;
     isFirstAddress?: boolean;
+    renderHeader?: () => React.ReactNode;
+    onLocationPickerChange?: (open: boolean) => void;
 }
 
 const LABEL_OPTIONS = ['Home', 'Work', 'Gift', 'Other'];
@@ -60,7 +62,9 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     isSaving = false,
     mode = 'create',
     onOpenMap,
-    isFirstAddress = false, // New Prop
+    isFirstAddress = false,
+    renderHeader,
+    onLocationPickerChange,
 }) => {
     const [form, setForm] = useState<AddressFormData>({
         label: initialData.label || '',
@@ -78,6 +82,9 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     });
 
     const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+    const openLocationPicker = () => { setShowLocationPicker(true); onLocationPickerChange?.(true); };
+    const closeLocationPicker = () => { setShowLocationPicker(false); onLocationPickerChange?.(false); };
 
     const [saveForFuture, setSaveForFuture] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -174,7 +181,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             delete next.city;
             return next;
         });
-        setShowLocationPicker(false);
+        closeLocationPicker();
     };
 
     // Update form when initialData changes (e.g. from Map selection)
@@ -188,12 +195,30 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         }
     }, [initialData, isFirstAddress, saveForFuture]);
 
+    if (showLocationPicker) {
+        return (
+            <LocationPickerModal
+                visible={showLocationPicker}
+                onClose={closeLocationPicker}
+                onConfirm={handleLocationSelect}
+                initialValue={{
+                    region: form.region,
+                    province: form.province,
+                    city: form.city,
+                    barangay: form.barangay
+                }}
+            />
+        );
+    }
+
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Address Label */}
-            <View style={styles.labelSection}>
-                <Text style={styles.sectionTitle}>Address Label (optional)</Text>
-                <View style={styles.labelOptions}>
+        <View style={{ flex: 1 }}>
+            {renderHeader && renderHeader()}
+            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+                {/* Address Label */}
+                <View style={styles.labelSection}>
+                    <Text style={styles.sectionTitle}>Address Label (optional)</Text>
+                    <View style={styles.labelOptions}>
                     {LABEL_OPTIONS.map(label => (
                         <Pressable
                             key={label}
@@ -270,7 +295,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 <View style={styles.locationFieldsContainer}>
                     <View style={styles.locationHeader}>
                         <Text style={styles.sectionTitle}>Location</Text>
-                        <Pressable onPress={() => setShowLocationPicker(true)} style={styles.changeLocationBtn}>
+                        <Pressable onPress={openLocationPicker} style={styles.changeLocationBtn}>
                             <Text style={styles.changeLocationText}>Change</Text>
                         </Pressable>
                     </View>
@@ -328,7 +353,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     province={form.province}
                     city={form.city}
                     barangay={form.barangay}
-                    onPress={() => setShowLocationPicker(true)}
+                    onPress={openLocationPicker}
                     error={errors.region || errors.city}
                 />
             )}
@@ -370,18 +395,6 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     onBlur={() => setFocusedField(null)}
                 />
             </View>
-
-            <LocationPickerModal
-                visible={showLocationPicker}
-                onClose={() => setShowLocationPicker(false)}
-                onConfirm={handleLocationSelect}
-                initialValue={{
-                    region: form.region,
-                    province: form.province,
-                    city: form.city,
-                    barangay: form.barangay,
-                }}
-            />
 
             {/* Postal Code and Country */}
             <View style={styles.row}>
@@ -469,6 +482,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 </Pressable>
             </View>
         </ScrollView >
+        </View>
     );
 };
 

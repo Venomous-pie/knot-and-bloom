@@ -242,6 +242,8 @@ export interface LockedPriceItem {
     variantName: string | null;
     image: string | null;
     sellerId: number | null;
+    sellerName: string | null;
+    sellerLocation: string | null;
 }
 
 export interface InitiateCheckoutResponse {
@@ -335,11 +337,18 @@ export const checkoutAPI = {
     /**
      * Complete checkout - finalize order after payment
      */
-    complete: (sessionId: number, paymentId: number, idempotencyKey?: string, shippingInfo?: any) =>
+    complete: (sessionId: number, paymentId: number, idempotencyKey?: string, shippingInfo?: any, choices?: Record<string, string>) =>
         apiClient.post<CompleteCheckoutResponse>(`/checkout/${sessionId}/complete`, {
             paymentId,
             idempotencyKey,
             shippingAddress: shippingInfo,
+            choices,
+        }),
+
+    estimateShipping: (sessionId: number, shippingAddress: any, choices: Record<string, string>) =>
+        apiClient.post(`/checkout/${sessionId}/estimate-shipping`, {
+            shippingAddress,
+            choices,
         }),
 
     /**
@@ -436,6 +445,8 @@ export const sellerAPI = {
     getSidebarStats: () => apiClient.get<any>('/sellers/me/sidebar-stats').then(res => res.data),
     getAdminSidebarStats: () => apiClient.get<{ pendingSellers: number; pendingProducts: number }>('/sellers/admin/sidebar-stats').then(res => res.data),
     onboard: (data: any) => apiClient.post('/sellers/onboard', data),
+    updateShippingSettings: (data: any) => apiClient.patch('/sellers/me/shipping-settings', data),
+    getShippingPreview: () => apiClient.get('/sellers/me/shipping-preview'),
 };
 
 export const sellerProductsAPI = {
@@ -444,6 +455,17 @@ export const sellerProductsAPI = {
     createProduct: (data: any) => apiClient.post('/products/post-product', data).then(res => res.data),
     updateProduct: (id: string | number, data: any) => apiClient.put(`/products/${id}`, data).then(res => res.data),
     deleteProduct: (id: string | number) => apiClient.delete(`/products/${id}`).then(res => res.data),
+};
+
+// ============================================
+// Admin API
+// ============================================
+
+export const adminAPI = {
+    getPlatformConfig: () =>
+        apiClient.get<{ config: Record<string, string> }>('/admin/platform-config').then(res => res.data),
+    updatePlatformConfig: (updates: Record<string, number | string>) =>
+        apiClient.patch<{ success: boolean; updated: number }>('/admin/platform-config', updates).then(res => res.data),
 };
 
 // ============================================
@@ -542,7 +564,7 @@ export const notificationAPI = {
     /**
      * Get notifications
      */
-    getNotifications: (params?: { unreadOnly?: boolean; limit?: number; offset?: number }) =>
+    getNotifications: (params?: { unreadOnly?: boolean; limit?: number; offset?: number; excludeType?: string }) =>
         apiClient.get<{ notifications: Notification[]; totalCount: number; unreadCount: number }>(
             '/notifications',
             { params }

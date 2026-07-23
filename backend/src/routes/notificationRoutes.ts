@@ -51,11 +51,12 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const { unreadOnly, limit, offset } = req.query;
+        const { unreadOnly, limit, offset, excludeType } = req.query;
         const result = await NotificationController.getNotifications(userId, {
             unreadOnly: unreadOnly === 'true',
             limit: limit ? parseInt(limit as string, 10) : 50,
             offset: offset ? parseInt(offset as string, 10) : 0,
+            excludeType: excludeType as string,
         });
         res.json(result);
     } catch (error) {

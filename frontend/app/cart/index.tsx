@@ -18,19 +18,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "@/constants/theme";
 
 import { CartEmptyState } from "@/components/cart/CartEmptyState";
-import { FreeShippingProgress } from "@/components/cart/FreeShippingProgress";
+
 import { CartBottomBar } from "@/components/cart/CartBottomBar";
 import { CartTableHeader } from "@/components/cart/CartTableHeader";
 import { CartShopGroup } from "@/components/cart/CartShopGroup";
 import { CartPageSkeleton } from "@/components/cart/CartPageSkeleton";
 import { useDialog } from "@/contexts/DialogContext";
-
-export const FREE_SHIPPING_THRESHOLD = 500;
-
 interface ShopGroup {
     sellerName: string;
     sellerId?: number | null;
     isOfficialShop: boolean;
+    freeShippingEnabled?: boolean;
+    freeShippingThreshold?: number | null;
     items: CartItemType[];
 }
 
@@ -59,7 +58,9 @@ export default function CartPage() {
                 groups[sellerName] = {
                     sellerName,
                     sellerId,
-                    isOfficialShop: sellerName === 'Knot & Bloom', // Official shop flag
+                    isOfficialShop: sellerName === 'Knot & Bloom',
+                    freeShippingEnabled: item.product.seller?.freeShippingEnabled,
+                    freeShippingThreshold: item.product.seller?.freeShippingThreshold,
                     items: []
                 };
             }
@@ -261,13 +262,10 @@ export default function CartPage() {
                     ]}
                     ListHeaderComponent={
                         cartItems.length > 0 ? (
-                            <>
-                                <FreeShippingProgress currentTotal={subtotal} threshold={FREE_SHIPPING_THRESHOLD} />
-                                <CartTableHeader
-                                    allSelected={selectedItems.size === cartItems.length && cartItems.length > 0}
-                                    onToggleSelectAll={toggleSelectAll}
-                                />
-                            </>
+                            <CartTableHeader
+                                allSelected={selectedItems.size === cartItems.length && cartItems.length > 0}
+                                onToggleSelectAll={toggleSelectAll}
+                            />
                         ) : null
                     }
                     ListEmptyComponent={<CartEmptyState />}
@@ -275,6 +273,8 @@ export default function CartPage() {
                         <CartShopGroup
                             sellerName={group.sellerName}
                             isOfficialShop={group.isOfficialShop}
+                            freeShippingEnabled={group.freeShippingEnabled}
+                            freeShippingThreshold={group.freeShippingThreshold}
                             items={group.items}
                             selectedItems={selectedItems}
                             updatingItems={updatingItems}

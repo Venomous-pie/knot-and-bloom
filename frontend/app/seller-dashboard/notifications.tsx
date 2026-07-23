@@ -52,7 +52,7 @@ export default function SellerNotifications() {
     const fetchNotifications = async () => {
         try {
             const res = await notificationAPI.getNotifications(
-                filter === 'UNREAD' ? { unreadOnly: true } : {}
+                filter === 'UNREAD' ? { unreadOnly: true, excludeType: 'admin' } : { excludeType: 'admin' }
             );
             setNotifications(res.data.notifications as SellerNotification[]);
         } catch (error) {

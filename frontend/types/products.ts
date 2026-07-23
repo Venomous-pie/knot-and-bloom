@@ -53,6 +53,8 @@ interface Product {
         name: string;
         slug: string;
         logo?: string | null;
+        freeShippingEnabled?: boolean;
+        freeShippingThreshold?: number | null;
     } | null;
 }
 

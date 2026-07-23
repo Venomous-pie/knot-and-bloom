@@ -1,9 +1,9 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Check, Banknote } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 
-type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'card';
+export type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'maribank';
 
 interface CheckoutPaymentSectionProps {
     paymentMethod: PaymentMethod;
@@ -38,13 +38,16 @@ export function CheckoutPaymentSection({
                 onPress={() => isCodAllowed && onSelect('cod')}
                 disabled={!isCodAllowed}
             >
-                <Text style={[
-                    styles.chipText,
-                    paymentMethod === 'cod' && styles.chipTextSelected,
-                    !isCodAllowed && { color: '#999' }
-                ]}>
-                    {isCodAllowed ? 'Cash on Delivery' : 'COD Unavailable'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Banknote size={20} color={paymentMethod === 'cod' ? theme.colors.primary : theme.colors.textSecondary} />
+                    <Text style={[
+                        styles.chipText,
+                        paymentMethod === 'cod' && styles.chipTextSelected,
+                        !isCodAllowed && { color: '#999' }
+                    ]}>
+                        {isCodAllowed ? 'Cash on Delivery' : 'COD Unavailable'}
+                    </Text>
+                </View>
                 {paymentMethod === 'cod' && isCodAllowed && <Check size={16} color={theme.colors.primary} />}
             </Pressable>
 
@@ -53,7 +56,13 @@ export function CheckoutPaymentSection({
                 style={[styles.chip, paymentMethod === 'gcash' && styles.chipSelected]}
                 onPress={() => onSelect('gcash')}
             >
-                <Text style={[styles.chipText, paymentMethod === 'gcash' && styles.chipTextSelected]}>GCash</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Image 
+                        source={require('@/assets/payment_methods/gcash/GCash_idOP67IR4D_1.png')} 
+                        style={{ width: 24, height: 24, resizeMode: 'contain' }} 
+                    />
+                    <Text style={[styles.chipText, paymentMethod === 'gcash' && styles.chipTextSelected]}>GCash</Text>
+                </View>
                 {paymentMethod === 'gcash' && <Check size={16} color={theme.colors.primary} />}
             </Pressable>
 
@@ -62,17 +71,29 @@ export function CheckoutPaymentSection({
                 style={[styles.chip, paymentMethod === 'paymaya' && styles.chipSelected]}
                 onPress={() => onSelect('paymaya')}
             >
-                <Text style={[styles.chipText, paymentMethod === 'paymaya' && styles.chipTextSelected]}>Maya</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Image 
+                        source={require('@/assets/payment_methods/maya/Maya_idX88ZrhHL_1.png')} 
+                        style={{ width: 24, height: 24, resizeMode: 'contain' }} 
+                    />
+                    <Text style={[styles.chipText, paymentMethod === 'paymaya' && styles.chipTextSelected]}>Maya</Text>
+                </View>
                 {paymentMethod === 'paymaya' && <Check size={16} color={theme.colors.primary} />}
             </Pressable>
 
-            {/* Card */}
+            {/* Maribank */}
             <Pressable
-                style={[styles.chip, paymentMethod === 'card' && styles.chipSelected]}
-                onPress={() => onSelect('card')}
+                style={[styles.chip, paymentMethod === 'maribank' && styles.chipSelected]}
+                onPress={() => onSelect('maribank')}
             >
-                <Text style={[styles.chipText, paymentMethod === 'card' && styles.chipTextSelected]}>Credit/Debit Card</Text>
-                {paymentMethod === 'card' && <Check size={16} color={theme.colors.primary} />}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Image 
+                        source={require('@/assets/payment_methods/mari_bank/MariBank_Philippines_idU8zrGSy__0.png')} 
+                        style={{ width: 24, height: 24, resizeMode: 'contain' }} 
+                    />
+                    <Text style={[styles.chipText, paymentMethod === 'maribank' && styles.chipTextSelected]}>MariBank</Text>
+                </View>
+                {paymentMethod === 'maribank' && <Check size={16} color={theme.colors.primary} />}
             </Pressable>
 
             {/* COD Deposit Warning */}
@@ -113,19 +134,19 @@ export function CheckoutPaymentSection({
 
 const styles = StyleSheet.create({
     paymentMethods: {
-        flexDirection: 'row',
-        gap: 12,
-        flexWrap: 'wrap',
+        flexDirection: 'column',
+        gap: 8,
     },
     chip: {
-        borderWidth: 2,
+        borderWidth: 1,
         borderColor: theme.colors.border,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 8,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        justifyContent: 'space-between',
+        backgroundColor: theme.colors.surface,
     },
     chipSelected: {
         borderColor: theme.colors.primary,
@@ -134,6 +155,8 @@ const styles = StyleSheet.create({
     chipText: {
         color: theme.colors.text,
         fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
+        fontSize: 14,
     },
     chipTextSelected: {
         color: theme.colors.primary,

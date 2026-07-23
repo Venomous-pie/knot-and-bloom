@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    View, Text, Pressable, Modal, ScrollView, StyleSheet, TextInput, ActivityIndicator, SectionList
+    View, Text, Pressable, Modal, StyleSheet, TextInput, ActivityIndicator, SectionList, ScrollView, Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/constants/theme';
@@ -20,13 +20,7 @@ interface LocationPickerModalProps {
     initialValue?: Partial<LocationSelection>;
 }
 
-type TabKey = 'region' | 'province' | 'city' | 'barangay';
-const TABS: { key: TabKey; label: string }[] = [
-    { key: 'region', label: 'Region' },
-    { key: 'province', label: 'Province' },
-    { key: 'city', label: 'City' },
-    { key: 'barangay', label: 'Barangay' },
-];
+type Step = 'region' | 'province' | 'city' | 'barangay';
 
 interface LocationOption {
     code: string;
@@ -36,7 +30,7 @@ interface LocationOption {
 export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     visible, onClose, onConfirm, initialValue
 }) => {
-    const [activeTab, setActiveTab] = useState<TabKey>('region');
+    const [currentStep, setCurrentStep] = useState<Step>('region');
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -46,27 +40,23 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     const [cities, setCities] = useState<LocationOption[]>([]);
     const [barangays, setBarangays] = useState<LocationOption[]>([]);
 
-    // Selection state (storing both code and name)
+    // Selection state
     const [selectedRegion, setSelectedRegion] = useState<LocationOption | null>(null);
     const [selectedProvince, setSelectedProvince] = useState<LocationOption | null>(null);
     const [selectedCity, setSelectedCity] = useState<LocationOption | null>(null);
     const [selectedBarangay, setSelectedBarangay] = useState<LocationOption | null>(null);
 
-    // Initial load and reset
+    const scrollViewRef = useRef<ScrollView>(null);
+
     useEffect(() => {
         if (visible) {
             loadRegions();
             resetSelection();
-            if (initialValue) {
-                // Note: We can't easily pre-fill without codes, so we might start fresh
-                // Or we'd need to implementing reverse lookup which is complex.
-                // For now, let's start fresh if it's a new open, or just keep state if not provided.
-            }
         }
     }, [visible]);
 
     const resetSelection = () => {
-        setActiveTab('region');
+        setCurrentStep('region');
         setSelectedRegion(null);
         setSelectedProvince(null);
         setSelectedCity(null);
@@ -126,7 +116,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     };
 
     const getCurrentOptions = (): LocationOption[] => {
-        switch (activeTab) {
+        switch (currentStep) {
             case 'region': return regions;
             case 'province': return provinces;
             case 'city': return cities;
@@ -140,204 +130,199 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     );
 
     const handleSelect = (option: LocationOption) => {
-        if (activeTab === 'region') {
+        if (currentStep === 'region') {
             setSelectedRegion(option);
             setSelectedProvince(null);
             setSelectedCity(null);
             setSelectedBarangay(null);
             loadProvinces(option.code);
-            setActiveTab('province');
-        } else if (activeTab === 'province') {
+            setCurrentStep('province');
+        } else if (currentStep === 'province') {
             setSelectedProvince(option);
             setSelectedCity(null);
             setSelectedBarangay(null);
             loadCities(option.code);
-            setActiveTab('city');
-        } else if (activeTab === 'city') {
+            setCurrentStep('city');
+        } else if (currentStep === 'city') {
             setSelectedCity(option);
             setSelectedBarangay(null);
             loadBarangays(option.code);
-            setActiveTab('barangay');
+            setCurrentStep('barangay');
         } else {
             setSelectedBarangay(option);
         }
         setSearchQuery('');
+        
+        // Scroll to end of breadcrumbs
+        setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
     };
 
-    const handleTabPress = (tab: TabKey) => {
-        const canNavigate = (
-            (tab === 'region') ||
-            (tab === 'province' && selectedRegion !== null) ||
-            (tab === 'city' && selectedProvince !== null) ||
-            (tab === 'barangay' && selectedCity !== null)
-        );
-        if (canNavigate) {
-            setActiveTab(tab);
-            setSearchQuery('');
+    const handleBack = () => {
+        setSearchQuery('');
+        if (currentStep === 'barangay') {
+            setCurrentStep('city');
+            setSelectedBarangay(null);
+        } else if (currentStep === 'city') {
+            setCurrentStep('province');
+            setSelectedCity(null);
+        } else if (currentStep === 'province') {
+            setCurrentStep('region');
+            setSelectedProvince(null);
         }
     };
 
-    const isComplete = selectedRegion && selectedProvince && selectedCity && selectedBarangay;
-
     const handleConfirm = () => {
-        if (isComplete) {
+        if (selectedRegion && selectedProvince && selectedCity && selectedBarangay) {
             onConfirm({
-                region: selectedRegion!.name,
-                province: selectedProvince!.name,
-                city: selectedCity!.name,
-                barangay: selectedBarangay!.name,
+                region: selectedRegion.name,
+                province: selectedProvince.name,
+                city: selectedCity.name,
+                barangay: selectedBarangay.name,
             });
         }
     };
 
-    const getTabLabel = (tab: TabKey): string => {
-        let val = '';
-        if (tab === 'region') val = selectedRegion?.name || '';
-        if (tab === 'province') val = selectedProvince?.name || '';
-        if (tab === 'city') val = selectedCity?.name || '';
-        if (tab === 'barangay') val = selectedBarangay?.name || '';
-
-        if (val) {
-            return val.length > 12 ? val.substring(0, 10) + '...' : val;
+    const getStepTitle = () => {
+        switch (currentStep) {
+            case 'region': return 'Select Region';
+            case 'province': return 'Select Province';
+            case 'city': return 'Select City/Municipality';
+            case 'barangay': return 'Select Barangay';
         }
-        return TABS.find(t => t.key === tab)?.label || '';
     };
 
+    const breadcrumbs = [
+        { label: selectedRegion?.name, step: 'region' },
+        { label: selectedProvince?.name, step: 'province' },
+        { label: selectedCity?.name, step: 'city' },
+        { label: selectedBarangay?.name, step: 'barangay' }
+    ].filter(b => b.label);
+
     return (
-        <Modal visible={visible} animationType="slide" transparent>
-            <View style={styles.overlay}>
-                <View style={styles.modal}>
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Select Location</Text>
-                        <Pressable onPress={onClose} style={styles.closeBtn}>
-                            <Ionicons name="close" size={24} color={theme.colors.text} />
-                        </Pressable>
-                    </View>
-
-                    {/* Tabs */}
-                    <View style={styles.tabs}>
-                        {TABS.map((tab) => {
-                            const isActive = activeTab === tab.key;
-                            const isAccessible = (
-                                tab.key === 'region' ||
-                                (tab.key === 'province' && selectedRegion) ||
-                                (tab.key === 'city' && selectedProvince) ||
-                                (tab.key === 'barangay' && selectedCity)
-                            );
-                            return (
-                                <Pressable
-                                    key={tab.key}
-                                    style={[styles.tab, isActive && styles.tabActive, !isAccessible && styles.tabDisabled]}
-                                    onPress={() => handleTabPress(tab.key)}
-                                >
-                                    <Text style={[styles.tabText, isActive && styles.tabTextActive, !isAccessible && styles.tabTextDisabled]}>
-                                        {getTabLabel(tab.key)}
-                                    </Text>
-                                    {isActive && <View style={styles.tabIndicator} />}
-                                </Pressable>
-                            );
-                        })}
-                    </View>
-
-                    {/* Search */}
-                    <View style={styles.searchContainer}>
-                        <Ionicons name="search" size={18} color={theme.colors.textLight} />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder={`Search ${activeTab}...`}
-                            placeholderTextColor={theme.colors.textLight}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                    </View>
-
-                    {/* Options List */}
-                    {isLoading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="small" color={theme.colors.primary} />
-                            <Text style={styles.loadingText}>Loading options...</Text>
-                        </View>
-                    ) : filteredOptions.length === 0 ? (
-                        <View style={styles.emptyContainer}>
-                            <Text style={styles.emptyText}>
-                                {getCurrentOptions().length === 0
-                                    ? `Select a ${TABS[TABS.findIndex(t => t.key === activeTab) - 1]?.label || 'region'} first`
-                                    : 'No results found'}
-                            </Text>
-                        </View>
-                    ) : (
-                        <SectionList<LocationOption, { title: string }>
-                            sections={(() => {
-                                const sorted = [...filteredOptions].sort((a, b) => a.name.localeCompare(b.name));
-                                const groups: { title: string; data: LocationOption[] }[] = [];
-                                sorted.forEach(opt => {
-                                    const firstLetter = opt.name.charAt(0).toUpperCase();
-                                    const lastGroup = groups[groups.length - 1];
-                                    if (!lastGroup || lastGroup.title !== firstLetter) {
-                                        groups.push({ title: firstLetter, data: [opt] });
-                                    } else {
-                                        lastGroup.data.push(opt);
-                                    }
-                                });
-                                return groups;
-                            })()}
-                            keyExtractor={(item) => item.code}
-                            renderItem={({ item }: { item: LocationOption }) => {
-                                let isSelected = false;
-                                if (activeTab === 'region') isSelected = selectedRegion?.code === item.code;
-                                if (activeTab === 'province') isSelected = selectedProvince?.code === item.code;
-                                if (activeTab === 'city') isSelected = selectedCity?.code === item.code;
-                                if (activeTab === 'barangay') isSelected = selectedBarangay?.code === item.code;
-
-                                return (
-                                    <Pressable
-                                        style={[styles.optionItem, isSelected && styles.optionItemSelected]}
-                                        onPress={() => handleSelect(item)}
-                                    >
-                                        <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                                            {item.name}
-                                        </Text>
-                                        {isSelected && <Ionicons name="checkmark" size={20} color={theme.colors.primary} />}
-                                    </Pressable>
-                                );
-                            }}
-                            renderSectionHeader={({ section: { title } }: { section: { title: string } }) => (
-                                <View style={styles.sectionHeader}>
-                                    <Text style={styles.sectionHeaderText}>{title}</Text>
-                                </View>
-                            )}
-                            stickySectionHeadersEnabled={true}
-                            style={styles.optionsList}
-                            contentContainerStyle={{ paddingBottom: 20 }}
-                            showsVerticalScrollIndicator={false}
-                        />
-                    )}
-
-                    {/* Confirm Button */}
-                    {isComplete && (
-                        <Pressable style={styles.confirmBtn} onPress={handleConfirm}>
-                            <Text style={styles.confirmText}>Confirm Location</Text>
-                        </Pressable>
-                    )}
+        <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                    <Pressable onPress={currentStep === 'region' ? onClose : handleBack} style={styles.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+                    </Pressable>
+                    <Text style={styles.title}>{getStepTitle()}</Text>
                 </View>
+                <Pressable onPress={onClose} style={styles.closeBtn}>
+                    <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+                </Pressable>
             </View>
-        </Modal>
+
+            {/* Breadcrumbs */}
+            {breadcrumbs.length > 0 && (
+                <View style={styles.breadcrumbContainer}>
+                    <ScrollView 
+                        ref={scrollViewRef}
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.breadcrumbScroll}
+                    >
+                        {breadcrumbs.map((crumb, idx) => (
+                            <React.Fragment key={crumb.step}>
+                                {idx > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textLight} style={styles.crumbIcon} />}
+                                <View style={styles.crumbBadge}>
+                                    <Text style={styles.crumbText}>{crumb.label}</Text>
+                                </View>
+                            </React.Fragment>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+
+            {/* Search */}
+            <View style={styles.searchContainer}>
+                <Ionicons name="search" size={18} color={theme.colors.textLight} />
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder={`Search ${currentStep}...`}
+                    placeholderTextColor={theme.colors.textLight}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+            </View>
+
+            {/* Options List */}
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                    <Text style={styles.loadingText}>Loading options...</Text>
+                </View>
+            ) : filteredOptions.length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No results found.</Text>
+                </View>
+            ) : (
+                <SectionList<LocationOption, { title: string }>
+                    sections={(() => {
+                        const sorted = [...filteredOptions].sort((a, b) => a.name.localeCompare(b.name));
+                        const groups: { title: string; data: LocationOption[] }[] = [];
+                        sorted.forEach(opt => {
+                            const firstLetter = opt.name.charAt(0).toUpperCase();
+                            const lastGroup = groups[groups.length - 1];
+                            if (!lastGroup || lastGroup.title !== firstLetter) {
+                                groups.push({ title: firstLetter, data: [opt] });
+                            } else {
+                                lastGroup.data.push(opt);
+                            }
+                        });
+                        return groups;
+                    })()}
+                    keyExtractor={(item) => item.code}
+                    renderItem={({ item }: { item: LocationOption }) => {
+                        let isSelected = false;
+                        if (currentStep === 'region') isSelected = selectedRegion?.code === item.code;
+                        if (currentStep === 'province') isSelected = selectedProvince?.code === item.code;
+                        if (currentStep === 'city') isSelected = selectedCity?.code === item.code;
+                        if (currentStep === 'barangay') isSelected = selectedBarangay?.code === item.code;
+
+                        return (
+                            <Pressable
+                                style={[styles.optionItem, isSelected && styles.optionItemSelected]}
+                                onPress={() => handleSelect(item)}
+                            >
+                                <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                                    {item.name}
+                                </Text>
+                                {isSelected && <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />}
+                            </Pressable>
+                        );
+                    }}
+                    renderSectionHeader={({ section: { title } }: { section: { title: string } }) => (
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionHeaderText}>{title}</Text>
+                        </View>
+                    )}
+                    stickySectionHeadersEnabled={true}
+                    style={styles.optionsList}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
+
+            {/* Confirm Button */}
+            {selectedBarangay && (
+                <View style={styles.footer}>
+                    <Pressable style={styles.confirmBtn} onPress={handleConfirm}>
+                        <Text style={styles.confirmText}>Confirm Address</Text>
+                    </Pressable>
+                </View>
+            )}
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    overlay: {
+    container: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        justifyContent: 'flex-end',
-    },
-    modal: {
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        maxHeight: '85%',
-        paddingBottom: 24,
+        backgroundColor: theme.colors.surface,
+        minHeight: 400,
     },
     header: {
         flexDirection: 'row',
@@ -347,48 +332,51 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
     },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
     title: {
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
         color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
+    backBtn: { padding: 4, marginLeft: -4 },
     closeBtn: { padding: 4 },
-    tabs: {
-        flexDirection: 'row',
+    breadcrumbContainer: {
+        backgroundColor: theme.colors.subtle,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
     },
-    tab: {
-        flex: 1,
+    breadcrumbScroll: {
+        paddingHorizontal: 16,
         paddingVertical: 12,
         alignItems: 'center',
-        position: 'relative',
     },
-    tabActive: {},
-    tabDisabled: { opacity: 0.4 },
-    tabText: {
+    crumbBadge: {
+        backgroundColor: '#fff',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    crumbText: {
         fontSize: 13,
-        color: theme.colors.textSecondary,
+        color: theme.colors.text,
         fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
     },
-    tabTextActive: {
-        color: theme.colors.primary,
-        fontWeight: '600',
-    },
-    tabTextDisabled: {},
-    tabIndicator: {
-        position: 'absolute',
-        bottom: 0,
-        left: '20%',
-        right: '20%',
-        height: 3,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 2,
+    crumbIcon: {
+        marginHorizontal: 8,
     },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        margin: 16,
+        marginHorizontal: 16,
+        marginVertical: 12,
         paddingHorizontal: 12,
         paddingVertical: 10,
         backgroundColor: theme.colors.subtle,
@@ -399,13 +387,14 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 15,
         color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     optionsList: {
-        maxHeight: 320,
+        maxHeight: 400,
         paddingHorizontal: 16,
     },
     loadingContainer: {
-        height: 320,
+        height: 300,
         justifyContent: 'center',
         alignItems: 'center',
         gap: 12,
@@ -413,11 +402,18 @@ const styles = StyleSheet.create({
     loadingText: {
         color: theme.colors.textSecondary,
         fontSize: 14,
+        fontFamily: theme.typography.fontFamily,
     },
     emptyContainer: {
         height: 200,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    emptyText: {
+        textAlign: 'center',
+        color: theme.colors.textLight,
+        fontSize: 15,
+        fontFamily: theme.typography.fontFamily,
     },
     sectionHeader: {
         backgroundColor: '#fff',
@@ -430,46 +426,49 @@ const styles = StyleSheet.create({
     sectionHeaderText: {
         fontSize: 14,
         fontWeight: '700',
-        color: theme.colors.primary,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
     },
     optionItem: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 14,
+        paddingVertical: 16,
         paddingHorizontal: 12,
         borderRadius: 10,
         marginBottom: 4,
     },
     optionItemSelected: {
-        backgroundColor: theme.colors.primaryLight,
+        backgroundColor: '#FDF2F4', // Light pink/primary tint
     },
     optionText: {
         fontSize: 15,
         color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
     optionTextSelected: {
         color: theme.colors.primary,
         fontWeight: '600',
     },
-    emptyText: {
-        textAlign: 'center',
-        color: theme.colors.textLight,
-        paddingVertical: 32,
-        fontSize: 14,
+    footer: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+        marginTop: 8,
     },
     confirmBtn: {
-        marginHorizontal: 16,
-        marginTop: 16,
         backgroundColor: theme.colors.primary,
         paddingVertical: 14,
         borderRadius: 12,
         alignItems: 'center',
+        ...theme.shadows.sm,
     },
     confirmText: {
         color: '#fff',
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
+        fontFamily: theme.typography.fontFamily,
     },
 });
 

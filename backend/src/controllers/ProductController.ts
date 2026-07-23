@@ -577,7 +577,17 @@ export const getProductById = async (productId: string) => {
         where: { uid: parsedId },
         include: {
             variants: true,
-            seller: { select: { uid: true, name: true, slug: true, status: true } }
+            seller: { select: { 
+                uid: true, 
+                name: true, 
+                slug: true, 
+                status: true,
+                rating: true,
+                freeShippingEnabled: true,
+                freeShippingThreshold: true,
+                meetUpPoint: true,
+                selfDeliveryEnabled: true
+            } }
         }
     });
 

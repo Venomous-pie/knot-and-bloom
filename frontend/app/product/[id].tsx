@@ -637,7 +637,7 @@ export default function ProductDetailPage() {
                                         <View style={styles.highlightRow}>
                                             <Ionicons name="cube-outline" size={18} color={theme.colors.textSecondary} />
                                             <Text style={styles.highlightText}>
-                                                <Text style={{ fontWeight: '600' }}>Fulfillment:</Text> {product.fulfillmentType === 'made_to_order' ? 'Made to Order' : 'Ready Stock'}
+                                                <Text style={{ fontWeight: '600' }}>Fulfillment:</Text> {product.fulfillmentType === 'MADE_TO_ORDER' ? 'Made to Order' : 'Ready Stock'}
                                             </Text>
                                         </View>
                                     )}
@@ -683,9 +683,15 @@ export default function ProductDetailPage() {
                                 <Ionicons name="airplane-outline" size={20} color={theme.colors.text} style={{ marginTop: 2 }} />
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.shippingInfoTitle}>Standard Shipping</Text>
-                                    <Text style={styles.shippingInfoDesc}>Estimated Delivery: 3-5 Business Days</Text>
+                                    <Text style={styles.shippingInfoDesc}>
+                                        {product.processingTime ? `Estimated Delivery: ${product.processingTime}` : 'Estimated Delivery: 3-5 Business Days'}
+                                    </Text>
                                     <Text style={styles.shippingInfoPrice}>
-                                        {product.shippingFeeOverride != null ? `₱${Number(product.shippingFeeOverride).toFixed(2)}` : '₱60.00 (Free over ₱500)'}
+                                        {product.shippingFeeOverride != null 
+                                            ? `₱${Number(product.shippingFeeOverride).toFixed(2)}` 
+                                            : ((product.seller as any)?.freeShippingEnabled 
+                                                ? `Standard Rate (Free over ₱${(product.seller as any).freeShippingThreshold})` 
+                                                : 'Standard Rate applies')}
                                     </Text>
                                 </View>
                             </View>
@@ -695,7 +701,7 @@ export default function ProductDetailPage() {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.shippingInfoTitle}>Local Pickup Available</Text>
                                         <Text style={styles.shippingInfoDesc}>
-                                            {product.localPickupInstructions || 'Available for local pickup at the seller\'s location.'}
+                                            {product.localPickupInstructions || ((product.seller as any)?.meetUpPoint ? `Available for pickup at: ${(product.seller as any).meetUpPoint}` : 'Available for local pickup at the seller\'s location.')}
                                         </Text>
                                     </View>
                                 </View>

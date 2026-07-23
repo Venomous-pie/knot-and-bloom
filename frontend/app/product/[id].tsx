@@ -316,7 +316,11 @@ export default function ProductDetailPage() {
                     <Text style={styles.sellerName}>{product.seller?.name || 'Knot & Bloom'}</Text>
                     <View style={styles.sellerRatingRow}>
                         <Ionicons name="star" size={12} color={theme.colors.starGold} />
-                        <Text style={styles.sellerRatingText}>4.9/5.0 (98% Positive)</Text>
+                        <Text style={styles.sellerRatingText}>
+                            {(product.seller as any)?.rating && Number((product.seller as any).rating) > 0 
+                                ? `${(product.seller as any).rating}/5.0` 
+                                : 'New Seller'}
+                        </Text>
                     </View>
                 </View>
                 <Pressable

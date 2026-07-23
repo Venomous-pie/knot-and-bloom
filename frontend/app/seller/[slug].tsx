@@ -354,7 +354,7 @@ export default function SellerProfile() {
                             <Star size={20} color="#FF9800" />
                         </View>
                         <View>
-                            <Text style={styles.statValue}>{seller.rating || '5.0'}</Text>
+                            <Text style={styles.statValue}>{seller.rating && Number(seller.rating) > 0 ? seller.rating : 'New'}</Text>
                             <Text style={styles.statLabel}>Rating</Text>
                         </View>
                     </View>

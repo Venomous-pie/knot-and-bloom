@@ -19,3 +19,9 @@ input[type="submit"] {
 html, body, #root {
     height: 100%;
 }
+
+/* Hide native password reveal and clear buttons injected by browsers */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}

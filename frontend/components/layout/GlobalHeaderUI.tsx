@@ -1,5 +1,6 @@
 import { productAPI, notificationAPI, Notification } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDialog } from "@/contexts/DialogContext";
 import { useSocketContext } from "@/contexts/SocketContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -130,6 +131,7 @@ function BadgeDot({ count }: { count: number }) {
 export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMenu }: GlobalHeaderUIProps) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const { confirm } = useDialog();
     const { cartCount, setCartIconPosition } = useCart();
     const { wishlistCount } = useWishlist();
     const [isFocused, setIsFocused] = useState(false);
@@ -248,7 +250,18 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
         }).start();
     };
 
-    const handleLogout = logout;
+    const handleLogout = async () => {
+        const confirmed = await confirm({
+            title: "Log Out",
+            message: "Are you sure you want to log out of your account?",
+            confirmText: "Log Out",
+            cancelText: "Cancel",
+            isDestructive: true
+        });
+        if (confirmed) {
+            await logout();
+        }
+    };
 
     if (mobile) {
         if (isBespokePage) {

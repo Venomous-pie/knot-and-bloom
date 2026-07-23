@@ -1,5 +1,6 @@
 import { accountAPI } from '@/api/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDialog } from '@/contexts/DialogContext';
 import { theme } from '@/constants/theme';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -142,6 +143,7 @@ interface ProfileMenuProps {
 
 export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
     const { user, logout, refreshUser, loading: authLoading } = useAuth();
+    const { confirm } = useDialog();
     const router = useRouter();
     const pathname = usePathname();
     const [deletionStatus, setDeletionStatus] = useState<{ hasPendingDeletion: boolean; deletionScheduledFor?: string | null }>({ hasPendingDeletion: false });
@@ -169,7 +171,16 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
     };
 
     const handleLogout = async () => {
-        await logout();
+        const confirmed = await confirm({
+            title: "Log Out",
+            message: "Are you sure you want to log out of your account?",
+            confirmText: "Log Out",
+            cancelText: "Cancel",
+            isDestructive: true
+        });
+        if (confirmed) {
+            await logout();
+        }
     };
 
     if (authLoading || !user) {

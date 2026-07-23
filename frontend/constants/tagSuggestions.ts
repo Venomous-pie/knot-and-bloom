@@ -1,83 +1,13 @@
+import { CATEGORY_REGISTRY } from './categories';
+
 /**
  * Curated tag suggestions mapped to product categories.
  * These help sellers pick high-quality, SEO-friendly tags
  * instead of typing freeform text that could be misspelled or irrelevant.
  */
-
-export const TAG_SUGGESTIONS: Record<string, string[]> = {
-    'Crochet': [
-        'handmade', 'crochet', 'yarn', 'cotton', 'handcrafted',
-        'cozy', 'knitted', 'fiber art', 'artisan', 'soft',
-    ],
-    'Fuzzy Wire Art': [
-        'fuzzy wire', 'wire art', 'handmade', 'desk decor',
-        'miniature', 'cute', 'figurine', 'kawaii', 'collectible',
-    ],
-    'Gift Boxes/Sets': [
-        'gift set', 'gift box', 'birthday', 'anniversary', 'valentines',
-        'christmas', 'for her', 'for him', 'surprise', 'premium',
-    ],
-    'Hair Ties': [
-        'hair tie', 'hair accessory', 'scrunchie', 'ponytail',
-        'elastic', 'handmade', 'cute', 'everyday', 'pastel',
-    ],
-    'Fuzzy Wire Bouquets': [
-        'bouquet', 'fuzzy wire', 'flowers', 'forever flowers',
-        'artificial', 'gift', 'romantic', 'decor', 'colorful',
-    ],
-    'Crochet Flower Bouquets': [
-        'crochet flowers', 'bouquet', 'forever flowers', 'handmade',
-        'yarn flowers', 'gift', 'romantic', 'wedding', 'decor',
-    ],
-    'Crochet Key Chains': [
-        'keychain', 'crochet', 'mini', 'cute', 'accessory',
-        'bag charm', 'handmade', 'amigurumi', 'kawaii',
-    ],
-    'Amigurumi Plushies': [
-        'amigurumi', 'plushie', 'stuffed toy', 'crochet', 'cute',
-        'kawaii', 'handmade', 'soft toy', 'nursery', 'kids',
-    ],
-    'Beaded Jewelry': [
-        'beaded', 'jewelry', 'bracelet', 'necklace', 'handmade',
-        'accessory', 'elegant', 'boho', 'minimalist', 'dainty',
-    ],
-    'Phone Charms': [
-        'phone charm', 'phone strap', 'accessory', 'cute',
-        'beaded', 'handmade', 'kawaii', 'aesthetic', 'trendy',
-    ],
-    'Scrunchies': [
-        'scrunchie', 'hair accessory', 'handmade', 'silk',
-        'satin', 'cute', 'everyday', 'pastel', 'elastic',
-    ],
-    'Resin Crafts': [
-        'resin', 'resin art', 'handmade', 'epoxy', 'clear',
-        'glitter', 'dried flowers', 'jewelry', 'coaster', 'trinket',
-    ],
-    'Bookmarks': [
-        'bookmark', 'reading', 'book lover', 'handmade',
-        'crochet', 'beaded', 'gift', 'aesthetic', 'literary',
-    ],
-    'Tote Bags': [
-        'tote bag', 'bag', 'handmade', 'canvas', 'eco-friendly',
-        'reusable', 'crochet', 'market bag', 'everyday', 'boho',
-    ],
-    'Stickers & Prints': [
-        'sticker', 'print', 'art print', 'illustration', 'cute',
-        'aesthetic', 'journal', 'planner', 'kawaii', 'waterproof',
-    ],
-    'Clay Accessories': [
-        'clay', 'polymer clay', 'earrings', 'handmade', 'accessory',
-        'lightweight', 'boho', 'minimalist', 'colorful', 'dainty',
-    ],
-    'Key Chains': [
-        'keychain', 'key ring', 'accessory', 'handmade', 'cute',
-        'bag charm', 'gift', 'personalized', 'mini', 'trendy',
-    ],
-    'Flower Boquets': [
-        'bouquet', 'flowers', 'gift', 'romantic', 'anniversary',
-        'birthday', 'forever flowers', 'dried flowers', 'decor', 'elegant',
-    ],
-};
+export const TAG_SUGGESTIONS: Record<string, string[]> = Object.fromEntries(
+    CATEGORY_REGISTRY.map(c => [c.title, c.tags])
+);
 
 /** Universal tags that apply to any handmade product */
 export const UNIVERSAL_TAGS = [

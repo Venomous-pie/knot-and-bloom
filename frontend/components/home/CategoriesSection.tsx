@@ -3,38 +3,13 @@ import { View, Text, StyleSheet, Pressable, useWindowDimensions, Image } from 'r
 import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { productAPI } from '@/api/api';
-import { categoryTitles } from '@/constants/categories';
+import { categoryTitles, CATEGORY_REGISTRY, FALLBACK_CATEGORY_CONFIG } from '@/constants/categories';
 
 const PATTERNS = [
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTSA0MCAwIEwgMCAwIDAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+',
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEuNSIgZmlsbD0iIzAwMDAwMCIgb3BhY2l0eT0iMC4wNSIvPjwvc3ZnPg==',
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTS0yLDIgbDQsLTQgTTAsMjAgbDIwLC0yMCBNMTgsMjIgbDQsLTQiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+',
-  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTSAxMCAwIEwgMTAgMjAgTSAwIDEwIEwgMjAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+'
-];
-
-const CATEGORY_CONFIG: Record<string, any> = {
-  'gift-boxes-sets': { subtitle: 'Perfect for gifting', emoji: '🎁', bgColor: '#EBE5F7', badgeBg: '#CBBDEB', color: '#4A3482' },
-  'fuzzy-wire-bouquet': { subtitle: 'Everlasting blooms', emoji: '💐', bgColor: '#E2EFE1', badgeBg: '#A6C9AD', color: '#2B5738' },
-  'crochet-key-chains': { subtitle: 'Carry a little charm', emoji: '🔑', bgColor: '#FDF1DA', badgeBg: '#EACC9F', color: '#7A5A29' },
-  'crochet': { subtitle: 'Handmade with love', emoji: '🧶', bgColor: '#FCE7EB', badgeBg: '#F1B8C8', color: '#88314E' },
-  'fuzzy-wire-art': { subtitle: 'Bendable creations', emoji: '🧶', bgColor: '#E2EFE1', badgeBg: '#A6C9AD', color: '#2B5738' },
-  'tops': { subtitle: 'Wearable art', emoji: '👚', bgColor: '#FDF1DA', badgeBg: '#EACC9F', color: '#7A5A29' },
-  'hair-tie': { subtitle: 'Cute accessories', emoji: '🎀', bgColor: '#EBE5F7', badgeBg: '#CBBDEB', color: '#4A3482' },
-  'crochet-flower-bouquet': { subtitle: 'Never wilting', emoji: '🌷', bgColor: '#FCE7EB', badgeBg: '#F1B8C8', color: '#88314E' },
-};
-
-const FALLBACK_CONFIGS = [
-  { subtitle: 'Handmade with love', emoji: '🧶', bgColor: '#FCE7EB', badgeBg: '#F1B8C8', color: '#88314E' },
-  { subtitle: 'Cute & collectible', emoji: '🎀', bgColor: '#E2EFE1', badgeBg: '#A6C9AD', color: '#2B5738' },
-  { subtitle: 'Carry a little charm', emoji: '🎁', bgColor: '#FDF1DA', badgeBg: '#EACC9F', color: '#7A5A29' },
-  { subtitle: 'Perfect for gifting', emoji: '🧶', bgColor: '#EBE5F7', badgeBg: '#CBBDEB', color: '#4A3482' },
-];
-
-const DEFAULT_CATEGORIES = [
-  { id: 'crochet-key-chains', title: 'Key Chains', count: 'Coming soon', emoji: '🔑', bgColor: '#FDF1DA', badgeBg: '#EACC9F', color: '#7A5A29', subtitle: 'Carry a little charm' },
-  { id: 'gift-boxes-sets', title: 'Gift Boxes / Sets', count: 'Coming soon', emoji: '🎁', bgColor: '#EBE5F7', badgeBg: '#CBBDEB', color: '#4A3482', subtitle: 'Perfect for gifting' },
-  { id: 'fuzzy-wire-bouquet', title: 'Wire Bouquets', count: 'Coming soon', emoji: '💐', bgColor: '#E2EFE1', badgeBg: '#A6C9AD', color: '#2B5738', subtitle: 'Everlasting blooms' },
-  { id: 'crochet', title: 'Crochet', count: 'Coming soon', emoji: '🧶', bgColor: '#FCE7EB', badgeBg: '#F1B8C8', color: '#88314E', subtitle: 'Handmade with love' },
+  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTS 1MCAwIEwgMTAgMjAgTSAwIDEwIEwgMjAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+'
 ];
 
 export default function CategoriesSection() {
@@ -44,7 +19,18 @@ export default function CategoriesSection() {
   const isMobile = width < 768;
   const gap = theme.spacing.md;
   
-  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const fallbackData = CATEGORY_REGISTRY.slice(0, 4).map(c => ({
+    id: c.slug,
+    title: c.title,
+    count: 'Coming soon',
+    emoji: c.emoji,
+    bgColor: c.bgColor,
+    badgeBg: c.badgeBg,
+    color: c.color,
+    subtitle: c.subtitle
+  }));
+
+  const [categories, setCategories] = useState<any[]>(fallbackData);
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -71,7 +57,8 @@ export default function CategoriesSection() {
             .slice(0, 4);
 
           const dynamicCategories = sortedCategories.map(([id, count], index) => {
-            const config = CATEGORY_CONFIG[id] || FALLBACK_CONFIGS[index % 4];
+            const registered = CATEGORY_REGISTRY.find(c => c.slug === id);
+            const config = registered || FALLBACK_CATEGORY_CONFIG;
             const title = categoryTitles[id] || id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
             
             return {
@@ -85,15 +72,15 @@ export default function CategoriesSection() {
           // Fill up to 4 if we don't have enough data
           const finalCategories = [...dynamicCategories];
           let defaultIndex = 0;
-          while (finalCategories.length < 4) {
-             const def = DEFAULT_CATEGORIES[defaultIndex];
+          while (finalCategories.length < 4 && defaultIndex < fallbackData.length) {
+             const def = fallbackData[defaultIndex];
              if (!finalCategories.find(c => c.id === def.id)) {
                 finalCategories.push({ ...def });
              }
              defaultIndex++;
           }
 
-          setCategories(finalCategories as typeof DEFAULT_CATEGORIES);
+          setCategories(finalCategories);
         }
       } catch (error) {
         console.error('Failed to fetch category counts:', error);
@@ -104,7 +91,7 @@ export default function CategoriesSection() {
   
   const [toys, flowers, keychains, gifts] = categories;
   
-  const renderCard = (cat: typeof DEFAULT_CATEGORIES[0], style: any, emojiSize = 24, index = 0) => {
+  const renderCard = (cat: any, style: any, emojiSize = 24, index = 0) => {
     const patternUri = PATTERNS[index % PATTERNS.length];
     return (
       <Pressable 

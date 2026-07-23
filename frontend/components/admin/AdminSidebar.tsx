@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'rea
 import { useRouter, usePathname, Link } from 'expo-router';
 import { LayoutDashboard, Package, Users, Bell, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDialog } from '@/contexts/DialogContext';
 import { theme } from '@/constants/theme';
 import DropdownMenu from '@/components/ui/DropdownMenu';
 import { sellerAPI } from '@/api/api';
@@ -11,6 +12,7 @@ export default function AdminSidebar() {
     const router = useRouter();
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const { confirm } = useDialog();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [adminStats, setAdminStats] = useState({ pendingSellers: 0, pendingProducts: 0 });
 
@@ -33,6 +35,19 @@ export default function AdminSidebar() {
         { label: 'Shop Home', route: '/', icon: Home },
         { label: 'Platform Settings', route: '/admin/settings', icon: Settings },
     ];
+
+    const handleLogout = async () => {
+        const confirmed = await confirm({
+            title: "Log Out",
+            message: "Are you sure you want to log out of your account?",
+            confirmText: "Log Out",
+            cancelText: "Cancel",
+            isDestructive: true
+        });
+        if (confirmed) {
+            await logout();
+        }
+    };
 
     return (
         <View style={s.sidebar}>
@@ -110,7 +125,7 @@ export default function AdminSidebar() {
                         { title: 'Settings', href: '/admin/settings' as any, icon: <Settings size={16} color="#4B5563" /> },
                         { title: 'Help Center', href: '/customer-service' as any, icon: <HelpCircle size={16} color="#4B5563" /> },
                         { type: 'separator' },
-                        { title: 'Log Out', onPress: logout, icon: <LogOut size={16} color="#EF4444" /> }
+                        { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color="#EF4444" /> }
                     ]}
                     isOpen={showUserMenu}
                     onOpenChange={setShowUserMenu}

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'rea
 import { useRouter, usePathname, Link } from 'expo-router';
 import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, Truck } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDialog } from '@/contexts/DialogContext';
 import { sellerAPI } from '@/api/api';
 import { theme } from '@/constants/theme';
 import DropdownMenu, { DropdownItem } from '@/components/ui/DropdownMenu';
@@ -11,6 +12,7 @@ export default function DashboardSidebar() {
     const router = useRouter();
     const pathname = usePathname();
     const { user, logout } = useAuth();
+    const { confirm } = useDialog();
     
     const [sidebarStats, setSidebarStats] = useState({ unreadNotifications: 0, lowStockCount: 0 });
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -43,6 +45,19 @@ export default function DashboardSidebar() {
         { label: 'Shop Home', route: '/', icon: Home },
         { label: 'Store Settings', route: '/seller-dashboard/settings', icon: Settings },
     ];
+
+    const handleLogout = async () => {
+        const confirmed = await confirm({
+            title: "Log Out",
+            message: "Are you sure you want to log out of your account?",
+            confirmText: "Log Out",
+            cancelText: "Cancel",
+            isDestructive: true
+        });
+        if (confirmed) {
+            await logout();
+        }
+    };
 
     return (
         <View style={s.sidebar}>
@@ -141,7 +156,7 @@ export default function DashboardSidebar() {
                         { title: 'Settings', href: '/seller-dashboard/settings' as any, icon: <Settings size={16} color="#4B5563" /> },
                         { title: 'Help Center', href: '/customer-service' as any, icon: <HelpCircle size={16} color="#4B5563" /> },
                         { type: 'separator' },
-                        { title: 'Log Out', onPress: logout, icon: <LogOut size={16} color="#EF4444" /> }
+                        { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color="#EF4444" /> }
                     ]}
                     isOpen={showUserMenu}
                     onOpenChange={setShowUserMenu}

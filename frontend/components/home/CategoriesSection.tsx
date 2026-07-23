@@ -51,10 +51,22 @@ export default function CategoriesSection() {
       try {
         const response = await productAPI.getCategoryCounts();
         if (response.data.success) {
-          const counts = response.data.counts;
-          
+          const rawCounts = response.data.counts;
+          const mergedCounts: Record<string, number> = {};
+
+          Object.entries(rawCounts).forEach(([key, count]) => {
+              let slug = key;
+              const foundSlug = Object.entries(categoryTitles).find(([s, t]) => t === key)?.[0];
+              if (foundSlug) {
+                  slug = foundSlug;
+              } else {
+                  slug = key.toLowerCase().replace(/[\s\/]+/g, '-');
+              }
+              mergedCounts[slug] = (mergedCounts[slug] || 0) + count;
+          });
+
           // Get top 4 categories by count
-          const sortedCategories = Object.entries(counts)
+          const sortedCategories = Object.entries(mergedCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 4);
 

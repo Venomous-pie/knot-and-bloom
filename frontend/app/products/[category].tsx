@@ -71,10 +71,33 @@ export default function ProductCategoryPage() {
                 if (response.data?.success && response.data?.counts) {
                     const dynamicCats = Object.keys(response.data.counts);
                     const staticCats = Object.values(categoryTitles);
-                    // Merge and deduplicate (case-insensitive deduplication is better, but Set works for exact matches)
-                    const uniqueCats = new Set<string>();
-                    [...staticCats, ...dynamicCats].forEach(c => uniqueCats.add(c.trim()));
-                    setAvailableCategories(Array.from(uniqueCats).sort());
+                    
+                    const uniqueCatsMap = new Map<string, string>();
+                    
+                    // Add static categories first (Title format)
+                    staticCats.forEach(c => {
+                        const trimmed = c.trim();
+                        uniqueCatsMap.set(trimmed.toLowerCase(), trimmed);
+                    });
+
+                    // Add dynamic categories, preferring existing Title formats if found
+                    dynamicCats.forEach(c => {
+                        const trimmed = c.trim();
+                        const lower = trimmed.toLowerCase();
+                        if (!uniqueCatsMap.has(lower)) {
+                            // Try to find if it corresponds to a slug in categoryTitles
+                            const foundTitle = categoryTitles[lower];
+                            if (foundTitle) {
+                                uniqueCatsMap.set(lower, foundTitle);
+                            } else {
+                                // Just format it nicely if not found
+                                const formatted = trimmed.split(/[- ]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                uniqueCatsMap.set(lower, formatted);
+                            }
+                        }
+                    });
+
+                    setAvailableCategories(Array.from(uniqueCatsMap.values()).sort());
                 } else {
                     setAvailableCategories(Object.values(categoryTitles).sort());
                 }
@@ -94,14 +117,27 @@ export default function ProductCategoryPage() {
             params.newArrival = true;
         } else if (category === 'popular') {
             params.sort = 'bestselling';
-        } else if (category !== 'all-products') {
+        }
+
+        if (selectedCategories.length > 0) {
+            // Expand selected categories to include both Title and Slug variants to catch all matching DB entries
+            const expandedCats = selectedCategories.flatMap(cat => {
+                const slug = Object.entries(categoryTitles).find(([s, t]) => t === cat)?.[0] || cat.toLowerCase().replace(/[\s\/]+/g, '-');
+                return [cat, slug];
+            });
+            // Deduplicate the expanded array
+            params.categories = Array.from(new Set(expandedCats)).join(',');
+        } else if (category && category !== 'new-arrival' && category !== 'popular' && category !== 'all-products') {
             const matchedTitle = categoryTitles[category as string];
-            params.category = matchedTitle || category;
+            if (matchedTitle) {
+                params.categories = [matchedTitle, category].join(',');
+            } else {
+                params.categories = category;
+            }
         }
 
         if (debouncedPriceRange.min) params.minPrice = Number(debouncedPriceRange.min);
         if (debouncedPriceRange.max) params.maxPrice = Number(debouncedPriceRange.max);
-        if (selectedCategories.length > 0) params.categories = selectedCategories.join(',');
         if (selectedTags.length > 0) params.tags = selectedTags.join(',');
 
         return params;

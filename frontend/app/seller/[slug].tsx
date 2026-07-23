@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/seller/ImageCropperModal';
 import { apiClient, sellerOrdersAPI } from "@/api/api";
-import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, interpolate, Extrapolation } from "react-native-reanimated";
+import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, withSpring, interpolate, Extrapolation, ZoomIn } from "react-native-reanimated";
 import GlobalHeaderUI from "@/components/layout/GlobalHeaderUI";
 import {
     ActivityIndicator,
@@ -19,7 +19,8 @@ import {
     ListRenderItem,
     ScrollView,
     TextInput,
-    Modal
+    Modal,
+    Alert
 } from "react-native";
 import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck, Camera, Pin, PinOff, Edit2, Save, Search, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -62,6 +63,8 @@ export default function SellerProfile() {
     const [aboutText, setAboutText] = useState('');
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showBannerFullScreen, setShowBannerFullScreen] = useState(false);
+    const [showComingSoonModal, setShowComingSoonModal] = useState(false);
+    const [comingSoonFeature, setComingSoonFeature] = useState('');
     const { user } = useAuth();
 
     // Image Upload State
@@ -318,11 +321,17 @@ export default function SellerProfile() {
                         </View>
 
                         <View style={styles.actionButtonsRow}>
-                            <Pressable style={styles.actionButtonPrimary}>
+                            <Pressable 
+                                style={styles.actionButtonPrimary}
+                                onPress={() => { setComingSoonFeature('follow'); setShowComingSoonModal(true); }}
+                            >
                                 <Heart size={16} color="white" />
                                 <Text style={styles.actionButtonTextPrimary}>Follow</Text>
                             </Pressable>
-                            <Pressable style={styles.actionButtonSecondary}>
+                            <Pressable 
+                                style={styles.actionButtonSecondary}
+                                onPress={() => { setComingSoonFeature('contact'); setShowComingSoonModal(true); }}
+                            >
                                 <MessageCircle size={16} color={theme.colors.primary} />
                                 <Text style={styles.actionButtonTextSecondary}>Contact</Text>
                             </Pressable>
@@ -598,6 +607,35 @@ export default function SellerProfile() {
                     ) : null
                 }
             />
+
+            {/* Coming Soon Modal */}
+            <Modal
+                visible={showComingSoonModal}
+                transparent={true}
+                animationType="none"
+                onRequestClose={() => setShowComingSoonModal(false)}
+            >
+                <Pressable
+                    style={styles.modalOverlay}
+                    onPress={() => setShowComingSoonModal(false)}
+                >
+                    <View style={styles.modalContent}>
+                        <Pressable style={styles.modalCloseButton} onPress={() => setShowComingSoonModal(false)}>
+                            <Text style={styles.modalCloseText}>✕</Text>
+                        </Pressable>
+
+                        <Text style={styles.modalTitle}>Coming Soon!</Text>
+                        
+                        <Text style={{ textAlign: 'center', marginBottom: 24, fontFamily: 'Quicksand', color: theme.colors.text, fontSize: 16 }}>
+                            The {comingSoonFeature} feature is currently under development. Stay tuned!
+                        </Text>
+                        
+                        <Pressable style={styles.uploadButton} onPress={() => setShowComingSoonModal(false)}>
+                            <Text style={styles.uploadButtonText}>Got it</Text>
+                        </Pressable>
+                    </View>
+                </Pressable>
+            </Modal>
 
             {/* Profile Customization Modal */}
             <Modal

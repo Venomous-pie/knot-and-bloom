@@ -1,5 +1,5 @@
 import Router from 'express';
-import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts } from '../controllers/ProductController.js';
+import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts, getRecommendedProducts } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../error/errorHandler.js';
 import { generateProductDescription, generateProductSKU, generateVariantSKU, generateOptionValues } from '../services/GenerateService.js';
 import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
@@ -313,6 +313,46 @@ router.get('/category-counts', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch category counts',
+        });
+    }
+});
+
+// Optional authenticate middleware using a wrapper since we want to allow unauthenticated users too
+const optionalAuthenticate = (req: any, res: any, next: any) => {
+    authenticate(req, res, () => next());
+};
+
+// We intercept 401s in optionalAuthenticate so we need a custom wrapper, or we can just let `authenticate` fail and catch it?
+// Actually, authenticate middleware returns 401 if no token. We want to allow anon users.
+import jwt from 'jsonwebtoken';
+
+const extractUserOptional = (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7, authHeader.length);
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+            req.user = decoded;
+        } catch (e) {
+            // Ignore invalid token for optional auth
+        }
+    }
+    next();
+};
+
+router.get('/recommendations', extractUserOptional, async (req: any, res) => {
+    try {
+        const { searchData } = req.query;
+        const products = await getRecommendedProducts(req.user?.id, searchData as string);
+        return res.status(200).json({
+            success: true,
+            products
+        });
+    } catch (error) {
+        console.error('Recommendations error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch recommendations',
         });
     }
 });

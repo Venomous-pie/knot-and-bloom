@@ -876,3 +876,145 @@ export const deleteProduct = async (productId: string, user?: AuthPayload) => {
     cache.deletePattern('product:');
     return result;
 }; 
+import { SearchDataSchema, calculateRelevanceScore } from '../utils/recommendationEngine.js';
+
+export const getRecommendedProducts = async (userId?: number, searchDataStr?: string) => {
+    // 1. Validate search data
+    let searchData: any[] = [];
+    if (searchDataStr) {
+        try {
+            const parsed = JSON.parse(searchDataStr);
+            const validation = SearchDataSchema.safeParse(parsed);
+            if (validation.success) {
+                searchData = validation.data;
+            } else {
+                console.warn('Invalid searchData format for recommendations');
+            }
+        } catch (e) {
+            console.warn('Malformed searchData JSON for recommendations');
+        }
+    }
+
+    // 2. Fetch past purchase categories and purchased item IDs
+    let purchaseCategories: string[] = [];
+    let purchasedProductIds: number[] = [];
+
+    if (userId) {
+        const orders = await prisma.order.findMany({
+            where: { customerId: userId },
+            select: { products: true }
+        });
+        
+        for (const order of orders) {
+            try {
+                // products is a JSON string of order items (or similar structure depending on schema)
+                // Let's get the purchased product IDs from OrderItem if it exists in schema
+                const orderItems = await prisma.orderItem.findMany({
+                    where: { orderId: { in: orders.map((o: any) => o.uid) } },
+                    include: { product: true }
+                });
+                
+                for (const item of orderItems) {
+                    if (item.productId) purchasedProductIds.push(item.productId);
+                    if (item.product?.categories) {
+                        purchaseCategories.push(...item.product.categories);
+                    }
+                }
+                break; // orderItems fetch got all of them at once
+            } catch (e) {
+                // Fallback if structure is different
+                console.error("Error fetching order items for recommendations", e);
+            }
+        }
+    }
+    
+    // Deduplicate
+    purchaseCategories = [...new Set(purchaseCategories)];
+    purchasedProductIds = [...new Set(purchasedProductIds)];
+
+    // 3. Cache Check
+    // Create a stable cache key
+    let cacheKey = 'product:recommendations:coldstart';
+    if (userId || searchData.length > 0) {
+        const searchHash = Buffer.from(JSON.stringify(searchData)).toString('base64');
+        cacheKey = `product:recommendations:user:${userId || 'anon'}:searchHash:${searchHash}`;
+    }
+
+    const cached = await cache.get(cacheKey);
+    if (cached) return cached;
+
+    // 4. Fetch Products
+    // We only fetch ACTIVE products that are in stock
+    const products = await prisma.product.findMany({
+        where: {
+            status: ProductStatus.ACTIVE,
+            deletedAt: null,
+            ...(purchasedProductIds.length > 0 ? { uid: { notIn: purchasedProductIds } } : {})
+        },
+        select: {
+            uid: true,
+            name: true,
+            categories: true,
+            tags: true,
+            description: true,
+            basePrice: true,
+            discountedPrice: true,
+            discountPercentage: true,
+            image: true,
+            images: true,
+            soldCount: true,
+            uploaded: true,
+            isBundle: true,
+            bundleQuantity: true,
+            variants: true
+        }
+    });
+
+    // Filter out-of-stock
+    let inStockProducts = products.filter((p: any) => {
+        // If it has variants, check variant stock, else check if it's base stock (if schema applies)
+        const hasStock = !p.variants || p.variants.length === 0 || p.variants.some((v: any) => v.stock > 0 && v.isEnabled);
+        return hasStock;
+    });
+
+    // 5. Score Products
+    let scoredProducts = inStockProducts.map(product => {
+        const score = calculateRelevanceScore(
+            {
+                uid: product.uid,
+                categories: product.categories,
+                tags: product.tags,
+                name: product.name,
+                description: product.description
+            },
+            purchaseCategories,
+            searchData
+        );
+        return { product, score };
+    });
+
+    // Filter only those with a score > 0
+    let recommended = scoredProducts.filter(p => p.score > 0).sort((a, b) => b.score - a.score).map(p => p.product);
+
+    // 6. Cold-Start / Empty Fallback
+    if (recommended.length === 0) {
+        // Fallback to top bestsellers / new arrivals
+        recommended = inStockProducts
+            .sort((a, b) => {
+                // Mix soldCount and recency
+                const aAge = Date.now() - new Date(a.uploaded).getTime();
+                const bAge = Date.now() - new Date(b.uploaded).getTime();
+                const aScore = a.soldCount * 10 - aAge / (1000 * 60 * 60 * 24);
+                const bScore = b.soldCount * 10 - bAge / (1000 * 60 * 60 * 24);
+                return bScore - aScore;
+            });
+    }
+
+    // Limit to top 15
+    const finalRecommendations = recommended.slice(0, 15);
+
+    // Save to cache (15 mins = 900 seconds)
+    await cache.set(cacheKey, finalRecommendations, 900);
+
+    return finalRecommendations;
+};

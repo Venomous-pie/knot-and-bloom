@@ -17,6 +17,7 @@ import CategoriesSection from "@/components/home/CategoriesSection";
 import BestsellersSection from "@/components/home/BestsellersSection";
 import NewArrivalsSection from "@/components/home/NewArrivalsSection";
 import CustomOrderBanner from "@/components/home/CustomOrderBanner";
+import RecommendationsSection from "@/components/home/RecommendationsSection";
 import Footer from "@/components/home/Footer";
 
 export default function Index() {
@@ -32,6 +33,7 @@ export default function Index() {
       >
         <View style={styles.pageWrapper}>
           <HeroSection />
+          <RecommendationsSection />
           <CategoriesSection />
           <NewArrivalsSection />
           <BestsellersSection />

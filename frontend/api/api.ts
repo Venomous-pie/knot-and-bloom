@@ -147,7 +147,17 @@ export const apiClient = {
 export const productAPI = {
     getProducts: (params?: GetProductsParams) =>
         apiClient.get<GetProductsResponse>('/products/get-product', { params }),
-
+    getRecommendations: (searchData?: { term: string, count: number, lastSearched?: number }[]) => {
+        // Only send top 15 terms to keep URL length under limits
+        let searchDataStr = undefined;
+        if (searchData && searchData.length > 0) {
+            const topTerms = [...searchData].sort((a, b) => b.count - a.count).slice(0, 15);
+            searchDataStr = JSON.stringify(topTerms);
+        }
+        return apiClient.get<{ success: boolean; products: Product[] }>('/products/recommendations', {
+            params: { searchData: searchDataStr }
+        });
+    },
     getCategoryCounts: () =>
         apiClient.get<{ success: boolean; counts: Record<string, number> }>('/products/category-counts'),
 

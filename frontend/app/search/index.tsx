@@ -8,11 +8,17 @@ import { productAPI } from '@/api/api';
 import { Product } from '@/types/products';
 import SearchBarDropdown from '@/components/ui/SearchResults';
 
+export interface SearchHistoryItem {
+    term: string;
+    count: number;
+    lastSearched: number;
+}
+
 export default function SearchPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
     const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
-    const [searchHistory, setSearchHistory] = useState<string[]>([]);
+    const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
     const [historyLimit, setHistoryLimit] = useState(4);
     const inputRef = useRef<TextInput>(null);
 
@@ -25,7 +31,15 @@ export default function SearchPage() {
         try {
             const history = await AsyncStorage.getItem('search_history');
             if (history) {
-                setSearchHistory(JSON.parse(history));
+                const parsed = JSON.parse(history);
+                // Defensive parse: check if it's the old array of strings format
+                if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+                    // Stale data, discard to prevent crashes
+                    await AsyncStorage.removeItem('search_history');
+                    setSearchHistory([]);
+                } else if (Array.isArray(parsed)) {
+                    setSearchHistory(parsed as SearchHistoryItem[]);
+                }
             }
         } catch (error) {
             console.error('Failed to load search history', error);
@@ -44,8 +58,20 @@ export default function SearchPage() {
     const addToSearchHistory = async (query: string) => {
         if (!query.trim()) return;
         try {
-            let newHistory = [query, ...searchHistory.filter(h => h !== query)];
-            newHistory = newHistory.slice(0, 20);
+            let newHistory = [...searchHistory];
+            const existingIndex = newHistory.findIndex(h => h.term === query);
+            
+            if (existingIndex >= 0) {
+                newHistory[existingIndex].count += 1;
+                newHistory[existingIndex].lastSearched = Date.now();
+            } else {
+                newHistory.push({ term: query, count: 1, lastSearched: Date.now() });
+            }
+            
+            // Sort by most recently searched, limit to 50
+            newHistory.sort((a, b) => b.lastSearched - a.lastSearched);
+            newHistory = newHistory.slice(0, 50);
+            
             setSearchHistory(newHistory);
             await AsyncStorage.setItem('search_history', JSON.stringify(newHistory));
         } catch (error) {
@@ -57,7 +83,7 @@ export default function SearchPage() {
         e?.preventDefault?.();
         e?.stopPropagation?.();
         try {
-            const newHistory = searchHistory.filter(h => h !== query);
+            const newHistory = searchHistory.filter(h => h.term !== query);
             setSearchHistory(newHistory);
             await AsyncStorage.setItem('search_history', JSON.stringify(newHistory));
         } catch (error) {
@@ -118,20 +144,20 @@ export default function SearchPage() {
                 {!searchQuery && searchHistory.length > 0 && (
                     <View style={{ marginBottom: 30 }}>
                         <Text style={styles.sectionTitle}>Recent Searches</Text>
-                        {searchHistory.slice(0, historyLimit).map((term, index) => (
+                        {searchHistory.slice(0, historyLimit).map((item, index) => (
                             <View key={index} style={styles.historyItem}>
                                 <Pressable
                                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}
                                     onPress={() => {
-                                        setSearchQuery(term);
-                                        handleSearch(term);
-                                        submitSearch(term);
+                                        setSearchQuery(item.term);
+                                        handleSearch(item.term);
+                                        submitSearch(item.term);
                                     }}
                                 >
                                     <History size={16} color={theme.colors.textLight} />
-                                    <Text style={{ fontSize: 14, color: theme.colors.text }}>{term}</Text>
+                                    <Text style={{ fontSize: 14, color: theme.colors.text }}>{item.term}</Text>
                                 </Pressable>
-                                <Pressable onPress={(e) => removeFromHistory(e, term)} style={{ padding: 5 }}>
+                                <Pressable onPress={(e) => removeFromHistory(e, item.term)} style={{ padding: 5 }}>
                                     <X size={16} color={theme.colors.border} />
                                 </Pressable>
                             </View>

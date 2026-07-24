@@ -11,7 +11,7 @@ export default function NewArrivalsSection() {
 
   const isMobile = width < 768;
   const numColumns = isMobile ? 1 : 3;
-  const gap = theme.spacing.lg;
+  const gap = theme.spacing.md;
 
   // Calculate exact width to avoid calc() which is invalid in React Native ViewStyle
   const containerWidth = Math.min(width, 1200);

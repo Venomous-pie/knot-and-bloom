@@ -1,4 +1,4 @@
-import { categoryTitles } from "@/constants/categories";
+import { categoryTitles, CATEGORY_REGISTRY } from "@/constants/categories";
 import { useProducts } from "@/hooks/useProducts";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronDown, SlidersHorizontal, Check, X } from "lucide-react-native";
@@ -64,8 +64,74 @@ export default function ProductCategoryPage() {
     const [showAllTags, setShowAllTags] = useState(false);
     const MAX_TAGS = 6;
 
+    const filterParams = useMemo(() => {
+        const params: any = { sort: sortBy, limit: 20 };
+
+        let hasNewArrivalFilter = false;
+        let hasPopularFilter = false;
+
+        const dbCategories = selectedCategories.filter(cat => {
+            if (cat === 'New Arrivals') {
+                hasNewArrivalFilter = true;
+                return false;
+            }
+            if (cat === 'Popular') {
+                hasPopularFilter = true;
+                return false;
+            }
+            return true;
+        });
+
+        if (category === 'new-arrival' || hasNewArrivalFilter) {
+            params.newArrival = true;
+        } 
+        // If popular is selected in filters or it's the popular page, override sort to bestselling
+        if (category === 'popular' || hasPopularFilter) {
+            params.sort = 'bestselling';
+        }
+
+        if (dbCategories.length > 0) {
+            // Expand selected categories to include both Title and Slug variants to catch all matching DB entries
+            const expandedCats = dbCategories.flatMap(cat => {
+                const slug = Object.entries(categoryTitles).find(([s, t]) => t === cat)?.[0] || cat.toLowerCase().replace(/[\s\/]+/g, '-');
+                return [cat, slug];
+            });
+            // Deduplicate the expanded array
+            params.categories = Array.from(new Set(expandedCats)).join(',');
+        } else if (category && category !== 'new-arrival' && category !== 'popular' && category !== 'all-products') {
+            const matchedTitle = categoryTitles[category as string];
+            if (matchedTitle) {
+                params.categories = [matchedTitle, category].join(',');
+            } else {
+                params.categories = category;
+            }
+        }
+
+        if (debouncedPriceRange.min) params.minPrice = Number(debouncedPriceRange.min);
+        if (debouncedPriceRange.max) params.maxPrice = Number(debouncedPriceRange.max);
+        if (selectedTags.length > 0) params.tags = selectedTags.join(',');
+
+        return params;
+    }, [category, sortBy, debouncedPriceRange, selectedCategories, selectedTags]);
+
+    const { products, loading, total, loadMore, refresh } = useProducts(filterParams);
+
+    const categoryTitle = useMemo(() => {
+        if (category === 'new-arrival') return 'New Arrivals';
+        if (category === 'all-products') return 'All Products';
+        if (category === 'popular') return 'Popular';
+        return categoryTitles[category as string] || category;
+    }, [category]);
+
     useEffect(() => {
         const fetchCategories = async () => {
+            const sortCategories = (cats: string[]) => {
+                // Remove the special ones if they somehow got in here, then sort alphabetically
+                const filtered = cats.filter(c => c !== 'New Arrivals' && c !== 'Popular');
+                filtered.sort((a, b) => a.localeCompare(b));
+                return ['New Arrivals', 'Popular', ...filtered];
+            };
+
             try {
                 const response = await productAPI.getCategoryCounts();
                 if (response.data?.success && response.data?.counts) {
@@ -97,60 +163,19 @@ export default function ProductCategoryPage() {
                         }
                     });
 
-                    setAvailableCategories(Array.from(uniqueCatsMap.values()).sort());
+                    setAvailableCategories(sortCategories(Array.from(uniqueCatsMap.values())));
                 } else {
-                    setAvailableCategories(Object.values(categoryTitles).sort());
+                    setAvailableCategories(sortCategories(Object.values(categoryTitles)));
                 }
             } catch (err) {
                 console.error("Failed to fetch categories:", err);
-                setAvailableCategories(Object.values(categoryTitles).sort());
+                setAvailableCategories(sortCategories(Object.values(categoryTitles)));
             }
         };
         fetchCategories();
     }, []);
 
-    // Determine filter parameters based on category slug
-    const filterParams = useMemo(() => {
-        const params: any = { sort: sortBy, limit: 20 };
 
-        if (category === 'new-arrival') {
-            params.newArrival = true;
-        } else if (category === 'popular') {
-            params.sort = 'bestselling';
-        }
-
-        if (selectedCategories.length > 0) {
-            // Expand selected categories to include both Title and Slug variants to catch all matching DB entries
-            const expandedCats = selectedCategories.flatMap(cat => {
-                const slug = Object.entries(categoryTitles).find(([s, t]) => t === cat)?.[0] || cat.toLowerCase().replace(/[\s\/]+/g, '-');
-                return [cat, slug];
-            });
-            // Deduplicate the expanded array
-            params.categories = Array.from(new Set(expandedCats)).join(',');
-        } else if (category && category !== 'new-arrival' && category !== 'popular' && category !== 'all-products') {
-            const matchedTitle = categoryTitles[category as string];
-            if (matchedTitle) {
-                params.categories = [matchedTitle, category].join(',');
-            } else {
-                params.categories = category;
-            }
-        }
-
-        if (debouncedPriceRange.min) params.minPrice = Number(debouncedPriceRange.min);
-        if (debouncedPriceRange.max) params.maxPrice = Number(debouncedPriceRange.max);
-        if (selectedTags.length > 0) params.tags = selectedTags.join(',');
-
-        return params;
-    }, [category, sortBy, debouncedPriceRange, selectedCategories, selectedTags]);
-
-    const { products, loading, total, loadMore, refresh } = useProducts(filterParams);
-
-    const categoryTitle = useMemo(() => {
-        if (category === 'new-arrival') return 'New Arrivals';
-        if (category === 'all-products') return 'All Products';
-        if (category === 'popular') return 'Popular';
-        return categoryTitles[category as string] || category;
-    }, [category]);
 
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;

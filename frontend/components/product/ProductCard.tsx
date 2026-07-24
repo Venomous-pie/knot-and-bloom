@@ -303,6 +303,37 @@ export default function ProductCard({
                         </View>
                     )}
 
+                    {/* Low Stock Warning — image footer 40% width */}
+                    {isAvailable && totalStock < 10 && (
+                        <View style={{ 
+                            position: 'absolute', 
+                            bottom: 0, 
+                            left: 0, 
+                            width: '45%', // Slightly wider to ensure it looks balanced 
+                            backgroundColor: 'rgba(217, 119, 6, 0.95)', // Strong solid amber/orange 
+                            paddingVertical: s.padding * 0.6, 
+                            borderTopRightRadius: 8,
+                            flexDirection: 'row', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            gap: s.gapSm,
+                            shadowColor: "#000",
+                            shadowOffset: { width: 0, height: -2 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 4,
+                            elevation: 3,
+                        }}>
+                            <Clock size={s.ratingFont * 1.1} color="white" />
+                            <Text 
+                                style={{ fontSize: s.ratingFont, color: "white", fontWeight: '700' }} 
+                                numberOfLines={1}
+                                adjustsFontSizeToFit
+                            >
+                                {totalStock} left!
+                            </Text>
+                        </View>
+                    )}
+
                     {/* Pin Button */}
                     {onPinPress && (
                         <Pressable
@@ -441,20 +472,7 @@ export default function ProductCard({
                         </Text>
                     </View>
 
-                    {/* Row 5: Low Stock Warning */}
-                    {isAvailable && totalStock < 10 ? (
-                        <View style={{ 
-                            backgroundColor: '#FFFBEB', paddingVertical: s.padding * 0.5, paddingHorizontal: s.padding * 0.8, 
-                            borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: s.gapSm, alignSelf: 'flex-start' 
-                        }}>
-                            <Clock size={s.ratingFont * 1.1} color="#D97706" />
-                            <Text style={{ fontSize: s.ratingFont, color: "#D97706", fontWeight: '600' }}>
-                                Only {totalStock} left in stock!
-                            </Text>
-                        </View>
-                    ) : null}
-
-                    {/* Row 6: Price */}
+                    {/* Row 5: Price */}
                     <View style={{ flexDirection: "row", alignItems: "baseline", gap: s.gap }}>
                         <Text style={{ fontSize: s.priceFont, fontWeight: "700", color: theme.colors.primary }}>
                             ₱{finalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

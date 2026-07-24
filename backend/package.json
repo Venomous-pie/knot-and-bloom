@@ -22,7 +22,6 @@
   "devDependencies": {
     "@jest/globals": "30.2.0",
     "@types/jest": "30.0.0",
-    "@types/nodemailer": "^8.0.1",
     "jest": "30.2.0",
     "nodemon": "3.1.11",
     "ts-jest": "29.4.6",
@@ -30,6 +29,7 @@
     "tsx": "4.21.0"
   },
   "dependencies": {
+    "@types/nodemailer": "^8.0.1",
     "@google/generative-ai": "^0.24.1",
     "@prisma/adapter-pg": "7.1.0",
     "@prisma/client": "7.1.0",

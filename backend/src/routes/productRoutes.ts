@@ -1,5 +1,5 @@
 import Router from 'express';
-import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts, getRecommendedProducts } from '../controllers/ProductController.js';
+import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts, getRecommendedProducts, getSimilarProducts } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../error/errorHandler.js';
 import { generateProductDescription, generateProductSKU, generateVariantSKU, generateOptionValues } from '../services/GenerateService.js';
 import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
@@ -353,6 +353,23 @@ router.get('/recommendations', extractUserOptional, async (req: any, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch recommendations',
+        });
+    }
+});
+
+router.get('/:id/similar', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const products = await getSimilarProducts(id);
+        return res.status(200).json({
+            success: true,
+            products
+        });
+    } catch (error) {
+        console.error('Similar products error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch similar products',
         });
     }
 });

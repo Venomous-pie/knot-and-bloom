@@ -876,7 +876,7 @@ export const deleteProduct = async (productId: string, user?: AuthPayload) => {
     cache.deletePattern('product:');
     return result;
 }; 
-import { SearchDataSchema, calculateRelevanceScore } from '../utils/recommendationEngine.js';
+import { SearchDataSchema, calculateRelevanceScore, calculateSimilarityScore } from '../utils/recommendationEngine.js';
 
 export const getRecommendedProducts = async (userId?: number, searchDataStr?: string) => {
     // 1. Validate search data
@@ -1017,4 +1017,131 @@ export const getRecommendedProducts = async (userId?: number, searchDataStr?: st
     await cache.set(cacheKey, finalRecommendations, 900);
 
     return finalRecommendations;
+};
+
+export const getSimilarProducts = async (productId: string) => {
+    const parsedId = parseInt(productId);
+    if (isNaN(parsedId)) {
+        throw new ErrorHandler.ValidationError([{ message: "Invalid product ID", path: ['productId'] }]);
+    }
+
+    const cacheKey = `product:similar:${parsedId}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) return cached;
+
+    // 1. Fetch target product
+    const targetProduct = await prisma.product.findUnique({
+        where: { uid: parsedId }
+    });
+
+    if (!targetProduct || targetProduct.deletedAt || targetProduct.status !== ProductStatus.ACTIVE) {
+        // If product is gone or inactive, return empty array gracefully (or could throw 404)
+        return [];
+    }
+
+    // 2. Pre-filter candidates from DB (Performance optimization)
+    // Find products that share at least one category or tag with the target product
+    const targetCategories = targetProduct.categories || [];
+    const targetTags = targetProduct.tags || [];
+
+    const candidates = await prisma.product.findMany({
+        where: {
+            status: ProductStatus.ACTIVE,
+            deletedAt: null,
+            uid: { not: parsedId },
+            OR: [
+                targetCategories.length > 0 ? { categories: { hasSome: targetCategories } } : {},
+                targetTags.length > 0 ? { tags: { hasSome: targetTags } } : {},
+            ]
+        },
+        select: {
+            uid: true,
+            name: true,
+            categories: true,
+            tags: true,
+            description: true,
+            basePrice: true,
+            discountedPrice: true,
+            discountPercentage: true,
+            image: true,
+            images: true,
+            soldCount: true,
+            uploaded: true,
+            isBundle: true,
+            bundleQuantity: true,
+            variants: true
+        }
+    });
+
+    // 3. Filter in-stock candidates
+    const inStockCandidates = candidates.filter((p: any) => {
+        const hasStock = !p.variants || p.variants.length === 0 || p.variants.some((v: any) => v.stock > 0 && v.isEnabled);
+        return hasStock;
+    });
+
+    // 4. Score and filter candidates (Min threshold: 5 points)
+    const MIN_SCORE = 5;
+    let scoredCandidates = inStockCandidates.map(candidate => {
+        const score = calculateSimilarityScore(
+            {
+                uid: targetProduct.uid,
+                categories: targetProduct.categories,
+                tags: targetProduct.tags,
+                name: targetProduct.name,
+                description: targetProduct.description
+            },
+            {
+                uid: candidate.uid,
+                categories: candidate.categories,
+                tags: candidate.tags,
+                name: candidate.name,
+                description: candidate.description
+            }
+        );
+        return { product: candidate, score };
+    });
+
+    let similarProducts = scoredCandidates
+        .filter(c => c.score >= MIN_SCORE)
+        .sort((a, b) => b.score - a.score)
+        .map(c => c.product);
+
+    // 5. Fallback Padding
+    // If we have fewer than 10 similar products, pad with same-category bestsellers
+    if (similarProducts.length < 10 && targetCategories.length > 0) {
+        const needed = 10 - similarProducts.length;
+        const existingIds = new Set([parsedId, ...similarProducts.map(p => p.uid)]);
+        
+        const fallbackPadding = await prisma.product.findMany({
+            where: {
+                status: ProductStatus.ACTIVE,
+                deletedAt: null,
+                uid: { notIn: Array.from(existingIds) },
+                categories: { hasSome: targetCategories }
+            },
+            select: {
+                uid: true, name: true, categories: true, tags: true, description: true,
+                basePrice: true, discountedPrice: true, discountPercentage: true,
+                image: true, images: true, soldCount: true, uploaded: true,
+                isBundle: true, bundleQuantity: true, variants: true
+            },
+            orderBy: { soldCount: 'desc' },
+            take: needed
+        });
+
+        // Filter out-of-stock from fallback
+        const inStockFallback = fallbackPadding.filter((p: any) => {
+            return !p.variants || p.variants.length === 0 || p.variants.some((v: any) => v.stock > 0 && v.isEnabled);
+        });
+
+        similarProducts = [...similarProducts, ...inStockFallback];
+    }
+
+    // Limit to top 10
+    const finalSimilar = similarProducts.slice(0, 10);
+
+    // Cache (15 min TTL)
+    await cache.set(cacheKey, finalSimilar, 900);
+
+    return finalSimilar;
 };

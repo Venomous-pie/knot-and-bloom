@@ -172,6 +172,9 @@ export const productAPI = {
     getProductById: (id: string) =>
         apiClient.get<{ success: boolean; product: Product }>(`/products/${id}`),
 
+    getSimilarProducts: (id: string | number) =>
+        apiClient.get<{ success: boolean; products: Product[] }>(`/products/${id}/similar`),
+
     updateProduct: (id: string, data: any) =>
         apiClient.put<Product>(`/products/${id}`, data),
 

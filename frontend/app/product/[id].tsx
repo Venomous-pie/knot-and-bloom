@@ -27,6 +27,7 @@ import { User } from "@/types/user";
 import MakerCard from "@/components/product/MakerCard";
 import Footer from "@/components/home/Footer";
 import ProductPageSkeleton from "@/components/product/ProductPageSkeleton";
+import ProductCardSkeleton from "@/components/product/ProductCardSkeleton";
 
 const MOCK_REVIEWS = [
     {
@@ -69,6 +70,8 @@ export default function ProductDetailPage() {
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [skuCopied, setSkuCopied] = useState(false);
     const [recommendations, setRecommendations] = useState<Product[]>([]);
+    const [loadingRecommendations, setLoadingRecommendations] = useState(true);
+    const [showAllRecommendations, setShowAllRecommendations] = useState(false);
     const [makers, setMakers] = useState<User[]>([]);
 
     const allImages = React.useMemo(() => {
@@ -145,39 +148,20 @@ export default function ProductDetailPage() {
         fetchProduct();
     }, [id]);
 
-    // --- Heuristic Recommendation Algorithm ---
-    // After the main product is loaded, fetch same-category products,
-    // filter out the current product, sort by bestselling, and cap at 10.
+    // --- Recommendation Engine ---
     useEffect(() => {
         if (!product) return;
 
         const fetchRecommendations = async () => {
             try {
-                const primaryCategory = product.categories?.[0];
-                let response = await productAPI.getProducts({
-                    category: primaryCategory,
-                    sort: 'bestselling',
-                    limit: 11, // Fetch 11 so we can filter out the current one and still have 10
-                });
-
-                let filtered = response.data.products
-                    .filter((p: any) => p.uid !== product.uid)
-                    .slice(0, 10);
-
-                if (filtered.length === 0) {
-                    response = await productAPI.getProducts({
-                        sort: 'bestselling',
-                        limit: 5,
-                    });
-                    filtered = response.data.products
-                        .filter((p: any) => p.uid !== product.uid)
-                        .slice(0, 5);
-                }
-
-                setRecommendations(filtered);
+                setLoadingRecommendations(true);
+                const response = await productAPI.getSimilarProducts(product.uid);
+                setRecommendations(response.data.products);
             } catch (e) {
-                // Silently fail — recommendations are non-critical
                 console.warn('Could not load recommendations', e);
+                setRecommendations([]);
+            } finally {
+                setLoadingRecommendations(false);
             }
         };
 
@@ -750,7 +734,7 @@ export default function ProductDetailPage() {
                     )}
 
                     {/* ================= YOU MIGHT ALSO LIKE ================= */}
-                    {recommendations.length > 0 && (
+                    {(loadingRecommendations || recommendations.length > 0) && (
                         <View>
                             <View style={styles.recommendationsHeader}>
                                 <View style={styles.recommendationsTitleRow}>
@@ -763,19 +747,38 @@ export default function ProductDetailPage() {
                                     <Text style={styles.viewAllText}>View All &gt;</Text>
                                 </Pressable>
                             </View>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.recommendationsScrollContent}
-                            >
-                                {recommendations.map((rec) => (
-                                    <ProductCard
-                                        key={rec.uid}
-                                        product={rec}
-                                        style={styles.recommendationCard}
-                                    />
-                                ))}
-                            </ScrollView>
+                            <View style={styles.recommendationsGridContent}>
+                                {loadingRecommendations ? (
+                                    <>
+                                        {[1, 2, 3].map((key) => (
+                                            <ProductCardSkeleton 
+                                                key={key} 
+                                                style={styles.recommendationCard} 
+                                            />
+                                        ))}
+                                    </>
+                                ) : (
+                                    <>
+                                        {recommendations.slice(0, showAllRecommendations ? recommendations.length : 5).map((rec) => (
+                                            <ProductCard
+                                                key={rec.uid}
+                                                product={rec}
+                                                style={styles.recommendationCard}
+                                            />
+                                        ))}
+                                    </>
+                                )}
+                            </View>
+                            {!loadingRecommendations && recommendations.length > 5 && !showAllRecommendations && (
+                                <View style={{ alignItems: 'center', marginTop: 16 }}>
+                                    <Pressable 
+                                        style={styles.seeAllButton} 
+                                        onPress={() => setShowAllRecommendations(true)}
+                                    >
+                                        <Text style={styles.seeAllText}>Load More</Text>
+                                    </Pressable>
+                                </View>
+                            )}
                         </View>
                     )}
 
@@ -813,6 +816,7 @@ export default function ProductDetailPage() {
                                     <MakerCard maker={maker} />
                                 </View>
                             ))}
+                            <View />
                         </ScrollView>
                     </View>
                 )}
@@ -888,13 +892,15 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
         fontFamily: theme.typography.fontFamily,
     },
-    recommendationsScrollContent: {
+    recommendationsGridContent: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         paddingHorizontal: 16,
         paddingBottom: 16,
-        gap: 12,
+        gap: 16,
     },
     recommendationCard: {
-        width: 220,
+        width: 211.2,
         marginBottom: 0,
     },
     seeAllButton: {
@@ -908,7 +914,7 @@ const styles = StyleSheet.create({
         fontFamily: theme.typography.fontFamily,
     },
     recommendationsContent: {
-        paddingHorizontal: 16,
+        paddingLeft: 16,
         paddingBottom: 16,
         gap: 16,
     },

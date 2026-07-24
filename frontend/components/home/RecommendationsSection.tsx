@@ -14,10 +14,11 @@ export default function RecommendationsSection() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const router = useRouter();
 
   const isMobile = width < 768;
-  const itemWidth = isMobile ? 160 : 220;
+  const itemWidth = isMobile ? 160 : 217.6;
 
   const fetchRecommendations = useCallback(async () => {
     try {
@@ -71,11 +72,7 @@ export default function RecommendationsSection() {
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>RECOMMENDED FOR YOU</Text>
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
-      >
+      <View style={styles.gridContainer}>
         {loading ? (
           <>
             {[1, 2, 3, 4, 5].map((key) => (
@@ -84,12 +81,14 @@ export default function RecommendationsSection() {
                 style={{ width: itemWidth }}
               />
             ))}
-            <View style={{ width: theme.spacing.lg - theme.spacing.md }} />
           </>
         ) : (
           <>
-            {products.map((product) => (
-              <View key={product.uid} style={{ width: itemWidth }}>
+            {products.slice(0, showAll ? products.length : 5).map((product) => (
+              <View 
+                key={product.uid} 
+                style={{ width: itemWidth }}
+              >
                   <Pressable onPress={() => handleProductPress(product)}>
                       <View pointerEvents="none">
                           <ProductCard product={product} />
@@ -97,10 +96,16 @@ export default function RecommendationsSection() {
                   </Pressable>
               </View>
             ))}
-            <View style={{ width: theme.spacing.lg - theme.spacing.md }} />
           </>
         )}
-      </ScrollView>
+      </View>
+      {!loading && products.length > 5 && !showAll && (
+          <View style={styles.loadMoreContainer}>
+              <Pressable style={styles.loadMoreButton} onPress={() => setShowAll(true)}>
+                  <Text style={styles.loadMoreText}>Load More</Text>
+              </Pressable>
+          </View>
+      )}
     </View>
   );
 }
@@ -118,9 +123,27 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     paddingLeft: theme.spacing.lg,
   },
-  scrollContainer: {
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: theme.spacing.md,
-    paddingLeft: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
+  },
+  loadMoreContainer: {
+    alignItems: 'center',
+    paddingBottom: theme.spacing.lg,
+  },
+  loadMoreButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  loadMoreText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+    fontSize: theme.typography.sizes.sm,
   }
 });

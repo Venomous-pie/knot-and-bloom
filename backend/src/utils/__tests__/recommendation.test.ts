@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
-import { calculateRelevanceScore, ProductRelevanceInput, ValidatedSearchData } from '../recommendationEngine';
+import { calculateRelevanceScore, calculateSimilarityScore } from '../recommendationEngine.js';
+import type { ProductRelevanceInput, ValidatedSearchData } from '../recommendationEngine.js';
 
 describe('Recommendation Engine Scoring', () => {
     const baseProduct: ProductRelevanceInput = {
@@ -50,5 +51,76 @@ describe('Recommendation Engine Scoring', () => {
         
         // ageDays < 1 -> 1.5 multiplier
         expect(recentSearch).toBe(singleSearch * 1.5);
+    });
+});
+
+describe('Recommendation Engine - Item Similarity Scoring', () => {
+    const targetProduct: ProductRelevanceInput = {
+        uid: 1,
+        categories: ['Jewelry', 'Accessories'],
+        tags: ['gold', 'handmade', 'vintage'],
+        name: 'Vintage Gold Necklace',
+        description: ''
+    };
+
+    it('scores 10 pts for each shared category', () => {
+        const candidate = {
+            uid: 2,
+            categories: ['Jewelry'],
+            tags: [],
+            name: 'Generic Item',
+            description: ''
+        };
+        // shared: 'Jewelry' (1) -> 10 pts
+        // words: no match
+        expect(calculateSimilarityScore(targetProduct, candidate)).toBe(10);
+    });
+
+    it('scores 5 pts for each shared tag', () => {
+        const candidate = {
+            uid: 2,
+            categories: ['Other'],
+            tags: ['handmade', 'vintage'],
+            name: 'Generic Item',
+            description: ''
+        };
+        // shared tags: 'handmade', 'vintage' (2) -> 10 pts
+        expect(calculateSimilarityScore(targetProduct, candidate)).toBe(10);
+    });
+
+    it('scores 2 pts for each shared title keyword (normalized and stop words ignored)', () => {
+        const candidate = {
+            uid: 2,
+            categories: [],
+            tags: [],
+            name: 'The Gold Necklaces', // Tests stop words ('the') and plural ('necklaces')
+            description: ''
+        };
+        // 'The' is stop word. 'Gold' matches 'gold'. 'Necklaces' -> 'necklace' matches 'necklace'.
+        // 2 shared keywords -> 4 pts.
+        expect(calculateSimilarityScore(targetProduct, candidate)).toBe(4);
+    });
+
+    it('combines scores correctly', () => {
+        const candidate = {
+            uid: 2,
+            categories: ['Jewelry'], // 10
+            tags: ['gold'], // 5
+            name: 'Gold Ring', // 2 ('gold')
+            description: ''
+        };
+        expect(calculateSimilarityScore(targetProduct, candidate)).toBe(17);
+    });
+
+    it('handles products with no categories or tags safely without crashing', () => {
+        const candidate = {
+            uid: 2,
+            categories: [] as any,
+            tags: undefined as any,
+            name: 'Mystery Item',
+            description: ''
+        };
+        // Should not crash, and score should be 0
+        expect(calculateSimilarityScore(targetProduct, candidate)).toBe(0);
     });
 });

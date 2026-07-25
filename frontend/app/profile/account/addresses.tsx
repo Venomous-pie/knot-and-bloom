@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPinOff, Plus } from 'lucide-react-native';
 import AddressForm from '@/components/checkout/AddressForm';
-import { AddressMapPicker } from '@/components/checkout/AddressMapPicker';
+import { AddressMapPicker, MapAddressResult } from '@/components/checkout/AddressMapPicker';
 import { theme } from '@/constants/theme';
 
 export default function AddressesPage() {
@@ -142,13 +142,15 @@ export default function AddressesPage() {
         }
     };
 
-    const handleMapLocationSelect = (data: any) => {
+    const handleMapLocationSelect = (data: MapAddressResult) => {
         setEditingAddress(prev => ({
             ...(prev || {}),
             streetAddress: data.street || data.fullAddress,
+            barangay: data.barangay || (prev as any)?.barangay || '',
             city: data.city,
-            stateProvince: data.state,
-            province: data.state,
+            stateProvince: data.province,
+            province: data.province,
+            region: data.region,
             postalCode: data.zipCode,
             country: data.country || 'Philippines',
         }));
@@ -204,7 +206,7 @@ export default function AddressesPage() {
 
             <Modal visible={showModal} animationType="fade" transparent>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop]}>
+                    <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop, viewMode === 'map' && styles.modalContentMap]}>
                         {viewMode === 'form' ? (
                                 <View style={{ flex: 1, paddingHorizontal: 0 }}>
                                     <AddressForm
@@ -242,12 +244,10 @@ export default function AddressesPage() {
                                 </View>
                         ) : (
                             /* Map View */
-                            <View style={{ flex: 1 }}>
-                                <AddressMapPicker
-                                    onClose={() => setViewMode('form')}
-                                    onLocationSelect={handleMapLocationSelect}
-                                />
-                            </View>
+                            <AddressMapPicker
+                                onClose={() => setViewMode('form')}
+                                onLocationSelect={handleMapLocationSelect}
+                            />
                         )}
                     </View>
                 </View>
@@ -358,7 +358,19 @@ const styles = StyleSheet.create({
         ...theme.shadows.lg,
     },
     modalContentDesktop: {
-        width: 600,
+        width: 700,
+    },
+    modalContentMap: {
+        maxWidth: 900,
+        width: '100%',
+        maxHeight: '95%',
+        height: '95%',
+        padding: 0,
+        paddingHorizontal: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
+        borderRadius: 20,
+        overflow: 'hidden',
     },
     modalHeader: {
         flexDirection: 'row',
@@ -370,6 +382,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 'bold',
         color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily
     },
     modalClose: {
         fontSize: 24,

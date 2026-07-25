@@ -1,158 +1,295 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator, Text, Pressable, Platform, Alert } from 'react-native';
-import MapView, { Marker, Region, PROVIDER_GOOGLE, PROVIDER_DEFAULT } from 'react-native-maps';
+import {
+    View,
+    StyleSheet,
+    ActivityIndicator,
+    Text,
+    Pressable,
+    Alert,
+    Animated,
+} from 'react-native';
+import MapView, { Marker, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { theme } from '@/constants/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { MapPin, Navigation, X, Check } from 'lucide-react-native';
+
+// Philippines center (Manila)
+const MANILA: Region = {
+    latitude: 14.5995,
+    longitude: 120.9842,
+    latitudeDelta: 0.08,
+    longitudeDelta: 0.08,
+};
+
+export interface MapAddressResult {
+    fullAddress: string;
+    street: string;
+    barangay: string;
+    city: string;
+    province: string;
+    region: string;
+    zipCode: string;
+    country: string;
+    lat: number;
+    lng: number;
+}
 
 interface AddressMapPickerProps {
-    onLocationSelect: (address: any) => void;
+    onLocationSelect: (address: MapAddressResult) => void;
     onClose: () => void;
     initialLocation?: { lat: number; lng: number };
 }
 
-export const AddressMapPicker: React.FC<AddressMapPickerProps> = ({ onLocationSelect, onClose, initialLocation }) => {
+/** Parse a Nominatim reverse-geocode response into PH address fields */
+function parseNominatimPH(data: any, lat: number, lon: number): MapAddressResult {
+    const a = data.address || {};
+
+    // Street: prefer road, then pedestrian, then path
+    const houseNum = a.house_number ? `${a.house_number} ` : '';
+    const road = a.road || a.pedestrian || a.path || a.cycleway || '';
+    const street = road ? `${houseNum}${road}` : data.display_name?.split(',')[0] || '';
+
+    // Barangay: suburb, village, neighbourhood, quarter
+    const barangay = a.suburb || a.village || a.neighbourhood || a.quarter || '';
+
+    // City / municipality
+    const city =
+        a.city ||
+        a.town ||
+        a.municipality ||
+        a.city_district ||
+        a.county ||
+        '';
+
+    // Province / state
+    const province = a.state || a.province || '';
+
+    // Region (PH Nominatim sometimes puts region in state; fallback to country)
+    const region = a.region || a.state || '';
+
+    const zipCode = a.postcode || '';
+    const country = a.country || 'Philippines';
+
+    return {
+        fullAddress: data.display_name || '',
+        street,
+        barangay,
+        city,
+        province,
+        region,
+        zipCode,
+        country,
+        lat,
+        lng: lon,
+    };
+}
+
+export const AddressMapPicker: React.FC<AddressMapPickerProps> = ({
+    onLocationSelect,
+    onClose,
+    initialLocation,
+}) => {
     const mapRef = useRef<MapView>(null);
-    const [region, setRegion] = useState<Region>({
-        latitude: initialLocation?.lat || 37.78825,
-        longitude: initialLocation?.lng || -122.4324,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-    });
+
+    const [pin, setPin] = useState<{ latitude: number; longitude: number } | null>(
+        initialLocation
+            ? { latitude: initialLocation.lat, longitude: initialLocation.lng }
+            : null
+    );
+
+    const [addressPreview, setAddressPreview] = useState<MapAddressResult | null>(null);
     const [loading, setLoading] = useState(false);
-    const [address, setAddress] = useState<string>('');
+    const [geocoding, setGeocoding] = useState(false);
+    const [locating, setLocating] = useState(false);
+
+    // Pulse animation for the pin
+    const pulseAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
-        (async () => {
-            if (!initialLocation) {
-                let { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== 'granted') {
-                    Alert.alert('Permission to access location was denied');
-                    return;
-                }
+        if (pin) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+                    Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true }),
+                ])
+            ).start();
+            geocodePin(pin.latitude, pin.longitude);
+        }
+    }, [pin]);
 
-                let location = await Location.getCurrentPositionAsync({});
-                setRegion({
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                    latitudeDelta: 0.005,
-                    longitudeDelta: 0.005,
-                });
+    // On mount, try to get device location; fall back to Manila
+    useEffect(() => {
+        if (initialLocation) {
+            setPin({ latitude: initialLocation.lat, longitude: initialLocation.lng });
+            return;
+        }
+        (async () => {
+            setLocating(true);
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status === 'granted') {
+                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    const newPin = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+                    setPin(newPin);
+                    mapRef.current?.animateToRegion({
+                        ...newPin,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                    }, 800);
+                }
+            } catch {
+                // Permission denied or unavailable — stay at Manila default
+            } finally {
+                setLocating(false);
             }
         })();
-    }, [initialLocation]);
+    }, []);
 
-    const fetchAddress = async (lat: number, lon: number) => {
-        setLoading(true);
+    const geocodePin = async (lat: number, lon: number) => {
+        setGeocoding(true);
         try {
-            // Using OpenStreetMap Nominatim API
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
-                {
-                    headers: {
-                        'User-Agent': 'KnotAndBloomApp/1.0',
-                    },
-                }
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
+                { headers: { 'User-Agent': 'KnotAndBloomApp/1.0 (knotandbloom.ph)' } }
             );
-            const data = await response.json();
+            const data = await res.json();
             if (data && data.address) {
-                setAddress(data.display_name);
-
-                // Parse address components for the form
-                const addressComponents = {
-                    fullAddress: data.display_name,
-                    street: data.address.road || data.address.pedestrian || '',
-                    city: data.address.city || data.address.town || data.address.village || '',
-                    state: data.address.state || '',
-                    zipCode: data.address.postcode || '',
-                    country: data.address.country || '',
-                    lat: lat,
-                    lng: lon
-                };
-                // Store the parsed data to be sent on confirm
-                return addressComponents;
+                setAddressPreview(parseNominatimPH(data, lat, lon));
             }
-        } catch (error) {
-            console.error('Error fetching address:', error);
+        } catch {
+            setAddressPreview(null);
         } finally {
-            setLoading(false);
+            setGeocoding(false);
         }
-        return null;
     };
 
-    const [selectedLocationData, setSelectedLocationData] = useState<any>(null);
+    const handleMapPress = (e: any) => {
+        const { latitude, longitude } = e.nativeEvent.coordinate;
+        setPin({ latitude, longitude });
+    };
 
-    const onRegionChangeComplete = async (newRegion: Region) => {
-        setRegion(newRegion);
-        const data = await fetchAddress(newRegion.latitude, newRegion.longitude);
-        setSelectedLocationData(data);
+    const handleMyLocation = async () => {
+        setLocating(true);
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission denied', 'Allow location access in Settings to use this feature.');
+                return;
+            }
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const newPin = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+            setPin(newPin);
+            mapRef.current?.animateToRegion(
+                { ...newPin, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+                800
+            );
+        } catch {
+            Alert.alert('Error', 'Could not get your location. Please try again.');
+        } finally {
+            setLocating(false);
+        }
     };
 
     const handleConfirm = () => {
-        if (selectedLocationData) {
-            onLocationSelect(selectedLocationData);
+        if (addressPreview) {
+            onLocationSelect(addressPreview);
             onClose();
-        } else {
-            // Fallback if user clicked too fast, try fetching current center
-            fetchAddress(region.latitude, region.longitude).then((data) => {
-                if (data) {
-                    onLocationSelect(data);
-                    onClose();
-                }
-            });
         }
     };
 
     return (
         <View style={styles.container}>
+            {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Pick Location</Text>
-                <Pressable onPress={onClose} style={styles.closeButton}>
-                    <Ionicons name="close" size={24} color={theme.colors.text} />
+                <View style={styles.headerLeft}>
+                    <MapPin size={20} color={theme.colors.primary} />
+                    <Text style={styles.headerTitle}>Drop a Pin</Text>
+                </View>
+                <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={12}>
+                    <X size={22} color={theme.colors.text} />
                 </Pressable>
             </View>
 
+            <Text style={styles.hint}>Tap anywhere on the map to place your pin</Text>
+
+            {/* Map */}
             <View style={styles.mapContainer}>
-                {Platform.OS === 'web' ? (
-                    <View style={styles.webFallback}>
-                        <Text>Map is currently optimized for mobile. On web, please enter address manually.</Text>
-                    </View>
-                ) : (
-                    <MapView
-                        ref={mapRef}
-                        style={styles.map}
-                        provider={PROVIDER_DEFAULT}
-                        initialRegion={region}
-                        region={region}
-                        onRegionChangeComplete={onRegionChangeComplete}
-                    />
-                )}
+                <MapView
+                    ref={mapRef}
+                    style={StyleSheet.absoluteFillObject}
+                    provider={PROVIDER_DEFAULT}
+                    initialRegion={
+                        initialLocation
+                            ? {
+                                latitude: initialLocation.lat,
+                                longitude: initialLocation.lng,
+                                latitudeDelta: 0.01,
+                                longitudeDelta: 0.01,
+                              }
+                            : MANILA
+                    }
+                    onPress={handleMapPress}
+                    showsUserLocation
+                    showsMyLocationButton={false}
+                >
+                    {pin && (
+                        <Marker coordinate={pin} anchor={{ x: 0.5, y: 1 }}>
+                            <Animated.View style={[styles.markerContainer, { transform: [{ scale: pulseAnim }] }]}>
+                                <View style={styles.markerBubble}>
+                                    <MapPin size={18} color="#fff" fill="#fff" />
+                                </View>
+                                <View style={styles.markerTail} />
+                            </Animated.View>
+                        </Marker>
+                    )}
+                </MapView>
 
-                {/* Center Marker Overlay */}
-                {Platform.OS !== 'web' && (
-                    <View style={styles.markerFixed}>
-                        <Ionicons name="location-sharp" size={40} color={theme.colors.primary} style={{ marginBottom: 40 }} />
-                    </View>
-                )}
-            </View>
-
-            <View style={styles.footer}>
-                <View style={styles.addressContainer}>
-                    <Text style={styles.addressLabel}>Selected Address:</Text>
-                    {loading ? (
+                {/* My Location Button */}
+                <Pressable style={styles.myLocationBtn} onPress={handleMyLocation}>
+                    {locating ? (
                         <ActivityIndicator size="small" color={theme.colors.primary} />
                     ) : (
-                        <Text style={styles.addressText} numberOfLines={2}>
-                            {address || 'Move map to select location'}
-                        </Text>
+                        <Navigation size={20} color={theme.colors.primary} />
                     )}
-                </View>
+                </Pressable>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+                {!pin ? (
+                    <View style={styles.emptyPin}>
+                        <MapPin size={18} color={theme.colors.textLight} />
+                        <Text style={styles.emptyPinText}>Tap the map to place your pin</Text>
+                    </View>
+                ) : geocoding ? (
+                    <View style={styles.geocodingRow}>
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                        <Text style={styles.geocodingText}>Finding address…</Text>
+                    </View>
+                ) : addressPreview ? (
+                    <View style={styles.addressPreview}>
+                        <Text style={styles.addressLabel}>Selected address</Text>
+                        <Text style={styles.addressStreet} numberOfLines={1}>
+                            {addressPreview.street || 'Unknown street'}
+                            {addressPreview.barangay ? `, ${addressPreview.barangay}` : ''}
+                        </Text>
+                        <Text style={styles.addressCity} numberOfLines={1}>
+                            {[addressPreview.city, addressPreview.province, addressPreview.zipCode]
+                                .filter(Boolean)
+                                .join(', ')}
+                        </Text>
+                    </View>
+                ) : (
+                    <Text style={styles.geocodingText}>Could not detect address</Text>
+                )}
+
                 <Pressable
-                    style={[styles.confirmButton, (!selectedLocationData && !address) && styles.disabledButton]}
+                    style={[styles.confirmBtn, (!pin || geocoding) && styles.confirmBtnDisabled]}
                     onPress={handleConfirm}
-                    disabled={!selectedLocationData && !address}
+                    disabled={!pin || geocoding}
                 >
-                    <Text style={styles.confirmButtonText}>Confirm Location</Text>
+                    <Check size={18} color="#fff" />
+                    <Text style={styles.confirmText}>Use This Location</Text>
                 </Pressable>
             </View>
         </View>
@@ -162,77 +299,167 @@ export const AddressMapPicker: React.FC<AddressMapPickerProps> = ({ onLocationSe
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.surface,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
         color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
     },
-    closeButton: {
+    closeBtn: {
         padding: 4,
+    },
+    hint: {
+        fontSize: 12,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+        textAlign: 'center',
+        paddingVertical: 8,
+        backgroundColor: theme.colors.subtle,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
     },
     mapContainer: {
         flex: 1,
         position: 'relative',
-        justifyContent: 'center',
+    },
+    markerContainer: {
         alignItems: 'center',
     },
-    map: {
-        ...StyleSheet.absoluteFillObject,
-    },
-    webFallback: {
-        flex: 1,
+    markerBubble: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: theme.colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
     },
-    markerFixed: {
+    markerTail: {
+        width: 0,
+        height: 0,
+        borderLeftWidth: 6,
+        borderRightWidth: 6,
+        borderTopWidth: 10,
+        borderLeftColor: 'transparent',
+        borderRightColor: 'transparent',
+        borderTopColor: theme.colors.primary,
+        marginTop: -1,
+    },
+    myLocationBtn: {
         position: 'absolute',
-        pointerEvents: 'none',
-        alignItems: 'center',
+        bottom: 16,
+        right: 16,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: theme.colors.surface,
         justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 4,
     },
     footer: {
-        padding: 20,
-        backgroundColor: '#fff',
+        padding: 16,
+        paddingBottom: 28,
+        backgroundColor: theme.colors.surface,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
-        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+        borderTopColor: theme.colors.border,
+        gap: 12,
     },
-    addressContainer: {
-        marginBottom: 16,
+    emptyPin: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 4,
+    },
+    emptyPinText: {
+        fontSize: 14,
+        color: theme.colors.textLight,
+        fontFamily: theme.typography.fontFamily,
+        fontStyle: 'italic',
+    },
+    geocodingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    geocodingText: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    addressPreview: {
+        gap: 2,
     },
     addressLabel: {
-        fontSize: 12,
-        color: '#666',
-        marginBottom: 4,
+        fontSize: 11,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 2,
     },
-    addressText: {
-        fontSize: 14,
+    addressStreet: {
+        fontSize: 15,
+        fontWeight: '600',
         color: theme.colors.text,
-        fontWeight: '500',
+        fontFamily: theme.typography.fontFamily,
     },
-    confirmButton: {
+    addressCity: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    confirmBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
         backgroundColor: theme.colors.primary,
         paddingVertical: 14,
-        borderRadius: 8,
-        alignItems: 'center',
+        borderRadius: 12,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    disabledButton: {
-        backgroundColor: '#ccc',
+    confirmBtnDisabled: {
+        backgroundColor: theme.colors.border,
+        shadowOpacity: 0,
+        elevation: 0,
     },
-    confirmButtonText: {
+    confirmText: {
         color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
+        fontFamily: theme.typography.fontFamily,
     },
 });
+
+export default AddressMapPicker;

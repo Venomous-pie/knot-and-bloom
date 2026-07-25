@@ -50,12 +50,16 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
 
     useEffect(() => {
         if (visible) {
-            loadRegions();
-            resetSelection();
+            if (initialValue?.region) {
+                restoreFromInitialValue();
+            } else {
+                hardReset();
+            }
         }
-    }, [visible]);
+    }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const resetSelection = () => {
+    /** Full reset with no pre-fill */
+    const hardReset = async () => {
         setCurrentStep('region');
         setSelectedRegion(null);
         setSelectedProvince(null);
@@ -65,6 +69,125 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         setCities([]);
         setBarangays([]);
         setSearchQuery('');
+        setIsLoading(true);
+        try {
+            const r = await locationAPI.getRegions();
+            setRegions(r.data);
+        } catch { /* ignore */ } finally { setIsLoading(false); }
+    };
+
+    /**
+     * Re-hydrate the picker from an initialValue that only has name strings.
+     * Chains API calls: regions → provinces → cities → barangays,
+     * matching by name, and stops at the last level that was set.
+     */
+    const restoreFromInitialValue = async () => {
+        setIsLoading(true);
+        setSelectedRegion(null);
+        setSelectedProvince(null);
+        setSelectedCity(null);
+        setSelectedBarangay(null);
+        setProvinces([]);
+        setCities([]);
+        setBarangays([]);
+        setSearchQuery('');
+
+        /**
+         * Fuzzy match: either string contains the other (case-insensitive).
+         * Handles cases where Nominatim returns "Davao Region" but the API
+         * has "REGION XI (DAVAO REGION)", or saved API names match exactly.
+         */
+        const namesMatch = (a: string, b: string) => {
+            if (!a || !b) return false;
+            const al = a.toLowerCase().trim();
+            const bl = b.toLowerCase().trim();
+            return al === bl || al.includes(bl) || bl.includes(al);
+        };
+
+        try {
+            // --- Region ---
+            const regResp = await locationAPI.getRegions();
+            const regionList: LocationOption[] = regResp.data;
+            setRegions(regionList);
+            const matchedRegion = regionList.find(r => namesMatch(r.name, initialValue?.region || ''));
+            if (!matchedRegion) { setCurrentStep('region'); return; }
+            setSelectedRegion(matchedRegion);
+
+            // --- Province ---
+            const provResp = await locationAPI.getProvinces(matchedRegion.code);
+            const provinceList: LocationOption[] = provResp.data;
+            setProvinces(provinceList);
+            let matchedProvince = provinceList.find(p => namesMatch(p.name, initialValue?.province || ''));
+
+            let matchedCity: LocationOption | undefined;
+            let matchedCityList: LocationOption[] = [];
+
+            if (!matchedProvince && initialValue?.city) {
+                // HUC fallback: city name is known but province isn't (e.g. Davao City, Cebu City).
+                // Scan every province's city list until we find the city.
+                for (const prov of provinceList) {
+                    const cResp = await locationAPI.getCities(prov.code);
+                    const cList: LocationOption[] = cResp.data;
+                    const found = cList.find(c => namesMatch(c.name, initialValue?.city || ''));
+                    if (found) {
+                        matchedProvince = prov;
+                        matchedCity = found;
+                        matchedCityList = cList;
+                        break;
+                    }
+                }
+            }
+
+            if (!matchedProvince) { setCurrentStep('province'); return; }
+            setSelectedProvince(matchedProvince);
+
+            // --- City (skip fetch if already found via HUC fallback) ---
+            if (!matchedCity) {
+                const cityResp = await locationAPI.getCities(matchedProvince.code);
+                matchedCityList = cityResp.data;
+                matchedCity = matchedCityList.find(c => namesMatch(c.name, initialValue?.city || ''));
+            }
+            setCities(matchedCityList);
+            if (!matchedCity) { setCurrentStep('city'); return; }
+            setSelectedCity(matchedCity);
+
+            // --- Barangay ---
+            const barResp = await locationAPI.getBarangays(matchedCity.code);
+            const barangayList: LocationOption[] = barResp.data;
+            setBarangays(barangayList);
+            const matchedBarangay = barangayList.find(b => namesMatch(b.name, initialValue?.barangay || ''));
+            if (matchedBarangay) setSelectedBarangay(matchedBarangay);
+            setCurrentStep('barangay');
+        } catch (err) {
+            console.error('Failed to restore location selection', err);
+            setCurrentStep('region');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /** Pressing a breadcrumb clears from that level down and jumps back */
+    const handleBreadcrumbPress = (step: Step) => {
+        setSearchQuery('');
+        if (step === 'region') {
+            setSelectedRegion(null);
+            setSelectedProvince(null);
+            setSelectedCity(null);
+            setSelectedBarangay(null);
+            setCurrentStep('region');
+        } else if (step === 'province') {
+            setSelectedProvince(null);
+            setSelectedCity(null);
+            setSelectedBarangay(null);
+            setCurrentStep('province');
+        } else if (step === 'city') {
+            setSelectedCity(null);
+            setSelectedBarangay(null);
+            setCurrentStep('city');
+        } else if (step === 'barangay') {
+            setSelectedBarangay(null);
+            setCurrentStep('barangay');
+        }
     };
 
     const loadRegions = async () => {
@@ -215,21 +338,28 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                 </Pressable>
             </View>
 
-            {/* Breadcrumbs */}
+            {/* Breadcrumbs — each is pressable to clear from that level down */}
             {breadcrumbs.length > 0 && (
                 <View style={styles.breadcrumbContainer}>
-                    <ScrollView 
+                    <ScrollView
                         ref={scrollViewRef}
-                        horizontal 
+                        horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.breadcrumbScroll}
                     >
                         {breadcrumbs.map((crumb, idx) => (
                             <React.Fragment key={crumb.step}>
                                 {idx > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textLight} style={styles.crumbIcon} />}
-                                <View style={styles.crumbBadge}>
+                                <Pressable
+                                    style={({ pressed }) => [
+                                        styles.crumbBadge,
+                                        pressed && styles.crumbBadgePressed,
+                                    ]}
+                                    onPress={() => handleBreadcrumbPress(crumb.step as Step)}
+                                >
                                     <Text style={styles.crumbText}>{crumb.label}</Text>
-                                </View>
+                                    <Text style={styles.crumbRemove}>×</Text>
+                                </Pressable>
                             </React.Fragment>
                         ))}
                     </ScrollView>
@@ -356,6 +486,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     crumbBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
         backgroundColor: '#fff',
         paddingHorizontal: 10,
         paddingVertical: 4,
@@ -363,11 +496,21 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: theme.colors.border,
     },
+    crumbBadgePressed: {
+        backgroundColor: '#FDF2F4',
+        borderColor: theme.colors.primary,
+    },
     crumbText: {
         fontSize: 13,
         color: theme.colors.text,
         fontWeight: '500',
         fontFamily: theme.typography.fontFamily,
+    },
+    crumbRemove: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        fontWeight: '700',
+        lineHeight: 16,
     },
     crumbIcon: {
         marginHorizontal: 8,

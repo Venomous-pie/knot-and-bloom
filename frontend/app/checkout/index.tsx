@@ -27,7 +27,7 @@ import { theme } from '@/constants/theme';
 
 import { CheckoutAddressSection } from '@/components/checkout/CheckoutAddressSection';
 import { CheckoutSellerGroup } from '@/components/checkout/CheckoutSellerGroup';
-import { AddressMapPicker } from '@/components/checkout/AddressMapPicker';
+import { AddressMapPicker, MapAddressResult } from '@/components/checkout/AddressMapPicker';
 import { CheckoutSessionExpiredDialog } from '@/components/checkout/CheckoutSessionExpiredDialog';
 import { CheckoutPaymentSection } from '@/components/checkout/CheckoutPaymentSection';
 import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
@@ -397,26 +397,24 @@ function CheckoutContent() {
         }
     };
 
-    const handleMapLocationSelect = (data: any) => {
-        // Map data usually comes as { fullAddress, street, city, state, zipCode, country, lat, lng }
-        // Update editingAddr or create a temporary one for the form to digest
+    const handleMapLocationSelect = (data: MapAddressResult) => {
         setEditingAddr(prev => ({
             ...(prev || {}),
-            uid: prev?.uid || Date.now(), // Temp ID if new
-            fullName: prev?.fullName || '', // Preserve or empty
+            uid: prev?.uid || Date.now(),
+            fullName: prev?.fullName || '',
             phone: prev?.phone || '',
             streetAddress: data.street || data.fullAddress,
+            barangay: data.barangay || prev?.barangay || '',
             city: data.city,
-            stateProvince: data.state,
-            province: data.state,
+            stateProvince: data.province,
+            province: data.province,
+            region: data.region,
             postalCode: data.zipCode,
             country: data.country || 'Philippines',
             isDefault: prev?.isDefault ?? false,
             createdAt: prev?.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         }));
-
-        // Go back to form
         setViewMode('address_form');
     };
 
@@ -449,6 +447,7 @@ function CheckoutContent() {
                         style={[
                             styles.modalContent,
                             isDesktop && styles.modalContentDesktop,
+                            (viewMode === 'map_picker') && styles.modalContentMap,
                             {
                                 transform: [
                                     { translateY: slideAnim },
@@ -560,12 +559,10 @@ function CheckoutContent() {
                                 </ScrollView>
                                 </>
                         ) : (
-                            <View style={{ flex: 1 }}>
-                                <AddressMapPicker
-                                    onClose={() => setViewMode('address_form')}
-                                    onLocationSelect={handleMapLocationSelect}
-                                />
-                            </View>
+                            <AddressMapPicker
+                                onClose={() => setViewMode('address_form')}
+                                onLocationSelect={handleMapLocationSelect}
+                            />
                         )}
                     </Animated.View>
                 </Animated.View>
@@ -875,8 +872,20 @@ const styles = StyleSheet.create({
         ...theme.shadows.lg,
     },
     modalContentDesktop: {
-        width: 620,
-        maxWidth: 620,
+        width: 720,
+        maxWidth: 720,
+    },
+    modalContentMap: {
+        // Full-screen for map picker — no padding, no max-width cap
+        maxWidth: 900,
+        width: '100%',
+        maxHeight: '95%',
+        height: '95%',
+        paddingHorizontal: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
+        borderRadius: 20,
+        overflow: 'hidden',
     },
     modalHeader: {
         flexDirection: 'row',

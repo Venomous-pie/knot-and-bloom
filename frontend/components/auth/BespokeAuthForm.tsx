@@ -742,7 +742,7 @@ export default function BespokeAuthForm({
                                                 <View>
                                                     <Text style={styles.errorTextSmall}>{fieldErrors.email}</Text>
                                                     {/* Smart Suggestion: If it looks like a phone number */}
-                                                    {/^[0-9+()\s-]+$/.test(email) && email.length > 3 && (
+                                                    {process.env.EXPO_PUBLIC_ENABLE_SMS_OTP === 'true' && /^[0-9+()\s-]+$/.test(email) && email.length > 3 && (
                                                         <TouchableOpacity onPress={() => {
                                                             setPhoneNumber(email);
                                                             setEmail("");
@@ -919,18 +919,20 @@ export default function BespokeAuthForm({
 
                             </View>
 
-                            <View style={{ marginTop: 20, alignItems: 'center' }}>
-                                <TouchableOpacity
-                                    onPress={() => setAuthMethod(authMethod === 'email' ? 'phone' : 'email')}
-                                >
-                                    <Text style={styles.switchMethodText}>
-                                        {isSignUp
-                                            ? (authMethod === 'email' ? "Sign up with phone?" : "Sign up with email?")
-                                            : (authMethod === 'email' ? "Sign in with phone?" : "Sign in with email?")
-                                        }
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
+                            {process.env.EXPO_PUBLIC_ENABLE_SMS_OTP === 'true' && (
+                                <View style={{ marginTop: 20, alignItems: 'center' }}>
+                                    <TouchableOpacity
+                                        onPress={() => setAuthMethod(authMethod === 'email' ? 'phone' : 'email')}
+                                    >
+                                        <Text style={styles.switchMethodText}>
+                                            {isSignUp
+                                                ? (authMethod === 'email' ? "Sign up with phone?" : "Sign up with email?")
+                                                : (authMethod === 'email' ? "Sign in with phone?" : "Sign in with email?")
+                                            }
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>

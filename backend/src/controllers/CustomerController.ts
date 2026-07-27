@@ -55,6 +55,11 @@ const customerRegisterController = async (input: unknown) => {
         if (!target) {
             throw new ErrorHandler.ValidationError([{ message: "Email or phone is required", path: ["email", "phone"] }]);
         }
+
+        const isEmail = target.includes('@');
+        if (!isEmail && process.env.ENABLE_SMS_OTP !== 'true') {
+            throw new ErrorHandler.ValidationError([{ message: "Phone number registration is temporarily disabled.", path: ["phone"] }]);
+        }
         
         if (!parsedInput.otp) {
             throw new ErrorHandler.ValidationError([{ message: "OTP is required for registration", path: ["otp"] }]);

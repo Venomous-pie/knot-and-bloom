@@ -996,8 +996,9 @@ export default function BespokeAuthForm({
                             }}
                             value={otpCode}
                             onChangeText={(text) => {
-                                if (text.length <= 6) setOtpCode(text);
-                                if (text.length === 6) {
+                                const numeric = text.replace(/[^0-9]/g, '');
+                                if (numeric.length <= 6) setOtpCode(numeric);
+                                if (numeric.length === 6) {
                                     // Optional: Auto submit
                                     Keyboard.dismiss();
                                 }

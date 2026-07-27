@@ -120,7 +120,7 @@ export default function AddPaymentMethodPage() {
                                             style={[styles.input, styles.inputTop]}
                                             placeholder="Card Number"
                                             value={accountNumber}
-                                            onChangeText={setAccountNumber}
+                                            onChangeText={(text) => setAccountNumber(text.replace(/[^0-9]/g, ''))}
                                             keyboardType="numeric"
                                             placeholderTextColor="#999"
                                         />
@@ -136,7 +136,7 @@ export default function AddPaymentMethodPage() {
                                                 style={[styles.input, styles.inputBottomRight, { flex: 1 }]}
                                                 placeholder="CVV"
                                                 value={cvv}
-                                                onChangeText={setCvv}
+                                                onChangeText={(text) => setCvv(text.replace(/[^0-9]/g, ''))}
                                                 keyboardType="numeric"
                                                 secureTextEntry
                                                 maxLength={4}
@@ -176,7 +176,7 @@ export default function AddPaymentMethodPage() {
                                         style={styles.inputSingle}
                                         placeholder={isBank ? 'Account Number' : '0912 345 6789'}
                                         value={accountNumber}
-                                        onChangeText={setAccountNumber}
+                                        onChangeText={(text) => setAccountNumber(text.replace(/[^0-9]/g, ''))}
                                         keyboardType="numeric"
                                         placeholderTextColor="#999"
                                     />

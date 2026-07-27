@@ -291,19 +291,24 @@ export default function BespokeAuthForm({
     const [resendCooldown, setResendCooldown] = useState(0);
 
     useEffect(() => {
-        let interval: ReturnType<typeof setInterval>;
-        if (resendCooldown > 0) {
-            interval = setInterval(() => {
-                setResendCooldown((prev) => prev - 1);
-            }, 1000);
-        }
+        if (resendCooldown <= 0) return;
+        const interval = setInterval(() => {
+            setResendCooldown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
         return () => clearInterval(interval);
-    }, [resendCooldown]);
+    }, [resendCooldown > 0]);
 
     const handleResendOtp = async () => {
-        if (resendCooldown > 0) return;
+        if (resendCooldown > 0 || otpLoading) return;
 
         setAuthError(null);
+        setOtpLoading(true);
         try {
             const target = authMethod === 'email' ? email : phoneNumber;
             await authAPI.sendOTP(target);
@@ -311,6 +316,8 @@ export default function BespokeAuthForm({
             setOtpCode("");
         } catch (err: any) {
             setAuthError({ message: err.response?.data?.message || err.response?.data?.error || "Failed to resend OTP." });
+        } finally {
+            setOtpLoading(false);
         }
     };
 
@@ -962,7 +969,9 @@ export default function BespokeAuthForm({
                         </Text>
                         <Text style={{ color: theme.colors.textSecondary, marginBottom: 32, textAlign: "center", fontSize: 16 }}>
                             We have sent the verification code to{"\n"}
-                            <Text style={{ fontWeight: "bold", color: theme.colors.text }}>{phoneNumber}</Text>
+                            <Text style={{ fontWeight: "bold", color: theme.colors.text }}>
+                                {authMethod === 'email' ? email : phoneNumber}
+                            </Text>
                         </Text>
 
                         {/* Boxed Inputs */}
@@ -1031,18 +1040,19 @@ export default function BespokeAuthForm({
                         </TouchableOpacity>
 
                         {/* Resend Logic */}
-                        <View style={{ marginTop: 24 }}>
-                            {resendCooldown > 0 ? (
-                                <Text style={{ color: theme.colors.textLight, fontSize: 14 }}>
-                                    Resend code in {resendCooldown}s
+                        <View style={{ marginTop: 24, alignItems: "center" }}>
+                            <TouchableOpacity 
+                                onPress={handleResendOtp}
+                                disabled={resendCooldown > 0 || otpLoading}
+                            >
+                                <Text style={{ 
+                                    color: resendCooldown > 0 ? theme.colors.textLight : theme.colors.primary, 
+                                    fontWeight: "bold", 
+                                    fontSize: 16 
+                                }}>
+                                    {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend Code"}
                                 </Text>
-                            ) : (
-                                <TouchableOpacity onPress={handleResendOtp}>
-                                    <Text style={{ color: theme.colors.primary, fontWeight: "bold", fontSize: 16 }}>
-                                        Resend Code
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </KeyboardAvoidingView>

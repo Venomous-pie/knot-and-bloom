@@ -74,7 +74,10 @@ export class OtpService {
                     <p style="font-size: 14px; color: #7f8c8d; margin-top: 30px;">If you did not request this code, please ignore this email.</p>
                 </div>
             `;
-            await sendEmail(target, subject, text, html);
+            // Fire and forget to prevent slow HTTP responses
+            sendEmail(target, subject, text, html).catch(err => {
+                console.error(`Background email send failed for ${target}:`, err);
+            });
         } else {
             // TODO: Integrate real SMS provider here (Twilio/Firebase/SNS)
         }

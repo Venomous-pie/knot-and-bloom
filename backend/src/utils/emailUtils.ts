@@ -7,6 +7,7 @@ async function getTransporter() {
 
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
         transporter = nodemailer.createTransport({
+            pool: true,
             host: process.env.SMTP_HOST,
             port: parseInt(process.env.SMTP_PORT || '587'),
             secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
@@ -19,6 +20,7 @@ async function getTransporter() {
         console.log("No SMTP credentials found in .env, creating ethereal test account for email simulation...");
         const testAccount = await nodemailer.createTestAccount();
         transporter = nodemailer.createTransport({
+            pool: true,
             host: "smtp.ethereal.email",
             port: 587,
             secure: false, // true for 465, false for other ports

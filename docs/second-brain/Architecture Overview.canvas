@@ -1,0 +1,11 @@
+{
+	"nodes":[
+		{"id":"fe1a2b3c4d5e6f7a","type":"text","text":"## Frontend\n**React Native (Expo)**\nHandles UI, routing (Expo Router), and auth state.","x":-800,"y":0,"width":340,"height":150,"color":"5"},
+		{"id":"be8b9c0d1e2f3a4b","type":"text","text":"## Backend\n**Express API**\nHandles business logic, auth, and database interactions.","x":-200,"y":0,"width":280,"height":150,"color":"4"},
+		{"id":"db5c6d7e8f9a0b1c","type":"text","text":"## Database\n**PostgreSQL + Prisma**\nStores Users, Sellers, Products, Orders.","x":340,"y":0,"width":260,"height":150,"color":"2"}
+	],
+	"edges":[
+		{"id":"ed1a2b3c4d5e6f7a","fromNode":"fe1a2b3c4d5e6f7a","fromSide":"right","toNode":"be8b9c0d1e2f3a4b","toSide":"left","label":"REST requests"},
+		{"id":"ed8b9c0d1e2f3a4b","fromNode":"be8b9c0d1e2f3a4b","fromSide":"right","toNode":"db5c6d7e8f9a0b1c","toSide":"left","label":"Prisma queries"}
+	]
+}

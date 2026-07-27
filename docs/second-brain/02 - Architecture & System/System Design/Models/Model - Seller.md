@@ -1,0 +1,71 @@
+---
+tags:
+  - architecture/database/model
+---
+# Model: Seller
+
+## Fields
+- **uid**: Int
+- **name**: String
+- **slug**: String
+- **logo**: String?
+- **banner**: String?
+- **commissionRate**: Decimal
+- **createdAt**: DateTime
+- **deletedAt**: DateTime?
+- **description**: String?
+- **email**: String
+- **phone**: String?
+- **termsAccepted**: Boolean
+- **termsAcceptedAt**: DateTime?
+- **totalOrders**: Int
+- **totalSales**: Decimal
+- **updatedAt**: DateTime
+- **customerId**: Int
+- **status**: SellerStatus
+- **approvedAt**: DateTime?
+- **hasSeenWelcomeModal**: Boolean
+- **availableBalance**: Decimal
+- **businessAddress**: String?
+- **businessType**: String?
+- **hasPriorExperience**: Boolean
+- **idNumber**: String?
+- **idType**: String?
+- **isHandmade**: Boolean
+- **legalName**: String?
+- **location**: String?
+- **pendingBalance**: Decimal
+- **pinnedProductIds**: Int[]
+- **portfolioLink**: String?
+- **productCategories**: String?
+- **rating**: Decimal
+- **rejectionReason**: String?
+- **socialMediaLink**: String?
+- **totalWithdrawn**: Decimal
+- **monthlyOrders**: String?
+- **salesChannels**: String[]
+- **sampleItems**: String[]
+- **meetUpPoint**: String?
+- **selfDeliveryEnabled**: Boolean
+- **sellerCitymunCode**: String?
+- **sellerProvCode**: String?
+- **sellerRegCode**: String?
+- **vehicleType**: VehicleType?
+- **freeShippingEnabled**: Boolean
+- **freeShippingThreshold**: Decimal?
+- **orders**: Order[]
+- **orderItems**: OrderItem[]
+- **shipments**: OrderShipment[]
+- **products**: Product[]
+- **customer**: Customer
+- **withdrawalRequests**: WithdrawalRequest[]
+
+## Relationships
+- [[Model - SellerStatus]]
+- [[Model - VehicleType]]
+- [[Model - Order]]
+- [[Model - OrderItem]]
+- [[Model - OrderShipment]]
+- [[Model - Product]]
+- [[Model - Customer]]
+- [[Model - WithdrawalRequest]]

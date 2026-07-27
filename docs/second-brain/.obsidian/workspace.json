@@ -1,0 +1,212 @@
+{
+  "main": {
+    "id": "6b067d2302aefc10",
+    "type": "split",
+    "children": [
+      {
+        "id": "26a30a0946a39d3f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e396b343a77e20fe",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "f97c029d6175fc5f",
+    "type": "split",
+    "children": [
+      {
+        "id": "cb571a09adfa76d8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "39c79f08153dbcc5",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "5d54785ddee193e9",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "6955657a6a40aeb0",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "5642fe3159367635",
+    "type": "split",
+    "children": [
+      {
+        "id": "e934ecf923e3b151",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c1f79bd80077cb5e",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "3951d2de3d6c5ddf",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "8fd5397f1cece444",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "205d81a0dd3da961",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "1fd2be7812083670",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "e396b343a77e20fe",
+  "lastOpenFiles": [
+    "02 - Architecture & System/System Design/Models/Model - Customer.md",
+    "02 - Architecture & System/System Design/Architecture.canvas",
+    "Architecture Overview.canvas",
+    "02 - Architecture & System/Database Schema.md",
+    "02 - Architecture & System/System Design/Models/Model - WithdrawalRequest.md",
+    "02 - Architecture & System/System Design/Models/Model - WishlistItem.md",
+    "02 - Architecture & System/System Design/Models/Model - Wishlist.md",
+    "02 - Architecture & System/System Design/Models/Model - Verification.md",
+    "02 - Architecture & System/System Design/Models/Model - Seller.md",
+    "02 - Architecture & System/System Design/Models/Model - RefreshToken.md",
+    "02 - Architecture & System/System Design/Models/Model - RateLimit.md",
+    "02 - Architecture & System/System Design/Models/Model - ProductVariant.md",
+    "02 - Architecture & System/System Design/Models/Model - ProductOptionValue.md",
+    "02 - Architecture & System/System Design/Models/Model - ProductOption.md",
+    "02 - Architecture & System/System Design/Models/Model - Product.md",
+    "02 - Architecture & System/System Design/Models/Model - PlatformConfig.md",
+    "02 - Architecture & System/System Design/Models/Model - PaymentMethod.md",
+    "02 - Architecture & System/System Design/Models/Model - Payment.md",
+    "02 - Architecture & System/System Design/Models/Model - OrderTimeline.md",
+    "02 - Architecture & System/System Design/Models/Model - OrderShipment.md",
+    "02 - Architecture & System/System Design/Models/Model - OrderItem.md",
+    "02 - Architecture & System/System Design/Models/Model - Order.md",
+    "02 - Architecture & System/System Design/Models/Model - NotificationSettings.md",
+    "02 - Architecture & System/System Design/Models/Model - Notification.md",
+    "02 - Architecture & System/System Design/Models/Model - CheckoutSession.md",
+    "02 - Architecture & System/System Design/Models/Model - CartItem.md",
+    "02 - Architecture & System/System Design/Models/Model - Cart.md",
+    "02 - Architecture & System/System Design/Models",
+    "User Journeys.canvas",
+    "02 - Architecture & System/System Design"
+  ]
+}

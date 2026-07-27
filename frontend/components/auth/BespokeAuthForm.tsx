@@ -77,6 +77,7 @@ export default function BespokeAuthForm({
 
     // Refs
     const passwordInputRef = useRef<TextInput>(null);
+    const otpInputRef = useRef<TextInput>(null);
     // Structured auth error: includes a machine-readable code + optional actionable hint
     const [authError, setAuthError] = useState<{ code?: string; message: string; hint?: string } | null>(null);
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -975,7 +976,10 @@ export default function BespokeAuthForm({
                         </Text>
 
                         {/* Boxed Inputs */}
-                        <View style={{ flexDirection: "row", gap: 10, marginBottom: 32, justifyContent: 'center' }}>
+                        <Pressable 
+                            onPress={() => otpInputRef.current?.focus()} 
+                            style={{ flexDirection: "row", gap: 10, marginBottom: 32, justifyContent: 'center' }}
+                        >
                             {[0, 1, 2, 3, 4, 5].map((index) => (
                                 <View
                                     key={index}
@@ -995,10 +999,11 @@ export default function BespokeAuthForm({
                                     </Text>
                                 </View>
                             ))}
-                        </View>
+                        </Pressable>
 
                         {/* Hidden Input for handling typing */}
                         <TextInput
+                            ref={otpInputRef}
                             style={{
                                 position: "absolute",
                                 width: "100%",
@@ -1009,10 +1014,6 @@ export default function BespokeAuthForm({
                             onChangeText={(text) => {
                                 const numeric = text.replace(/[^0-9]/g, '');
                                 if (numeric.length <= 6) setOtpCode(numeric);
-                                if (numeric.length === 6) {
-                                    // Optional: Auto submit
-                                    Keyboard.dismiss();
-                                }
                             }}
                             keyboardType="number-pad"
                             caretHidden={true}

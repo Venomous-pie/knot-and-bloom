@@ -15,6 +15,15 @@ async function getTransporter() {
                 user: process.env.SMTP_USER.trim(),
                 pass: process.env.SMTP_PASS.trim(),
             },
+            // Fix for silent hanging on cloud providers
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
+            logger: true, // Enable built-in logger
+            debug: true,  // Print SMTP traffic to console
+            tls: {
+                rejectUnauthorized: false
+            }
         });
     } else {
         console.log("No SMTP credentials found in .env, creating ethereal test account for email simulation...");

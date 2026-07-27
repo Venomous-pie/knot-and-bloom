@@ -8,12 +8,12 @@ async function getTransporter() {
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
         transporter = nodemailer.createTransport({
             pool: true,
-            host: process.env.SMTP_HOST,
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+            host: process.env.SMTP_HOST.trim(),
+            port: parseInt(process.env.SMTP_PORT?.trim() || '587'),
+            secure: process.env.SMTP_SECURE?.trim() === 'true', // true for 465, false for other ports
             auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS,
+                user: process.env.SMTP_USER.trim(),
+                pass: process.env.SMTP_PASS.trim(),
             },
         });
     } else {

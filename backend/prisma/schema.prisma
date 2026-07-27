@@ -157,9 +157,9 @@ model Order {
   customer                Customer        @relation(fields: [customerId], references: [uid])
   seller                  Seller?         @relation(fields: [sellerId], references: [uid])
   items                   OrderItem[]
+  shipments               OrderShipment[]
   timeline                OrderTimeline[]
   payments                Payment[]
-  shipments               OrderShipment[]
 }
 
 model CheckoutSession {
@@ -213,60 +213,60 @@ model ProductOptionValue {
 }
 
 model Seller {
-  uid                 Int                 @id @default(autoincrement())
-  name                String
-  slug                String              @unique
-  logo                String?
-  banner              String?
-  commissionRate      Decimal             @default(0.05)
-  createdAt           DateTime            @default(now())
-  deletedAt           DateTime?
-  description         String?
-  email               String              @unique
-  phone               String?
-  termsAccepted       Boolean             @default(false)
-  termsAcceptedAt     DateTime?
-  totalOrders         Int                 @default(0)
-  totalSales          Decimal             @default(0)
-  updatedAt           DateTime            @updatedAt
-  customerId          Int                 @unique
-  status              SellerStatus        @default(PENDING)
-  approvedAt          DateTime?
-  hasSeenWelcomeModal Boolean             @default(false)
-  availableBalance    Decimal             @default(0)
-  businessAddress     String?
-  businessType        String?
-  hasPriorExperience  Boolean             @default(false)
-  idNumber            String?
-  idType              String?
-  isHandmade          Boolean             @default(false)
-  legalName           String?
-  location            String?
-  pendingBalance      Decimal             @default(0)
-  pinnedProductIds    Int[]
-  portfolioLink       String?
-  productCategories   String?
-  rating              Decimal             @default(0)
-  rejectionReason     String?
-  socialMediaLink     String?
-  totalWithdrawn      Decimal             @default(0)
-  monthlyOrders       String?
-  salesChannels       String[]
-  sampleItems         String[]
-  vehicleType         VehicleType?
-  selfDeliveryEnabled Boolean             @default(false)
-  freeShippingEnabled Boolean             @default(false)
+  uid                   Int                 @id @default(autoincrement())
+  name                  String
+  slug                  String              @unique
+  logo                  String?
+  banner                String?
+  commissionRate        Decimal             @default(0.05)
+  createdAt             DateTime            @default(now())
+  deletedAt             DateTime?
+  description           String?
+  email                 String              @unique
+  phone                 String?
+  termsAccepted         Boolean             @default(false)
+  termsAcceptedAt       DateTime?
+  totalOrders           Int                 @default(0)
+  totalSales            Decimal             @default(0)
+  updatedAt             DateTime            @updatedAt
+  customerId            Int                 @unique
+  status                SellerStatus        @default(PENDING)
+  approvedAt            DateTime?
+  hasSeenWelcomeModal   Boolean             @default(false)
+  availableBalance      Decimal             @default(0)
+  businessAddress       String?
+  businessType          String?
+  hasPriorExperience    Boolean             @default(false)
+  idNumber              String?
+  idType                String?
+  isHandmade            Boolean             @default(false)
+  legalName             String?
+  location              String?
+  pendingBalance        Decimal             @default(0)
+  pinnedProductIds      Int[]
+  portfolioLink         String?
+  productCategories     String?
+  rating                Decimal             @default(0)
+  rejectionReason       String?
+  socialMediaLink       String?
+  totalWithdrawn        Decimal             @default(0)
+  monthlyOrders         String?
+  salesChannels         String[]
+  sampleItems           String[]
+  meetUpPoint           String?
+  selfDeliveryEnabled   Boolean             @default(false)
+  sellerCitymunCode     String?
+  sellerProvCode        String?
+  sellerRegCode         String?
+  vehicleType           VehicleType?
+  freeShippingEnabled   Boolean             @default(false)
   freeShippingThreshold Decimal?
-  meetUpPoint         String?
-  sellerCitymunCode   String?
-  sellerProvCode      String?
-  sellerRegCode       String?
-  orders              Order[]
-  orderItems          OrderItem[]
-  products            Product[]
-  customer            Customer            @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
-  withdrawalRequests  WithdrawalRequest[]
-  shipments           OrderShipment[]
+  orders                Order[]
+  orderItems            OrderItem[]
+  shipments             OrderShipment[]
+  products              Product[]
+  customer              Customer            @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
+  withdrawalRequests    WithdrawalRequest[]
 
   @@index([customerId, hasSeenWelcomeModal])
 }
@@ -291,26 +291,26 @@ model OrderItem {
 }
 
 model Address {
-  uid           Int      @id @default(autoincrement())
-  customerId    Int
-  label         String?
-  fullName      String
-  phone         String
-  streetAddress String
-  aptSuite      String?
-  city          String
-  stateProvince String?
-  postalCode    String
-  country       String   @default("Philippines")
-  isDefault     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  barangay      String?
-  province      String?
-  region        String?
+  uid              Int      @id @default(autoincrement())
+  customerId       Int
+  label            String?
+  fullName         String
+  phone            String
+  streetAddress    String
+  aptSuite         String?
+  city             String
+  stateProvince    String?
+  postalCode       String
+  country          String   @default("Philippines")
+  isDefault        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  barangay         String?
+  province         String?
+  region           String?
   landmark         String?
   zoneTierOverride Int?
-  customer      Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  customer         Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
 
   @@index([customerId])
   @@index([customerId, isDefault])
@@ -443,19 +443,19 @@ model RateLimit {
 }
 
 model OrderShipment {
-  uid              Int              @id @default(autoincrement())
+  uid              Int            @id @default(autoincrement())
   orderId          Int
   sellerId         Int
-  fulfillmentType  ShipmentType     
-  zoneTier         Int              
-  shippingFee      Decimal          
-  computedFuelCost Decimal          @default(0) 
-  meetUpSnapshot   String?          
-  status           ShipmentStatus   @default(PENDING)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  order            Order            @relation(fields: [orderId], references: [uid], onDelete: Cascade)
-  seller           Seller           @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
+  fulfillmentType  ShipmentType
+  zoneTier         Int
+  shippingFee      Decimal
+  computedFuelCost Decimal        @default(0)
+  meetUpSnapshot   String?
+  status           ShipmentStatus @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  order            Order          @relation(fields: [orderId], references: [uid], onDelete: Cascade)
+  seller           Seller         @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
 
   @@index([orderId])
   @@index([sellerId])
@@ -465,7 +465,7 @@ model PlatformConfig {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
-  updatedBy Int?     
+  updatedBy Int?
 }
 
 enum OrderStatus {

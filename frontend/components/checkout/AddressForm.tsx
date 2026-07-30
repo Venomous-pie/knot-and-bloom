@@ -13,6 +13,7 @@ import {
 import { theme } from '@/constants/theme';
 import { LocationPickerField } from './LocationPickerField';
 import { LocationPickerModal, LocationSelection } from './LocationPickerModal';
+import zipcodes from '@/constants/zipcodes.json';
 
 interface AddressFormData {
     label?: string;
@@ -117,6 +118,10 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 return 'Postal code must be 3-4 digits';
             }
             return 'Invalid format';
+        }
+
+        if (field === 'postalCode' && value && !(value in zipcodes)) {
+            return 'Postal code does not exist';
         }
 
         if ('min' in rules && rules.min && value.length < rules.min) {
@@ -278,7 +283,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                         errors.phone && styles.inputError
                     ]}
                     value={form.phone}
-                    onChangeText={(text) => handleChange('phone', text)}
+                    onChangeText={(text) => handleChange('phone', text.replace(/[^0-9+]/g, ''))}
                     placeholder="e.g. 09171234567"
                     placeholderTextColor={theme.colors.textLight}
                     keyboardType="phone-pad"
@@ -407,7 +412,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                             errors.postalCode && styles.inputError
                         ]}
                         value={form.postalCode}
-                        onChangeText={(text) => handleChange('postalCode', text)}
+                        onChangeText={(text) => handleChange('postalCode', text.replace(/[^0-9]/g, ''))}
                         placeholder="e.g. 1000"
                         placeholderTextColor={theme.colors.textLight}
                         keyboardType="number-pad"

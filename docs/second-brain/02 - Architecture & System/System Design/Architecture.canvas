@@ -1,0 +1,16 @@
+{
+	"nodes":[
+		{"id":"grpClientTier111","type":"group","x":-860,"y":-60,"width":520,"height":420,"label":"Client Tier","color":"5"},
+		{"id":"grpServerInfra22","type":"group","x":-60,"y":-60,"width":1320,"height":420,"label":"Internal Infrastructure","color":"4"},
+		{"id":"grpExternalInt33","type":"group","x":-60,"y":440,"width":520,"height":420,"label":"Third Party Services","color":"6"},
+		{"id":"fe1a2b3c4d5e6f7a","type":"text","x":-800,"y":0,"width":400,"height":300,"text":"# 📱 Client Applications\n\n**Framework**: React Native / Expo\n**Routing**: Expo Router\n\nCross-platform clients for Buyers and Sellers. Communicates exclusively via REST API.","color":"5"},
+		{"id":"be8b9c0d1e2f3a4b","type":"text","x":0,"y":0,"width":400,"height":300,"text":"# ⚙️ Node.js Express Backend\n\n**Framework**: Express.js (TypeScript)\n**Security**: Helmet, XSS, express-rate-limit\n**Auth**: Passport, JWT\n\nThe central API server handling all business logic, routing, and access control.","color":"4"},
+		{"id":"db5c6d7e8f9a0b1c","type":"text","x":800,"y":0,"width":400,"height":300,"text":"# 🗄️ Primary Database\n\n**Engine**: PostgreSQL\n**ORM**: Prisma\n\nStores relational data: Customers, Sellers, Products, Orders, Carts, and Variants.","color":"2"},
+		{"id":"ext1111111111111","type":"text","x":0,"y":500,"width":400,"height":300,"text":"# ☁️ External Integrations\n\n- **Supabase**: File Storage / Bucket\n- **Groq & Google Gen AI**: AI Features\n- **Nodemailer**: Email Notifications","color":"6"}
+	],
+	"edges":[
+		{"id":"edge111111111111","fromNode":"fe1a2b3c4d5e6f7a","fromSide":"right","toNode":"be8b9c0d1e2f3a4b","toSide":"left","label":"HTTPS REST API (JWT)","color":"3"},
+		{"id":"edge222222222222","fromNode":"be8b9c0d1e2f3a4b","fromSide":"right","toNode":"db5c6d7e8f9a0b1c","toSide":"left","label":"Prisma Client (TCP 5432)","color":"4"},
+		{"id":"edge333333333333","fromNode":"be8b9c0d1e2f3a4b","fromSide":"bottom","toNode":"ext1111111111111","toSide":"top","label":"External APIs","color":"6"}
+	]
+}

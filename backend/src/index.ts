@@ -1,6 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import dns from 'dns';
+// Force Node.js to prefer IPv4 for DNS resolution.
+// This fixes the silent ETIMEDOUT hanging issue when connecting to Gmail SMTP from cloud platforms like Render.
+dns.setDefaultResultOrder('ipv4first');
 // ── Security: Fail fast if critical secrets are missing ──
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     console.error('FATAL: JWT_SECRET is not set or is too short (min 32 chars). Exiting.');

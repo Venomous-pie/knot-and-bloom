@@ -215,9 +215,9 @@ model Order {
   user                    User            @relation(fields: [userId], references: [uid])
   seller                  Seller?         @relation(fields: [sellerId], references: [uid])
   items                   OrderItem[]
+  shipments               OrderShipment[]
   timeline                OrderTimeline[]
   payments                Payment[]
-  shipments               OrderShipment[]
 }
 
 model CheckoutSession {

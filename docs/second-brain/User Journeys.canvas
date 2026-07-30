@@ -1,0 +1,15 @@
+{
+	"nodes":[
+		{"id":"aaa111bbb222ccc3","type":"text","x":-800,"y":0,"width":300,"height":200,"text":"## 1. Visitor\nLands on Home Page","color":"1"},
+		{"id":"bbb222ccc333ddd4","type":"text","x":-200,"y":-250,"width":300,"height":200,"text":"## 2a. Buyer Journey\nBrowses products, adds to cart.","color":"3"},
+		{"id":"ccc333ddd444eee5","type":"text","x":-200,"y":250,"width":300,"height":200,"text":"## 2b. Seller Journey\nClicks \"Apply as Seller\"","color":"4"},
+		{"id":"ddd444eee555fff6","type":"text","x":400,"y":250,"width":300,"height":200,"text":"## 3. KYC Submission\nFills out form, ID upload.","color":"4"},
+		{"id":"eee555fff666ggg7","type":"text","x":1000,"y":250,"width":300,"height":200,"text":"## 4. Admin Review\nAdmin approves seller application.","color":"6"}
+	],
+	"edges":[
+		{"id":"edge111111111111","fromNode":"aaa111bbb222ccc3","fromSide":"right","toNode":"bbb222ccc333ddd4","toSide":"left"},
+		{"id":"edge222222222222","fromNode":"aaa111bbb222ccc3","fromSide":"right","toNode":"ccc333ddd444eee5","toSide":"left"},
+		{"id":"edge333333333333","fromNode":"ccc333ddd444eee5","fromSide":"right","toNode":"ddd444eee555fff6","toSide":"left"},
+		{"id":"edge444444444444","fromNode":"ddd444eee555fff6","fromSide":"right","toNode":"eee555fff666ggg7","toSide":"left"}
+	]
+}

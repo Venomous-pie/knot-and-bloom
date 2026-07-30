@@ -128,6 +128,11 @@ router.post('/send-otp', async (req, res, next) => {
         if (!target) {
             throw new ErrorHandler.ValidationError([{ message: "Email or Phone number is required", path: ["target"] }]);
         }
+
+        const isEmail = target.includes('@');
+        if (!isEmail && process.env.ENABLE_SMS_OTP !== 'true') {
+            throw new ErrorHandler.ValidationError([{ message: "Phone number registration is temporarily disabled.", path: ["target"] }]);
+        }
         await OtpService.generateAndSendOTP(target, 'REGISTRATION');
         res.status(200).json({ message: "OTP sent successfully" });
     } catch (error) {

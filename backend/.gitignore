@@ -4,3 +4,8 @@ node_modules
 
 /generated/prisma
 dist/
+
+# agents
+.agents/
+.gemini/
+

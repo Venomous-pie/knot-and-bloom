@@ -385,7 +385,7 @@ export default function SellerApplyPage() {
                     
                     {isCategoryDropdownOpen && (
                         <View style={[styles.dropdownList, { maxHeight: 200, overflow: 'hidden', top: 50, zIndex: 100 }]}>
-                            <ScrollView nestedScrollEnabled>
+                            <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
                                 {(() => {
                                     const ALL_CATEGORIES = Object.values(categoryTitles);
                                     
@@ -919,7 +919,7 @@ export default function SellerApplyPage() {
                     </View>
                     </View>
                 )}
-                <ScrollView ref={scrollViewRef} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+                <ScrollView ref={scrollViewRef} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
                     <View style={[styles.contentContainer, styles.column]}>
                         {/* Centered Wizard Form */}
                         <View style={[styles.formSection, { width: "100%" }]}>

@@ -265,7 +265,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                     <TextInput
                         style={styles.input}
                         value={formData.basePrice}
-                        onChangeText={(text) => handleChange("basePrice", text)}
+                        onChangeText={(text) => handleChange("basePrice", text.replace(/[^0-9.]/g, ''))}
                         keyboardType="numeric"
                         placeholder="0.00"
                         placeholderTextColor="#999"
@@ -276,7 +276,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                     <TextInput
                         style={styles.input}
                         value={formData.discountPercentage}
-                        onChangeText={(text) => handleChange("discountPercentage", text)}
+                        onChangeText={(text) => handleChange("discountPercentage", text.replace(/[^0-9.]/g, ''))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#999"
@@ -310,7 +310,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                             <TextInput
                                 style={styles.variantInput}
                                 value={variant.stock}
-                                onChangeText={(text) => updateVariant(index, "stock", text)}
+                                onChangeText={(text) => updateVariant(index, "stock", text.replace(/[^0-9]/g, ''))}
                                 placeholder="0"
                                 keyboardType="numeric"
                                 placeholderTextColor="#999"
@@ -336,7 +336,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                             <TextInput
                                 style={styles.variantInput}
                                 value={variant.price}
-                                onChangeText={(text) => updateVariant(index, "price", text)}
+                                onChangeText={(text) => updateVariant(index, "price", text.replace(/[^0-9.]/g, ''))}
                                 placeholder="Opt."
                                 keyboardType="numeric"
                                 placeholderTextColor="#999"
@@ -347,7 +347,7 @@ export default function ProductForm({ initialData, onSubmit, loading, submitLabe
                             <TextInput
                                 style={styles.variantInput}
                                 value={variant.discountPercentage}
-                                onChangeText={(text) => updateVariant(index, "discountPercentage", text)}
+                                onChangeText={(text) => updateVariant(index, "discountPercentage", text.replace(/[^0-9.]/g, ''))}
                                 placeholder={formData.discountPercentage ? `Inherit (${formData.discountPercentage}%)` : "0"}
                                 keyboardType="numeric"
                                 placeholderTextColor="#999"

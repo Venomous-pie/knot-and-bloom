@@ -10,33 +10,28 @@ async function seed() {
 
     for (let i = 0; i < sellers.length; i++) {
         const s = sellers[i]!;
-        const existing = await prisma.customer.findUnique({ where: { email: s.email } });
+        const existing = await prisma.user.findUnique({ where: { email: s.email } });
         if (existing) {
             console.log(`⏭️  Skipping ${s.name} (email exists)`);
-            const seller = await prisma.seller.findFirst({ where: { customerId: existing.uid } });
+            const seller = await prisma.seller.findFirst({ where: { userId: existing.uid } });
             createdSellers.push(seller);
             continue;
         }
 
-        const customer = await prisma.customer.create({
+        const user = await prisma.user.create({
             data: { name: s.name, email: s.email, password, role: Role.SELLER }
         });
 
         const seller = await prisma.seller.create({
             data: {
-                customerId: customer.uid,
+                userId: user.uid,
                 name: s.name,
                 slug: s.slug,
                 email: s.email,
-                description: s.description,
-                location: s.location,
                 logo: s.logo,
                 banner: s.banner,
                 status: SellerStatus.ACTIVE,
                 hasSeenWelcomeModal: true,
-                termsAccepted: true,
-                termsAcceptedAt: new Date(),
-                isHandmade: true,
             }
         });
         createdSellers.push(seller);

@@ -18,7 +18,7 @@ export default function DashboardSidebar() {
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     useEffect(() => {
-        if (user && (user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE'))) {
+        if (user && (user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE'))) {
             sellerAPI.getSidebarStats()
                 .then(setSidebarStats)
                 .catch(console.error);

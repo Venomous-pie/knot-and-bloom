@@ -149,12 +149,12 @@ export default function PersonalInfoPage() {
                         )}
                     </View>
 
-                    {user.sellerId && user.sellerStatus && (
+                    {user.sellerProfile?.uid && user.sellerProfile?.status && (
                         <View style={styles.formGroup}>
                             <Text style={styles.label}>Seller Status</Text>
-                            <View style={[styles.statusBadge, { backgroundColor: user.sellerStatus === 'ACTIVE' ? '#E8F5E9' : user.sellerStatus === 'REJECTED' ? theme.colors.errorLight : '#FFF3E0' }]}>
-                                <Text style={[styles.statusText, { color: user.sellerStatus === 'ACTIVE' ? theme.colors.success : user.sellerStatus === 'REJECTED' ? theme.colors.error : theme.colors.warning }]}>
-                                    {user.sellerStatus === 'ACTIVE' ? '✓ Active Seller' : user.sellerStatus === 'REJECTED' ? '❌ Application Rejected' : '⏳ Pending Approval'}
+                            <View style={[styles.statusBadge, { backgroundColor: user.sellerProfile?.status === 'ACTIVE' ? '#E8F5E9' : user.sellerProfile?.status === 'REJECTED' ? theme.colors.errorLight : '#FFF3E0' }]}>
+                                <Text style={[styles.statusText, { color: user.sellerProfile?.status === 'ACTIVE' ? theme.colors.success : user.sellerProfile?.status === 'REJECTED' ? theme.colors.error : theme.colors.warning }]}>
+                                    {user.sellerProfile?.status === 'ACTIVE' ? '✓ Active Seller' : user.sellerProfile?.status === 'REJECTED' ? '❌ Application Rejected' : '⏳ Pending Approval'}
                                 </Text>
                             </View>
                         </View>

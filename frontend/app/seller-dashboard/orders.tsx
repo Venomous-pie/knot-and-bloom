@@ -71,13 +71,13 @@ export default function SellerOrders() {
     useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace('/auth/login' as any); return; }
-            const isAuthorized = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+            const isAuthorized = user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE');
             if (!isAuthorized) router.replace('/' as any);
         }
     }, [user, authLoading]);
 
     const fetchOrders = async () => {
-        const targetSellerId = user?.sellerId;
+        const targetSellerId = user?.sellerProfile?.uid;
         if (!targetSellerId && user?.role !== 'ADMIN') return;
         if (!targetSellerId) return;
 
@@ -94,7 +94,7 @@ export default function SellerOrders() {
     };
 
     useEffect(() => {
-        if (user?.sellerId) fetchOrders();
+        if (user?.sellerProfile?.uid) fetchOrders();
     }, [user]);
 
     // Data Processing (Stats, Filter, Sort)

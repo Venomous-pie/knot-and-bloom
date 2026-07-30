@@ -47,23 +47,7 @@ async function reseedDummy() {
         await prisma.seller.update({
             where: { uid: seller.uid },
             data: {
-                businessType: 'Sole Proprietorship',
-                legalName: seller.name + ' Trading',
-                idType: 'Driver\'s License',
-                idNumber: 'DL-' + Math.floor(Math.random() * 10000000),
-                businessAddress: seller.location || 'Metro Manila',
-                hasPriorExperience: true,
-                monthlyOrders: '10-50',
-                salesChannels: ['Instagram', 'Facebook', 'Tiktok'],
-                sampleItems: ['https://placehold.co/400', 'https://placehold.co/400'],
-                vehicleType: Math.random() > 0.5 ? VehicleType.MOTORCYCLE : VehicleType.NONE,
-                selfDeliveryEnabled: Math.random() > 0.5,
-                freeShippingEnabled: Math.random() > 0.7,
-                freeShippingThreshold: 1000,
-                meetUpPoint: 'Nearby Mall or Cafe',
-                isHandmade: true,
-                portfolioLink: 'https://instagram.com/' + seller.slug,
-                socialMediaLink: 'https://facebook.com/' + seller.slug,
+                hasSeenWelcomeModal: true,
             }
         });
     }
@@ -89,8 +73,8 @@ async function reseedDummy() {
         const isCustomOrderAllowed = isMadeToOrder;
         const customOrderInstructions = isCustomOrderAllowed ? 'Please message me for custom color requests before ordering.' : null;
         
-        const isLocalPickupAllowed = seller.selfDeliveryEnabled;
-        const localPickupInstructions = isLocalPickupAllowed ? 'Meetup at ' + seller.meetUpPoint : null;
+        const isLocalPickupAllowed = false;
+        const localPickupInstructions = null;
 
         const product = await prisma.product.create({
             data: {

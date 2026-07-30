@@ -21,7 +21,7 @@ export default function SellerDashboardLayout() {
             }
             const isAuthorized =
                 user.role === 'ADMIN' ||
-                (user.sellerId && user.sellerStatus === 'ACTIVE');
+                (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE');
             if (!isAuthorized) {
                 router.replace('/' as any);
             }

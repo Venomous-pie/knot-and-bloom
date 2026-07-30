@@ -127,7 +127,7 @@ export default function SellerShippingSettingsPage() {
                 router.replace('/auth/login' as any);
                 return;
             }
-            if (user.role !== 'ADMIN' && !(user.sellerId && user.sellerStatus === 'ACTIVE')) {
+            if (user.role !== 'ADMIN' && !(user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE')) {
                 router.replace('/' as any);
                 return;
             }
@@ -139,9 +139,9 @@ export default function SellerShippingSettingsPage() {
     const fetchSettings = async () => {
         try {
             setLoading(true);
-            if (user?.sellerSlug) {
+            if (user?.sellerProfile?.slug) {
                 // Fetch public profile which contains the settings
-                const res = await apiClient.get(`/sellers/${user.sellerSlug}`);
+                const res = await apiClient.get(`/sellers/${user.sellerProfile?.slug}`);
                 const seller = res.data;
                 setSelfDeliveryEnabled(seller.selfDeliveryEnabled || false);
                 setFreeShippingEnabled(seller.freeShippingEnabled || false);

@@ -1,6 +1,6 @@
 import Router from 'express';
-import customerController from '../controllers/CustomerController.js';
-import { DuplicateCustomerError, ValidationError, AuthenticationError, NotFoundError } from '../error/errorHandler.js';
+import userController from '../controllers/CustomerController.js';
+import { DuplicateUserError, ValidationError, AuthenticationError, NotFoundError } from '../error/errorHandler.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 
 import { authRateLimiter } from '../middleware/rateLimiter.js';
@@ -14,16 +14,16 @@ router.get('/profile', authenticate, async (req, res) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const result = await customerController.getCustomerProfile(userId);
+        const result = await userController.getUserProfile(userId);
         res.json({
             success: true,
-            data: result.customer,
-            token: result.token
+            data: result.user
         });
     } catch (error) {
         if (error instanceof NotFoundError) {
             return res.status(error.statusCode).json({ error: error.message });
         }
+        console.error('Error fetching profile:', error);
         res.status(500).json({ error: "Failed to fetch profile" });
     }
 });
@@ -33,12 +33,12 @@ router.put('/profile', authenticate, async (req, res) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const customer = await customerController.updateCustomerProfile(userId, req.body);
+        const user = await userController.updateUserProfile(userId, req.body);
 
         res.json({
             success: true,
             message: "Profile updated successfully.",
-            data: customer
+            data: user
         });
     } catch (error) {
         if (error instanceof ValidationError) {
@@ -54,14 +54,14 @@ router.put('/profile', authenticate, async (req, res) => {
 
 router.post('/register', authRateLimiter, async (req, res) => {
     try {
-        const result = await customerController.customerRegisterController(req.body);
+        const result = await userController.userRegisterController(req.body);
 
         res.status(201).json({
             success: true,
             message: "Customer registered successfully.",
             token: result.token,
             refreshToken: result.refreshToken,
-            data: result.customer
+            data: result.user
         });
     } catch (error) {
         console.error("Register error:", error);
@@ -74,7 +74,7 @@ router.post('/register', authRateLimiter, async (req, res) => {
             });
         }
 
-        if (error instanceof DuplicateCustomerError) {
+        if (error instanceof DuplicateUserError) {
             return res.status(409).json({
                 success: false,
                 error: error.message
@@ -91,19 +91,19 @@ router.post('/register', authRateLimiter, async (req, res) => {
 router.post('/login', loginRateLimiter.middleware, async (req, res) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     try {
-        const result = await customerController.customerLoginController(req.body);
+        const result = await userController.userLoginController(req.body);
 
         // Reset rate limit on success
         loginRateLimiter.reset(ip);
 
-        AuditService.logAuth('LOGIN_SUCCESS', result.customer.uid, { method: 'credentials', ip });
+        AuditService.logAuth('LOGIN_SUCCESS', result.user.uid, { method: 'credentials', ip });
 
         res.status(200).json({
             success: true,
             message: "Login successful.",
             token: result.token,
             refreshToken: result.refreshToken,
-            data: result.customer
+            data: result.user
         });
 
     } catch (error) {
@@ -140,7 +140,7 @@ router.post('/login', loginRateLimiter.middleware, async (req, res) => {
 router.post('/login/google', loginRateLimiter.middleware, async (req, res) => {
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     try {
-        const result = await customerController.googleLoginController(req.body);
+        const result = await userController.googleLoginController(req.body);
 
         // Reset rate limit on success
         loginRateLimiter.reset(ip);
@@ -149,7 +149,7 @@ router.post('/login/google', loginRateLimiter.middleware, async (req, res) => {
             success: true,
             message: "Google Login successful.",
             token: result.token,
-            data: result.customer
+            data: result.user
         });
 
     } catch (error) {

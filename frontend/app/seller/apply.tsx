@@ -142,7 +142,7 @@ export default function SellerApplyPage() {
     }, [user]);
 
     // Check if already a seller
-    const isAlreadySeller = user?.sellerId || user?.role === "SELLER";
+    const isAlreadySeller = user?.sellerProfile?.uid || user?.role === "SELLER";
 
 
 
@@ -885,7 +885,7 @@ export default function SellerApplyPage() {
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ flex: 1 }}
             >
-                {!(isAlreadySeller && user?.sellerStatus !== "REJECTED") && (
+                {!(isAlreadySeller && user?.sellerProfile?.status !== "REJECTED") && (
                     <View style={{ paddingTop: 20, paddingBottom: 10, backgroundColor: theme.colors.surface, zIndex: 100, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
                         <View style={[styles.stepIndicatorContainer, { marginBottom: 0, maxWidth: 600, alignSelf: 'center', paddingHorizontal: 24 }]}>
                             {[{ num: 1, label: 'Shop Info' }, { num: 2, label: 'Identity' }, { num: 3, label: 'Review' }].map(({ num: step, label }) => (
@@ -924,27 +924,27 @@ export default function SellerApplyPage() {
                         {/* Centered Wizard Form */}
                         <View style={[styles.formSection, { width: "100%" }]}>
                             <View style={styles.formContent}>
-                                {isAlreadySeller && user?.sellerStatus !== "REJECTED" ? (
+                                {isAlreadySeller && user?.sellerProfile?.status !== "REJECTED" ? (
                                     <View style={styles.alreadySellerContainer}>
                                         <Text style={{ fontSize: 48, marginBottom: 20 }}>✅</Text>
                                         <Text style={styles.welcomeTitle}>
-                                            {user?.sellerStatus === "PENDING" ? "Application Pending" : "Already a Seller!"}
+                                            {user?.sellerProfile?.status === "PENDING" ? "Application Pending" : "Already a Seller!"}
                                         </Text>
                                         <Text style={styles.welcomeSubtitle}>
-                                            {user?.sellerStatus === "PENDING"
+                                            {user?.sellerProfile?.status === "PENDING"
                                                 ? "Your application is pending review. We'll notify you once approved."
                                                 : "You're already a seller! Head to your dashboard to manage your shop."}
                                         </Text>
                                         <Pressable
                                             style={styles.submitButton}
                                             onPress={() => router.push(
-                                                user?.sellerStatus === "PENDING"
+                                                user?.sellerProfile?.status === "PENDING"
                                                     ? "/seller/application-status" as RelativePathString
                                                     : "/seller-dashboard" as RelativePathString
                                             )}
                                         >
                                             <Text style={styles.submitButtonText}>
-                                                {user?.sellerStatus === "PENDING" ? "View Application Status" : "Go to Seller Dashboard →"}
+                                                {user?.sellerProfile?.status === "PENDING" ? "View Application Status" : "Go to Seller Dashboard →"}
                                             </Text>
                                         </Pressable>
                                     </View>

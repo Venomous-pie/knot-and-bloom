@@ -14,13 +14,18 @@ export default function AuthSuccess() {
 
     useEffect(() => {
         const exchangeCode = async () => {
-            // Wait a moment to see if WebBrowser closes this window
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Wait a moment to see if WebBrowser closes this window (shorter delay for web performance)
+            await new Promise(resolve => setTimeout(resolve, 50));
             try {
                 if (code) {
                     // Security: Exchange one-time auth code for JWT via POST
                     const response = await apiClient.post('/auth/exchange-code', { code });
                     if (response.data?.token) {
+                        if (response.data.refreshToken) {
+                            // Save refresh token before loginWithToken fetches profile
+                            const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+                            await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+                        }
                         loginWithToken(response.data.token);
                     } else {
                         throw new Error('No token received');

@@ -4,19 +4,19 @@ import prisma from '../utils/prismaUtils.js';
 export const WishlistController = {
     getWishlist: async (req: Request, res: Response) => {
         try {
-            const customerId = parseInt(req.params.customerId as string);
+            const userId = parseInt(req.params.userId as string);
 
-            if (isNaN(customerId)) {
-                return res.status(400).json({ error: 'Invalid customer ID' });
+            if (isNaN(userId)) {
+                return res.status(400).json({ error: 'Invalid user ID' });
             }
 
             // Verify the request comes from the owner
-            if (req.user && (req.user as any).id !== customerId) {
+            if (req.user && (req.user as any).id !== userId) {
                 return res.status(403).json({ error: 'Forbidden' });
             }
 
             let wishlist = await prisma.wishlist.findUnique({
-                where: { customerId },
+                where: { userId },
                 include: {
                     items: {
                         include: {
@@ -54,22 +54,22 @@ export const WishlistController = {
 
     toggleWishlistItem: async (req: Request, res: Response) => {
         try {
-            const customerId = parseInt(req.params.customerId as string);
+            const userId = parseInt(req.params.userId as string);
             const { productId } = req.body;
 
-            if (isNaN(customerId) || typeof productId !== 'number') {
-                return res.status(400).json({ error: 'Invalid customer ID or product ID' });
+            if (isNaN(userId) || typeof productId !== 'number') {
+                return res.status(400).json({ error: 'Invalid user ID or product ID' });
             }
 
-            if (req.user && (req.user as any).id !== customerId) {
+            if (req.user && (req.user as any).id !== userId) {
                 return res.status(403).json({ error: 'Forbidden' });
             }
 
             // Ensure wishlist exists
             const wishlist = await prisma.wishlist.upsert({
-                where: { customerId },
+                where: { userId },
                 update: {},
-                create: { customerId }
+                create: { userId }
             });
 
             // Check if item already exists

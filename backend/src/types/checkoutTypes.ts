@@ -94,7 +94,7 @@ interface AuditLogEntry {
     action: string;
     entityType: 'checkout' | 'payment' | 'order' | 'auth' | 'admin' | 'account' | 'seller';
     entityId: number;
-    customerId: number;
+    userId: number;
     data?: Record<string, any> | undefined;
     errorMessage?: string | undefined;
 }

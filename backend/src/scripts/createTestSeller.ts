@@ -14,8 +14,8 @@ async function createTestSeller() {
         const shopName = `The Artisan Shop ${randomId}`;
         const slug = `artisan-shop-${randomId}`;
 
-        // Create Customer
-        const customer = await prisma.customer.create({
+        // Create User
+        const user = await prisma.user.create({
             data: {
                 name: name,
                 email: email,
@@ -27,24 +27,22 @@ async function createTestSeller() {
         // Create Seller Profile
         const seller = await prisma.seller.create({
             data: {
-                customerId: customer.uid,
+                userId: user.uid,
                 name: shopName,
                 slug: slug,
                 email: email,
                 status: SellerStatus.ACTIVE, // Make them fully active to skip admin approval
                 hasSeenWelcomeModal: true,
-                termsAccepted: true,
-                termsAcceptedAt: new Date()
             }
         });
 
         console.log("✅ Success! Test Seller Created.");
         console.log("==========================================");
-        console.log(`👤 Customer Name: ${customer.name}`);
+        console.log(`👤 User Name:     ${user.name}`);
         console.log(`🏪 Shop Name:     ${seller.name}`);
         console.log(`📧 Email:         ${email}`);
         console.log(`🔑 Password:      ${rawPassword}`);
-        console.log(`🌐 Role:          ${customer.role}`);
+        console.log(`🌐 Role:          ${user.role}`);
         console.log(`🚥 Seller Status: ${seller.status}`);
         console.log("==========================================");
         console.log("You can now log in using these credentials.");

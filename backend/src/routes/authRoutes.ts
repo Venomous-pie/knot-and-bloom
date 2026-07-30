@@ -12,7 +12,7 @@ const router = express.Router();
 
 // ── One-time auth code store (in-memory, TTL 60 seconds) ──
 // In production, use Redis for multi-instance support.
-const authCodeStore = new Map<string, { token: string; expiresAt: number }>();
+const authCodeStore = new Map<string, { token: string; refreshToken?: string; expiresAt: number }>();
 
 // Clean up expired codes every 5 minutes
 setInterval(() => {
@@ -37,7 +37,7 @@ router.get(
         failureRedirect: `${process.env.FRONTEND_URL}/login?error=auth_failed`,
         session: false
     }),
-    (req, res) => {
+    async (req, res) => {
         try {
             if (!req.user) {
                 throw new Error('User not found after auth');
@@ -57,11 +57,19 @@ router.get(
                 { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
             );
 
+            // Generate Refresh Token for long-lived session
+            const refreshToken = await RefreshTokenService.generate({
+                userId: user.uid,
+                email: user.email,
+                role: user.role,
+            });
+
             // Security: Generate a one-time auth code instead of passing JWT in URL
             // The frontend exchanges this code for the JWT via POST /auth/exchange-code
             const authCode = crypto.randomBytes(32).toString('hex');
             authCodeStore.set(authCode, {
                 token,
+                refreshToken,
                 expiresAt: Date.now() + 60_000, // 60 second TTL
             });
 
@@ -104,6 +112,7 @@ router.post('/exchange-code', (req, res) => {
         res.status(200).json({
             success: true,
             token: entry.token,
+            refreshToken: entry.refreshToken,
         });
     } catch (error) {
         console.error('Exchange code error:', error);
@@ -144,7 +153,7 @@ router.post('/refresh', async (req, res) => {
         // Issue a new short-lived access token
         const accessPayload: AuthPayload = {
             id: payload.userId,
-            ...(payload.email && { email: payload.email }),
+            email: payload.email || '',
             role: payload.role as Role,
             ...(payload.sellerId && { sellerId: payload.sellerId }),
             ...(payload.sellerStatus && { sellerStatus: payload.sellerStatus as any }),

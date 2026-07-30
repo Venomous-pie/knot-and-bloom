@@ -12,10 +12,10 @@ export class OtpService {
 
         // 1. Check if user exists (for REGISTRATION)
         if (type === 'REGISTRATION') {
-            const existingCustomer = await prisma.customer.findFirst({
+            const existingUser = await prisma.user.findFirst({
                 where: isEmail ? { email: target } : { phone: target }
             });
-            if (existingCustomer) {
+            if (existingUser) {
                 throw new ErrorHandler.ConflictError(
                     isEmail ? "Email already registered." : "Phone number already registered."
                 );

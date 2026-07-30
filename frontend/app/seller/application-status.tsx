@@ -66,7 +66,7 @@ export default function ApplicationStatusPage() {
         );
     }
 
-    const sellerStatus = user.sellerStatus || "NONE";
+    const sellerStatus = user.sellerProfile?.status || "NONE";
 
     const renderCancelModal = () => (
         <Modal
@@ -199,7 +199,7 @@ export default function ApplicationStatusPage() {
                         <View style={styles.rejectionBox}>
                             <Info size={18} color={theme.colors.errorDark} style={{ marginTop: 2 }} />
                             <Text style={styles.rejectionReasonText}>
-                                {user.sellerRejectionReason || "Information provided was incomplete. Please update your details and try again."}
+                                {user.sellerProfile?.rejectionReason || "Information provided was incomplete. Please update your details and try again."}
                             </Text>
                         </View>
                         

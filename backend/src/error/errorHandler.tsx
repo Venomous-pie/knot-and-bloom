@@ -23,7 +23,7 @@ export class NotFoundError extends CustomError {
     }
 }
 
-export class DuplicateCustomerError extends CustomError {
+export class DuplicateUserError extends CustomError {
     constructor(email: string) {
         super(`Looks like you already have an account. Sign in instead?`, 409, 'DUPLICATE_CUSTOMER');
     }
@@ -65,7 +65,7 @@ export default {
     ValidationError,
     DuplicateProductError,
     NotFoundError,
-    DuplicateCustomerError,
+    DuplicateUserError,
     ForbiddenError,
     ConflictError,
     InsufficientStockError,

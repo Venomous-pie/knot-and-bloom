@@ -22,7 +22,7 @@ type PaymentMethodUpdateInput = z.infer<typeof paymentMethodUpdateSchema>;
  */
 const getPaymentMethods = async (userId: number) => {
     const paymentMethods = await prisma.paymentMethod.findMany({
-        where: { customerId: userId },
+        where: { userId: userId },
         orderBy: [
             { isDefault: 'desc' },
             { updatedAt: 'desc' }
@@ -53,21 +53,21 @@ const createPaymentMethod = async (userId: number, input: unknown) => {
     }
 
     // Check if this is the first payment method
-    const existingCount = await prisma.paymentMethod.count({ where: { customerId: userId } });
+    const existingCount = await prisma.paymentMethod.count({ where: { userId: userId } });
     const shouldBeDefault = existingCount === 0 || parsedInput.isDefault;
 
     // Use transaction to ensure only one default
     const paymentMethod = await prisma.$transaction(async (tx) => {
         if (shouldBeDefault) {
             await tx.paymentMethod.updateMany({
-                where: { customerId: userId, isDefault: true },
+                where: { userId: userId, isDefault: true },
                 data: { isDefault: false }
             });
         }
 
         return tx.paymentMethod.create({
             data: {
-                customerId: userId,
+                userId: userId,
                 type: parsedInput.type as PaymentMethodType,
                 accountName: parsedInput.accountName,
                 accountNumber: parsedInput.accountNumber,
@@ -86,7 +86,7 @@ const createPaymentMethod = async (userId: number, input: unknown) => {
 const updatePaymentMethod = async (userId: number, paymentMethodId: number, input: unknown) => {
     // Verify ownership
     const existing = await prisma.paymentMethod.findUnique({ where: { uid: paymentMethodId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to update this payment method");
     }
 
@@ -105,7 +105,7 @@ const updatePaymentMethod = async (userId: number, paymentMethodId: number, inpu
     const paymentMethod = await prisma.$transaction(async (tx) => {
         if (parsedInput.isDefault) {
             await tx.paymentMethod.updateMany({
-                where: { customerId: userId, isDefault: true },
+                where: { userId: userId, isDefault: true },
                 data: { isDefault: false }
             });
         }
@@ -131,7 +131,7 @@ const updatePaymentMethod = async (userId: number, paymentMethodId: number, inpu
 const deletePaymentMethod = async (userId: number, paymentMethodId: number) => {
     // Verify ownership
     const existing = await prisma.paymentMethod.findUnique({ where: { uid: paymentMethodId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to delete this payment method");
     }
 
@@ -141,7 +141,7 @@ const deletePaymentMethod = async (userId: number, paymentMethodId: number) => {
     // If deleted was default, set another as default
     if (existing.isDefault) {
         const nextDefault = await prisma.paymentMethod.findFirst({
-            where: { customerId: userId },
+            where: { userId: userId },
             orderBy: { updatedAt: 'desc' }
         });
         if (nextDefault) {
@@ -161,14 +161,14 @@ const deletePaymentMethod = async (userId: number, paymentMethodId: number) => {
 const setDefaultPaymentMethod = async (userId: number, paymentMethodId: number) => {
     // Verify ownership
     const existing = await prisma.paymentMethod.findUnique({ where: { uid: paymentMethodId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to modify this payment method");
     }
 
     // Use transaction to ensure only one default
     const paymentMethod = await prisma.$transaction(async (tx) => {
         await tx.paymentMethod.updateMany({
-            where: { customerId: userId, isDefault: true },
+            where: { userId: userId, isDefault: true },
             data: { isDefault: false }
         });
         return tx.paymentMethod.update({

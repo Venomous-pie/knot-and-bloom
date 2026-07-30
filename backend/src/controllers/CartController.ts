@@ -6,11 +6,11 @@ import { supabaseService } from '../services/SupabaseService.js';
 
 const addToCart = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { customerId, productId, quantity, variant } = req.body;
+        const { userId, productId, quantity, variant } = req.body;
 
-        if (!customerId || !productId) {
+        if (!userId || !productId) {
             throw new ErrorHandler.ValidationError([
-                { message: "Customer ID and Product ID are required.", path: ['customerId', 'productId'] }
+                { message: "Customer ID and Product ID are required.", path: ['userId', 'productId'] }
             ]);
         }
 
@@ -39,12 +39,12 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
 
         // Find or create cart for customer
         let cart = await prisma.cart.findUnique({
-            where: { customerId: Number(customerId) }
+            where: { userId: Number(userId) }
         });
 
         if (!cart) {
             cart = await prisma.cart.create({
-                data: { customerId: Number(customerId) }
+                data: { userId: Number(userId) }
             });
         }
 
@@ -81,7 +81,7 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
         });
 
         // Real-time Update
-        supabaseService.emitToRoom(`user_${customerId}`, 'cart:updated', { customerId: Number(customerId) });
+        supabaseService.emitToRoom(`user_${userId}`, 'cart:updated', { userId: Number(userId) });
 
         res.status(200).json({ 
             message: "Product added to cart successfully.",
@@ -104,10 +104,10 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
 
 const getCart = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { customerId } = req.params;
+        const { userId } = req.params;
 
         const cart = await prisma.cart.findUnique({
-            where: { customerId: Number(customerId) },
+            where: { userId: Number(userId) },
             include: {
                 items: {
                     include: {
@@ -210,12 +210,12 @@ const updateCartItem = async (req: Request, res: Response): Promise<void> => {
         const updatedItem = await prisma.cartItem.update({
             where: { uid: Number(itemId) },
             data: { quantity: Number(quantity) },
-            include: { cart: true } // Include cart to get customerId
+            include: { cart: true } // Include cart to get userId
         });
 
         // Real-time Update
         if (updatedItem && updatedItem.cart) {
-            supabaseService.emitToRoom(`user_${updatedItem.cart.customerId}`, 'cart:updated', { customerId: updatedItem.cart.customerId });
+            supabaseService.emitToRoom(`user_${updatedItem.cart.userId}`, 'cart:updated', { userId: updatedItem.cart.userId });
         }
 
         res.status(200).json({ message: "Cart item updated." });
@@ -234,7 +234,7 @@ const removeFromCart = async (req: Request, res: Response): Promise<void> => {
     try {
         const { itemId } = req.params;
 
-        // Find first to get customerId (since delete doesn't allow include on some versions, or to be safe if it fails)
+        // Find first to get userId (since delete doesn't allow include on some versions, or to be safe if it fails)
         // But prisma delete returns the record.
         try {
             const deletedItem = await prisma.cartItem.delete({
@@ -244,7 +244,7 @@ const removeFromCart = async (req: Request, res: Response): Promise<void> => {
 
             // Real-time Update
             if (deletedItem && deletedItem.cart) {
-                supabaseService.emitToRoom(`user_${deletedItem.cart.customerId}`, 'cart:updated', { customerId: deletedItem.cart.customerId });
+                supabaseService.emitToRoom(`user_${deletedItem.cart.userId}`, 'cart:updated', { userId: deletedItem.cart.userId });
             }
         } catch (e: any) {
             // Ignore if record not found (idempotent)
@@ -263,14 +263,14 @@ const removeFromCart = async (req: Request, res: Response): Promise<void> => {
 
 const checkout = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { customerId, selectedItemIds } = req.body; // Expecting array of CartItem UIDs
+        const { userId, selectedItemIds } = req.body; // Expecting array of CartItem UIDs
 
-        if (!customerId || !selectedItemIds || !Array.isArray(selectedItemIds) || selectedItemIds.length === 0) {
+        if (!userId || !selectedItemIds || !Array.isArray(selectedItemIds) || selectedItemIds.length === 0) {
             throw new ErrorHandler.ValidationError([{ message: "Customer ID and selected items are required for checkout.", path: ['selectedItemIds'] }]);
         }
 
         const cart = await prisma.cart.findUnique({
-            where: { customerId: Number(customerId) },
+            where: { userId: Number(userId) },
             include: {
                 items: {
                     where: {
@@ -377,7 +377,7 @@ const checkout = async (req: Request, res: Response): Promise<void> => {
             // 2. Create the order (only reachable if all stock updates succeeded)
             const newOrder = await tx.order.create({
                 data: {
-                    customerId: Number(customerId),
+                    userId: Number(userId),
                     products: JSON.stringify(orderedProductsData),
                     total: totalAmount,
                     discount: 0, // Placeholder

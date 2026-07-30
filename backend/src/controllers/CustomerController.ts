@@ -11,27 +11,27 @@ import { OtpService } from "../services/otpService.js";
 import { RefreshTokenService } from "../services/RefreshTokenService.js";
 
 import {
-    customerLoginSchema,
-    customerSchema,
-    customerUpdateSchema,
-    type CustomerInput,
-    type CustomerLoginInput,
-    type CustomerUpdateInput,
+    userLoginSchema,
+    userSchema,
+    userUpdateSchema,
+    type UserInput,
+    type UserLoginInput,
+    type UserUpdateInput,
     googleLoginSchema,
     type GoogleLoginInput
-} from "../validators/customerValidator.js";
+} from "../validators/userValidator.js";
 
 import { generateRandomName } from "../utils/nameGenerator.js";
 import { ensureAdminSellerProfile } from "../utils/sellerUtils.js";
 
-const customerRegisterController = async (input: unknown) => {
-    let parsedInput: CustomerInput;
+const userRegisterController = async (input: unknown) => {
+    let parsedInput: UserInput;
 
     try {
-        parsedInput = customerSchema.parse(input);
+        parsedInput = userSchema.parse(input);
 
         // Check for existing user by email OR phone
-        const existingCustomer = await prisma.customer.findFirst({
+        const existinguser = await prisma.user.findFirst({
             where: {
                 OR: [
                     ...(parsedInput.email ? [{ email: parsedInput.email }] : []),
@@ -40,13 +40,13 @@ const customerRegisterController = async (input: unknown) => {
             },
         });
 
-        if (existingCustomer) {
-            if (parsedInput.email && existingCustomer.email === parsedInput.email) {
-                throw new ErrorHandler.DuplicateCustomerError(parsedInput.email);
+        if (existinguser) {
+            if (parsedInput.email && existinguser.email === parsedInput.email) {
+                throw new ErrorHandler.DuplicateUserError(parsedInput.email);
             }
-            if (parsedInput.phone && existingCustomer.phone === parsedInput.phone) {
-                // Create a custom error or reuse DuplicateCustomerError with phone message
-                throw new ErrorHandler.DuplicateCustomerError(parsedInput.phone);
+            if (parsedInput.phone && existinguser.phone === parsedInput.phone) {
+                // Create a custom error or reuse DuplicateuserError with phone message
+                throw new ErrorHandler.DuplicateUserError(parsedInput.phone);
             }
         }
 
@@ -55,7 +55,7 @@ const customerRegisterController = async (input: unknown) => {
         if (!target) {
             throw new ErrorHandler.ValidationError([{ message: "Email or phone is required", path: ["email", "phone"] }]);
         }
-        
+
         if (!parsedInput.otp) {
             throw new ErrorHandler.ValidationError([{ message: "OTP is required for registration", path: ["otp"] }]);
         }
@@ -67,48 +67,48 @@ const customerRegisterController = async (input: unknown) => {
         const hashedPassword = await bcrypt.hash(parsedInput.password, 10);
         const finalName = parsedInput.name || generateRandomName();
 
-        const customer = await prisma.customer.create({
+        const user = await prisma.user.create({
             data: {
                 name: finalName,
-                email: parsedInput.email || null,
-                password: hashedPassword,
+                email: parsedInput.email,
                 phone: parsedInput.phone || null,
+                password: hashedPassword,
                 address: parsedInput.address || null,
             },
         });
 
         // Auto-create seller profile for ADMIN if they register as admin (unlikely but possible via manual DB tweak later)
         let sellerId;
-        if (customer.role === 'ADMIN' && customer.email) {
-            sellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+        if (user.role === 'ADMIN' && user.email) {
+            sellerId = await ensureAdminSellerProfile(user.uid, user.email);
         }
 
         // Generate token for auto-login
         const payload: AuthPayload = {
-            id: customer.uid,
-            ...(customer.email ? { email: customer.email } : {}),
-            role: customer.role as any,
+            id: user.uid,
+            email: user.email,
+            role: user.role as any,
             ...(sellerId ? { sellerId } : {})
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
         const refreshToken = await RefreshTokenService.generate({
-            userId: customer.uid,
-            ...(customer.email && { email: customer.email }),
-            role: customer.role,
+            userId: user.uid,
+            ...(user.email && { email: user.email }),
+            role: user.role,
         });
 
         return {
             token,
             refreshToken,
-            customer: {
-                uid: customer.uid,
-                name: customer.name,
-                email: customer.email,
-                phone: customer.phone,
-                address: customer.address,
-                role: customer.role,
-                passwordResetRequired: customer.passwordResetRequired,
+            user: {
+                uid: user.uid,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                address: user.address,
+                role: user.role,
+                passwordResetRequired: user.passwordResetRequired,
                 sellerId: undefined, // New users are not sellers yet
                 sellerStatus: undefined,
                 sellerSlug: undefined,
@@ -126,13 +126,13 @@ const customerRegisterController = async (input: unknown) => {
     }
 }
 
-const customerLoginController = async (input: unknown) => {
-    let parsedInput: CustomerLoginInput;
+const userLoginController = async (input: unknown) => {
+    let parsedInput: UserLoginInput;
 
     try {
-        parsedInput = customerLoginSchema.parse(input);
+        parsedInput = userLoginSchema.parse(input);
 
-        const customer = await prisma.customer.findFirst({
+        const user = await prisma.user.findFirst({
             where: {
                 OR: [
                     ...(parsedInput.email ? [{ email: parsedInput.email }] : []),
@@ -142,69 +142,61 @@ const customerLoginController = async (input: unknown) => {
             include: { sellerProfile: true }
         });
 
-        if (!customer) {
+        if (!user) {
             throw new ErrorHandler.AuthenticationError("No account found with those credentials.", 'USER_NOT_FOUND');
         }
 
-        if (customer.deletedAt) {
+        if (user.deletedAt) {
             throw new ErrorHandler.AuthenticationError("This account has been deleted.", 'USER_DELETED');
         }
 
-        if (!customer.password) {
+        if (!user.password) {
             throw new ErrorHandler.AuthenticationError("This account uses Google Sign-In. Please continue with Google.", 'NO_PASSWORD_SET');
         }
 
-        if (customer.role === 'ADMIN' && customer.email) {
-            const officialSellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+        if (user.role === 'ADMIN' && user.email) {
+            const officialSellerId = await ensureAdminSellerProfile(user.uid, user.email);
             const officialSeller = await prisma.seller.findUnique({ where: { uid: officialSellerId } });
-            if (officialSeller) customer.sellerProfile = officialSeller;
+            if (officialSeller) user.sellerProfile = officialSeller;
         }
 
-        const isPasswordValid = await bcrypt.compare(parsedInput.password, customer.password);
+        const isPasswordValid = await bcrypt.compare(parsedInput.password, user.password);
 
         if (!isPasswordValid) {
             throw new ErrorHandler.AuthenticationError("Incorrect password.", 'WRONG_PASSWORD');
         }
 
         const payload: AuthPayload = {
-            id: customer.uid,
-            ...(customer.email ? { email: customer.email } : {}),
-            role: customer.role as any,
-            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
-            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),
-            ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
+            id: user.uid,
+            email: user.email,
+            role: user.role as any,
+            ...(user.sellerProfile?.uid && { sellerId: user.sellerProfile.uid }),
+            ...(user.sellerProfile?.status && { sellerStatus: user.sellerProfile.status as any }),
+            ...(user.passwordResetRequired && { passwordResetRequired: user.passwordResetRequired })
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' }); // 7d expiry for better UX
         const refreshToken = await RefreshTokenService.generate({
-            userId: customer.uid,
-            ...(customer.email && { email: customer.email }),
-            role: customer.role,
-            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
-            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status }),
+            userId: user.uid,
+            ...(user.email && { email: user.email }),
+            role: user.role,
+            ...(user.sellerProfile?.uid && { sellerId: user.sellerProfile.uid }),
+            ...(user.sellerProfile?.status && { sellerStatus: user.sellerProfile.status }),
         });
 
         return {
             token,
             refreshToken,
-            customer: {
-                uid: customer.uid,
-                name: customer.name,
-                email: customer.email,
-                phone: customer.phone,
-                address: customer.address,
-                role: customer.role,
-                avatar: customer.avatar,
-                passwordResetRequired: customer.passwordResetRequired,
-                sellerId: customer.sellerProfile?.uid,
-                sellerStatus: customer.sellerProfile?.status,
-                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
-                sellerStoreName: customer.sellerProfile?.name,
-                sellerSlug: customer.sellerProfile?.slug,
-                sellerRating: customer.sellerProfile?.rating,
-                sellerTotalSales: customer.sellerProfile?.totalSales,
-                sellerTotalOrders: customer.sellerProfile?.totalOrders,
-                sellerRejectionReason: customer.sellerProfile?.rejectionReason
+            user: {
+                uid: user.uid,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                address: user.address,
+                role: user.role,
+                avatar: user.avatar,
+                passwordResetRequired: user.passwordResetRequired,
+                ...(user.sellerProfile && { sellerProfile: user.sellerProfile }),
             }
         };
 
@@ -217,65 +209,36 @@ const customerLoginController = async (input: unknown) => {
     }
 }
 
-const getCustomerProfile = async (userId: number) => {
-    const customer = await prisma.customer.findUnique({
+const getUserProfile = async (userId: number) => {
+    const user = await prisma.user.findUnique({
         where: { uid: userId },
         include: { sellerProfile: true }
     });
 
-    if (!customer) {
-        throw new ErrorHandler.NotFoundError('Customer', String(userId));
+    if (!user) {
+        throw new ErrorHandler.NotFoundError('user', String(userId));
     }
 
-    if (customer.role === 'ADMIN' && customer.email) {
-        const officialSellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+    if (user.role === 'ADMIN' && user.email) {
+        const officialSellerId = await ensureAdminSellerProfile(user.uid, user.email);
         const officialSeller = await prisma.seller.findUnique({ where: { uid: officialSellerId } });
-        if (officialSeller) customer.sellerProfile = officialSeller;
+        if (officialSeller) user.sellerProfile = officialSeller;
     }
 
-    const { password, ...customerData } = customer;
-
-    const payload: AuthPayload = {
-        id: customer.uid,
-        ...(customer.email ? { email: customer.email } : {}),
-        role: customer.role as any,
-        ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
-        ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),
-        ...(customer.passwordResetRequired && { passwordResetRequired: customer.passwordResetRequired })
-    };
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
-    const refreshToken = await RefreshTokenService.generate({
-        userId: customer.uid,
-        ...(customer.email && { email: customer.email }),
-        role: customer.role,
-        ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
-        ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status }),
-    });
+    const { password, ...userData } = user;
 
     return {
-        customer: {
-            ...customerData,
-            sellerId: customer.sellerProfile?.uid,
-            sellerStatus: customer.sellerProfile?.status,
-            sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
-            sellerStoreName: customer.sellerProfile?.name,
-            sellerSlug: customer.sellerProfile?.slug,
-            sellerRating: customer.sellerProfile?.rating,
-            sellerTotalSales: customer.sellerProfile?.totalSales,
-            sellerTotalOrders: customer.sellerProfile?.totalOrders,
-            sellerRejectionReason: customer.sellerProfile?.rejectionReason
-        },
-        token,
-        refreshToken,
+        user: {
+            ...userData,
+        }
     };
 };
 
-const updateCustomerProfile = async (userId: number, input: unknown) => {
-    let parsedInput: CustomerUpdateInput;
+const updateUserProfile = async (userId: number, input: unknown) => {
+    let parsedInput: UserUpdateInput;
 
     try {
-        parsedInput = customerUpdateSchema.parse(input);
+        parsedInput = userUpdateSchema.parse(input);
 
         // Remove undefined keys to avoid exactOptionalPropertyTypes issues
         const updateData: any = Object.fromEntries(
@@ -288,13 +251,13 @@ const updateCustomerProfile = async (userId: number, input: unknown) => {
             updateData.passwordResetRequired = false;
         }
 
-        const customer = await prisma.customer.update({
+        const user = await prisma.user.update({
             where: { uid: userId },
             data: updateData
         });
 
-        const { password, ...customerData } = customer;
-        return customerData;
+        const { password, ...userData } = user;
+        return userData;
 
     } catch (error) {
         if (error instanceof ZodError) {
@@ -326,8 +289,8 @@ const googleLoginController = async (input: unknown) => {
 
         const { email, sub: googleId, name, picture } = payload;
 
-        // Find existing customer by googleId OR email
-        let customer = await prisma.customer.findFirst({
+        // Find existing user by googleId OR email
+        let user = await prisma.user.findFirst({
             where: {
                 OR: [
                     { googleId },
@@ -337,25 +300,25 @@ const googleLoginController = async (input: unknown) => {
             include: { sellerProfile: true }
         });
 
-        if (customer) {
-            if (customer.deletedAt) {
+        if (user) {
+            if (user.deletedAt) {
                 throw new ErrorHandler.AuthenticationError("This account has been deleted.", 'USER_DELETED');
             }
 
             // Link googleId if not linked yet, or update avatar if missing
-            if (!customer.googleId || (!customer.avatar && picture)) {
-                customer = await prisma.customer.update({
-                    where: { uid: customer.uid },
+            if (!user.googleId || (!user.avatar && picture)) {
+                user = await prisma.user.update({
+                    where: { uid: user.uid },
                     data: {
                         googleId,
-                        ...(!customer.avatar && picture ? { avatar: picture } : {})
+                        ...(!user.avatar && picture ? { avatar: picture } : {})
                     },
                     include: { sellerProfile: true }
                 });
             }
         } else {
-            // Create new customer
-            customer = await prisma.customer.create({
+            // Create new user
+            user = await prisma.user.create({
                 data: {
                     email,
                     googleId,
@@ -367,50 +330,41 @@ const googleLoginController = async (input: unknown) => {
             });
         }
 
-        if (customer.role === 'ADMIN' && customer.email) {
-            const officialSellerId = await ensureAdminSellerProfile(customer.uid, customer.email);
+        if (user.role === 'ADMIN' && user.email) {
+            const officialSellerId = await ensureAdminSellerProfile(user.uid, user.email);
             const officialSeller = await prisma.seller.findUnique({ where: { uid: officialSellerId } });
-            if (officialSeller) customer.sellerProfile = officialSeller;
+            if (officialSeller) user.sellerProfile = officialSeller;
         }
 
         const jwtPayload: AuthPayload = {
-            id: customer.uid,
-            email: customer.email!,
-            role: customer.role as any,
-            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
-            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status as any }),
+            id: user.uid,
+            email: user.email!,
+            role: user.role as any,
+            ...(user.sellerProfile?.uid && { sellerId: user.sellerProfile.uid }),
+            ...(user.sellerProfile?.status && { sellerStatus: user.sellerProfile.status as any }),
         };
 
         const token = jwt.sign(jwtPayload, process.env.JWT_SECRET!, { expiresIn: '7d' });
         const refreshToken = await RefreshTokenService.generate({
-            userId: customer.uid,
-            ...(customer.email && { email: customer.email }),
-            role: customer.role,
-            ...(customer.sellerProfile?.uid && { sellerId: customer.sellerProfile.uid }),
-            ...(customer.sellerProfile?.status && { sellerStatus: customer.sellerProfile.status }),
+            userId: user.uid,
+            ...(user.email && { email: user.email }),
+            role: user.role,
+            ...(user.sellerProfile?.uid && { sellerId: user.sellerProfile.uid }),
+            ...(user.sellerProfile?.status && { sellerStatus: user.sellerProfile.status }),
         });
 
         return {
             token,
             refreshToken,
-            customer: {
-                uid: customer.uid,
-                name: customer.name,
-                email: customer.email,
-                phone: customer.phone,
-                address: customer.address,
-                role: customer.role,
-                avatar: customer.avatar,
-                passwordResetRequired: customer.passwordResetRequired,
-                sellerId: customer.sellerProfile?.uid,
-                sellerStatus: customer.sellerProfile?.status,
-                sellerHasSeenWelcomeModal: customer.sellerProfile?.hasSeenWelcomeModal,
-                sellerStoreName: customer.sellerProfile?.name,
-                sellerSlug: customer.sellerProfile?.slug,
-                sellerRating: customer.sellerProfile?.rating,
-                sellerTotalSales: customer.sellerProfile?.totalSales,
-                sellerTotalOrders: customer.sellerProfile?.totalOrders,
-                sellerRejectionReason: customer.sellerProfile?.rejectionReason
+            user: {
+                uid: user.uid,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                address: user.address,
+                role: user.role,
+                avatar: user.avatar,
+                passwordResetRequired: user.passwordResetRequired,
             }
         };
 
@@ -424,9 +378,9 @@ const googleLoginController = async (input: unknown) => {
 }
 
 export default {
-    customerRegisterController,
-    customerLoginController,
-    getCustomerProfile,
-    updateCustomerProfile,
+    userRegisterController,
+    userLoginController,
+    getUserProfile,
+    updateUserProfile,
     googleLoginController
 }

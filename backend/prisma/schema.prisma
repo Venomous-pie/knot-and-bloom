@@ -7,6 +7,94 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  uid                   Int       @id @default(autoincrement())
+  name                  String
+  email                 String   @unique
+  password              String?
+  phone                 String?   @unique
+  address               String?
+  avatar                String?
+  role                  Role      @default(USER)
+  passwordResetRequired Boolean   @default(false)
+  googleId              String?   @unique
+  trustScore            Int       @default(100)
+  codCancellationCount  Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+  deletionRequestedAt   DateTime?
+  deletionScheduledFor  DateTime?
+
+  sellerProfile        Seller?
+  addresses            Address[]
+  cart                 Cart?
+  checkoutSessions     CheckoutSession[]
+  notifications        Notification[]
+  notificationSettings NotificationSettings?
+  orders               Order[]
+  paymentMethods       PaymentMethod[]
+  refreshTokens        RefreshToken[]
+  wishlist             Wishlist?
+}
+
+model Seller {
+  uid                 Int          @id @default(autoincrement())
+  name                String
+  slug                String       @unique
+  userId              Int          @unique
+  user                User         @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  logo                String?
+  banner              String?
+  status              SellerStatus @default(PENDING)
+  email               String       @unique
+  phone               String?
+  hasSeenWelcomeModal Boolean      @default(false)
+  pendingBalance      Decimal      @default(0)
+  availableBalance    Decimal      @default(0)
+  totalWithdrawn      Decimal      @default(0)
+  totalSales          Decimal      @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  approvedAt          DateTime?
+  rejectionReason     String?
+  description         String?
+  totalOrders         Int          @default(0)
+  selfDeliveryEnabled Boolean      @default(false)
+  vehicleType         VehicleType  @default(NONE)
+  commissionRate      Decimal      @default(0.05)
+  freeShippingEnabled   Boolean      @default(false)
+  freeShippingThreshold Decimal      @default(0)
+  productCategories     String[]     @default([])
+  businessAddress       String?
+  socialMediaLink       String?
+  meetUpPoint           String?
+  businessType          String?
+  sellerCitymunCode     String?
+  sellerProvCode        String?
+  sellerRegCode         String?
+  rating                Decimal?
+  isHandmade            Boolean      @default(false)
+  hasPriorExperience    Boolean      @default(false)
+  sampleItems           String[]     @default([])
+  salesChannels         String[]     @default([])
+  monthlyOrders         String?
+  legalName             String?
+  portfolioLink         String?
+  idType                String?
+  idNumber              String?
+  termsAccepted         Boolean      @default(false)
+  termsAcceptedAt       DateTime?
+
+  orders             Order[]
+  orderItems         OrderItem[]
+  products           Product[]
+  withdrawalRequests WithdrawalRequest[]
+  shipments          OrderShipment[]
+
+  @@index([userId, hasSeenWelcomeModal])
+}
+
 model Product {
   uid                     Int              @id @default(autoincrement())
   name                    String
@@ -73,42 +161,12 @@ model ProductVariant {
   @@unique([productId, name])
 }
 
-model Customer {
-  uid                   Int                   @id @default(autoincrement())
-  name                  String
-  email                 String?               @unique
-  password              String?
-  phone                 String?               @unique
-  address               String?
-  uploaded              DateTime              @default(now())
-  updated               DateTime              @updatedAt
-  passwordResetRequired Boolean               @default(false)
-  role                  Role                  @default(USER)
-  avatar                String?
-  codCancellationCount  Int                   @default(0)
-  deletedAt             DateTime?
-  deletionRequestedAt   DateTime?
-  deletionScheduledFor  DateTime?
-  googleId              String?               @unique
-  trustScore            Int                   @default(100)
-  addresses             Address[]
-  cart                  Cart?
-  checkoutSessions      CheckoutSession[]
-  notifications         Notification[]
-  notificationSettings  NotificationSettings?
-  orders                Order[]
-  paymentMethods        PaymentMethod[]
-  refreshTokens         RefreshToken[]
-  sellerProfile         Seller?               @relation("CustomerSeller")
-  wishlist              Wishlist?
-}
-
 model Cart {
-  uid        Int        @id @default(autoincrement())
-  customerId Int        @unique
-  updated    DateTime   @updatedAt
-  customer   Customer   @relation(fields: [customerId], references: [uid])
-  items      CartItem[]
+  uid     Int        @id @default(autoincrement())
+  userId  Int        @unique
+  updated DateTime   @updatedAt
+  user    User       @relation(fields: [userId], references: [uid])
+  items   CartItem[]
 }
 
 model CartItem {
@@ -124,7 +182,7 @@ model CartItem {
 
 model Order {
   uid                     Int             @id @default(autoincrement())
-  customerId              Int
+  userId                  Int
   products                String
   discount                Decimal?
   total                   Decimal
@@ -154,7 +212,7 @@ model Order {
   shippingFee             Decimal         @default(0)
   shippingMethod          String?
   subtotal                Decimal         @default(0)
-  customer                Customer        @relation(fields: [customerId], references: [uid])
+  user                    User            @relation(fields: [userId], references: [uid])
   seller                  Seller?         @relation(fields: [sellerId], references: [uid])
   items                   OrderItem[]
   timeline                OrderTimeline[]
@@ -164,7 +222,7 @@ model Order {
 
 model CheckoutSession {
   uid            Int            @id @default(autoincrement())
-  customerId     Int
+  userId         Int
   cartSnapshot   String
   lockedPrices   String
   totalAmount    Decimal
@@ -173,7 +231,7 @@ model CheckoutSession {
   idempotencyKey String         @unique
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
-  customer       Customer       @relation(fields: [customerId], references: [uid])
+  user           User           @relation(fields: [userId], references: [uid])
   payments       Payment[]
 }
 
@@ -212,65 +270,6 @@ model ProductOptionValue {
   variants ProductVariant[] @relation("ProductOptionValueToProductVariant")
 }
 
-model Seller {
-  uid                 Int                 @id @default(autoincrement())
-  name                String
-  slug                String              @unique
-  logo                String?
-  banner              String?
-  commissionRate      Decimal             @default(0.05)
-  createdAt           DateTime            @default(now())
-  deletedAt           DateTime?
-  description         String?
-  email               String              @unique
-  phone               String?
-  termsAccepted       Boolean             @default(false)
-  termsAcceptedAt     DateTime?
-  totalOrders         Int                 @default(0)
-  totalSales          Decimal             @default(0)
-  updatedAt           DateTime            @updatedAt
-  customerId          Int                 @unique
-  status              SellerStatus        @default(PENDING)
-  approvedAt          DateTime?
-  hasSeenWelcomeModal Boolean             @default(false)
-  availableBalance    Decimal             @default(0)
-  businessAddress     String?
-  businessType        String?
-  hasPriorExperience  Boolean             @default(false)
-  idNumber            String?
-  idType              String?
-  isHandmade          Boolean             @default(false)
-  legalName           String?
-  location            String?
-  pendingBalance      Decimal             @default(0)
-  pinnedProductIds    Int[]
-  portfolioLink       String?
-  productCategories   String?
-  rating              Decimal             @default(0)
-  rejectionReason     String?
-  socialMediaLink     String?
-  totalWithdrawn      Decimal             @default(0)
-  monthlyOrders       String?
-  salesChannels       String[]
-  sampleItems         String[]
-  vehicleType         VehicleType?
-  selfDeliveryEnabled Boolean             @default(false)
-  freeShippingEnabled Boolean             @default(false)
-  freeShippingThreshold Decimal?
-  meetUpPoint         String?
-  sellerCitymunCode   String?
-  sellerProvCode      String?
-  sellerRegCode       String?
-  orders              Order[]
-  orderItems          OrderItem[]
-  products            Product[]
-  customer            Customer            @relation("CustomerSeller", fields: [customerId], references: [uid], onDelete: Cascade)
-  withdrawalRequests  WithdrawalRequest[]
-  shipments           OrderShipment[]
-
-  @@index([customerId, hasSeenWelcomeModal])
-}
-
 model OrderItem {
   uid              Int       @id @default(autoincrement())
   orderId          Int
@@ -291,34 +290,34 @@ model OrderItem {
 }
 
 model Address {
-  uid           Int      @id @default(autoincrement())
-  customerId    Int
-  label         String?
-  fullName      String
-  phone         String
-  streetAddress String
-  aptSuite      String?
-  city          String
-  stateProvince String?
-  postalCode    String
-  country       String   @default("Philippines")
-  isDefault     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  barangay      String?
-  province      String?
-  region        String?
+  uid              Int      @id @default(autoincrement())
+  userId           Int
+  label            String?
+  fullName         String
+  phone            String
+  streetAddress    String
+  aptSuite         String?
+  city             String
+  stateProvince    String?
+  postalCode       String
+  country          String   @default("Philippines")
+  isDefault        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  barangay         String?
+  province         String?
+  region           String?
   landmark         String?
   zoneTierOverride Int?
-  customer      Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
-  @@index([customerId])
-  @@index([customerId, isDefault])
+  @@index([userId])
+  @@index([userId, isDefault])
 }
 
 model PaymentMethod {
   uid           Int               @id @default(autoincrement())
-  customerId    Int
+  userId        Int
   type          PaymentMethodType
   accountName   String
   accountNumber String
@@ -326,36 +325,36 @@ model PaymentMethod {
   isDefault     Boolean           @default(false)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
-  customer      Customer          @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
-  @@index([customerId])
-  @@index([customerId, isDefault])
+  @@index([userId])
+  @@index([userId, isDefault])
 }
 
 model NotificationSettings {
   uid            Int      @id @default(autoincrement())
-  customerId     Int      @unique
+  userId         Int      @unique
   orderUpdates   Boolean  @default(true)
   promotions     Boolean  @default(true)
   systemMessages Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  customer       Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
 }
 
 model Notification {
-  uid        Int      @id @default(autoincrement())
-  customerId Int
-  title      String
-  message    String
-  type       String
-  isRead     Boolean  @default(false)
-  data       String?
-  createdAt  DateTime @default(now())
-  customer   Customer @relation(fields: [customerId], references: [uid], onDelete: Cascade)
+  uid       Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  data      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
-  @@index([customerId])
-  @@index([customerId, isRead])
+  @@index([userId])
+  @@index([userId, isRead])
 }
 
 model Verification {
@@ -400,11 +399,11 @@ model WithdrawalRequest {
 }
 
 model Wishlist {
-  uid        Int            @id @default(autoincrement())
-  customerId Int            @unique
-  updated    DateTime       @updatedAt
-  customer   Customer       @relation(fields: [customerId], references: [uid], onDelete: Cascade)
-  items      WishlistItem[]
+  uid     Int            @id @default(autoincrement())
+  userId  Int            @unique
+  updated DateTime       @updatedAt
+  user    User           @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  items   WishlistItem[]
 }
 
 model WishlistItem {
@@ -428,7 +427,7 @@ model RefreshToken {
   sellerStatus String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
-  customer     Customer @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
   @@index([userId])
   @@index([token])
@@ -443,19 +442,19 @@ model RateLimit {
 }
 
 model OrderShipment {
-  uid              Int              @id @default(autoincrement())
+  uid              Int            @id @default(autoincrement())
   orderId          Int
   sellerId         Int
-  fulfillmentType  ShipmentType     
-  zoneTier         Int              
-  shippingFee      Decimal          
-  computedFuelCost Decimal          @default(0) 
-  meetUpSnapshot   String?          
-  status           ShipmentStatus   @default(PENDING)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  order            Order            @relation(fields: [orderId], references: [uid], onDelete: Cascade)
-  seller           Seller           @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
+  fulfillmentType  ShipmentType
+  zoneTier         Int
+  shippingFee      Decimal
+  computedFuelCost Decimal        @default(0)
+  meetUpSnapshot   String?
+  status           ShipmentStatus @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  order            Order          @relation(fields: [orderId], references: [uid], onDelete: Cascade)
+  seller           Seller         @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
 
   @@index([orderId])
   @@index([sellerId])
@@ -465,7 +464,7 @@ model PlatformConfig {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
-  updatedBy Int?     
+  updatedBy Int?
 }
 
 enum OrderStatus {

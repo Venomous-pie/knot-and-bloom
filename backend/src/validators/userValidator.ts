@@ -7,9 +7,9 @@ const passwordSchema = z.string()
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number");
 
-export const customerSchema = z.object({
+export const userSchema = z.object({
     name: z.string().optional(),
-    email: z.string().email().optional(),
+    email: z.email(),
     password: passwordSchema,
     phone: z.string().optional(),
     otp: z.string().optional(), // OTP for phone registration
@@ -20,15 +20,15 @@ export const customerSchema = z.object({
 });
 
 export const orderSchema = z.object({
-    customerId: z.number(),
+    userId: z.number(),
     products: z.string(),
     discount: z.number().optional(),
     total: z.number(),
 });
 
 
-export const customerLoginSchema = z.object({
-    email: z.string().email().optional(),
+export const userLoginSchema = z.object({
+    email: z.email(),
     phone: z.string().optional(),
     password: z.string(),
 }).refine(data => data.email || data.phone, {
@@ -36,18 +36,17 @@ export const customerLoginSchema = z.object({
     path: ["email", "phone"]
 });
 
-export const customerUpdateSchema = z.object({
+export const userUpdateSchema = z.object({
     name: z.string().optional(),
-    email: z.string().optional(),
     phone: z.string().optional(),
     address: z.string().optional(),
     password: passwordSchema.optional(),
 });
 
-export type CustomerUpdateInput = z.infer<typeof customerUpdateSchema>;
+export type UserUpdateInput = z.infer<typeof userUpdateSchema>;
 
-export type CustomerLoginInput = z.infer<typeof customerLoginSchema>;
-export type CustomerInput = z.infer<typeof customerSchema>;
+export type UserLoginInput = z.infer<typeof userLoginSchema>;
+export type UserInput = z.infer<typeof userSchema>;
 
 export const googleLoginSchema = z.object({
     token: z.string().min(1, "Google token is required"),

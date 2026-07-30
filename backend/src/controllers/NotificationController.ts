@@ -16,14 +16,14 @@ type NotificationSettingsInput = z.infer<typeof notificationSettingsSchema>;
  */
 const getNotificationSettings = async (userId: number) => {
     let settings = await prisma.notificationSettings.findUnique({
-        where: { customerId: userId }
+        where: { userId: userId }
     });
 
     // Create default settings if none exist
     if (!settings) {
         settings = await prisma.notificationSettings.create({
             data: {
-                customerId: userId,
+                userId: userId,
                 orderUpdates: true,
                 promotions: true,
                 systemMessages: true,
@@ -51,9 +51,9 @@ const updateNotificationSettings = async (userId: number, input: unknown) => {
 
     // Upsert settings
     const settings = await prisma.notificationSettings.upsert({
-        where: { customerId: userId },
+        where: { userId: userId },
         create: {
-            customerId: userId,
+            userId: userId,
             orderUpdates: parsedInput.orderUpdates ?? true,
             promotions: parsedInput.promotions ?? true,
             systemMessages: parsedInput.systemMessages ?? true,
@@ -76,7 +76,7 @@ const getNotifications = async (userId: number, options?: { unreadOnly?: boolean
 
     const notifications = await prisma.notification.findMany({
         where: {
-            customerId: userId,
+            userId: userId,
             ...(unreadOnly && { isRead: false }),
             ...(excludeType && { type: { not: excludeType } })
         },
@@ -87,7 +87,7 @@ const getNotifications = async (userId: number, options?: { unreadOnly?: boolean
 
     const totalCount = await prisma.notification.count({
         where: {
-            customerId: userId,
+            userId: userId,
             ...(unreadOnly && { isRead: false }),
             ...(excludeType && { type: { not: excludeType } })
         }
@@ -95,7 +95,7 @@ const getNotifications = async (userId: number, options?: { unreadOnly?: boolean
 
     const unreadCount = await prisma.notification.count({
         where: { 
-            customerId: userId, 
+            userId: userId, 
             isRead: false,
             ...(excludeType && { type: { not: excludeType } })
         }
@@ -109,7 +109,7 @@ const getNotifications = async (userId: number, options?: { unreadOnly?: boolean
  */
 const markAsRead = async (userId: number, notificationId: number) => {
     const existing = await prisma.notification.findUnique({ where: { uid: notificationId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to modify this notification");
     }
 
@@ -126,7 +126,7 @@ const markAsRead = async (userId: number, notificationId: number) => {
  */
 const markAllAsRead = async (userId: number) => {
     await prisma.notification.updateMany({
-        where: { customerId: userId, isRead: false },
+        where: { userId: userId, isRead: false },
         data: { isRead: true }
     });
 
@@ -136,10 +136,10 @@ const markAllAsRead = async (userId: number) => {
 /**
  * Create a notification (internal use - for system to send notifications)
  */
-const createNotification = async (customerId: number, title: string, message: string, type: string, data?: any) => {
+const createNotification = async (userId: number, title: string, message: string, type: string, data?: any) => {
     const notification = await prisma.notification.create({
         data: {
-            customerId,
+            userId,
             title,
             message,
             type,
@@ -155,7 +155,7 @@ const createNotification = async (customerId: number, title: string, message: st
  */
 const deleteNotification = async (userId: number, notificationId: number) => {
     const existing = await prisma.notification.findUnique({ where: { uid: notificationId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to delete this notification");
     }
 

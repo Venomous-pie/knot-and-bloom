@@ -16,7 +16,7 @@ import addressRoutes from './routes/addressRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import checkoutRoutes from './routes/checkoutRoutes.js';
-import customerRoutes from './routes/customerRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import paymentMethodRoutes from './routes/paymentMethodRoutes.js';
@@ -100,7 +100,7 @@ app.get('/', (req, res) => {
 
 // Api Routes
 app.use('/api/products', productRoutes);
-app.use('/api/customers', customerRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/checkout', checkoutRoutes);

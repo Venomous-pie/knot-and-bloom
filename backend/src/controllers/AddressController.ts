@@ -9,7 +9,7 @@ type AddressUpdateInput = z.infer<typeof addressUpdateSchema>;
 
 const getAddresses = async (userId: number) => {
     const addresses = await prisma.address.findMany({
-        where: { customerId: userId },
+        where: { userId: userId },
         orderBy: [
             { isDefault: 'desc' },
             { updatedAt: 'desc' }
@@ -32,21 +32,21 @@ const createAddress = async (userId: number, input: unknown) => {
     }
 
     // If this is the first address or isDefault is true, handle default logic
-    const existingAddresses = await prisma.address.count({ where: { customerId: userId } });
+    const existingAddresses = await prisma.address.count({ where: { userId: userId } });
     const shouldBeDefault = existingAddresses === 0 || parsedInput.isDefault;
 
     // Use transaction to ensure only one default
     const address = await prisma.$transaction(async (tx) => {
         if (shouldBeDefault) {
             await tx.address.updateMany({
-                where: { customerId: userId, isDefault: true },
+                where: { userId: userId, isDefault: true },
                 data: { isDefault: false }
             });
         }
 
         return tx.address.create({
             data: {
-                customerId: userId,
+                userId: userId,
                 label: parsedInput.label ?? null,
                 fullName: parsedInput.fullName,
                 phone: parsedInput.phone,
@@ -70,7 +70,7 @@ const createAddress = async (userId: number, input: unknown) => {
 const updateAddress = async (userId: number, addressId: number, input: unknown) => {
     // Verify ownership
     const existing = await prisma.address.findUnique({ where: { uid: addressId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to update this address");
     }
 
@@ -89,7 +89,7 @@ const updateAddress = async (userId: number, addressId: number, input: unknown) 
     const address = await prisma.$transaction(async (tx) => {
         if (parsedInput.isDefault) {
             await tx.address.updateMany({
-                where: { customerId: userId, isDefault: true },
+                where: { userId: userId, isDefault: true },
                 data: { isDefault: false }
             });
         }
@@ -120,12 +120,12 @@ const updateAddress = async (userId: number, addressId: number, input: unknown) 
 const deleteAddress = async (userId: number, addressId: number) => {
     // Verify ownership
     const existing = await prisma.address.findUnique({ where: { uid: addressId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to delete this address");
     }
 
     // Check removed: Users are now allowed to have 0 addresses.
-    // const addressCount = await prisma.address.count({ where: { customerId: userId } });
+    // const addressCount = await prisma.address.count({ where: { userId: userId } });
     // if (addressCount <= 1) {
     //    throw new ErrorHandler.BadRequestError("You must have at least one address");
     // }
@@ -136,11 +136,11 @@ const deleteAddress = async (userId: number, addressId: number) => {
     // If deleted address was default, set another as default
     if (existing.isDefault) {
         await prisma.address.updateMany({
-            where: { customerId: userId },
+            where: { userId: userId },
             data: { isDefault: false }
         });
         const nextDefault = await prisma.address.findFirst({
-            where: { customerId: userId },
+            where: { userId: userId },
             orderBy: { updatedAt: 'desc' }
         });
         if (nextDefault) {
@@ -157,14 +157,14 @@ const deleteAddress = async (userId: number, addressId: number) => {
 const setDefaultAddress = async (userId: number, addressId: number) => {
     // Verify ownership
     const existing = await prisma.address.findUnique({ where: { uid: addressId } });
-    if (!existing || existing.customerId !== userId) {
+    if (!existing || existing.userId !== userId) {
         throw new ErrorHandler.ForbiddenError("You do not have permission to modify this address");
     }
 
     // Use transaction to ensure only one default
     const address = await prisma.$transaction(async (tx) => {
         await tx.address.updateMany({
-            where: { customerId: userId, isDefault: true },
+            where: { userId: userId, isDefault: true },
             data: { isDefault: false }
         });
         return tx.address.update({

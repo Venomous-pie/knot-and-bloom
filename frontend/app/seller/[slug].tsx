@@ -149,7 +149,7 @@ export default function SellerProfile() {
         .filter((p: Product) => p.status === 'PENDING')
         .map((p: Product) => ({ ...p, seller: p.seller || { name: seller.name, slug: seller.slug } })) || [];
 
-    const isOwner = user?.sellerId === seller?.uid;
+    const isOwner = user?.sellerProfile?.uid === seller?.uid;
 
     useEffect(() => {
         if (!slug) return;

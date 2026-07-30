@@ -22,7 +22,7 @@ export const sellerController = {
             const data = registerSellerSchema.parse(req.body);
 
             // Check if email exists
-            const existingCustomer = await prisma.customer.findUnique({ where: { email: data.email } });
+            const existingCustomer = await prisma.user.findUnique({ where: { email: data.email } });
             if (existingCustomer) {
                 return res.status(409).json({ error: "Email already registered. Please login and upgrade to seller." });
             }
@@ -36,7 +36,7 @@ export const sellerController = {
 
             // Transaction: Create Customer (as USER) + Seller (as PENDING)
             const result = await prisma.$transaction(async (tx) => {
-                const customer = await tx.customer.create({
+                const customer = await tx.user.create({
                     data: {
                         name: data.name,
                         email: data.email,
@@ -48,15 +48,15 @@ export const sellerController = {
 
                 const seller = await tx.seller.create({
                     data: {
-                        customerId: customer.uid,
+                        userId: customer.uid,
                         name: data.name,
                         email: data.email,
                         slug,
                         description: data.description ?? null,
                         logo: data.logo ?? null,
                         banner: data.banner ?? null,
-                        businessType: data.businessType ?? null,
-                        productCategories: data.productCategories ?? null,
+                        
+                        productCategories: Array.isArray(data.productCategories) ? data.productCategories : (data.productCategories ? [data.productCategories] : []),
                         isHandmade: data.isHandmade ?? false,
                         hasPriorExperience: data.hasPriorExperience ?? false,
                         sampleItems: data.sampleItems ?? [],
@@ -71,17 +71,17 @@ export const sellerController = {
                     }
                 });
 
-                const admins = await tx.customer.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
+                const admins = await tx.user.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
                 if (admins.length > 0) {
                     await tx.notification.createMany({
-                        data: admins.map(admin => ({
-                            customerId: admin.uid,
+                        data: admins.map((admin: any) => ({
+                            userId: admin.uid,
                             title: 'New Seller Application',
                             message: `A new seller (${data.name}) has applied and is waiting for approval.`,
                             type: 'system'
                         }))
                     });
-                    admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                    admins.forEach((admin: any) => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
                 }
 
                 return { customer, seller };
@@ -117,7 +117,7 @@ export const sellerController = {
             const userId = user.id;
 
             // Check if already has seller profile
-            const existingSeller = await prisma.seller.findUnique({ where: { customerId: userId } });
+            const existingSeller = await prisma.seller.findUnique({ where: { userId: userId } });
 
             if (existingSeller) {
                 // Allow re-submission if previously rejected
@@ -143,9 +143,9 @@ export const sellerController = {
                             logo: data.logo ?? null,
                             banner: data.banner ?? null,
                             phone: req.body.contactNumber ?? data.phone ?? null,
-                            socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
-                            businessType: data.businessType ?? null,
-                            productCategories: data.productCategories ?? null,
+                            
+                            
+                            productCategories: Array.isArray(data.productCategories) ? data.productCategories : (data.productCategories ? [data.productCategories] : []),
                             isHandmade: data.isHandmade ?? false,
                             hasPriorExperience: data.hasPriorExperience ?? false,
                             sampleItems: data.sampleItems ?? [],
@@ -163,17 +163,17 @@ export const sellerController = {
                         }
                     });
 
-                    const admins = await prisma.customer.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
+                    const admins = await prisma.user.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
                     if (admins.length > 0) {
                         await prisma.notification.createMany({
-                            data: admins.map(admin => ({
-                                customerId: admin.uid,
+                            data: admins.map((admin: any) => ({
+                                userId: admin.uid,
                                 title: 'New Seller Application',
                                 message: `A new seller (${data.name}) has reapplied and is waiting for approval.`,
                                 type: 'admin'
                             }))
                         });
-                        admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                        admins.forEach((admin: any) => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
                     }
 
                     return res.status(200).json(updatedSeller);
@@ -190,7 +190,7 @@ export const sellerController = {
             // Create Seller profile only (role stays USER until approved)
             const seller = await prisma.seller.create({
                 data: {
-                    customerId: userId,
+                    userId: userId,
                     name: data.name,
                     slug,
                     email: emailToUse,
@@ -199,9 +199,9 @@ export const sellerController = {
                     banner: data.banner ?? null,
                     // Map contactNumber (frontend) to phone (schema)
                     phone: req.body.contactNumber ?? data.phone ?? null,
-                    socialMediaLink: req.body.socialMediaLink ?? data.socialMediaLink ?? null,
-                    businessType: data.businessType ?? null,
-                    productCategories: data.productCategories ?? null,
+                    
+                    
+                    productCategories: Array.isArray(data.productCategories) ? data.productCategories : (data.productCategories ? [data.productCategories] : []),
                     isHandmade: data.isHandmade ?? false,
                     hasPriorExperience: data.hasPriorExperience ?? false,
                     sampleItems: data.sampleItems ?? [],
@@ -218,17 +218,17 @@ export const sellerController = {
                 }
             });
 
-            const admins = await prisma.customer.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
+            const admins = await prisma.user.findMany({ where: { role: Role.ADMIN }, select: { uid: true } });
             if (admins.length > 0) {
                 await prisma.notification.createMany({
-                    data: admins.map(admin => ({
-                        customerId: admin.uid,
+                    data: admins.map((admin: any) => ({
+                        userId: admin.uid,
                         title: 'New Seller Application',
                         message: `A new seller (${data.name}) has applied and is waiting for approval.`,
                         type: 'admin'
                     }))
                 });
-                admins.forEach(admin => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+                admins.forEach((admin: any) => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
             }
 
             res.status(201).json(seller);
@@ -258,7 +258,7 @@ export const sellerController = {
                 }
             });
 
-            if (!seller || seller.deletedAt !== null) {
+            if (!seller || seller.updatedAt !== null) {
                 return res.status(404).json({ error: 'Seller not found' });
             }
 
@@ -298,7 +298,7 @@ export const sellerController = {
             } else {
                 // Fallback: check via customerId if token is stale
                 const seller = await prisma.seller.findUnique({ where: { uid: targetSellerId } });
-                if (seller && seller.customerId === user.id) {
+                if (seller && seller.userId === user.id) {
                     isAuthorized = true;
                 }
             }
@@ -324,13 +324,13 @@ export const sellerController = {
                 // Send in-app notification to the seller's customer
                 await prisma.notification.create({
                     data: {
-                        customerId: currentSeller.customerId,
+                        userId: currentSeller.userId,
                         title: '🎉 Your application has been approved!',
                         message: 'Congratulations! Your seller application has been approved. Complete your onboarding to start selling on Knot & Bloom.',
                         type: 'system',
                     }
                 });
-                supabaseService.emitToRoom(`user_${currentSeller.customerId}`, 'notification:new', {});
+                supabaseService.emitToRoom(`user_${currentSeller.userId}`, 'notification:new', {});
 
                 const updatedSeller = await prisma.seller.findUnique({ where: { uid: targetSellerId } });
                 return res.json(updatedSeller);
@@ -349,13 +349,13 @@ export const sellerController = {
                 // Send in-app notification to the seller's customer
                 await prisma.notification.create({
                     data: {
-                        customerId: seller.customerId,
+                        userId: seller.userId,
                         title: '⚠️ Application Update',
                         message: `Your seller application could not be approved at this time. Reason: ${seller.rejectionReason}`,
                         type: 'system',
                     }
                 });
-                supabaseService.emitToRoom(`user_${seller.customerId}`, 'notification:new', {});
+                supabaseService.emitToRoom(`user_${seller.userId}`, 'notification:new', {});
 
                 return res.json(seller);
             }
@@ -379,7 +379,7 @@ export const sellerController = {
             const { status } = req.query;
             const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
             const offset = parseInt(req.query.offset as string) || 0;
-            const where: any = { deletedAt: null };
+            const where: any = {};
             if (status) where.status = String(status);
 
             const [sellers, total] = await Promise.all([
@@ -413,7 +413,6 @@ export const sellerController = {
             const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
             const offset = parseInt(req.query.offset as string) || 0;
             const where = {
-                deletedAt: null,
                 status: SellerStatus.ACTIVE,
             };
 
@@ -464,7 +463,7 @@ export const sellerController = {
             } else {
                 // Fallback for stale token
                 const seller = await prisma.seller.findUnique({ where: { uid: sellerId } });
-                if (seller && seller.customerId === user.id) {
+                if (seller && seller.userId === user.id) {
                     isAuthorized = true;
                 }
             }
@@ -487,7 +486,7 @@ export const sellerController = {
                                 product: { select: { name: true, image: true } }
                             }
                         },
-                        customer: {
+                        user: {
                             select: { name: true, email: true }
                         }
                     },
@@ -540,7 +539,7 @@ export const sellerController = {
             // Fallback lookup
             if (!sellerId) {
                 const seller = await prisma.seller.findUnique({
-                    where: { customerId: user.id }
+                    where: { userId: user.id }
                 });
                 if (seller) sellerId = seller.uid;
             }
@@ -711,7 +710,7 @@ export const sellerController = {
             // Fallback: If sellerId is not in token (stale token), find it via customerId
             if (!sellerId) {
                 const seller = await prisma.seller.findUnique({
-                    where: { customerId: user.id }
+                    where: { userId: user.id }
                 });
                 if (seller) sellerId = seller.uid;
             }
@@ -732,14 +731,14 @@ export const sellerController = {
                         status: SellerStatus.ACTIVE,
                     }
                 });
-                await tx.customer.update({
+                await tx.user.update({
                     where: { uid: user.id },
                     data: { role: Role.SELLER }
                 });
             });
 
             // Fetch updated profile to build a fresh token
-            const updatedCustomer = await prisma.customer.findUnique({
+            const updatedCustomer = await prisma.user.findUnique({
                 where: { uid: user.id },
                 include: { sellerProfile: true }
             });
@@ -748,7 +747,7 @@ export const sellerController = {
 
             const payload: AuthPayload = {
                 id: updatedCustomer.uid,
-                ...(updatedCustomer.email ? { email: updatedCustomer.email } : {}),
+                email: updatedCustomer.email || "",
                 role: updatedCustomer.role as any,
                 ...(updatedCustomer.sellerProfile?.uid && { sellerId: updatedCustomer.sellerProfile.uid }),
                 ...(updatedCustomer.sellerProfile?.status && { sellerStatus: updatedCustomer.sellerProfile.status as any }),
@@ -759,7 +758,7 @@ export const sellerController = {
             res.json({
                 success: true,
                 token,
-                customer: {
+                user: {
                     uid: updatedCustomer.uid,
                     name: updatedCustomer.name,
                     email: updatedCustomer.email,
@@ -791,7 +790,7 @@ export const sellerController = {
             const user = req.user as AuthPayload;
 
             const seller = await prisma.seller.findUnique({
-                where: { customerId: user.id }
+                where: { userId: user.id }
             });
 
             if (!seller) {
@@ -821,7 +820,7 @@ export const sellerController = {
 
             let sellerId = user.sellerId;
             if (!sellerId) {
-                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                const seller = await prisma.seller.findUnique({ where: { userId: user.id } });
                 sellerId = seller?.uid;
             }
 
@@ -876,7 +875,7 @@ export const sellerController = {
                 prisma.order.groupBy({ by: ['status'], where: { sellerId }, _count: { uid: true } }),
                 prisma.order.findMany({ where: { sellerId, uploaded: { gte: sevenDaysAgo } }, select: { uploaded: true, total: true } }),
                 prisma.order.findMany({ where: { sellerId, status: 'COMPLETED' }, select: { items: { select: { productId: true, price: true, quantity: true } } } }),
-                prisma.notification.count({ where: { customerId: user.id, isRead: false } })
+                prisma.notification.count({ where: { userId: user.id, isRead: false } })
             ]);
 
             // 3. Process Data
@@ -1006,7 +1005,7 @@ export const sellerController = {
 
             let sellerId = user.sellerId;
             if (!sellerId) {
-                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                const seller = await prisma.seller.findUnique({ where: { userId: user.id } });
                 sellerId = seller?.uid;
             }
 
@@ -1014,7 +1013,7 @@ export const sellerController = {
 
             const unreadNotifications = await prisma.notification.count({
                 where: {
-                    customerId: user.id,
+                    userId: user.id,
                     isRead: false,
                     type: { not: 'admin' }
                 }
@@ -1069,7 +1068,7 @@ export const sellerController = {
 
             let sellerId = user.sellerId;
             if (!sellerId) {
-                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                const seller = await prisma.seller.findUnique({ where: { userId: user.id } });
                 if (seller) sellerId = seller.uid;
             }
 
@@ -1091,7 +1090,7 @@ export const sellerController = {
                     sellerProvCode,
                     sellerRegCode,
                     freeShippingEnabled: freeShippingEnabled || false,
-                    freeShippingThreshold: freeShippingEnabled ? Number(freeShippingThreshold) : null
+                    freeShippingThreshold: freeShippingEnabled ? Number(freeShippingThreshold) : 0
                 }
             });
 
@@ -1110,7 +1109,7 @@ export const sellerController = {
 
             let sellerId = user.sellerId;
             if (!sellerId) {
-                const seller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+                const seller = await prisma.seller.findUnique({ where: { userId: user.id } });
                 if (seller) sellerId = seller.uid;
             }
             if (!sellerId) return res.status(404).json({ error: "Seller profile not found" });

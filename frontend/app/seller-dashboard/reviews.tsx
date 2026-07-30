@@ -84,7 +84,7 @@ export default function SellerReviewsPage() {
     useEffect(() => {
         if (!authLoading) {
             if (!user) { router.replace('/auth/login' as any); return; }
-            const ok = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+            const ok = user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE');
             if (!ok) router.replace('/' as any);
         }
     }, [user, authLoading]);

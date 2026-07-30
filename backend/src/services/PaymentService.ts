@@ -4,7 +4,7 @@ export interface PaymentRequest {
     amount: number;
     method: string;
     idempotencyKey: string;
-    customerId: number;
+    userId: number;
     metadata?: Record<string, any>;
 }
 

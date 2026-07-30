@@ -2016,7 +2016,7 @@ export default function ProductFormWizard({
                             categories={selectedCategories}
                             variants={variants}
                             activeVariantIndex={currentStep === 3 ? activeVariantIndex : null}
-                            sellerName={user?.sellerStoreName}
+                            sellerName={user?.sellerProfile?.name}
                             //@ts-ignore
                             sellerLogo={settings?.logo}
                         />
@@ -2048,7 +2048,7 @@ export default function ProductFormWizard({
                         images={images}
                         categories={selectedCategories}
                         variants={variants}
-                        sellerName={user?.sellerStoreName}
+                        sellerName={user?.sellerProfile?.name}
                         //@ts-ignore
                         sellerLogo={settings?.logo}
                     />

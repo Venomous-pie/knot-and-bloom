@@ -23,7 +23,7 @@ passport.use(
                 }
 
                 // Check if user exists
-                let customer = await prisma.customer.findFirst({
+                let user = await prisma.user.findFirst({
                     where: {
                         OR: [
                             { googleId },
@@ -32,17 +32,17 @@ passport.use(
                     }
                 });
 
-                if (customer) {
+                if (user) {
                     // Update Google ID if not set
-                    if (!customer.googleId) {
-                        customer = await prisma.customer.update({
-                            where: { uid: customer.uid },
+                    if (!user.googleId) {
+                        user = await prisma.user.update({
+                            where: { uid: user.uid },
                             data: { googleId },
                         });
                     }
                 } else {
                     // Create new user
-                    customer = await prisma.customer.create({
+                    user = await prisma.user.create({
                         data: {
                             email,
                             name: name || generateRandomName(),
@@ -52,7 +52,7 @@ passport.use(
                     });
                 }
 
-                return done(null, customer as any);
+                return done(null, user as any);
             } catch (error) {
                 return done(error as Error, undefined);
             }
@@ -66,7 +66,7 @@ passport.serializeUser((user: any, done) => {
 
 passport.deserializeUser(async (id: number, done) => {
     try {
-        const user = await prisma.customer.findUnique({ where: { uid: id } });
+        const user = await prisma.user.findUnique({ where: { uid: id } });
         done(null, user as unknown as Express.User);
     } catch (error) {
         done(error, null);

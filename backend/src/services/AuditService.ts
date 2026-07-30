@@ -13,7 +13,7 @@ export const AuditService = {
         };
 
         // Log to console with structured format
-        console.log(`[AUDIT] ${timestamp} | ${entry.action} | ${entry.entityType}:${entry.entityId} | customer:${entry.customerId}`);
+        console.log(`[AUDIT] ${timestamp} | ${entry.action} | ${entry.entityType}:${entry.entityId} | user:${entry.userId}`);
 
         if (entry.data) {
             console.log(`[AUDIT DATA]`, JSON.stringify(entry.data, null, 2));
@@ -27,12 +27,12 @@ export const AuditService = {
     /**
      * Log checkout session events
      */
-    logCheckout: (action: string, sessionId: number, customerId: number, data?: Record<string, any>, error?: string) => {
+    logCheckout: (action: string, sessionId: number, userId: number, data?: Record<string, any>, error?: string) => {
         AuditService.log({
             action,
             entityType: 'checkout',
             entityId: sessionId,
-            customerId,
+            userId,
             data,
             errorMessage: error,
         });
@@ -41,12 +41,12 @@ export const AuditService = {
     /**
      * Log payment events
      */
-    logPayment: (action: string, paymentId: number, customerId: number, data?: Record<string, any>, error?: string) => {
+    logPayment: (action: string, paymentId: number, userId: number, data?: Record<string, any>, error?: string) => {
         AuditService.log({
             action,
             entityType: 'payment',
             entityId: paymentId,
-            customerId,
+            userId,
             data,
             errorMessage: error,
         });
@@ -55,12 +55,12 @@ export const AuditService = {
     /**
      * Log order events
      */
-    logOrder: (action: string, orderId: number, customerId: number, data?: Record<string, any>, error?: string) => {
+    logOrder: (action: string, orderId: number, userId: number, data?: Record<string, any>, error?: string) => {
         AuditService.log({
             action,
             entityType: 'order',
             entityId: orderId,
-            customerId,
+            userId,
             data,
             errorMessage: error,
         });
@@ -69,12 +69,12 @@ export const AuditService = {
     /**
      * Log authentication events (login, registration, logout, token refresh)
      */
-    logAuth: (action: string, customerId: number, data?: Record<string, any>, error?: string) => {
+    logAuth: (action: string, userId: number, data?: Record<string, any>, error?: string) => {
         AuditService.log({
             action,
             entityType: 'auth',
-            entityId: customerId,
-            customerId,
+            entityId: userId,
+            userId,
             data,
             errorMessage: error,
         });
@@ -88,7 +88,7 @@ export const AuditService = {
             action,
             entityType: 'admin',
             entityId: targetId,
-            customerId: adminId,
+            userId: adminId,
             data,
         });
     },
@@ -96,12 +96,12 @@ export const AuditService = {
     /**
      * Log account lifecycle events (deletion requests, cancellations, profile changes)
      */
-    logAccount: (action: string, customerId: number, data?: Record<string, any>) => {
+    logAccount: (action: string, userId: number, data?: Record<string, any>) => {
         AuditService.log({
             action,
             entityType: 'account',
-            entityId: customerId,
-            customerId,
+            entityId: userId,
+            userId,
             data,
         });
     },
@@ -109,12 +109,12 @@ export const AuditService = {
     /**
      * Log seller events (onboarding, application, status changes)
      */
-    logSeller: (action: string, sellerId: number, customerId: number, data?: Record<string, any>) => {
+    logSeller: (action: string, sellerId: number, userId: number, data?: Record<string, any>) => {
         AuditService.log({
             action,
             entityType: 'seller',
             entityId: sellerId,
-            customerId,
+            userId,
             data,
         });
     },

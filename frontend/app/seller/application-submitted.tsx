@@ -26,7 +26,7 @@ export default function ApplicationSubmittedPage() {
     
     // Guard: only accessible if user has a PENDING application
     React.useEffect(() => {
-        if (user && user.sellerStatus !== "PENDING") {
+        if (user && user.sellerProfile?.status !== "PENDING") {
             router.replace("/" as any);
         }
     }, [user]);

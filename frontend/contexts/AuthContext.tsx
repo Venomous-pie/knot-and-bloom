@@ -136,7 +136,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const currentToken = await getAuthToken();
             if (!currentToken) return;
 
-            const response = await api.get('/customers/profile');
+            const response = await api.get('/users/profile');
             const userData = response.data.data || response.data;
             const newToken = response.data.token;
 
@@ -190,27 +190,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setToken(token);
                 // We need to fetch the user profile now
                 await refreshUser();
-
-                // If refreshUser updates 'user' state, we can redirect.
-                // Ideally refreshUser returns the user or we fetch it explicitly here.
-                // Re-implementing fetch here for clarity/safety:
-
-                const response = await api.get('/customers/profile', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const userData = response.data.data || response.data;
-                const newToken = response.data.token || token;
-
-                if (userData) {
-                    await AsyncStorage.setItem('authToken', newToken);
-                    setToken(newToken);
-                    await AsyncStorage.setItem('authUser', JSON.stringify(userData));
-                    setUser(userData);
-                    if (returnTo) {
-                        router.replace(returnTo as RelativePathString);
-                    } else {
-                        router.replace('/');
-                    }
+                
+                if (returnTo) {
+                    router.replace(returnTo as RelativePathString);
+                } else {
+                    router.replace('/');
                 }
             }
         } catch (error) {

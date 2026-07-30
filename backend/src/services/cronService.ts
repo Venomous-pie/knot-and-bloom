@@ -37,7 +37,7 @@ class CronService {
                     status: { in: ['SHIPPED', 'DELIVERED'] },
                     autoConfirmAt: { lt: now }
                 },
-                include: { customer: true, seller: true }
+                include: { user: true, seller: true }
             });
 
             for (const order of ordersToComplete) {
@@ -78,13 +78,13 @@ class CronService {
                 // Notify User
                 notifications.send({
                     type: 'email',
-                    to: order.customer.email || '',
+                    to: order.user.email || '',
                     subject: `Order #${order.uid} Completed`,
                     body: `Your order from ${order.seller?.name || 'Knot & Bloom'} has been securely completed. Funds have been released to the seller.`
                 });
 
                 // Socket Update
-                supabaseService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
+                supabaseService.emitToRoom(`user_${order.userId}`, 'order:status:updated', {
                     orderId: order.uid,
                     status: 'COMPLETED',
                     timeline: { title: 'Order Completed (Auto)', message: 'Order automatically marked as completed.' }
@@ -109,7 +109,7 @@ class CronService {
                     status: { in: ['SHIPPED', 'DELIVERED'] },
                     autoConfirmAt: { not: null }
                 },
-                include: { customer: true }
+                include: { user: true }
             });
 
             for (const order of activeOrders) {
@@ -166,7 +166,7 @@ class CronService {
 
                     notifications.send({
                         type: 'email',
-                        to: order.customer.email || '',
+                        to: order.user.email || '',
                         subject,
                         body
                     });

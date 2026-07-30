@@ -258,13 +258,13 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                 )}
 
                 {/* Seller Store Section */}
-                {user.sellerStatus === 'ACTIVE' && (
+                {user.sellerProfile?.status === 'ACTIVE' && (
                     <MenuSection title="My Store">
                         <View style={styles.healthWrapper}>
                             <StoreHealthItem
-                                rating={user.sellerRating || 0}
-                                sales={user.sellerTotalSales || 0}
-                                orders={user.sellerTotalOrders || 0}
+                                rating={user.sellerProfile?.rating || 0}
+                                sales={user.sellerProfile?.totalSales || 0}
+                                orders={user.sellerProfile?.totalOrders || 0}
                             />
                         </View>
 
@@ -279,7 +279,7 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                             icon={<ShoppingBag size={20} />}
                             title="My Store"
                             subtitle="View your storefront"
-                            onPress={() => user.sellerSlug && router.push(`/seller/${user.sellerSlug}` as RelativePathString)}
+                            onPress={() => user.sellerProfile?.slug && router.push(`/seller/${user.sellerProfile?.slug}` as RelativePathString)}
                         />
                         <MenuItem
                             icon={<Package size={20} />}
@@ -307,7 +307,9 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
 
                 {/* My Account Section */}
                 <MenuSection title="My Account">
-                    {(!user?.sellerStatus || user.sellerStatus === 'NONE') && user?.role !== 'ADMIN' && (
+                    {((user.sellerProfile?.status as string) === 'NONE' ||
+                        !user.sellerProfile?.status ||
+                        (user.sellerProfile?.status as string) === 'REJECTED') && user?.role !== 'ADMIN' && (
                         <MenuItem
                             icon={<Store size={20} />}
                             title="Be a Seller"
@@ -316,11 +318,11 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                             onPress={() => router.push('/seller/apply' as RelativePathString)}
                         />
                     )}
-                    {(user?.sellerStatus === 'PENDING' || user?.sellerStatus === 'REJECTED') && (
+                    {((user.sellerProfile?.status as string) === 'PENDING' || (user.sellerProfile?.status as string) === 'REJECTED') && (
                         <MenuItem
                             icon={<Store size={20} />}
                             title="Application Status"
-                            subtitle={user.sellerStatus === 'PENDING' ? "Track your application" : "Update your application"}
+                            subtitle={user.sellerProfile?.status === 'PENDING' ? "Track your application" : "Update your application"}
                             isActive={pathname === '/seller/application-status'}
                             onPress={() => router.push('/seller/application-status' as RelativePathString)}
                         />

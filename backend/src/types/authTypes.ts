@@ -14,7 +14,7 @@ export enum SellerStatus {
 
 export interface AuthPayload {
     id: number;
-    email?: string;
+    email: string;
     role: Role;
     sellerId?: number;
     sellerStatus?: SellerStatus;

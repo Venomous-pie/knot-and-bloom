@@ -48,7 +48,7 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
     if (user) {
         // Fallback: If sellerId is missing from token (stale token), try to find it in DB
         if (!sellerId && !user.sellerId) {
-            const dbSeller = await prisma.seller.findUnique({ where: { customerId: user.id } });
+            const dbSeller = await prisma.seller.findUnique({ where: { userId: user.id } });
             if (dbSeller) {
                 sellerId = dbSeller.uid;
             }
@@ -287,8 +287,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
             { sellerId: null },
             {
                 seller: {
-                    status: SellerStatus.ACTIVE,
-                    deletedAt: null
+                    status: SellerStatus.ACTIVE
                 }
             }
         ]
@@ -395,8 +394,7 @@ export const getCategoryCounts = async () => {
                     { sellerId: null },
                     {
                         seller: {
-                            status: SellerStatus.ACTIVE,
-                            deletedAt: null
+                            status: SellerStatus.ACTIVE
                         }
                     }
                 ]
@@ -512,8 +510,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
                     { sellerId: null },
                     {
                         seller: {
-                            status: SellerStatus.ACTIVE,
-                            deletedAt: null
+                            status: SellerStatus.ACTIVE
                         }
                     }
                 ]
@@ -582,9 +579,7 @@ export const getProductById = async (productId: string) => {
                 name: true, 
                 slug: true, 
                 status: true,
-                rating: true,
                 freeShippingEnabled: true,
-                freeShippingThreshold: true,
                 meetUpPoint: true,
                 selfDeliveryEnabled: true
             } }
@@ -901,7 +896,7 @@ export const getRecommendedProducts = async (userId?: number, searchDataStr?: st
 
     if (userId) {
         const orders = await prisma.order.findMany({
-            where: { customerId: userId },
+            where: { userId: userId },
             select: { products: true }
         });
         

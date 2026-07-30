@@ -1,21 +1,60 @@
+enum Role {
+    USER = 'USER',
+    SELLER = 'SELLER',
+    ADMIN = 'ADMIN',
+}
+
+enum UserStatus {
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
+    PENDING = 'PENDING',
+    SUSPENDED = 'SUSPENDED',
+    BANNED = 'BANNED',
+}
+
+enum SellerStatus {
+    PENDING = 'PENDING',
+    ACTIVE = 'ACTIVE',
+    SUSPENDED = 'SUSPENDED',
+    BANNED = 'BANNED',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED',
+}
+
+interface SellerProfile {
+    uid: number;
+    name: string;
+    slug: string;
+    userId: number;
+    user: User;
+    logo?: string | null;
+    banner?: string | null;
+    status: SellerStatus;
+    email: string;
+    phone?: string | null;
+    hasSeenWelcomeModal: boolean;
+    rating?: number | null;
+    totalSales?: number;
+    totalOrders?: number;
+    rejectionReason?: string | null;
+}
+
 interface User {
     uid: number;
     name: string;
     email: string;
-    role: string; // 'USER' | 'SELLER' | 'ADMIN'
+    role: Role;
     phone?: string | null;
     address?: string | null;
     avatar?: string | null;
-    sellerId?: number;
-    sellerStatus?: string; // 'PENDING' | 'APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'REJECTED'
-    sellerHasSeenWelcomeModal?: boolean;
-    sellerStoreName?: string;
-    sellerSlug?: string;
-    sellerRating?: string | number;
-    sellerTotalSales?: string | number;
-    sellerTotalOrders?: number;
-    sellerRejectionReason?: string | null;
     passwordResetRequired?: boolean;
+    googleId?: string | null;
+    trustScore?: number;
+    isVerified?: boolean;
+    status?: UserStatus;
+    createdAt?: string;
+    updatedAt?: string;
+    sellerProfile?: SellerProfile | null;
 }
 
 interface AuthContextType {
@@ -30,4 +69,4 @@ interface AuthContextType {
     token: string | null;
 }
 
-export { AuthContextType, User };
+export { AuthContextType, User, Role, UserStatus, SellerStatus };

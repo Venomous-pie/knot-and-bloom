@@ -17,7 +17,7 @@ const getOrders = async (req: Request, res: Response, next: NextFunction) => {
         const offset = parseInt(req.query.offset as string) || 0;
         const status = req.query.status as string;
 
-        const whereClause: any = { customerId: userId };
+        const whereClause: any = { userId: userId };
         if (status) whereClause.status = status;
 
         const [orders, total] = await Promise.all([
@@ -82,7 +82,7 @@ const getOrderById = async (req: Request, res: Response, next: NextFunction) => 
             return res.status(404).json({ error: "Order not found" });
         }
 
-        if (order.customerId !== userId) {
+        if (order.userId !== userId) {
             return res.status(403).json({ error: "Forbidden" });
         }
 
@@ -102,7 +102,7 @@ const updateOrderItemStatus = async (req: Request, res: Response, next: NextFunc
 
         const item = await prisma.orderItem.findUnique({
             where: { uid: parseInt(itemId || '0') },
-            include: { seller: true, order: { include: { customer: true } }, product: true }
+            include: { seller: true, order: { include: { user: true } }, product: true }
         });
 
         if (!item) return res.status(404).json({ error: "Item not found" });
@@ -143,18 +143,18 @@ const updateOrderItemStatus = async (req: Request, res: Response, next: NextFunc
         if (status === 'shipped' || status === 'delivered') {
             notifications.send({
                 type: 'email',
-                to: item.order.customer.email || '',
+                to: item.order.user.email || '',
                 subject: `Your item from ${item.seller?.name ?? 'Knot & Bloom'} has been ${status}`,
                 body: `Item: ${item.product.name} is now ${status}. Tracking: ${trackingNumber || 'N/A'}`
             }).catch(console.error);
         }
 
         // Real-time Update
-        supabaseService.emitToRoom(`user_${item.order.customerId}`, 'order:status:updated', {
+        supabaseService.emitToRoom(`user_${item.order.userId}`, 'order:status:updated', {
             orderId: item.order.uid,
             itemId: item.uid,
             status,
-            customerId: item.order.customerId
+            userId: item.order.userId
         });
 
         // Sales update moved to Order Completion (Escrow Release)
@@ -176,7 +176,7 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
 
         const order = await prisma.order.findUnique({
             where: { uid: parseInt(id || '0') },
-            include: { customer: true }
+            include: { user: true }
         });
 
         if (!order) return res.status(404).json({ error: "Order not found" });
@@ -191,7 +191,7 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
         }
 
         // CUSTOMER Authorization (Only for Completing Order)
-        if (user.id === order.customerId && status === 'COMPLETED') {
+        if (user.id === order.userId && status === 'COMPLETED') {
             if (order.status === 'SHIPPED' || order.status === 'DELIVERED') {
                 isAuthorized = true;
             }
@@ -219,8 +219,8 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
 
             // Note: rejectionReason usually comes from Seller "Rejecting" OR Buyer "Cancelling"
             if (isBuyerFault && order.paymentMethod === 'COD') {
-                await prisma.customer.update({
-                    where: { uid: order.customerId },
+                await prisma.user.update({
+                    where: { uid: order.userId },
                     data: {
                         codCancellationCount: { increment: 1 },
                         trustScore: { decrement: 10 }
@@ -351,12 +351,12 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
         const notifyMessage = message ? `\nNote: ${message}` : '';
         notifications.send({
             type: 'email',
-            to: order.customer.email || '',
+            to: order.user.email || '',
             subject: `Order Update: ${timelineTitle}`,
             body: `Your order #${order.uid} is now ${status}.${notifyMessage}`
         }).catch(console.error);
 
-        supabaseService.emitToRoom(`user_${order.customerId}`, 'order:status:updated', {
+        supabaseService.emitToRoom(`user_${order.userId}`, 'order:status:updated', {
             orderId: order.uid,
             status,
             timeline: { title: timelineTitle, message, photos }
@@ -381,7 +381,7 @@ const extendOrderGuarantee = async (req: Request, res: Response, next: NextFunct
         });
 
         if (!order) return res.status(404).json({ error: "Order not found" });
-        if (order.customerId !== user.id) return res.status(403).json({ error: "Forbidden" });
+        if (order.userId !== user.id) return res.status(403).json({ error: "Forbidden" });
         if (!order.autoConfirmAt) return res.status(400).json({ error: "Order suggests no guarantee period active" });
 
         // Extension Limits Logic

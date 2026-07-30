@@ -29,11 +29,11 @@ const STANDARD_SHIPPING_FEE = 60;
 
 const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Security: Use authenticated user's ID, not a client-supplied customerId
-        const customerId = req.user?.id;
+        // Security: Use authenticated user's ID, not a client-supplied userId
+        const userId = req.user?.id;
         const { selectedItemIds, idempotencyKey } = req.body;
 
-        if (!customerId || !selectedItemIds || !Array.isArray(selectedItemIds) || selectedItemIds.length === 0) {
+        if (!userId || !selectedItemIds || !Array.isArray(selectedItemIds) || selectedItemIds.length === 0) {
             throw new ErrorHandler.ValidationError([{ message: 'Authentication and selected items are required.', path: ['selectedItemIds'] }]);
         }
 
@@ -60,7 +60,7 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
 
         // Fetch cart items with product details
         const cart = await prisma.cart.findUnique({
-            where: { customerId: Number(customerId) },
+            where: { userId: Number(userId) },
             include: {
                 items: {
                     where: {
@@ -144,14 +144,14 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
                     image: item.productVariant?.images?.[0] ?? item.product.image ?? null,
                     sellerId: item.product.sellerId ?? null,
                     sellerName: item.product.seller?.name ?? null,
-                    sellerLocation: item.product.seller?.location ?? item.product.seller?.businessAddress ?? null,
+                    sellerLocation: item.product.seller?.businessAddress ?? null,
                 };
             });
 
             // Create checkout session
             const session = await tx.checkoutSession.create({
                 data: {
-                    customerId: Number(customerId),
+                    userId: Number(userId),
                     cartSnapshot: JSON.stringify(cart.items),
                     lockedPrices: JSON.stringify(lockedPrices),
                     totalAmount,
@@ -166,7 +166,7 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
 
         const { session, lockedPrices, totalAmount } = sessionResult;
 
-        AuditService.logCheckout('CHECKOUT_INITIATED', session.uid, Number(customerId), {
+        AuditService.logCheckout('CHECKOUT_INITIATED', session.uid, Number(userId), {
             itemCount: lockedPrices.length,
             totalAmount,
         });
@@ -187,8 +187,8 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
         const codDisabledProductNames = productsWithCodDisabled.map(p => p.name);
 
         // 2. Check customer's cancellation count
-        const customer = await prisma.customer.findUnique({
-            where: { uid: Number(customerId) },
+        const customer = await prisma.user.findUnique({
+            where: { uid: Number(userId) },
             select: { codCancellationCount: true }
         });
         const isRepeatOffender = (customer?.codCancellationCount ?? 0) >= 2;
@@ -252,7 +252,7 @@ const getCheckoutSession = async (req: Request, res: Response): Promise<void> =>
         }
 
         // Security: Verify session belongs to the requesting user
-        if (session.customerId !== req.user?.id) {
+        if (session.userId !== req.user?.id) {
             res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
@@ -312,7 +312,7 @@ const validateCheckout = async (req: Request, res: Response): Promise<void> => {
         }
 
         // Security: Verify session belongs to the requesting user
-        if (session.customerId !== req.user?.id) {
+        if (session.userId !== req.user?.id) {
             res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
@@ -402,7 +402,7 @@ const validateCheckout = async (req: Request, res: Response): Promise<void> => {
                 data: { status: CheckoutStatus.FAILED },
             });
 
-            AuditService.logCheckout('CHECKOUT_VALIDATION_FAILED', session.uid, session.customerId, {
+            AuditService.logCheckout('CHECKOUT_VALIDATION_FAILED', session.uid, session.userId, {
                 stockIssues,
             });
 
@@ -421,7 +421,7 @@ const validateCheckout = async (req: Request, res: Response): Promise<void> => {
             data: { status: CheckoutStatus.AWAITING_PAYMENT },
         });
 
-        AuditService.logCheckout('CHECKOUT_VALIDATED', session.uid, session.customerId, {
+        AuditService.logCheckout('CHECKOUT_VALIDATED', session.uid, session.userId, {
             priceChanges: priceChanges.length > 0 ? priceChanges : undefined,
         });
 
@@ -480,7 +480,7 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
         }
 
         // Security: Verify session belongs to the requesting user
-        if (session.customerId !== req.user?.id) {
+        if (session.userId !== req.user?.id) {
             res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
@@ -527,8 +527,8 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
         });
 
         // Fetch customer to check COD eligibility
-        const customer = await prisma.customer.findUnique({
-            where: { uid: session.customerId },
+        const customer = await prisma.user.findUnique({
+            where: { uid: session.userId },
             select: { codCancellationCount: true }
         });
 
@@ -563,7 +563,7 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
             },
         });
 
-        AuditService.logPayment('PAYMENT_INITIATED', payment.uid, session.customerId, {
+        AuditService.logPayment('PAYMENT_INITIATED', payment.uid, session.userId, {
             amount: chargeAmount,
             method: paymentMethod,
         });
@@ -573,7 +573,7 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
             amount: chargeAmount,
             method: paymentMethod,
             idempotencyKey,
-            customerId: session.customerId,
+            userId: session.userId,
         }, PAYMENT_TIMEOUT_MS);
 
         if (paymentResult.success) {
@@ -586,7 +586,7 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
                 },
             });
 
-            AuditService.logPayment('PAYMENT_SUCCEEDED', payment.uid, session.customerId, {
+            AuditService.logPayment('PAYMENT_SUCCEEDED', payment.uid, session.userId, {
                 gatewayRef: paymentResult.gatewayRef,
             });
 
@@ -613,7 +613,7 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
                 data: { status: CheckoutStatus.AWAITING_PAYMENT },
             });
 
-            AuditService.logPayment('PAYMENT_FAILED', payment.uid, session.customerId, undefined, paymentResult.errorMessage);
+            AuditService.logPayment('PAYMENT_FAILED', payment.uid, session.userId, undefined, paymentResult.errorMessage);
 
             res.status(400).json({
                 success: false,
@@ -709,7 +709,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         }
 
         // Security: Verify session belongs to the requesting user
-        if (session.customerId !== req.user?.id) {
+        if (session.userId !== req.user?.id) {
             res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
@@ -719,7 +719,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
             // Note: This relies on the convention of appending -index to idempotency key
             const existingOrders = await prisma.order.findMany({
                 where: {
-                    customerId: session.customerId,
+                    userId: session.userId,
                     idempotencyKey: { startsWith: session.idempotencyKey },
                 },
             });
@@ -833,7 +833,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
 
                 const newOrder = await tx.order.create({
                     data: {
-                        customerId: session.customerId,
+                        userId: session.userId,
                         sellerId: sellerId, // Assign to seller
                         products: JSON.stringify(orderedProducts),
                         total: orderTotalWithShipping, // Total includes shipping
@@ -914,7 +914,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         });
 
         // Log audit (Summarized)
-        AuditService.logCheckout('CHECKOUT_COMPLETED', session.uid, session.customerId, {
+        AuditService.logCheckout('CHECKOUT_COMPLETED', session.uid, session.userId, {
             orderIds: createdOrderIds,
             orderCount: createdOrderIds.length
         });
@@ -930,8 +930,8 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         });
 
         // 2. Cart Sync (Clear cart for this user on other devices)
-        supabaseService.emitToRoom(`user_${session.customerId}`, 'cart:updated', {
-            customerId: session.customerId,
+        supabaseService.emitToRoom(`user_${session.userId}`, 'cart:updated', {
+            userId: session.userId,
             cart: { items: [] }
         });
 
@@ -956,7 +956,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
         // Send notifications
         notifications.send({
             type: 'email',
-            to: (await prisma.customer.findUnique({ where: { uid: session.customerId } }))?.email || '',
+            to: (await prisma.user.findUnique({ where: { uid: session.userId } }))?.email || '',
             subject: 'Order Confirmation',
             body: `Your order(s) [${createdOrderIds.join(', ')}] have been placed successfully.`
         }).catch(err => console.error('Failed to send order notification', err));
@@ -995,7 +995,7 @@ const cancelCheckout = async (req: Request, res: Response): Promise<void> => {
         }
 
         // Security: Verify session belongs to the requesting user
-        if (session.customerId !== req.user?.id) {
+        if (session.userId !== req.user?.id) {
             res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
@@ -1027,7 +1027,7 @@ const cancelCheckout = async (req: Request, res: Response): Promise<void> => {
             });
         });
 
-        AuditService.logCheckout('CHECKOUT_CANCELLED', session.uid, session.customerId);
+        AuditService.logCheckout('CHECKOUT_CANCELLED', session.uid, session.userId);
 
         res.status(200).json({
             success: true,

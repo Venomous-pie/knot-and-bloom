@@ -91,8 +91,8 @@ export function SidebarNavLinks({ onClose, user, pathname }: SidebarNavLinksProp
                 {(() => {
                     if (!user) return null;
                     const showAdminLink = user.role === 'ADMIN';
-                    const showSellerLink = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
-                    const showPendingBadge = user.sellerId && user.sellerStatus === 'PENDING';
+                    const showSellerLink = user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE');
+                    const showPendingBadge = user.sellerProfile?.uid && user.sellerProfile?.status === 'PENDING';
                     const shouldShowDashboard = showAdminLink || showSellerLink || showPendingBadge;
 
                     if (!shouldShowDashboard) return null;

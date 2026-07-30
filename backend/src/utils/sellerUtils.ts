@@ -10,22 +10,20 @@ export async function ensureAdminSellerProfile(userId: number, email: string): P
     const existingOfficialStore = await prisma.seller.findUnique({ where: { slug: defaultSlug } });
     if (existingOfficialStore) return existingOfficialStore.uid;
 
-    const customer = await prisma.customer.findUnique({ where: { uid: userId } });
-    if (!customer) {
+    const user = await prisma.user.findUnique({ where: { uid: userId } });
+    if (!user) {
         throw new Error("Admin user not found. Your session may be stale. Please log out and log in again.");
     }
 
     // Create Official Seller Profile, assigning the first admin as the technical owner
     const seller = await prisma.seller.create({
         data: {
-            customerId: userId,
+            userId: userId,
             name: "Knot & Bloom", // Default official name
             slug: defaultSlug,
             email: email,
             description: "Official Knot & Bloom Store",
             status: SellerStatus.ACTIVE, // Auto-active
-            termsAccepted: true,
-            termsAcceptedAt: new Date(),
         }
     });
 

@@ -37,7 +37,7 @@ export default function SellerSettingsPage() {
                 router.replace('/auth/login' as any);
                 return;
             }
-            const isAuthorized = user.role === 'ADMIN' || (user.sellerId && user.sellerStatus === 'ACTIVE');
+            const isAuthorized = user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE');
             if (!isAuthorized) {
                 router.replace('/' as any);
             }

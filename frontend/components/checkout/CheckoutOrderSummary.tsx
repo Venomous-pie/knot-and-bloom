@@ -39,6 +39,8 @@ export function CheckoutOrderSummary({
 
     return (
         <View style={[styles.container, isStickyLayout && styles.stickyContainer]}>
+            <Text style={styles.title}>Order Summary</Text>
+            
             {/* Subtotal */}
             <View style={styles.row}>
                 <Text style={styles.label}>Merchandise Subtotal:</Text>
@@ -82,10 +84,9 @@ export function CheckoutOrderSummary({
                     onPress={onPlaceOrder}
                     disabled={isProcessing}
                 >
-                    {isProcessing
-                        ? <ActivityIndicator color="white" />
-                        : <Text style={styles.placeOrderText}>{placeOrderLabel}</Text>
-                    }
+                    <Text style={styles.placeOrderText}>
+                        {isProcessing ? 'Processing...' : placeOrderLabel}
+                    </Text>
                 </Pressable>
             </View>
         </View>
@@ -98,6 +99,13 @@ const styles = StyleSheet.create({
         padding: theme.spacing.lg,
         borderRadius: 16,
         ...theme.shadows.sm,
+    },
+    title: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+        marginBottom: 16,
     },
     stickyContainer: {
         borderRadius: 0,

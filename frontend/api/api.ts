@@ -200,8 +200,8 @@ export const authAPI = {
 };
 
 export const cartAPI = {
-    addToCart: (customerId: number, productId: number, quantity: number, variant?: string | null) => {
-        return apiClient.post('/cart/add', { userId: customerId, productId, quantity, variant });
+    addToCart: (customerId: number, productId: number, quantity: number, variant?: string | null, isBuyNow?: boolean) => {
+        return apiClient.post('/cart/add', { userId: customerId, productId, quantity, variant, isBuyNow });
     },
 
     getCart: (customerId: number) => {

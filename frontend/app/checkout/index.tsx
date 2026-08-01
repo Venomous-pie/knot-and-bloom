@@ -33,6 +33,7 @@ import { CheckoutPaymentSection } from '@/components/checkout/CheckoutPaymentSec
 import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
 import { CheckoutSkeleton } from '@/components/checkout/CheckoutSkeleton';
 import { TrustBadge } from '@/components/checkout/TrustBadge';
+import { OrderProcessingOverlay } from '@/components/checkout/OrderProcessingOverlay';
 
 export default function CheckoutPage() {
     return (
@@ -83,8 +84,12 @@ function CheckoutContent() {
     // Shipping Fee Logic
     const shippingFee = React.useMemo(() => {
         if (!shippingEstimates) return 0;
-        return Object.values(shippingEstimates).reduce((sum: number, est: any) => sum + (est.fee || 0), 0);
-    }, [shippingEstimates]);
+        return Object.entries(shippingEstimates).reduce((sum: number, [sellerId, est]: [string, any]) => {
+            // If the user selected PICKUP for this seller, shipping is immediately 0
+            if (choices[Number(sellerId)] === 'PICKUP' || choices[sellerId] === 'PICKUP') return sum;
+            return sum + (est.fee || 0);
+        }, 0);
+    }, [shippingEstimates, choices]);
     
     // Total Amount doesn't dictate free shipping anymore, but we can keep it as false for now
     const hasFreeShipping = false;
@@ -245,7 +250,7 @@ function CheckoutContent() {
         if (selectedAddress) {
             estimateShipping(selectedAddress);
         }
-    }, [selectedAddress, choices, estimateShipping]);
+    }, [selectedAddress, estimateShipping]);
 
     useEffect(() => {
         const loadCheckout = async () => {
@@ -720,6 +725,9 @@ function CheckoutContent() {
                     <Text style={styles.errorText}>{checkoutError}</Text>
                 </View>
             )}
+
+            {/* Beautiful Loading Overlay for placing order */}
+            <OrderProcessingOverlay visible={isProcessing && lockedPrices.length > 0} message={statusMessage} />
         </View>
     );
 }

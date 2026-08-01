@@ -6,7 +6,7 @@ import { supabaseService } from '../services/SupabaseService.js';
 
 const addToCart = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { userId, productId, quantity, variant } = req.body;
+        const { userId, productId, quantity, variant, isBuyNow } = req.body;
 
         if (!userId || !productId) {
             throw new ErrorHandler.ValidationError([
@@ -57,15 +57,19 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
             }
         });
 
+        let cartItemId: number;
+        
         if (existingItem) {
-            // Update quantity
-            await prisma.cartItem.update({
+            // Update quantity (override if isBuyNow, otherwise add)
+            const newQuantity = isBuyNow ? (quantity || 1) : existingItem.quantity + (quantity || 1);
+            const updated = await prisma.cartItem.update({
                 where: { uid: existingItem.uid },
-                data: { quantity: existingItem.quantity + (quantity || 1) }
+                data: { quantity: newQuantity }
             });
+            cartItemId = updated.uid;
         } else {
             // Create new item
-            await prisma.cartItem.create({
+            const newItem = await prisma.cartItem.create({
                 data: {
                     cartId: cart.uid,
                     productId: Number(productId),
@@ -73,6 +77,7 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
                     quantity: quantity || 1,
                 }
             });
+            cartItemId = newItem.uid;
         }
 
         // Return the updated unique item count
@@ -85,7 +90,8 @@ const addToCart = async (req: Request, res: Response): Promise<void> => {
 
         res.status(200).json({ 
             message: "Product added to cart successfully.",
-            cartCount: cartItemCount 
+            cartCount: cartItemCount,
+            cartItemId
         });
 
     } catch (error) {

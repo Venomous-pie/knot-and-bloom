@@ -18,9 +18,10 @@ import {
     View,
     useWindowDimensions
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { ShoppingBag, Zap } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { theme } from "@/constants/theme";
 import { User } from "@/types/user";
@@ -74,6 +75,7 @@ export default function ProductDetailPage() {
     const [loadingRecommendations, setLoadingRecommendations] = useState(true);
     const [showAllRecommendations, setShowAllRecommendations] = useState(false);
     const [makers, setMakers] = useState<User[]>([]);
+    const [isBuying, setIsBuying] = useState(false);
 
     const allImages = React.useMemo(() => {
         if (!product) return [];
@@ -253,6 +255,57 @@ export default function ProductDetailPage() {
         } catch (error: any) {
             console.error("❌ Error:", error);
             Alert.alert("Error", "Something went wrong.");
+        }
+    };
+
+    const handleBuyNow = async () => {
+        if (!product) return;
+
+        if (product.variants.length > 0 && !selectedVariant) {
+            Alert.alert("Select a Variant", "Please select a variant before purchasing.");
+            return;
+        }
+
+        if (!user) {
+            Alert.alert("Login Required", "Please log in to purchase.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Login", onPress: () => router.push('/auth' as any) }
+            ]);
+            return;
+        }
+
+        const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
+        const isInStock = totalStock > 0;
+
+        if (!isInStock) {
+            Alert.alert("Out of Stock", "This item is currently unavailable.");
+            return;
+        }
+
+        if (selectedVariant) {
+            const variant = product.variants.find(v => v.name === selectedVariant);
+            if (variant && variant.stock <= 0) {
+                Alert.alert("Out of Stock", "The selected variant is out of stock.");
+                return;
+            }
+        }
+
+        try {
+            setIsBuying(true);
+            const response = await cartAPI.addToCart(user.uid, product.uid, quantity, selectedVariant, true);
+            if (response.data && response.data.cartCount !== undefined) {
+                setCartCount(response.data.cartCount);
+            }
+            refreshCart();
+            
+            if (response.data && response.data.cartItemId) {
+                router.push(`/checkout?items=${response.data.cartItemId}` as any);
+            }
+        } catch (error) {
+            console.error("❌ API Failed:", error);
+            Alert.alert("Error", "Failed to process item. Please try again.");
+        } finally {
+            setIsBuying(false);
         }
     };
 
@@ -605,15 +658,37 @@ export default function ProductDetailPage() {
                                         style={({ pressed, hovered }: any) => [
                                             styles.inlineAddToCartButton,
                                             !isInStock && styles.disabledButton,
-                                            hovered && isInStock && { backgroundColor: theme.colors.primaryDark, transform: [{ translateY: -2 }] },
+                                            hovered && isInStock && { backgroundColor: theme.colors.primaryLight, transform: [{ translateY: -2 }] },
                                             pressed && isInStock && { transform: [{ scale: 0.98 }] }
                                         ]}
                                         disabled={!isInStock}
                                         onPress={handleAddToCart}
                                     >
-                                        <Text style={styles.inlineAddToCartText}>
+                                        <ShoppingBag size={20} color={!isInStock ? 'white' : theme.colors.primary} />
+                                        <Text style={[styles.inlineAddToCartText, !isInStock && { color: 'white' }]}>
                                             {isInStock ? 'ADD TO CART' : 'OUT OF STOCK'}
                                         </Text>
+                                    </Pressable>
+                                    <Pressable
+                                        style={({ pressed, hovered }: any) => [
+                                            styles.inlineBuyNowButton,
+                                            (!isInStock || isBuying) && styles.disabledButton,
+                                            hovered && isInStock && !isBuying && { backgroundColor: theme.colors.primaryDark, transform: [{ translateY: -2 }] },
+                                            pressed && isInStock && !isBuying && { transform: [{ scale: 0.98 }] }
+                                        ]}
+                                        disabled={!isInStock || isBuying}
+                                        onPress={handleBuyNow}
+                                    >
+                                        {isBuying ? (
+                                            <ActivityIndicator size="small" color="white" />
+                                        ) : (
+                                            <>
+                                                <Zap size={20} color="white" />
+                                                <Text style={styles.inlineBuyNowText}>
+                                                    BUY NOW
+                                                </Text>
+                                            </>
+                                        )}
                                     </Pressable>
                                     <Pressable 
                                         style={({ pressed, hovered }: any) => [
@@ -1322,7 +1397,7 @@ const styles = StyleSheet.create({
     inlineSaveButton: {
         width: 48,
         height: 48,
-        borderRadius: 8,
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: theme.colors.border,
         backgroundColor: theme.colors.surface,
@@ -1331,22 +1406,44 @@ const styles = StyleSheet.create({
     },
     inlineAddToCartButton: {
         flex: 1,
-        backgroundColor: theme.colors.primary, // Solid brand button
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.primary,
+        flexDirection: 'row',
+        gap: 8,
         height: 48,
-        borderRadius: 8,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    inlineBuyNowButton: {
+        flex: 1,
+        backgroundColor: theme.colors.primary,
+        flexDirection: 'row',
+        gap: 8,
+        height: 48,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         ...theme.shadows.md,
     },
     disabledButton: {
         backgroundColor: theme.colors.textLight,
+        borderColor: 'transparent',
         elevation: 0,
         shadowOpacity: 0,
     },
     inlineAddToCartText: {
+        color: theme.colors.primary,
+        fontSize: 14,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+        fontFamily: theme.typography.fontFamily,
+    },
+    inlineBuyNowText: {
         color: 'white',
-        fontSize: 15,
-        fontWeight: 'bold',
+        fontSize: 14,
+        fontWeight: '700',
         letterSpacing: 0.5,
         fontFamily: theme.typography.fontFamily,
     },

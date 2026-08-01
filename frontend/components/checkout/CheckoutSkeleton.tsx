@@ -44,29 +44,48 @@ export const CheckoutSkeleton = () => {
                 </View>
 
                 {/* 2. Sellers and Products Skeleton */}
-                <View style={styles.sectionContainer}>
-                    <View style={[styles.sectionHeader, { marginBottom: 20 }]}>
-                        <Animated.View style={[styles.iconSkeleton, animatedStyle]} />
-                        <Animated.View style={[styles.titleSkeleton, animatedStyle]} />
+                <View style={{ marginBottom: theme.spacing.lg }}>
+                    <View style={[styles.sectionHeader, { paddingHorizontal: theme.spacing.sm, justifyContent: 'space-between', marginBottom: 8, alignItems: 'flex-start' }]}>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <Animated.View style={[styles.iconSkeleton, animatedStyle, { marginTop: 2 }]} />
+                            <View>
+                                <Animated.View style={[styles.titleSkeleton, animatedStyle, { marginBottom: 6 }]} />
+                                <Animated.View style={[styles.textLineSkeleton, { width: 90, height: 12, marginBottom: 0 }, animatedStyle]} />
+                            </View>
+                        </View>
+                        <Animated.View style={[styles.textLineSkeleton, { width: 80, height: 14, marginBottom: 0, marginTop: 4 }, animatedStyle]} />
                     </View>
                     
-                    {/* Item Skeleton */}
-                    <View style={styles.itemRow}>
-                        <Animated.View style={[styles.imageSkeleton, animatedStyle]} />
-                        <View style={styles.itemDetails}>
-                            <Animated.View style={[styles.textLineSkeleton, { width: '90%' }, animatedStyle]} />
-                            <Animated.View style={[styles.textLineSkeleton, { width: '40%' }, animatedStyle]} />
-                            <Animated.View style={[styles.textLineSkeleton, { width: '30%', marginTop: 8 }, animatedStyle]} />
+                    <View style={[styles.sectionContainer, { marginBottom: 0 }]}>
+                        {/* Item Skeleton */}
+                        <View style={styles.itemRow}>
+                            <Animated.View style={[styles.imageSkeleton, animatedStyle]} />
+                            <View style={styles.itemDetails}>
+                                <Animated.View style={[styles.textLineSkeleton, { width: '90%' }, animatedStyle]} />
+                                <Animated.View style={[styles.textLineSkeleton, { width: '40%' }, animatedStyle]} />
+                                <Animated.View style={[styles.textLineSkeleton, { width: '30%', marginTop: 8 }, animatedStyle]} />
+                            </View>
+                        </View>
+                        
+                        {/* Separator line */}
+                        <View style={{ height: 1, backgroundColor: '#E5E7EB', marginBottom: 16 }} />
+
+                        {/* Fulfillment Option Skeleton */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+                            <View style={{ gap: 12 }}>
+                                <Animated.View style={[styles.textLineSkeleton, { width: 120, marginBottom: 0 }, animatedStyle]} />
+                                <View style={{ flexDirection: 'row', gap: 8 }}>
+                                    <Animated.View style={[styles.fulfillmentSkeleton, { width: 100 }, animatedStyle]} />
+                                    <Animated.View style={[styles.fulfillmentSkeleton, { width: 100 }, animatedStyle]} />
+                                </View>
+                            </View>
+                            <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                                <Animated.View style={[styles.textLineSkeleton, { width: 100, marginBottom: 0 }, animatedStyle]} />
+                                <Animated.View style={[styles.textLineSkeleton, { width: 80, marginBottom: 0 }, animatedStyle]} />
+                                <Animated.View style={[styles.textLineSkeleton, { width: 120, height: 20, marginTop: 4, marginBottom: 0 }, animatedStyle]} />
+                            </View>
                         </View>
                     </View>
-                    
-                    {/* Fulfillment Option Skeleton */}
-                    <Animated.View style={[styles.fulfillmentSkeleton, animatedStyle]} />
-                </View>
-
-                {/* 3. Notes Skeleton */}
-                <View style={styles.sectionContainer}>
-                    <Animated.View style={[styles.notesSkeleton, animatedStyle]} />
                 </View>
 
                 {/* 4. Payment Method Skeleton */}
@@ -184,10 +203,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     fulfillmentSkeleton: {
-        height: 60,
-        borderRadius: 12,
+        height: 36,
+        borderRadius: 20,
         backgroundColor: '#F3F4F6',
-        marginTop: 8,
     },
     notesSkeleton: {
         height: 48,

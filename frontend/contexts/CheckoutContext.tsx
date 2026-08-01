@@ -150,14 +150,16 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
     const estimateShipping = useCallback(async (address: any) => {
         if (!state.sessionId) return;
         try {
-            const response = await checkoutAPI.estimateShipping(state.sessionId, address, state.choices);
+            // Always request DELIVERY estimates (by passing empty choices) so the frontend 
+            // always has the delivery fee to fall back to if the user toggles back from PICKUP.
+            const response = await checkoutAPI.estimateShipping(state.sessionId, address, {});
             if (response.data.success) {
                 setState(prev => ({ ...prev, shippingEstimates: response.data.estimates }));
             }
         } catch (error) {
             console.error('Error estimating shipping', error);
         }
-    }, [state.sessionId, state.choices]);
+    }, [state.sessionId]);
 
     const resetCheckout = useCallback(async () => {
         await AsyncStorage.removeItem('checkoutSession');
@@ -168,12 +170,12 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     const initiateCheckout = useCallback(async (selectedItemIds: number[]): Promise<boolean> => {
         try {
-            setState(prev => ({
-                ...prev,
+            // Reset to initialState to prevent old session data from bleeding through
+            setState({
+                ...initialState,
                 isProcessing: true,
                 statusMessage: 'Validating cart...',
-                error: null,
-            }));
+            });
 
             const key = generateIdempotencyKey();
             setCheckoutIdempotencyKey(key);

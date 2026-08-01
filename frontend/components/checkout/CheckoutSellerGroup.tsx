@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
-import { Truck, Store, CheckCircle2 } from 'lucide-react-native';
+import { Truck, Store, CheckCircle2, MapPin } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { CheckoutProductList } from './CheckoutProductList';
 import type { LockedPriceItem } from '@/api/api';
@@ -45,9 +45,19 @@ export function CheckoutSellerGroup({
     return (
         <View style={styles.container}>
             <View style={styles.sellerHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                     <Store size={20} color={theme.colors.textSecondary} />
-                    <Text style={styles.sellerName}>{sellerName || 'Knot & Bloom'}</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.sellerName} numberOfLines={1}>{sellerName || 'Knot & Bloom'}</Text>
+                        {sellerLocation && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2, gap: 4 }}>
+                                <MapPin size={12} color={theme.colors.textSecondary} />
+                                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, fontFamily: theme.typography.fontFamily }} numberOfLines={1}>
+                                    {sellerLocation}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
                 {!isNoteExpanded && (
                     <Pressable 

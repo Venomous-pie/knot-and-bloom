@@ -26,7 +26,7 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items,
                     <>
                         <Text style={[styles.headerText, { flex: 1, textAlign: 'center' }]}>Unit Price</Text>
                         <Text style={[styles.headerText, { flex: 1, textAlign: 'center' }]}>Quantity</Text>
-                        <Text style={[styles.headerText, { flex: 1, textAlign: 'right' }]}>Item Subtotal</Text>
+                        <Text style={[styles.headerText, { flex: 1, textAlign: 'right' }]}>Subtotal</Text>
                     </>
                 )}
             </View>
@@ -82,26 +82,13 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items,
                     )}
                 </View>
             ))}
-            {shopTotal !== undefined && (
-                <View style={styles.shopTotalContainer}>
-                    <Text style={styles.shopTotalLabel}>Shop Subtotal:</Text>
-                    <Text style={styles.shopTotalAmount}>
-                        <Text style={{ fontWeight: '400' }}>₱</Text>
-                        {shopTotal.toFixed(2)}
-                    </Text>
-                </View>
-            )}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.lg,
-        ...theme.shadows.sm,
-        marginTop: theme.spacing.md,
+        marginTop: theme.spacing.sm,
     },
     header: {
         flexDirection: 'row',
@@ -193,23 +180,5 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: theme.colors.primary,
-    },
-    shopTotalContainer: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        gap: 12,
-        paddingTop: theme.spacing.lg,
-    },
-    shopTotalLabel: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.typography.fontFamily,
-    },
-    shopTotalAmount: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: theme.colors.primary,
-        fontFamily: theme.typography.fontFamily,
-    },
+    }
 });

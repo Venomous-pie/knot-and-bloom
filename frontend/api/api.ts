@@ -67,7 +67,7 @@ api.interceptors.response.use(
 
             if (error.response.status === 401 && !originalRequest._retry) {
                 const requestUrl = originalRequest?.url || '';
-                const isAuthEndpoint = ['/customers/login', '/customers/register', '/customers/login/google', '/auth/refresh'].some(
+                const isAuthEndpoint = ['/users/login', '/users/register', '/users/login/google', '/auth/refresh'].some(
                     endpoint => requestUrl.includes(endpoint)
                 );
 
@@ -190,9 +190,9 @@ export const productAPI = {
 };
 
 export const authAPI = {
-    login: (data: any) => apiClient.post('/customers/login', data),
-    loginWithGoogle: (data: { token?: string, accessToken?: string }) => apiClient.post('/customers/login/google', data),
-    register: (data: any) => apiClient.post('/customers/register', data),
+    login: (data: any) => apiClient.post('/users/login', data),
+    loginWithGoogle: (data: { token?: string, accessToken?: string }) => apiClient.post('/users/login/google', data),
+    register: (data: any) => apiClient.post('/users/register', data),
     sendOTP: (target: string) => apiClient.post('/auth/send-otp', { target }),
     exchangeCode: (code: string) => apiClient.post<{ success: boolean; token: string }>('/auth/exchange-code', { code }),
     refreshToken: (refreshToken: string) => apiClient.post<{ success: boolean; token: string; refreshToken: string }>('/auth/refresh', { refreshToken }),
@@ -201,7 +201,7 @@ export const authAPI = {
 
 export const cartAPI = {
     addToCart: (customerId: number, productId: number, quantity: number, variant?: string | null) => {
-        return apiClient.post('/cart/add', { customerId, productId, quantity, variant });
+        return apiClient.post('/cart/add', { userId: customerId, productId, quantity, variant });
     },
 
     getCart: (customerId: number) => {
@@ -217,7 +217,7 @@ export const cartAPI = {
     },
 
     checkout: (customerId: number, selectedItemIds: number[]) => {
-        return apiClient.post('/cart/checkout', { customerId, selectedItemIds });
+        return apiClient.post('/cart/checkout', { userId: customerId, selectedItemIds });
     }
 };
 
@@ -232,8 +232,8 @@ export const wishlistAPI = {
 };
 
 export const customerAPI = {
-    getProfile: () => apiClient.get<import('../types/user').User>('/customers/profile'),
-    updateProfile: (data: any) => apiClient.put('/customers/profile', data),
+    getProfile: () => apiClient.get<import('../types/user').User>('/users/profile'),
+    updateProfile: (data: any) => apiClient.put('/users/profile', data),
 };
 
 export const orderAPI = {

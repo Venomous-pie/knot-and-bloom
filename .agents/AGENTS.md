@@ -22,8 +22,9 @@ This file is the single source of truth for:
 
 - **Platform:** Knot & Bloom — a curated handcrafted goods marketplace for Filipino micro-creators (students, hobbyists, single parents).
 - **Stack:** React Native (Expo Router) frontend, Express + Prisma + PostgreSQL backend.
-- **Vision doc:** `c:\Users\alain\knot-and-bloom\VISION.md`
-- **Business model:** `c:\Users\alain\knot-and-bloom\BUSINESS_MODEL.md`
 
-Before making product or feature decisions, refer to VISION.md to check if the feature aligns with the platform's core principle:
-> *"Does this make it meaningfully easier for a Filipino student, single parent, hobbyist, or small hancrafter to sell what they make?"*
+**Core Documentation:**
+Before making product, architectural, or feature decisions, ALWAYS refer to the markdown files in the `docs/` directory (`c:\Users\User\knot-and-bloom\docs\`), ignoring `.docx` files and the `second-brain` folder:
+- **`VISION.md`**: The North Star. Use this to check if a feature aligns with the core principle: > *"Does this make it meaningfully easier for a Filipino student, single parent, hobbyist, or small hancrafter to sell what they make?"*
+- **`Knot_and_Bloom_Business_Model.md`**: Critical for any backend, payment-related, or transaction flow development (e.g., the 20% deposit via PayMongo, 80% COD, and 12% flat commission).
+- **`HOW_SHIPPING_WORKS.md`**: Dictates the logic for delivery methods (Free Pickup vs. Variable Delivery) and the reasoning behind localized shipping fee structures based on distance and seller capabilities.

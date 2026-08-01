@@ -6,6 +6,8 @@ type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'maribank' | 'card';
 
 interface CheckoutOrderSummaryProps {
     totalAmount: number;
+    subtotal?: number;
+    platformFee?: number;
     shippingFee: number;
     hasFreeShipping: boolean;
     paymentMethod: PaymentMethod;
@@ -17,6 +19,8 @@ interface CheckoutOrderSummaryProps {
 
 export function CheckoutOrderSummary({
     totalAmount,
+    subtotal,
+    platformFee,
     shippingFee,
     hasFreeShipping,
     paymentMethod,
@@ -38,8 +42,16 @@ export function CheckoutOrderSummary({
             {/* Subtotal */}
             <View style={styles.row}>
                 <Text style={styles.label}>Merchandise Subtotal:</Text>
-                <Text style={styles.value}>₱{totalAmount.toFixed(2)}</Text>
+                <Text style={styles.value}>₱{(subtotal ?? totalAmount).toFixed(2)}</Text>
             </View>
+
+            {/* Platform Fee */}
+            {(platformFee ?? 0) > 0 && (
+                <View style={styles.row}>
+                    <Text style={styles.label}>Platform & Trust Fee:</Text>
+                    <Text style={styles.value}>₱{(platformFee ?? 0).toFixed(2)}</Text>
+                </View>
+            )}
 
             {/* Shipping */}
             <View style={styles.row}>

@@ -56,16 +56,28 @@ export default function CategoriesSection() {
             .sort((a, b) => b[1] - a[1])
             .slice(0, 4);
 
+          const usedEmojis = new Set<string>();
+          const fallbackEmojis = ['🧶', '🧸', '🎀', '🎁', '💐', '✨'];
+
           const dynamicCategories = sortedCategories.map(([id, count], index) => {
             const registered = CATEGORY_REGISTRY.find(c => c.slug === id);
             const config = registered || FALLBACK_CATEGORY_CONFIG;
             const title = categoryTitles[id] || id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
             
+            let emoji = config.emoji;
+            // If the emoji is already used, or it's just the default fallback emoji
+            if (usedEmojis.has(emoji) || (config === FALLBACK_CATEGORY_CONFIG && usedEmojis.has(FALLBACK_CATEGORY_CONFIG.emoji))) {
+                 const availableFallback = fallbackEmojis.find(e => !usedEmojis.has(e)) || fallbackEmojis[index % fallbackEmojis.length];
+                 emoji = availableFallback;
+            }
+            usedEmojis.add(emoji);
+            
             return {
               id,
               title,
               count: count === 0 ? 'Coming soon' : `${count} item${count === 1 ? '' : 's'}`,
-              ...config
+              ...config,
+              emoji
             };
           });
 
@@ -75,7 +87,12 @@ export default function CategoriesSection() {
           while (finalCategories.length < 4 && defaultIndex < fallbackData.length) {
              const def = fallbackData[defaultIndex];
              if (!finalCategories.find(c => c.id === def.id)) {
-                finalCategories.push({ ...def });
+                let emoji = def.emoji;
+                if (usedEmojis.has(emoji)) {
+                    emoji = fallbackEmojis.find(e => !usedEmojis.has(e)) || fallbackEmojis[defaultIndex % fallbackEmojis.length];
+                }
+                usedEmojis.add(emoji);
+                finalCategories.push({ ...def, emoji });
              }
              defaultIndex++;
           }
@@ -91,14 +108,23 @@ export default function CategoriesSection() {
   
   const [toys, flowers, keychains, gifts] = categories;
   
+const BENTO_PALETTES = [
+  { bgColor: '#FCE7EB', badgeBg: '#F1B8C8', color: '#88314E' }, // Pink
+  { bgColor: '#EBE5F7', badgeBg: '#CBBDEB', color: '#4A3482' }, // Purple
+  { bgColor: '#E2EFE1', badgeBg: '#A6C9AD', color: '#2B5738' }, // Green
+  { bgColor: '#FDF1DA', badgeBg: '#EACC9F', color: '#7A5A29' }, // Yellow
+];
+
   const renderCard = (cat: any, style: any, emojiSize = 24, index = 0) => {
     const patternUri = PATTERNS[index % PATTERNS.length];
+    const palette = BENTO_PALETTES[index % BENTO_PALETTES.length];
+    
     return (
       <Pressable 
         key={cat.id} 
         style={({ pressed, hovered }: any) => [
           styles.card, 
-          { backgroundColor: cat.bgColor }, 
+          { backgroundColor: palette.bgColor }, 
           style,
           hovered && { transform: [{ scale: 1.02 }], shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
           pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
@@ -111,14 +137,14 @@ export default function CategoriesSection() {
           resizeMode="repeat" 
         />
         <View style={styles.cardHeader}>
-          <View style={[styles.badge, { backgroundColor: cat.badgeBg || cat.color + '33' }]}>
-            <Text style={[styles.badgeText, { color: cat.color }]}>{cat.count}</Text>
+          <View style={[styles.badge, { backgroundColor: palette.badgeBg }]}>
+            <Text style={[styles.badgeText, { color: palette.color }]}>{cat.count}</Text>
           </View>
           <Text style={{ fontSize: emojiSize * 1.5, opacity: 0.25 }}>{cat.emoji}</Text>
         </View>
         <View style={styles.cardFooter}>
-          <Text style={[styles.cardTitle, { color: cat.color }]}>{cat.title}</Text>
-          <Text style={[styles.cardSubtitle, { color: cat.color }]}>{cat.subtitle}</Text>
+          <Text style={[styles.cardTitle, { color: palette.color }]}>{cat.title}</Text>
+          <Text style={[styles.cardSubtitle, { color: palette.color }]}>{cat.subtitle}</Text>
         </View>
       </Pressable>
     );

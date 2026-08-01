@@ -66,6 +66,7 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(!cachedProduct);
     const [error, setError] = useState<string | null>(null);
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+    const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
     const [skuCopied, setSkuCopied] = useState(false);
@@ -228,7 +229,7 @@ export default function ProductDetailPage() {
                 setCartCount(cartCount + 1);
             }
 
-            cartAPI.addToCart(user.uid, product.uid, 1, selectedVariant).then(response => {
+            cartAPI.addToCart(user.uid, product.uid, quantity, selectedVariant).then(response => {
                 if (response.data && response.data.cartCount !== undefined) {
                     setCartCount(response.data.cartCount);
                 }
@@ -255,6 +256,22 @@ export default function ProductDetailPage() {
         }
     };
 
+    const selectedVariantObj = product && selectedVariant
+        ? product.variants.find(v => v.name === selectedVariant)
+        : null;
+    const totalStock = product ? product.variants.reduce((sum, v) => sum + v.stock, 0) : 0;
+    const maxStock = selectedVariantObj ? selectedVariantObj.stock : totalStock;
+    const isInStock = totalStock > 0;
+
+    // Ensure quantity doesn't exceed new max stock when variant changes
+    useEffect(() => {
+        if (maxStock > 0 && quantity > maxStock) {
+            setQuantity(maxStock);
+        } else if (maxStock > 0 && quantity < 1) {
+            setQuantity(1);
+        }
+    }, [maxStock]);
+
     if (loading) {
         return <ProductPageSkeleton />;
     }
@@ -271,9 +288,6 @@ export default function ProductDetailPage() {
         );
     }
 
-    const totalStock = product.variants.reduce((sum, v) => sum + v.stock, 0);
-    const isInStock = totalStock > 0;
-
     const handleCopySKU = async (sku: string) => {
         if (!sku) return;
         await Clipboard.setStringAsync(sku);
@@ -281,9 +295,6 @@ export default function ProductDetailPage() {
         setTimeout(() => setSkuCopied(false), 2000);
     };
 
-    const selectedVariantObj = selectedVariant
-        ? product.variants.find(v => v.name === selectedVariant)
-        : null;
     // Always display the main product's base price
     const priceCalc = calculatePrice(product, null);
 
@@ -308,7 +319,11 @@ export default function ProductDetailPage() {
                     </View>
                 </View>
                 <Pressable
-                    style={styles.visitStoreButton}
+                    style={({ pressed, hovered }: any) => [
+                        styles.visitStoreButton,
+                        hovered && { backgroundColor: theme.colors.primaryLight, transform: [{ translateY: -1 }] },
+                        pressed && { transform: [{ scale: 0.98 }] }
+                    ]}
                     onPress={() => {
                         if (product.seller?.slug) {
                             router.push(`/seller/${product.seller.slug}` as any);
@@ -522,10 +537,12 @@ export default function ProductDetailPage() {
                                         return (
                                             <Pressable
                                                 key={variant.uid}
-                                                style={[
+                                                style={({ pressed, hovered }: any) => [
                                                     styles.variantChip,
                                                     isSelected && styles.variantChipSelected,
-                                                    isOutOfStock && styles.variantChipDisabled
+                                                    isOutOfStock && styles.variantChipDisabled,
+                                                    hovered && !isOutOfStock && !isSelected && { borderColor: theme.colors.primary, backgroundColor: theme.colors.primaryLight + '55' },
+                                                    pressed && !isOutOfStock && { transform: [{ scale: 0.98 }] }
                                                 ]}
                                                 onPress={() => !isOutOfStock && setSelectedVariant(variant.name)}
                                                 disabled={isOutOfStock}
@@ -544,16 +561,52 @@ export default function ProductDetailPage() {
                             </View>
                         )}
 
+                        {/* Quantity Selector */}
+                        <View style={styles.sectionContainer}>
+                            <View style={styles.sectionHeaderRow}>
+                                <Text style={styles.sectionTitle}>Quantity</Text>
+                            </View>
+                            <View style={styles.quantitySelector}>
+                                <Pressable 
+                                    style={({ pressed, hovered }: any) => [
+                                        styles.qtyButton, 
+                                        hovered && styles.qtyButtonHover, 
+                                        pressed && styles.qtyButtonPressed,
+                                        quantity <= 1 && styles.qtyButtonDisabled
+                                    ]}
+                                    onPress={() => setQuantity(q => Math.max(1, q - 1))}
+                                    disabled={quantity <= 1}
+                                >
+                                    <Ionicons name="remove" size={20} color={quantity <= 1 ? theme.colors.textLight : theme.colors.text} />
+                                </Pressable>
+                                <Text style={styles.qtyText}>{quantity}</Text>
+                                <Pressable 
+                                    style={({ pressed, hovered }: any) => [
+                                        styles.qtyButton, 
+                                        hovered && styles.qtyButtonHover, 
+                                        pressed && styles.qtyButtonPressed,
+                                        quantity >= maxStock && styles.qtyButtonDisabled
+                                    ]}
+                                    onPress={() => setQuantity(q => Math.min(maxStock, q + 1))}
+                                    disabled={quantity >= maxStock}
+                                >
+                                    <Ionicons name="add" size={20} color={quantity >= maxStock ? theme.colors.textLight : theme.colors.text} />
+                                </Pressable>
+                                <Text style={styles.stockText}>{maxStock} pieces available</Text>
+                            </View>
+                        </View>
+
                         {/* Inline Action Bar (CTA + Save) */}
                         <View style={styles.sectionContainer}>
                             {user ? (
                                 <View style={styles.inlineActionRow}>
                                     <Pressable
                                         ref={buttonRef}
-                                        style={({ pressed }) => [
+                                        style={({ pressed, hovered }: any) => [
                                             styles.inlineAddToCartButton,
                                             !isInStock && styles.disabledButton,
-                                            pressed && { opacity: 0.8 }
+                                            hovered && isInStock && { backgroundColor: theme.colors.primaryDark, transform: [{ translateY: -2 }] },
+                                            pressed && isInStock && { transform: [{ scale: 0.98 }] }
                                         ]}
                                         disabled={!isInStock}
                                         onPress={handleAddToCart}
@@ -562,7 +615,14 @@ export default function ProductDetailPage() {
                                             {isInStock ? 'ADD TO CART' : 'OUT OF STOCK'}
                                         </Text>
                                     </Pressable>
-                                    <Pressable style={styles.inlineSaveButton} onPress={handleToggleWishlist}>
+                                    <Pressable 
+                                        style={({ pressed, hovered }: any) => [
+                                            styles.inlineSaveButton,
+                                            hovered && { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary },
+                                            pressed && { transform: [{ scale: 0.98 }] }
+                                        ]} 
+                                        onPress={handleToggleWishlist}
+                                    >
                                         <Ionicons
                                             name={isWishlisted ? "heart" : "heart-outline"}
                                             size={26}
@@ -573,10 +633,11 @@ export default function ProductDetailPage() {
                             ) : (
                                 <View style={styles.inlineActionRow}>
                                     <Pressable
-                                        style={({ pressed }) => [
+                                        style={({ pressed, hovered }: any) => [
                                             styles.inlineAddToCartButton,
                                             { flexDirection: 'row', gap: 8 },
-                                            pressed && { opacity: 0.8 }
+                                            hovered && { backgroundColor: theme.colors.primaryDark, transform: [{ translateY: -2 }] },
+                                            pressed && { transform: [{ scale: 0.98 }] }
                                         ]}
                                         onPress={() => router.push('/auth/login' as any)}
                                     >
@@ -1213,6 +1274,45 @@ const styles = StyleSheet.create({
     },
     variantChipTextDisabled: {
         color: theme.colors.textLight,
+    },
+    quantitySelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    qtyButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    qtyButtonHover: {
+        backgroundColor: theme.colors.primaryLight + '55',
+        borderColor: theme.colors.primary,
+    },
+    qtyButtonPressed: {
+        transform: [{ scale: 0.95 }],
+    },
+    qtyButtonDisabled: {
+        opacity: 0.5,
+        backgroundColor: theme.colors.subtle,
+    },
+    qtyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+        minWidth: 24,
+        textAlign: 'center',
+    },
+    stockText: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
     },
     inlineActionRow: {
         flexDirection: 'row',

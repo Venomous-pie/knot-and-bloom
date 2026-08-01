@@ -149,22 +149,25 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
             });
 
             // Create checkout session
+            const platformFee = Number((totalAmount * 0.07).toFixed(2));
+            const totalWithPlatformFee = totalAmount + platformFee;
+
             const session = await tx.checkoutSession.create({
                 data: {
                     userId: Number(userId),
                     cartSnapshot: JSON.stringify(cart.items),
                     lockedPrices: JSON.stringify(lockedPrices),
-                    totalAmount,
+                    totalAmount: totalWithPlatformFee,
                     status: CheckoutStatus.INITIATED,
                     expiresAt: new Date(Date.now() + SESSION_EXPIRY_MS),
                     idempotencyKey,
                 },
             });
 
-            return { session, lockedPrices, totalAmount };
+            return { session, lockedPrices, totalAmount, platformFee, totalWithPlatformFee };
         });
 
-        const { session, lockedPrices, totalAmount } = sessionResult;
+        const { session, lockedPrices, totalAmount, platformFee, totalWithPlatformFee } = sessionResult;
 
         AuditService.logCheckout('CHECKOUT_INITIATED', session.uid, Number(userId), {
             itemCount: lockedPrices.length,
@@ -205,7 +208,9 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
             success: true,
             sessionId: session.uid,
             lockedPrices,
-            totalAmount,
+            totalAmount: totalWithPlatformFee,
+            subtotal: totalAmount,
+            platformFee,
             expiresAt: session.expiresAt,
             sellerMetrics,
             codInfo, // NEW
@@ -272,13 +277,19 @@ const getCheckoutSession = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
+        const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
+        const subtotal = lockedPrices.reduce((sum, item) => sum + (item.quantity * item.finalPrice), 0);
+        const platformFee = Number((subtotal * 0.07).toFixed(2));
+
         res.status(200).json({
             success: true,
             session: {
                 uid: session.uid,
                 status: session.status,
-                lockedPrices: JSON.parse(session.lockedPrices),
+                lockedPrices,
                 totalAmount: Number(session.totalAmount),
+                subtotal,
+                platformFee,
                 expiresAt: session.expiresAt,
                 payments: session.payments,
             },
@@ -806,41 +817,47 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 orderIndex++;
 
                 // Calculate total for this specific order
-                const orderTotal = sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0);
+                const orderSubtotal = sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0);
+
+                // Buyer's Platform Fee for this specific seller order (7%)
+                const buyerPlatformFee = Number((orderSubtotal * 0.07).toFixed(2));
 
                 const orderedProducts = buildOrderedProducts(sellerItems);
 
-                // Commission Calculation
+                // Commission Calculation (Seller side: 5%)
                 const seller = await tx.seller.findUnique({ where: { uid: sellerId! } });
                 const commissionRate = seller?.commissionRate ? Number(seller.commissionRate) : 0.05;
-                const platformFee = Number((orderTotal * commissionRate).toFixed(2));
-                const sellerEarnings = Number((orderTotal - platformFee).toFixed(2));
+                const sellerPlatformFee = Number((orderSubtotal * commissionRate).toFixed(2)); // The 5% deducted
+                
+                // Platform earns both
+                const totalPlatformFee = buyerPlatformFee + sellerPlatformFee;
+                
+                const sellerEarnings = Number((orderSubtotal - sellerPlatformFee).toFixed(2));
 
                 // Calculate shipping fee server-side
                 const buyerChoice = (choices && choices[sellerId!]) ? choices[sellerId!] : 'DELIVERY';
-                const sellerSubtotal = sellerItems.reduce((sum, item) => sum + (item.quantity * item.finalPrice), 0);
 
                 const shippingResult = await resolveSellerShipping(
                     seller as any,
                     shippingAddress,
                     buyerChoice,
                     config,
-                    sellerSubtotal
+                    orderSubtotal
                 );
 
                 const orderShippingFee = shippingResult.fee;
-                const orderTotalWithShipping = orderTotal + orderShippingFee;
+                const orderTotalWithShippingAndFees = orderSubtotal + buyerPlatformFee + orderShippingFee;
 
                 const newOrder = await tx.order.create({
                     data: {
                         userId: session.userId,
                         sellerId: sellerId, // Assign to seller
                         products: JSON.stringify(orderedProducts),
-                        total: orderTotalWithShipping, // Total includes shipping
-                        subtotal: orderTotal, // Product subtotal only
-                        shippingFee: orderShippingFee, // Shipping fee (0 for subsequent orders in multi-seller)
-                        platformFee: platformFee,
-                        sellerEarnings: sellerEarnings,
+                        total: orderTotalWithShippingAndFees, // Total includes shipping and buyer fee
+                        subtotal: orderSubtotal, // Product subtotal only
+                        shippingFee: orderShippingFee, // Shipping fee
+                        platformFee: totalPlatformFee, // What the platform keeps
+                        sellerEarnings: sellerEarnings, // What the seller takes home
                         discount: 0,
                         status: OrderStatus.CONFIRMED,
                         paymentMethod: successfulPayment.method,

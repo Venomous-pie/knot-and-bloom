@@ -36,74 +36,100 @@ export function CheckoutSellerGroup({
     onNoteChange
 }: CheckoutSellerGroupProps) {
     const [isMessageFocused, setIsMessageFocused] = React.useState(false);
+    const [isNoteExpanded, setIsNoteExpanded] = React.useState(!!note);
     
     const shopItemTotal = items.reduce((sum, item) => sum + (item.finalPrice * item.quantity), 0);
-    const shopShippingFee = shippingEstimate?.fee || 0;
+    const shopShippingFee = choice === 'PICKUP' ? 0 : (shippingEstimate?.fee || 0);
     const shopTotal = shopItemTotal + shopShippingFee;
 
     return (
         <View style={styles.container}>
             <View style={styles.sellerHeader}>
-                <Store size={20} color={theme.colors.textSecondary} />
-                <Text style={styles.sellerName}>{sellerName || 'Knot & Bloom'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Store size={20} color={theme.colors.textSecondary} />
+                    <Text style={styles.sellerName}>{sellerName || 'Knot & Bloom'}</Text>
+                </View>
+                {!isNoteExpanded && (
+                    <Pressable 
+                        style={styles.addNoteBtn}
+                        onPress={() => setIsNoteExpanded(true)}
+                    >
+                        <Text style={styles.addNoteText}>+ Add Note</Text>
+                    </Pressable>
+                )}
             </View>
 
-            <CheckoutProductList items={items} shopTotal={shopTotal} />
+            <View style={styles.cardContainer}>
+                <CheckoutProductList items={items} shopTotal={shopTotal} />
 
-            <View style={styles.messageSection}>
-                <View style={styles.messageHeader}>
-                    <Text style={styles.messageTitle}>Message to Seller/Courier (Optional)</Text>
-                </View>
-                <TextInput
-                    placeholder="E.g., Please ensure secure packaging, drop at lobby..."
-                    placeholderTextColor={theme.colors.textSecondary + '80'}
-                    style={[
-                        styles.messageInput,
-                        isMessageFocused && { borderColor: theme.colors.primary, backgroundColor: 'white' }
-                    ]}
-                    value={note}
-                    onChangeText={onNoteChange}
-                    onFocus={() => setIsMessageFocused(true)}
-                    onBlur={() => setIsMessageFocused(false)}
-                    multiline
-                />
-            </View>
-
-            <View style={styles.fulfillmentSection}>
-                <View style={styles.fulfillmentHeaderRow}>
-                    <View style={styles.fulfillmentLeft}>
-                        <View style={styles.fulfillmentIconBox}>
-                            <Truck size={20} color={theme.colors.primary} />
+                {isNoteExpanded && (
+                    <View style={styles.messageSection}>
+                        <View style={styles.messageHeader}>
+                            <Text style={styles.messageTitle}>Message to Seller/Courier (Optional)</Text>
+                            <Pressable onPress={() => {
+                                setIsNoteExpanded(false);
+                                onNoteChange(''); // clear the note if cancelled
+                            }}>
+                                <Text style={styles.cancelNoteText}>Cancel</Text>
+                            </Pressable>
                         </View>
-                        <View>
-                            <Text style={styles.fulfillmentTitle}>Delivery</Text>
-                            <Text style={styles.fulfillmentSubtitle}>
-                                Third-party courier{sellerLocation ? ` • Ships from ${sellerLocation}` : ''}
-                            </Text>
-                        </View>
-                    </View>
-                    <View style={styles.fulfillmentRight}>
-                        {shopShippingFee > 0 ? (
-                            <Text style={styles.fulfillmentPrice}>₱{shopShippingFee.toFixed(2)}</Text>
-                        ) : (
-                            <>
-                                <Text style={styles.fulfillmentPriceOriginal}>₱150.00</Text>
-                                <Text style={styles.fulfillmentPriceFree}>Free</Text>
-                            </>
-                        )}
-                    </View>
-                </View>
-
-                {shopShippingFee === 0 && (
-                    <View style={styles.freeShippingBanner}>
-                        <CheckCircle2 size={14} color="#15803d" style={{ marginRight: 6 }} />
-                        <Text style={styles.freeShippingText}>Free shipping unlocked — order over ₱300</Text>
+                        <TextInput
+                            placeholder="E.g., Please ensure secure packaging, drop at lobby..."
+                            placeholderTextColor={theme.colors.textSecondary + '80'}
+                            style={[
+                                styles.messageInput,
+                                isMessageFocused && { borderColor: theme.colors.primary, backgroundColor: 'white' }
+                            ]}
+                            value={note}
+                            onChangeText={onNoteChange}
+                            onFocus={() => setIsMessageFocused(true)}
+                            onBlur={() => setIsMessageFocused(false)}
+                            multiline
+                            autoFocus
+                        />
                     </View>
                 )}
 
-                <Pressable style={styles.seeCalculationBtn}>
-                    <Text style={styles.seeCalculationText}>See calculation ↗</Text>
-                </Pressable>
+                <View style={styles.shopSummaryRow}>
+                    {/* Left side: Fulfillment Toggle */}
+                    <View style={styles.fulfillmentToggle}>
+                        <Text style={styles.fulfillmentLabel}>Fulfillment Options</Text>
+                        <View style={styles.toggleGroup}>
+                            <Pressable 
+                                style={[styles.toggleBtn, choice === 'DELIVERY' && styles.toggleBtnActive]}
+                                onPress={() => onChoiceChange('DELIVERY')}
+                            >
+                                <Truck size={16} color={choice === 'DELIVERY' ? theme.colors.primary : theme.colors.textSecondary} />
+                                <Text style={[styles.toggleText, choice === 'DELIVERY' && styles.toggleTextActive]}>Delivery</Text>
+                            </Pressable>
+                            <Pressable 
+                                style={[styles.toggleBtn, choice === 'PICKUP' && styles.toggleBtnActive]}
+                                onPress={() => onChoiceChange('PICKUP')}
+                            >
+                                <Store size={16} color={choice === 'PICKUP' ? theme.colors.primary : theme.colors.textSecondary} />
+                                <Text style={[styles.toggleText, choice === 'PICKUP' && styles.toggleTextActive]}>Pick Up</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+
+                    {/* Right side: Subtotals */}
+                    <View style={styles.totalsBreakdown}>
+                        <View style={styles.totalsColumn}>
+                             <Text style={styles.totalLabel}>Items ({items.length}):</Text>
+                             <Text style={styles.totalValue}>₱{shopItemTotal.toFixed(2)}</Text>
+                        </View>
+                        <View style={styles.totalsColumn}>
+                             <Text style={styles.totalLabel}>Shipping:</Text>
+                             <Text style={styles.totalValue}>
+                                  {choice === 'PICKUP' ? '₱0.00' : (shopShippingFee > 0 ? `₱${shopShippingFee.toFixed(2)}` : 'Free')}
+                             </Text>
+                        </View>
+                        <View style={styles.totalsColumnMain}>
+                             <Text style={styles.mainTotalLabel}>Shop Subtotal:</Text>
+                             <Text style={styles.mainTotalValue}>₱{shopTotal.toFixed(2)}</Text>
+                        </View>
+                    </View>
+                </View>
             </View>
         </View>
     );
@@ -111,17 +137,20 @@ export function CheckoutSellerGroup({
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: theme.spacing.xl,
-        paddingBottom: theme.spacing.xl,
-        borderBottomWidth: 4,
-        borderBottomColor: '#E5E7EB',
+        marginBottom: theme.spacing.sm,
+    },
+    cardContainer: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        ...theme.shadows.sm,
     },
     sellerHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: theme.spacing.md,
-        marginBottom: theme.spacing.sm,
+        justifyContent: 'space-between',
+        marginBottom: theme.spacing.md,
+        paddingHorizontal: theme.spacing.sm, 
     },
     sellerName: {
         fontSize: 16,
@@ -130,17 +159,32 @@ const styles = StyleSheet.create({
         fontFamily: theme.typography.fontFamily,
     },
     messageSection: {
-        marginTop: theme.spacing.lg,
+        marginTop: theme.spacing.md,
+        marginBottom: theme.spacing.md,
     },
     messageHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        justifyContent: 'space-between',
         marginBottom: 8,
     },
     messageTitle: {
         fontSize: 14,
         fontWeight: '600',
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    addNoteBtn: {
+        paddingVertical: 8,
+    },
+    addNoteText: {
+        fontSize: 14,
+        color: theme.colors.primary,
+        fontWeight: '600',
+        fontFamily: theme.typography.fontFamily,
+    },
+    cancelNoteText: {
+        fontSize: 13,
         color: theme.colors.textSecondary,
         fontFamily: theme.typography.fontFamily,
     },
@@ -157,87 +201,94 @@ const styles = StyleSheet.create({
         textAlignVertical: 'top',
         outlineStyle: 'none' as any,
     },
-    fulfillmentSection: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.lg,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        marginTop: theme.spacing.md,
-    },
-    fulfillmentHeaderRow: {
+    shopSummaryRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
+        paddingTop: theme.spacing.md,
+        gap: theme.spacing.lg,
     },
-    fulfillmentLeft: {
+    fulfillmentToggle: {
+        flex: 1,
+        minWidth: 200,
+    },
+    fulfillmentLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+        marginBottom: 8,
+    },
+    toggleGroup: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    toggleBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-    },
-    fulfillmentIconBox: {
-        width: 40,
-        height: 40,
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: theme.colors.primaryLight + '20',
-        alignItems: 'center',
-        justifyContent: 'center',
+        backgroundColor: theme.colors.backgroundAlt,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
     },
-    fulfillmentTitle: {
+    toggleBtnActive: {
+        backgroundColor: theme.colors.primaryLight + '40',
+        borderColor: theme.colors.primary,
+    },
+    toggleText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    toggleTextActive: {
+        color: theme.colors.primary,
+    },
+    totalsBreakdown: {
+        flex: 1,
+        minWidth: 200,
+        alignItems: 'flex-end',
+        gap: 4,
+    },
+    totalsColumn: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: 200,
+    },
+    totalLabel: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    totalValue: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+    },
+    totalsColumnMain: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: 200,
+        marginTop: 4,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+    },
+    mainTotalLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+    },
+    mainTotalValue: {
         fontSize: 16,
         fontWeight: '700',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-    },
-    fulfillmentSubtitle: {
-        fontSize: 13,
-        color: theme.colors.textSecondary,
-        fontFamily: theme.typography.fontFamily,
-        marginTop: 2,
-    },
-    fulfillmentRight: {
-        alignItems: 'flex-end',
-    },
-    fulfillmentPrice: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-    },
-    fulfillmentPriceOriginal: {
-        fontSize: 13,
-        color: theme.colors.textSecondary,
-        textDecorationLine: 'line-through',
-        fontFamily: theme.typography.fontFamily,
-    },
-    fulfillmentPriceFree: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#15803d',
-        fontFamily: theme.typography.fontFamily,
-    },
-    freeShippingBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#dcfce7',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-        marginTop: 16,
-    },
-    freeShippingText: {
-        fontSize: 13,
-        color: '#15803d',
-        fontWeight: '500',
-        fontFamily: theme.typography.fontFamily,
-    },
-    seeCalculationBtn: {
-        marginTop: 16,
-    },
-    seeCalculationText: {
-        fontSize: 14,
         color: theme.colors.primary,
-        fontWeight: '500',
         fontFamily: theme.typography.fontFamily,
     }
 });

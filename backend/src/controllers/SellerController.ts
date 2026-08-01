@@ -258,7 +258,7 @@ export const sellerController = {
                 }
             });
 
-            if (!seller || seller.updatedAt !== null) {
+            if (!seller) {
                 return res.status(404).json({ error: 'Seller not found' });
             }
 

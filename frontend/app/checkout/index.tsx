@@ -57,6 +57,8 @@ function CheckoutContent() {
         processPayment,
         isProcessing,
         totalAmount,
+        subtotal,
+        platformFee,
         lockedPrices,
         setShippingInfo,
         error: checkoutError,
@@ -661,6 +663,8 @@ function CheckoutContent() {
 
                                         <CheckoutOrderSummary
                                             totalAmount={totalAmount}
+                                            subtotal={subtotal}
+                                            platformFee={platformFee}
                                             shippingFee={shippingFee}
                                             hasFreeShipping={hasFreeShipping}
                                             paymentMethod={paymentMethod}
@@ -696,6 +700,8 @@ function CheckoutContent() {
                         </View>
                         <CheckoutOrderSummary
                             totalAmount={totalAmount}
+                            subtotal={subtotal}
+                            platformFee={platformFee}
                             shippingFee={shippingFee}
                             hasFreeShipping={hasFreeShipping}
                             paymentMethod={paymentMethod}

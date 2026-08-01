@@ -961,7 +961,10 @@ export const getRecommendedProducts = async (userId?: number, searchDataStr?: st
             uploaded: true,
             isBundle: true,
             bundleQuantity: true,
-            variants: true
+            variants: true,
+            seller: {
+                select: { name: true, slug: true, logo: true }
+            }
         }
     });
 
@@ -1064,7 +1067,10 @@ export const getSimilarProducts = async (productId: string) => {
             uploaded: true,
             isBundle: true,
             bundleQuantity: true,
-            variants: true
+            variants: true,
+            seller: {
+                select: { name: true, slug: true, logo: true }
+            }
         }
     });
 
@@ -1118,7 +1124,8 @@ export const getSimilarProducts = async (productId: string) => {
                 uid: true, name: true, categories: true, tags: true, description: true,
                 basePrice: true, discountedPrice: true, discountPercentage: true,
                 image: true, images: true, soldCount: true, uploaded: true,
-                isBundle: true, bundleQuantity: true, variants: true
+                isBundle: true, bundleQuantity: true, variants: true,
+                seller: { select: { name: true, slug: true, logo: true } }
             },
             orderBy: { soldCount: 'desc' },
             take: needed

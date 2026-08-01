@@ -23,6 +23,8 @@ export interface CheckoutState {
     sessionId: number | null;
     lockedPrices: LockedPriceItem[];
     totalAmount: number;
+    subtotal: number;
+    platformFee: number;
     expiresAt: string | null;
     shippingInfo: ShippingInfo | null;
     selectedPaymentMethod: string | null;
@@ -68,6 +70,8 @@ const initialState: CheckoutState = {
     sessionId: null,
     lockedPrices: [],
     totalAmount: 0,
+    subtotal: 0,
+    platformFee: 0,
     expiresAt: null,
     shippingInfo: null,
     selectedPaymentMethod: null,
@@ -183,6 +187,8 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                     sessionId: data.sessionId,
                     lockedPrices: data.lockedPrices,
                     totalAmount: data.totalAmount,
+                    subtotal: data.subtotal || data.totalAmount,
+                    platformFee: data.platformFee || 0,
                     expiresAt: data.expiresAt,
                     sellerMetrics: data.sellerMetrics || null,
                     codInfo: data.codInfo || null, // NEW

@@ -31,12 +31,12 @@ export default function SellerDashboardLayout() {
     const { width } = useWindowDimensions();
     const isDesktop = width >= 1024;
     const pathname = usePathname();
-    const isFullWidth = pathname.includes('/products/form');
+    const isFullWidth = pathname.includes('/products/form') || pathname.includes('/add-payout-method');
 
     if (isDesktop) {
         return (
             <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#F4F4F8' }}>
-                <DashboardSidebar />
+                {!isFullWidth && <DashboardSidebar />}
                 <View style={{ flex: 1 }}>
                     <Slot />
                 </View>

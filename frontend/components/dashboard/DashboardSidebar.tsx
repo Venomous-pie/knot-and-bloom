@@ -5,6 +5,7 @@ import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle,
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { sellerAPI } from '@/api/api';
+import { useQuery } from '@tanstack/react-query';
 import { theme } from '@/constants/theme';
 import DropdownMenu, { DropdownItem } from '@/components/ui/DropdownMenu';
 
@@ -14,24 +15,25 @@ export default function DashboardSidebar() {
     const { user, logout } = useAuth();
     const { confirm } = useDialog();
     
-    const [sidebarStats, setSidebarStats] = useState({ unreadNotifications: 0, lowStockCount: 0 });
     const [showUserMenu, setShowUserMenu] = useState(false);
 
-    useEffect(() => {
-        if (user && (user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE'))) {
-            const fetchStats = () => {
-                sellerAPI.getSidebarStats()
-                    .then(setSidebarStats)
-                    .catch(console.error);
-            };
-            fetchStats();
+    const isAuthorized = !!(user && (user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE')));
 
-            const listener = DeviceEventEmitter.addListener('notificationRead', fetchStats);
+    const { data: sidebarStats = { unreadNotifications: 0, lowStockCount: 0 }, refetch } = useQuery({
+        queryKey: ['sidebarStats'],
+        queryFn: () => sellerAPI.getSidebarStats(),
+        enabled: isAuthorized,
+        staleTime: 60 * 1000,
+    });
+
+    useEffect(() => {
+        if (isAuthorized) {
+            const listener = DeviceEventEmitter.addListener('notificationRead', () => refetch());
             return () => {
                 listener.remove();
             };
         }
-    }, [user]);
+    }, [isAuthorized, refetch]);
 
     const menuItems = [
         { label: 'Dashboard', route: '/seller-dashboard', icon: LayoutDashboard },
@@ -48,8 +50,6 @@ export default function DashboardSidebar() {
     ];
 
     const globalItems = [
-        { label: 'Shipping & Fulfillment', route: '/seller-dashboard/shipping', icon: Truck },
-        { label: 'Notifications', route: '/seller-dashboard/notifications', icon: Bell, badge: sidebarStats.unreadNotifications > 0 ? { type: 'count', count: sidebarStats.unreadNotifications } : null },
         { label: 'Shop Home', route: '/', icon: Home },
         { label: 'Store Settings', route: '/seller-dashboard/settings', icon: Settings },
     ];
@@ -142,11 +142,6 @@ export default function DashboardSidebar() {
                             <item.icon size={20} color={isActive ? '#B36979' : '#6B7280'} />
                             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <Text style={[s.menuText, isActive && s.menuTextActive]}>{item.label}</Text>
-                                {item.badge?.type === 'count' && (
-                                    <View style={s.countBadge}>
-                                        <Text style={s.countBadgeTxt}>{item.badge.count > 9 ? '9+' : item.badge.count}</Text>
-                                    </View>
-                                )}
                             </View>
                         </TouchableOpacity>
                     );

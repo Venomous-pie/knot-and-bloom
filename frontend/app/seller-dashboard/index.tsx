@@ -2,15 +2,17 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     ActivityIndicator, RefreshControl, Animated, Pressable,
-    useWindowDimensions, Image
+    useWindowDimensions, Image, Modal, TextInput
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { sellerAPI } from '@/api/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
 import { LineChart } from 'react-native-gifted-charts';
 import {
     Package, ShoppingBag, DollarSign, Bell, RefreshCw,
-    TrendingUp, TrendingDown, Star, CheckCircle, Clock, XCircle, Settings, Users, AlertCircle, ChevronRight, Truck
+    TrendingUp, TrendingDown, Star, CheckCircle, Clock, XCircle, Settings, Users, AlertCircle, ChevronRight, Truck, Copy, Check
 } from 'lucide-react-native';
 import Tooltip from '../../components/ui/Tooltip';
 import StatCard from '../../components/ui/StatCard';
@@ -65,9 +67,17 @@ export default function SellerDashboardHome() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const { width } = useWindowDimensions();
-    const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [loading, setLoading] = useState(true);
+
     const [refreshing, setRefreshing] = useState(false);
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [hasShared, setHasShared] = useState(false);
+
+    useEffect(() => {
+        AsyncStorage.getItem('onboarding_shared').then(res => {
+            if (res === 'true') setHasShared(true);
+        });
+    }, []);
 
     React.useEffect(() => {
         if (!authLoading) {
@@ -77,19 +87,19 @@ export default function SellerDashboardHome() {
         }
     }, [user, authLoading]);
 
-    const fetchStats = async () => {
-        try { setStats(await sellerAPI.getDashboardStats()); }
-        catch (e) { console.error(e); }
-        finally { setLoading(false); setRefreshing(false); }
+    const { data: stats, isLoading: loading, refetch } = useQuery({
+        queryKey: ['dashboardStats', user?.sellerProfile?.uid],
+        queryFn: () => sellerAPI.getDashboardStats(),
+        enabled: !!(user && (user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE'))),
+        staleTime: 60 * 1000,
+        refetchInterval: 300000, // Auto-refresh every 5 minutes
+    });
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await refetch();
+        setRefreshing(false);
     };
-    useEffect(() => { 
-        fetchStats(); 
-        // Auto-refresh every 5 minutes (300000ms)
-        const intervalId = setInterval(() => {
-            fetchStats();
-        }, 300000);
-        return () => clearInterval(intervalId);
-    }, []);
 
     const pulseAnim = useRef(new Animated.Value(0.4)).current;
     useEffect(() => {
@@ -100,6 +110,8 @@ export default function SellerDashboardHome() {
                     Animated.timing(pulseAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
                 ])
             ).start();
+        } else {
+            pulseAnim.setValue(1);
         }
     }, [loading]);
 
@@ -125,10 +137,10 @@ export default function SellerDashboardHome() {
                 <Text style={s.greeting} numberOfLines={1}>Good morning, {user?.name?.split(' ')[0] || 'Seller'}!</Text>
                 <Text style={s.dateTxt}>{new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
             </View>
-            
+
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {!stats && !loading && (
-                    <TouchableOpacity style={s.smallRetryBtn} onPress={fetchStats}>
+                    <TouchableOpacity style={s.smallRetryBtn} onPress={() => refetch()}>
                         <RefreshCw size={14} color={P} />
                         <Text style={s.smallRetryTxt}>Retry</Text>
                     </TouchableOpacity>
@@ -197,7 +209,7 @@ export default function SellerDashboardHome() {
         ? ((Math.min(width - 260, 1280) * 0.65) - 80)
         : Math.min(width - 80, 340);
 
-    const lineData = displayStats.performanceGraph.map((d) => {
+    const lineData = displayStats.performanceGraph.map((d: any) => {
         return {
             value: d.sales,
             dataPointText: fmtK(d.sales),
@@ -369,7 +381,7 @@ export default function SellerDashboardHome() {
                     <Animated.View style={{ opacity: pulseAnim }}>
                         {[1, 2, 3].map(i => <View key={i} style={{ height: 56, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 16 }} />)}
                     </Animated.View>
-                ) : displayStats.topProducts.length > 0 ? displayStats.topProducts.map((p, i) => (
+                ) : displayStats.topProducts.length > 0 ? displayStats.topProducts.map((p: any, i: number) => (
                     <View key={p.id} style={s.productRow}>
                         {p.image ? (
                             <Image source={{ uri: p.image }} style={s.productImg} />
@@ -407,7 +419,7 @@ export default function SellerDashboardHome() {
                     <Animated.View style={{ opacity: pulseAnim }}>
                         {[1, 2].map(i => <View key={i} style={{ height: 80, backgroundColor: '#E2E8F0', borderRadius: 12, marginBottom: 16 }} />)}
                     </Animated.View>
-                ) : displayStats.recentReviews.length > 0 ? displayStats.recentReviews.map((r) => (
+                ) : displayStats.recentReviews.length > 0 ? displayStats.recentReviews.map((r: any) => (
                     <View key={r.id} style={s.reviewRow}>
                         <View style={s.reviewHead}>
                             <Text style={s.reviewerName}>{r.customerName}</Text>
@@ -431,9 +443,9 @@ export default function SellerDashboardHome() {
     );
 
     const lifetimeTotalOrders = displayStats.performanceSnapshot?.lifetimeTotalOrders || 0;
-    const showHybridOnboarding = lifetimeTotalOrders < 5;
     const ob = displayStats.onboarding || { hasProducts: false, hasPayouts: false, hasShipping: false };
-    const completedSteps = [ob.hasProducts, ob.hasPayouts, ob.hasShipping, false].filter(Boolean).length;
+    const completedSteps = [ob.hasProducts, ob.hasPayouts, ob.hasShipping, hasShared].filter(Boolean).length;
+    const showHybridOnboarding = lifetimeTotalOrders < 5 && completedSteps < 4;
 
     const OnboardingChecklist = showHybridOnboarding ? (
         <View style={s.card}>
@@ -463,7 +475,7 @@ export default function SellerDashboardHome() {
 
                 <View style={{ height: 1, backgroundColor: BORDER }} />
 
-                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/settings' as any)}>
+                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/payouts' as any)}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                         <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasPayouts ? '#D1FAE5' : '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
                             {ob.hasPayouts ? <CheckCircle size={20} color={GREEN} /> : <DollarSign size={20} color={INDIGO} />}
@@ -493,13 +505,13 @@ export default function SellerDashboardHome() {
 
                 <View style={{ height: 1, backgroundColor: BORDER }} />
 
-                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/settings' as any)}>
+                <TouchableOpacity style={s.onboardingRow} onPress={() => setShareModalVisible(true)}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center' }}>
-                            <Users size={20} color={GREEN} />
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: hasShared ? '#D1FAE5' : '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
+                            {hasShared ? <CheckCircle size={20} color={GREEN} /> : <Users size={20} color={INDIGO} />}
                         </View>
                         <View>
-                            <Text style={s.onboardingRowTxt}>Share your store link</Text>
+                            <Text style={[s.onboardingRowTxt, hasShared && { textDecorationLine: 'line-through', color: SUB }]}>Share your store link</Text>
                             <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Let your network know you're open.</Text>
                         </View>
                     </View>
@@ -542,16 +554,57 @@ export default function SellerDashboardHome() {
                 {HeaderComponent}
             </View>
             <ScrollView
-                style={s.root} contentContainerStyle={s.scroll}
+                style={{ flex: 1 }}
+                contentContainerStyle={s.scroll}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchStats(); }} colors={[P]} tintColor={P} />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={P} />
                 }
             >
                 <View style={isDesktop ? s.desktopContainer : undefined}>
                     {dashboardContent}
                 </View>
+                <View style={{ height: 40 }} />
             </ScrollView>
+
+            {/* Share Link Modal */}
+            <Modal visible={shareModalVisible} transparent animationType="fade" onRequestClose={() => setShareModalVisible(false)}>
+                <View style={s.modalOverlay}>
+                    <View style={s.modalContent}>
+                            <View style={s.modalHeader}>
+                                <Text style={s.modalTitle}>Share Your Store</Text>
+                                <TouchableOpacity onPress={() => setShareModalVisible(false)}>
+                                    <XCircle size={24} color={SUB} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={{ fontSize: 14, color: SUB, fontFamily: 'Quicksand', marginBottom: 16, lineHeight: 22 }}>
+                                Copy this link and share it on your social media, messaging apps, or anywhere you want to promote your handmade goods!
+                            </Text>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <TextInput
+                                    style={{ flex: 1, height: 48, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 16, fontSize: 14, color: TEXT, fontFamily: 'Quicksand', outlineStyle: 'none' as any }}
+                                    value={`knotandbloom.shop/shop/${user?.sellerProfile?.slug || ''}`}
+                                    editable={false}
+                                    selectTextOnFocus={true}
+                                />
+                                <TouchableOpacity
+                                    style={{ width: 48, height: 48, backgroundColor: copied ? GREEN : P, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                                    onPress={() => {
+                                        setCopied(true);
+                                        setHasShared(true);
+                                        AsyncStorage.setItem('onboarding_shared', 'true');
+                                        setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                >
+                                    {copied ? <Check size={20} color="#fff" /> : <Copy size={20} color="#fff" />}
+                                </TouchableOpacity>
+                            </View>
+                            {copied && <Text style={{ color: GREEN, fontSize: 12, fontFamily: 'Quicksand', marginTop: 8, textAlign: 'center', fontWeight: '700' }}>Link copied to clipboard!</Text>}
+                        </View>
+                    </View>
+            </Modal>
         </View>
     );
 }
@@ -620,4 +673,36 @@ const s = StyleSheet.create({
 
     smallRetryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: P_LIGHT, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: P + '30' },
     smallRetryTxt: { color: P, fontWeight: '700', fontSize: 12, fontFamily: 'Quicksand' },
+
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: TEXT,
+        fontFamily: 'Quicksand'
+    }
 });

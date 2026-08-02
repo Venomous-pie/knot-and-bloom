@@ -12,6 +12,7 @@ import { supabaseService } from '../services/SupabaseService.js';
 import { computeShippingFee } from '../utils/shippingUtils.js';
 import type { ShippingConfig } from '../utils/shippingUtils.js';
 import { getShippingConfig } from '../utils/platformConfigUtils.js';
+import { kycService } from '../services/kycService.js';
 
 export const sellerController = {
     // Flow B: Direct Register as Seller (Public)
@@ -34,7 +35,17 @@ export const sellerController = {
 
             const hashedPassword = await bcrypt.hash(data.password, 10);
 
-            // Transaction: Create Customer (as USER) + Seller (as PENDING)
+            let initialStatus: SellerStatus = SellerStatus.PENDING;
+            let initialRole = Role.USER;
+            if (data.idType && data.idNumber && data.idPhotos && data.idPhotos.length > 0) {
+                const isVerified = await kycService.verifyIdentity(data.idType, data.idNumber, data.idPhotos);
+                if (isVerified) {
+                    initialStatus = SellerStatus.ACTIVE;
+                    initialRole = Role.SELLER;
+                }
+            }
+
+            // Transaction: Create Customer + Seller
             const result = await prisma.$transaction(async (tx) => {
                 const customer = await tx.user.create({
                     data: {
@@ -42,7 +53,7 @@ export const sellerController = {
                         email: data.email,
                         password: hashedPassword,
                         phone: data.phone ?? null,
-                        role: Role.USER // Stay as USER until approved
+                        role: initialRole
                     }
                 });
 
@@ -68,7 +79,7 @@ export const sellerController = {
                         idType: data.idType ?? null,
                         idNumber: data.idNumber ?? null,
                         idPhotos: data.idPhotos ?? [],
-                        status: SellerStatus.PENDING
+                        status: initialStatus
                     }
                 });
 
@@ -117,6 +128,14 @@ export const sellerController = {
 
             const userId = user.id;
 
+            let initialStatus: SellerStatus = SellerStatus.PENDING;
+            if (data.idType && data.idNumber && data.idPhotos && data.idPhotos.length > 0) {
+                const isVerified = await kycService.verifyIdentity(data.idType, data.idNumber, data.idPhotos);
+                if (isVerified) {
+                    initialStatus = SellerStatus.ACTIVE;
+                }
+            }
+
             // Check if already has seller profile
             const existingSeller = await prisma.seller.findUnique({ where: { userId: userId } });
 
@@ -158,7 +177,7 @@ export const sellerController = {
                             idType: data.idType ?? null,
                             idNumber: data.idNumber ?? null,
                             idPhotos: data.idPhotos ?? [],
-                            status: SellerStatus.PENDING,
+                            status: initialStatus,
                             rejectionReason: null, // Clear previous rejection reason
                             termsAccepted: data.termsAccepted ?? false,
                             termsAcceptedAt: data.termsAccepted ? new Date() : null
@@ -215,7 +234,7 @@ export const sellerController = {
                     idType: data.idType ?? null,
                     idNumber: data.idNumber ?? null,
                     idPhotos: data.idPhotos ?? [],
-                    status: SellerStatus.PENDING,
+                    status: initialStatus,
                     termsAccepted: data.termsAccepted ?? false,
                     termsAcceptedAt: data.termsAccepted ? new Date() : null
                 }
@@ -232,6 +251,13 @@ export const sellerController = {
                     }))
                 });
                 admins.forEach((admin: any) => supabaseService.emitToRoom(`user_${admin.uid}`, 'notification:new', {}));
+            }
+
+            if (initialStatus === SellerStatus.ACTIVE) {
+                await prisma.user.update({
+                    where: { uid: userId },
+                    data: { role: Role.SELLER }
+                });
             }
 
             res.status(201).json(seller);
@@ -487,7 +513,7 @@ export const sellerController = {
                     include: {
                         items: {
                             include: {
-                                product: { select: { name: true, image: true } }
+                                product: { select: { name: true, image: true, processingTime: true } }
                             }
                         },
                         user: {
@@ -504,6 +530,7 @@ export const sellerController = {
             // Cast Decimal to Number for frontend consumption
             const safeOrders = orders.map(order => ({
                 ...order,
+                customer: order.user,
                 total: Number(order.total),
                 subtotal: Number(order.subtotal),
                 platformFee: Number(order.platformFee),

@@ -143,6 +143,10 @@ export default function ProductCard({
         let interval: ReturnType<typeof setInterval>;
         if (imageList.length > 1) {
             interval = setInterval(() => {
+                if (Platform.OS === 'web' && typeof document !== 'undefined' && document.hidden) {
+                    return;
+                }
+                
                 setPrevImageIndex(currentImageIndex);
                 setCurrentImageIndex((currentImageIndex + 1) % imageList.length);
                 

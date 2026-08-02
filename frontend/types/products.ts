@@ -93,6 +93,7 @@ interface CreateProductData {
     stock?: number;
     image?: string;
     description?: string;
+    processingTime?: string;
 }
 
 interface ProductPageProps {

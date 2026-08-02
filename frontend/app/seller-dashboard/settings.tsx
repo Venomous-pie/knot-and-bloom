@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Pressable,
     ScrollView,
@@ -6,9 +6,13 @@ import {
     Switch,
     Text,
     View,
+    useWindowDimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Sparkles, Lock, CreditCard, ChevronRight, Store } from 'lucide-react-native';
+import { 
+    ChevronLeft, Sparkles, Lock, CreditCard, ChevronRight, Store,
+    Truck, FileText, Bell, ShieldCheck, Coffee 
+} from 'lucide-react-native';
 
 const P       = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -29,6 +33,11 @@ export default function SellerSettingsPage() {
     const router = useRouter();
     const { settings, updateSetting } = useSellerSettings();
     const { user, loading: authLoading } = useAuth();
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 1024;
+    const isTablet = width >= 768 && width < 1024;
+    
+    const [vacationMode, setVacationMode] = useState(false);
 
     // Auth guard: only ACTIVE sellers or admins can access
     useEffect(() => {
@@ -43,6 +52,63 @@ export default function SellerSettingsPage() {
             }
         }
     }, [user, authLoading]);
+
+    const settingTiles = [
+        {
+            id: 'profile',
+            title: 'Store Details',
+            subtitle: 'Manage shop name, bio, avatar, and banner.',
+            icon: <Store size={22} color={P} />,
+            color: P_LIGHT,
+            route: '/seller-dashboard/store-details'
+        },
+        {
+            id: 'payout',
+            title: 'Payout Methods',
+            subtitle: 'Manage GCash and bank accounts for withdrawals.',
+            icon: <CreditCard size={22} color={'#0284C7'} />,
+            color: '#E0F2FE',
+            route: '/seller-dashboard/payouts'
+        },
+        {
+            id: 'shipping',
+            title: 'Shipping & Fulfillment',
+            subtitle: 'Set up delivery zones, rates, and pickup options.',
+            icon: <Truck size={22} color={GREEN} />,
+            color: GREEN + '20',
+            route: '/seller-dashboard/shipping'
+        },
+        {
+            id: 'policies',
+            title: 'Store Policies',
+            subtitle: 'Update return, refund, and exchange policies.',
+            icon: <FileText size={22} color={INDIGO} />,
+            color: INDIGO + '20',
+            route: '/seller-dashboard/policies'
+        },
+        {
+            id: 'notifications',
+            title: 'Notifications',
+            subtitle: 'Manage alerts for new orders and messages.',
+            icon: <Bell size={22} color={AMBER} />,
+            color: AMBER + '20',
+            route: '/seller-dashboard/notifications'
+        },
+        {
+            id: 'legal',
+            title: 'Tax & Legal',
+            subtitle: 'Business registration details and tax identifiers.',
+            icon: <ShieldCheck size={22} color={TEAL} />,
+            color: TEAL + '20',
+            route: '/seller-dashboard/legal'
+        }
+    ];
+
+    const getTileWidth = () => {
+        if (isDesktop) return '31.33%';
+        if (isTablet) return '48%';
+        return '100%';
+    };
 
     return (
         <View style={styles.container}>
@@ -59,107 +125,55 @@ export default function SellerSettingsPage() {
             <View style={{ flex: 1 }}>
                 <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                {/* Shop Profile Section */}
-                <Text style={styles.sectionLabel}>Shop Profile</Text>
-                <View style={styles.card}>
-                    <Pressable
-                        style={styles.linkRow}
-                        onPress={() => router.push('/profile' as any)}
-                    >
-                        <View style={[styles.settingIcon, { backgroundColor: P_LIGHT }]}>
-                            <Store size={20} color={P} />
+                {/* Quick Actions & Features Section */}
+                <Text style={styles.sectionLabel}>Quick Actions & Features</Text>
+                <View style={styles.featuredCard}>
+                    
+                    {/* Vacation Mode Toggle */}
+                    <View style={[styles.settingRow, { borderBottomWidth: 0 }]}>
+                        <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7' }]}>
+                            <Coffee size={20} color={AMBER} />
                         </View>
                         <View style={styles.settingInfo}>
-                            <Text style={styles.settingTitle}>Edit Shop Profile</Text>
+                            <Text style={styles.settingTitle}>Vacation Mode</Text>
                             <Text style={styles.settingSubtitle}>
-                                Update your shop name, bio, avatar, and banner image.
-                            </Text>
-                        </View>
-                        <ChevronRight size={18} color={SUB} />
-                    </Pressable>
-
-                    <Pressable
-                        style={[styles.linkRow, { borderBottomWidth: 0 }]}
-                        onPress={() => router.push('/profile/account/payment-methods' as any)}
-                    >
-                        <View style={[styles.settingIcon, { backgroundColor: '#E0F2FE' }]}>
-                            <CreditCard size={20} color={'#0284C7'} />
-                        </View>
-                        <View style={styles.settingInfo}>
-                            <Text style={styles.settingTitle}>Payout Methods</Text>
-                            <Text style={styles.settingSubtitle}>
-                                Manage your GCash, PayMaya, and bank accounts for withdrawals.
-                            </Text>
-                        </View>
-                        <ChevronRight size={18} color={SUB} />
-                    </Pressable>
-                </View>
-
-                {/* AI Features Section */}
-                <Text style={styles.sectionLabel}>AI Features</Text>
-                <View style={styles.card}>
-                    {/* AI Description Toggle */}
-                    <View style={styles.settingRow}>
-                        <View style={styles.settingIcon}>
-                            <Sparkles size={20} color={P} />
-                        </View>
-                        <View style={styles.settingInfo}>
-                            <View style={styles.settingTitleRow}>
-                                <Text style={styles.settingTitle}>AI Description Generator</Text>
-                                <View style={styles.premiumBadge}>
-                                    <Lock size={10} color="#fff" />
-                                    <Text style={styles.premiumBadgeText}>Premium</Text>
-                                </View>
-                            </View>
-                            <Text style={styles.settingSubtitle}>
-                                Use AI to automatically generate compelling product descriptions from your product name and category.
+                                Temporarily hide your shop from the marketplace when you are away.
                             </Text>
                         </View>
                         <Switch
-                            trackColor={{ false: BORDER, true: P }}
+                            trackColor={{ false: BORDER, true: AMBER }}
                             thumbColor="#fff"
-                            onValueChange={(val) => updateSetting('aiDescriptionEnabled', val)}
-                            value={settings.aiDescriptionEnabled}
+                            onValueChange={setVacationMode}
+                            value={vacationMode}
                         />
                     </View>
+                </View>
 
-                    {/* Paywall notice */}
-                    {!settings.aiDescriptionEnabled && (
-                        <View style={styles.paywallNotice}>
-                            <Text style={styles.paywallTitle}>🌟 Unlock AI-Powered Listings</Text>
-                            <Text style={styles.paywallText}>
-                                Enable this feature to let our AI write rich, engaging product descriptions in seconds — no writing experience needed. Sellers using AI descriptions see up to 2× more clicks.
-                            </Text>
-                            <View style={styles.paywallFeatures}>
-                                {[
-                                    'Save time writing descriptions',
-                                    'SEO-optimized copy',
-                                    'Tone tailored to handmade products',
-                                    'Works with your category & variants',
-                                ].map((feature) => (
-                                    <View key={feature} style={styles.paywallFeatureRow}>
-                                        <Text style={styles.paywallCheck}>✓</Text>
-                                        <Text style={styles.paywallFeatureText}>{feature}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                            <Pressable
-                                style={styles.paywallCta}
-                                onPress={() => updateSetting('aiDescriptionEnabled', true)}
+                {/* Settings Grid */}
+                <Text style={[styles.sectionLabel, { marginTop: 12 }]}>Store Management</Text>
+                <View style={styles.gridContainer}>
+                    {settingTiles.map(tile => (
+                        <View key={tile.id} style={{ width: getTileWidth(), marginBottom: 20 }}>
+                            <Pressable 
+                                style={({ pressed }) => [
+                                    styles.tile, 
+                                    pressed && { opacity: 0.7 }
+                                ]}
+                                onPress={() => {
+                                    if (tile.route !== '#') router.push(tile.route as any);
+                                }}
                             >
-                                <Sparkles size={16} color="#fff" />
-                                <Text style={styles.paywallCtaText}>Enable AI Generator</Text>
+                                <View style={[styles.tileIconContainer, { backgroundColor: tile.color }]}>
+                                    {tile.icon}
+                                </View>
+                                <Text style={styles.tileTitle}>{tile.title}</Text>
+                                <Text style={styles.tileSubtitle}>{tile.subtitle}</Text>
+                                <View style={styles.tileArrow}>
+                                    <ChevronRight size={16} color={SUB} />
+                                </View>
                             </Pressable>
                         </View>
-                    )}
-
-                    {settings.aiDescriptionEnabled && (
-                        <View style={styles.enabledNotice}>
-                            <Text style={styles.enabledNoticeText}>
-                                ✓ AI Description Generator is active. You'll see the "AI Generate" button when creating or editing products.
-                            </Text>
-                        </View>
-                    )}
+                    ))}
                 </View>
 
                 </ScrollView>
@@ -182,54 +196,47 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
     content: {
-        padding: 20,
+        padding: 24,
         paddingBottom: 60,
-        maxWidth: 800,
+        maxWidth: 1280,
         alignSelf: 'center',
         width: '100%',
     },
     sectionLabel: {
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: '700',
         color: SUB,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        marginBottom: 12,
+        marginBottom: 16,
         marginLeft: 4,
+        fontFamily: 'Quicksand',
     },
-    card: {
+    featuredCard: {
         backgroundColor: CARD,
         borderRadius: 24,
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
+        shadowOpacity: 0.04,
         shadowRadius: 12,
         elevation: 3,
-        marginBottom: 24,
+        marginBottom: 32,
         borderWidth: 1,
         borderColor: BORDER,
     },
     settingRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 20,
-        gap: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: BORDER,
-    },
-    linkRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 20,
-        gap: 12,
+        padding: 24,
+        gap: 16,
         borderBottomWidth: 1,
         borderBottomColor: BORDER,
     },
     settingIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         backgroundColor: P_LIGHT,
         justifyContent: 'center',
         alignItems: 'center',
@@ -241,11 +248,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 2,
+        marginBottom: 4,
     },
     settingTitle: {
-        fontSize: 15,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '700',
         color: TEXT,
         fontFamily: 'Quicksand',
     },
@@ -263,41 +270,45 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '700',
         letterSpacing: 0.3,
+        fontFamily: 'Quicksand',
     },
     settingSubtitle: {
-        fontSize: 12,
+        fontSize: 13,
         color: SUB,
-        lineHeight: 16,
+        lineHeight: 18,
+        fontFamily: 'Quicksand',
     },
     paywallNotice: {
-        margin: 20,
+        margin: 24,
+        marginTop: 0,
         borderRadius: 16,
-        padding: 16,
+        padding: 20,
         borderWidth: 1,
         borderColor: P_LIGHT,
-        backgroundColor: CARD,
+        backgroundColor: '#FAFAFA',
     },
     paywallTitle: {
         fontSize: 15,
         fontWeight: '700',
         color: P,
-        marginBottom: 6,
+        marginBottom: 8,
         fontFamily: 'Quicksand',
     },
     paywallText: {
         fontSize: 13,
         color: SUB,
-        lineHeight: 19,
-        marginBottom: 12,
+        lineHeight: 20,
+        marginBottom: 16,
+        fontFamily: 'Quicksand',
     },
     paywallFeatures: {
-        gap: 6,
-        marginBottom: 16,
+        gap: 8,
+        marginBottom: 20,
     },
     paywallFeatureRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
     },
     paywallCheck: {
         color: P,
@@ -307,6 +318,7 @@ const styles = StyleSheet.create({
     paywallFeatureText: {
         fontSize: 13,
         color: TEXT,
+        fontFamily: 'Quicksand',
     },
     paywallCta: {
         flexDirection: 'row',
@@ -314,7 +326,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         gap: 8,
         backgroundColor: P,
-        paddingVertical: 12,
+        paddingVertical: 14,
         borderRadius: 12,
     },
     paywallCtaText: {
@@ -324,14 +336,62 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
     },
     enabledNotice: {
-        margin: 20,
-        backgroundColor: GREEN + '20',
+        margin: 24,
+        marginTop: 0,
+        backgroundColor: GREEN + '15',
         borderRadius: 12,
-        padding: 12,
+        padding: 16,
     },
     enabledNoticeText: {
         fontSize: 13,
         color: GREEN,
-        fontWeight: '600',
+        fontWeight: '700',
+        fontFamily: 'Quicksand',
     },
+    gridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+    },
+    tile: {
+        backgroundColor: CARD,
+        borderRadius: 20,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: BORDER,
+        height: '100%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        elevation: 2,
+        position: 'relative',
+    },
+    tileIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    tileTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: TEXT,
+        fontFamily: 'Quicksand',
+        marginBottom: 8,
+    },
+    tileSubtitle: {
+        fontSize: 13,
+        color: SUB,
+        lineHeight: 18,
+        fontFamily: 'Quicksand',
+        paddingRight: 12,
+    },
+    tileArrow: {
+        position: 'absolute',
+        top: 24,
+        right: 20,
+    }
 });

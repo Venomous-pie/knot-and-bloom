@@ -20,7 +20,11 @@ import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import '../global.css';
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fonts);
@@ -84,24 +88,26 @@ export default function RootLayout() {
   // App Ready
   return (
     <GestureHandlerRootView style={styles.container} onLayout={onLayoutRootView}>
-      <AuthProvider>
-        <SocketProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <DialogProvider>
-                <SellerSettingsProvider>
-                  <NavBar />
-                  <CartAnimationOverlay />
-                  <OnboardingManager />
-                  <AuthToast />
-                  <GlobalToast />
-                  <GlobalAIChat />
-                </SellerSettingsProvider>
-              </DialogProvider>
-            </WishlistProvider>
-          </CartProvider>
-        </SocketProvider>
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SocketProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <DialogProvider>
+                  <SellerSettingsProvider>
+                    <NavBar />
+                    <CartAnimationOverlay />
+                    <OnboardingManager />
+                    <AuthToast />
+                    <GlobalToast />
+                    <GlobalAIChat />
+                  </SellerSettingsProvider>
+                </DialogProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </SocketProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }

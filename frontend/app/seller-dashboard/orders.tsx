@@ -26,9 +26,55 @@ const BORDER = '#F0F0F5';
 const GREEN = '#10B981';
 const RED = '#EF4444';
 const AMBER = '#F59E0B';
+const INDIGO = '#6366F1';
+const TEAL = '#14B8A6';
+const BLUE = '#3B82F6';
+const PINK = '#EC4899';
 
 const LATE_THRESHOLD_DAYS = 3;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'PENDING': return AMBER;
+        case 'CONFIRMED': return BLUE;
+        case 'IN_PRODUCTION': return INDIGO;
+        case 'READY_TO_SHIP': return PINK;
+        case 'SHIPPED': return GREEN;
+        case 'DELIVERED': return TEAL;
+        case 'COMPLETED': return GREEN;
+        case 'CANCELLED': return RED;
+        case 'DISPUTED': return RED;
+        default: return SUB;
+    }
+};
+
+const getOrderProcessingDays = (order: Order): number => {
+    let maxDays = LATE_THRESHOLD_DAYS;
+    
+    order.items?.forEach(item => {
+        const pt = (item.product as any)?.processingTime;
+        if (!pt) return;
+        
+        let days = 0;
+        const nums = pt.match(/\d+/g);
+        if (nums && nums.length > 0) {
+            days = Math.max(...nums.map(Number));
+        }
+        
+        if (pt.toLowerCase().includes('week')) {
+            days *= 7;
+        } else if (pt.toLowerCase().includes('month')) {
+            days *= 30;
+        }
+        
+        if (days > maxDays) {
+            maxDays = days;
+        }
+    });
+    
+    return maxDays;
+};
 
 export default function SellerOrders() {
     const { user, loading: authLoading } = useAuth();
@@ -109,7 +155,7 @@ export default function SellerOrders() {
 
         orders.forEach(o => {
             const isCompleted = ['SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED'].includes(o.status);
-            const dueDate = new Date(o.uploaded).getTime() + (LATE_THRESHOLD_DAYS * ONE_DAY_MS);
+            const dueDate = new Date(o.uploaded).getTime() + (getOrderProcessingDays(o) * ONE_DAY_MS);
             if (!isCompleted && now > dueDate) overdueCount++;
 
             if (o.status === 'PENDING') pendingCount++;
@@ -129,7 +175,7 @@ export default function SellerOrders() {
                     if (!['CONFIRMED', 'IN_PRODUCTION', 'READY_TO_SHIP'].includes(o.status)) return false;
                 } else if (statusFilter === 'OVERDUE') {
                     const isCompleted = ['SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED'].includes(o.status);
-                    const dueDate = new Date(o.uploaded).getTime() + (LATE_THRESHOLD_DAYS * ONE_DAY_MS);
+                    const dueDate = new Date(o.uploaded).getTime() + (getOrderProcessingDays(o) * ONE_DAY_MS);
                     if (isCompleted || now <= dueDate) return false;
                 } else if (o.status !== statusFilter) {
                     return false;
@@ -139,7 +185,7 @@ export default function SellerOrders() {
                 const q = searchQuery.toLowerCase();
                 const matchId = String(o.uid).includes(q);
                 const matchName = o.customer?.name?.toLowerCase().includes(q);
-                const matchItem = o.items.some(i => i.product.name.toLowerCase().includes(q));
+                const matchItem = o.items.some(i => i.product?.name?.toLowerCase().includes(q));
                 if (!matchId && !matchName && !matchItem) return false;
             }
             return true;
@@ -149,8 +195,8 @@ export default function SellerOrders() {
         filtered.sort((a, b) => {
             const aIsCompleted = ['SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED'].includes(a.status);
             const bIsCompleted = ['SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED'].includes(b.status);
-            const aDue = new Date(a.uploaded).getTime() + (LATE_THRESHOLD_DAYS * ONE_DAY_MS);
-            const bDue = new Date(b.uploaded).getTime() + (LATE_THRESHOLD_DAYS * ONE_DAY_MS);
+            const aDue = new Date(a.uploaded).getTime() + (getOrderProcessingDays(a) * ONE_DAY_MS);
+            const bDue = new Date(b.uploaded).getTime() + (getOrderProcessingDays(b) * ONE_DAY_MS);
             const aOverdue = !aIsCompleted && now > aDue;
             const bOverdue = !bIsCompleted && now > bDue;
 
@@ -296,8 +342,8 @@ export default function SellerOrders() {
                             <div class="meta">
                                 <div>
                                     <strong>Customer:</strong><br>
-                                    ${order.customer.name}<br>
-                                    ${order.customer.email}
+                                    ${order.customer?.name || 'Unknown'}<br>
+                                    ${order.customer?.email || 'N/A'}
                                 </div>
                                 <div style="text-align: right;">
                                     <strong>Date:</strong> ${new Date(order.uploaded).toLocaleDateString()}<br>
@@ -311,7 +357,7 @@ export default function SellerOrders() {
                                 <tbody>
                                     ${order.items.map(item => `
                                         <tr>
-                                            <td>${item.product.name}</td>
+                                            <td>${item.product?.name || 'Unknown Item'}</td>
                                             <td>${item.quantity}</td>
                                             <td>-</td>
                                         </tr>
@@ -339,7 +385,7 @@ export default function SellerOrders() {
         const daysDiff = Math.ceil(Math.abs(dueDate - now) / ONE_DAY_MS);
         const isLate = !isCompleted && now > dueDate;
 
-        const summaryText = `${o.items[0]?.product.name || 'Unknown Item'} ${o.items.length > 1 ? `+ ${o.items.length - 1} more` : `x${o.items[0]?.quantity || 1}`}`;
+        const summaryText = `${o.items[0]?.product?.name || 'Unknown Item'} ${o.items.length > 1 ? `+ ${o.items.length - 1} more` : `x${o.items[0]?.quantity || 1}`}`;
 
         return (
             <Pressable
@@ -351,16 +397,16 @@ export default function SellerOrders() {
                 </TouchableOpacity>
 
                 <View style={s.colId}>
-                    <Text style={s.rowId}>#{o.uid}</Text>
-                    <View style={[s.statusPill, { backgroundColor: o.status === 'CANCELLED' ? RED + '15' : BG }]}>
-                        <Text style={[s.statusPillTxt, { color: o.status === 'CANCELLED' ? RED : SUB }]}>
+                    <Text style={s.rowId}>#{o.referenceNumber || o.uid}</Text>
+                    <View style={[s.statusPill, { backgroundColor: getStatusColor(o.status) + '20' }]}>
+                        <Text style={[s.statusPillTxt, { color: getStatusColor(o.status) }]}>
                             {o.status.replace(/_/g, ' ')}
                         </Text>
                     </View>
                 </View>
 
                 <View style={s.colMain}>
-                    <Text style={s.rowCustomer} numberOfLines={1}>{o.customer.name}</Text>
+                    <Text style={s.rowCustomer} numberOfLines={1}>{o.customer?.name || 'Unknown Customer'}</Text>
                     <Text style={s.rowSummary} numberOfLines={1}>{summaryText}</Text>
                 </View>
 
@@ -375,7 +421,7 @@ export default function SellerOrders() {
                 </View>
 
                 <View style={s.colEarnings}>
-                    <Text style={[s.rowEarnings, { color: isCompleted ? GREEN : TEXT }]}>{fmtMoney(Number(o.sellerEarnings || o.total))}</Text>
+                    <Text style={[s.rowEarnings, { color: isCompleted ? GREEN : TEXT }]}>{fmtMoney(Number(o.sellerEarnings || o.total) + Number(o.shippingFee || 0))}</Text>
                 </View>
             </Pressable>
         );
@@ -554,27 +600,20 @@ export default function SellerOrders() {
                 />
 
                 {/* Detail View Modal */}
-                <Modal visible={!!selectedOrderForDetail} transparent animationType="slide">
+                <Modal visible={!!selectedOrderForDetail} transparent animationType="none">
                     <View style={s.modalOverlay}>
-                        <View style={s.modalContent}>
-                            <View style={s.modalHeader}>
-                                <Text style={s.modalTitle}>Order Details</Text>
-                                <TouchableOpacity onPress={() => setSelectedOrderForDetail(null)} style={s.modalCloseBtn}>
-                                    <X size={20} color={TEXT} />
-                                </TouchableOpacity>
-                            </View>
-                            <ScrollView style={{ flex: 1, padding: 24 }}>
-                                {selectedOrderForDetail && (
-                                    <OrderCard
-                                        order={selectedOrderForDetail}
-                                        onOpenModal={openActionModal}
-                                        onQuickAction={(status, o) => {
-                                            setSelectedOrder(o);
-                                            handleUpdateStatus(status, {}, [o]);
-                                        }}
-                                    />
-                                )}
-                            </ScrollView>
+                        <View style={[s.modalContent, { paddingTop: 24, flex: 1 }]}>
+                            {selectedOrderForDetail && (
+                                <OrderCard
+                                    order={selectedOrderForDetail}
+                                    onClose={() => setSelectedOrderForDetail(null)}
+                                    onOpenModal={openActionModal}
+                                    onQuickAction={(status, o) => {
+                                        setSelectedOrder(o);
+                                        handleUpdateStatus(status, {}, [o]);
+                                    }}
+                                />
+                            )}
                         </View>
                     </View>
                 </Modal>
@@ -642,7 +681,7 @@ const s = StyleSheet.create({
     rowLate: { backgroundColor: CARD, borderRadius: 16 },
     checkboxArea: { marginRight: 20 },
 
-    colId: { width: 100 },
+    colId: { width: 200 },
     rowId: { fontSize: 14, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand', marginBottom: 4 },
     statusPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start' },
     statusPillTxt: { fontSize: 10, fontWeight: '700', fontFamily: 'Quicksand' },
@@ -665,9 +704,6 @@ const s = StyleSheet.create({
     pageBtnDisabled: { opacity: 0.5 },
     pageText: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' },
 
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: BG, height: '85%', borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, backgroundColor: CARD, borderBottomWidth: 1, borderBottomColor: BORDER },
-    modalTitle: { fontSize: 20, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
-    modalCloseBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' }
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+    modalContent: { backgroundColor: CARD, width: '100%', maxWidth: 700, maxHeight: '90%', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10 },
 });

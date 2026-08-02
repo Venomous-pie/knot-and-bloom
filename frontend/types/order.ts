@@ -18,4 +18,14 @@ export interface Order {
     subtotal: number;
     platformFee: number;
     sellerEarnings: number;
+    
+    // Additional Backend Fields
+    referenceNumber?: string | null;
+    shippingAddressSnapshot?: string | null;
+    shippingMethod?: string | null;
+    shippingFee?: number;
+    paymentMethod?: string | null;
+    paymentStatus?: string;
+    cancellationReason?: string | null;
+    estimatedDeliveryDate?: string | null;
 }

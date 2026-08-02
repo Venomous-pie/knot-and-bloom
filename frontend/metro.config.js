@@ -3,5 +3,17 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
+config.resolver.sourceExts.push('mjs');
+config.resolver.unstable_enablePackageExports = false;
+
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'tslib') {
+    return {
+      filePath: require.resolve('tslib/tslib.js'),
+      type: 'sourceFile',
+    };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
 
 module.exports = config;

@@ -1,5 +1,6 @@
 import Router from 'express';
 import orderController from '../controllers/OrderController.js';
+import { disputeController } from '../controllers/DisputeController.js';
 import { authenticate, authorize } from '../middleware/authMiddleware.js';
 import { Role } from '../types/authTypes.js';
 
@@ -15,5 +16,7 @@ router.put('/items/:itemId/status', authorize([Role.SELLER, Role.ADMIN]), orderC
 router.put('/:id/status', orderController.updateOrderStatus);
 router.post('/:id/extend-guarantee', orderController.extendOrderGuarantee);
 
+router.post('/:id/dispute', disputeController.raiseDispute);
+router.post('/:id/dispute-message', disputeController.addDisputeEvidence);
 
 export default router;

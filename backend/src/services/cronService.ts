@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import prisma from '../utils/prismaUtils.js';
 import { notifications } from './notificationService.js';
 import { supabaseService } from './SupabaseService.js';
+import { fuelService } from './fuelService.js';
 
 class CronService {
     public start() {
@@ -25,6 +26,12 @@ class CronService {
             console.log('Running Daily Cleanup Jobs...');
             this.cleanupExpiredRateLimits();
             this.cleanupExpiredRefreshTokens();
+        });
+
+        // Run daily at 1 AM for fuel prices
+        cron.schedule('0 1 * * *', () => {
+            console.log('Running Daily Fuel Price Fetch...');
+            fuelService.updateFuelPriceConfig();
         });
     }
 

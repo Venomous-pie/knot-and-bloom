@@ -32,6 +32,14 @@ interface SellerProfile {
     status: SellerStatus;
     email: string;
     phone?: string | null;
+    description?: string | null;
+    businessAddress?: string | null;
+    meetUpPoint?: string | null;
+    socialMediaLink?: string | null;
+    legalName?: string | null;
+    businessType?: string | null;
+    idType?: string | null;
+    idNumber?: string | null;
     hasSeenWelcomeModal: boolean;
     rating?: number | null;
     totalSales?: number;

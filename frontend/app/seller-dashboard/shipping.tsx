@@ -11,26 +11,28 @@ import {
     View,
     Animated,
     AppState,
+    useWindowDimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Truck, MapPin, Bike, Car, Box, Info } from 'lucide-react-native';
-
-const P       = '#B36979';
-const P_LIGHT = '#FDEEF1';
-const BG      = '#F4F4F8';
-const CARD    = '#FFFFFF';
-const TEXT    = '#1A1A2E';
-const SUB     = '#6B7280';
-const BORDER  = '#F0F0F5';
-const GREEN   = '#10B981';
-const AMBER   = '#F59E0B';
-const RED     = '#EF4444';
-const INDIGO  = '#6366F1';
-const TEAL    = '#14B8A6';
-
+import { Truck, MapPin, Bike, Car, Box, Info, Save } from 'lucide-react-native';
+import SettingsSidebar from '@/components/seller/SettingsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { sellerAPI, apiClient } from '@/api/api';
 import { toastEvents } from '@/utils/toastEvents';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+const P = '#B36979';
+const P_LIGHT = '#FDEEF1';
+const BG = '#F4F4F8';
+const CARD = '#FFFFFF';
+const TEXT = '#1A1A2E';
+const SUB = '#6B7280';
+const BORDER = '#F0F0F5';
+const GREEN = '#10B981';
+const AMBER = '#F59E0B';
+const RED = '#EF4444';
+const INDIGO = '#6366F1';
+const TEAL = '#14B8A6';
 
 type VehicleType = 'NONE' | 'MOTORCYCLE' | 'TRICYCLE' | 'MULTICAB';
 
@@ -44,11 +46,13 @@ interface RatePreview {
 export default function SellerShippingSettingsPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    
+    const { width } = useWindowDimensions();
+    const isDesktop = width >= 1024;
+    const queryClient = useQueryClient();
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
-    const [previewLoading, setPreviewLoading] = useState(false);
     const [expandedRate, setExpandedRate] = useState<number | null>(null);
 
     const [selfDeliveryEnabled, setSelfDeliveryEnabled] = useState(false);
@@ -103,7 +107,7 @@ export default function SellerShippingSettingsPage() {
     );
 
     const pulseAnim = useRef(new Animated.Value(1)).current;
-    
+
     useEffect(() => {
         let anim: Animated.CompositeAnimation | null = null;
         if (hasUnsavedChanges) {
@@ -120,7 +124,7 @@ export default function SellerShippingSettingsPage() {
         return () => anim?.stop();
     }, [hasUnsavedChanges]);
 
-    
+
     useEffect(() => {
         if (!authLoading) {
             if (!user) {
@@ -131,55 +135,52 @@ export default function SellerShippingSettingsPage() {
                 router.replace('/' as any);
                 return;
             }
-            fetchSettings();
-            fetchPreview();
+            setLoading(false);
         }
     }, [user, authLoading]);
 
-    const fetchSettings = async () => {
-        try {
-            setLoading(true);
-            if (user?.sellerProfile?.slug) {
-                // Fetch public profile which contains the settings
-                const res = await apiClient.get(`/sellers/${user.sellerProfile?.slug}`);
-                const seller = res.data;
-                setSelfDeliveryEnabled(seller.selfDeliveryEnabled || false);
-                setFreeShippingEnabled(seller.freeShippingEnabled || false);
-                setFreeShippingThreshold(seller.freeShippingThreshold ? seller.freeShippingThreshold.toString() : '');
-                setVehicleType(seller.vehicleType || 'NONE');
-                setMeetUpPoint(seller.meetUpPoint || '');
-                setSellerCitymunCode(seller.sellerCitymunCode || '');
+    const { data: seller, isLoading: settingsLoading } = useQuery({
+        queryKey: ['sellerProfile', user?.sellerProfile?.slug],
+        queryFn: async () => {
+            const res = await apiClient.get(`/sellers/${user?.sellerProfile?.slug}`);
+            return res.data;
+        },
+        enabled: !!user?.sellerProfile?.slug,
+    });
 
-                initialSettings.current = {
-                    selfDeliveryEnabled: seller.selfDeliveryEnabled || false,
-                    freeShippingEnabled: seller.freeShippingEnabled || false,
-                    freeShippingThreshold: seller.freeShippingThreshold ? seller.freeShippingThreshold.toString() : '',
-                    vehicleType: seller.vehicleType || 'NONE',
-                    meetUpPoint: seller.meetUpPoint || '',
-                };
-                setSellerCitymunCode(seller.sellerCitymunCode || '');
-            }
-        } catch (error) {
-            console.error('Failed to fetch seller profile', error);
-            Alert.alert('Error', 'Failed to load shipping settings.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchPreview = async () => {
-        try {
-            setPreviewLoading(true);
+    const { data: rates = [], isLoading: previewLoading } = useQuery({
+        queryKey: ['shippingPreview'],
+        queryFn: async () => {
             const res = await sellerAPI.getShippingPreview();
-            if ((res.data as any)?.rates) {
-                setRatePreview((res.data as any).rates);
-            }
-        } catch (error) {
-            console.error('Failed to fetch shipping preview', error);
-        } finally {
-            setPreviewLoading(false);
+            return res.data?.rates || [];
+        },
+        enabled: !!user?.sellerProfile?.slug,
+    });
+
+    useEffect(() => {
+        if (seller) {
+            setSelfDeliveryEnabled(seller.selfDeliveryEnabled || false);
+            setFreeShippingEnabled(seller.freeShippingEnabled || false);
+            setFreeShippingThreshold(seller.freeShippingThreshold ? seller.freeShippingThreshold.toString() : '');
+            setVehicleType(seller.vehicleType || 'NONE');
+            setMeetUpPoint(seller.meetUpPoint || '');
+            setSellerCitymunCode(seller.sellerCitymunCode || '');
+
+            initialSettings.current = {
+                selfDeliveryEnabled: seller.selfDeliveryEnabled || false,
+                freeShippingEnabled: seller.freeShippingEnabled || false,
+                freeShippingThreshold: seller.freeShippingThreshold ? seller.freeShippingThreshold.toString() : '',
+                vehicleType: seller.vehicleType || 'NONE',
+                meetUpPoint: seller.meetUpPoint || '',
+            };
         }
-    };
+    }, [seller]);
+
+    useEffect(() => {
+        if (rates) {
+            setRatePreview(rates);
+        }
+    }, [rates]);
 
     const handleSave = async () => {
         if (freeShippingEnabled && (!freeShippingThreshold || Number(freeShippingThreshold) <= 0)) {
@@ -206,7 +207,8 @@ export default function SellerShippingSettingsPage() {
                 meetUpPoint,
             };
 
-            fetchPreview();
+            queryClient.invalidateQueries({ queryKey: ['sellerProfile', user?.sellerProfile?.slug] });
+            queryClient.invalidateQueries({ queryKey: ['shippingPreview'] });
             toastEvents.emit({ message: 'Shipping settings updated.', type: 'SUCCESS' });
         } catch (error: any) {
             console.error('Failed to update shipping settings', error);
@@ -226,234 +228,230 @@ export default function SellerShippingSettingsPage() {
                         <Text style={styles.headerTitle}>Shipping & Fulfillment</Text>
                         <Text style={[{ fontSize: 13, color: '#6B7280', fontFamily: 'Quicksand', marginTop: 4 }]}>Manage how you deliver your handmade goods to buyers.</Text>
                     </View>
-                    <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                        <Pressable style={styles.saveBtn} onPress={handleSave} disabled={saving || loading}>
-                            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
-                        </Pressable>
-                    </Animated.View>
+                    <Pressable
+                        style={[styles.saveBtn, (saving || loading) && { opacity: 0.7 }]}
+                        onPress={handleSave}
+                        disabled={saving || loading}
+                    >
+                        {saving ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <>
+                                <Save size={16} color="#fff" />
+                                <Text style={styles.saveBtnText}>Save Changes</Text>
+                            </>
+                        )}
+                    </Pressable>
                 </View>
             </View>
 
-            <View style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={{ flex: 1, flexDirection: 'row', maxWidth: 1024, alignSelf: 'center', width: '100%' }}>
+                {isDesktop && (
+                    <View style={{ width: 240, display: 'flex' }}>
+                        <SettingsSidebar />
+                    </View>
+                )}
+                <View style={{ flex: 1 }}>
+                    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-                    {loading ? (
-                        <View style={{ flex: 1 }}>
-                            {/* Local Delivery Skeleton */}
-                            <Animated.View style={{ opacity: pulseAnim, width: 140, height: 16, backgroundColor: '#E2E8F0', borderRadius: 4, marginBottom: 12, marginLeft: 4 }} />
-                            <Animated.View style={{ opacity: pulseAnim, height: 220, backgroundColor: '#E2E8F0', borderRadius: 24, marginBottom: 24 }} />
-
-                            {/* Free Shipping Skeleton */}
-                            <Animated.View style={{ opacity: pulseAnim, width: 160, height: 16, backgroundColor: '#E2E8F0', borderRadius: 4, marginBottom: 12, marginLeft: 4 }} />
-                            <Animated.View style={{ opacity: pulseAnim, height: 88, backgroundColor: '#E2E8F0', borderRadius: 24, marginBottom: 24 }} />
-
-                            {/* Buyer Pickup Skeleton */}
-                            <Animated.View style={{ opacity: pulseAnim, width: 120, height: 16, backgroundColor: '#E2E8F0', borderRadius: 4, marginBottom: 12, marginLeft: 4 }} />
-                            <Animated.View style={{ opacity: pulseAnim, height: 88, backgroundColor: '#E2E8F0', borderRadius: 24, marginBottom: 24 }} />
-
-                            {/* Rate Preview Skeleton */}
-                            <Animated.View style={{ opacity: pulseAnim, width: 150, height: 16, backgroundColor: '#E2E8F0', borderRadius: 4, marginBottom: 12, marginLeft: 4 }} />
-                            <Animated.View style={{ opacity: pulseAnim, height: 140, backgroundColor: '#E2E8F0', borderRadius: 24, marginBottom: 24 }} />
-                        </View>
-                    ) : (
                         <>
                             {/* Self-Delivery Configuration */}
                             <Text style={styles.sectionLabel}>Local Delivery Setup</Text>
-                    
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
-                            <View style={[styles.settingIcon, { backgroundColor: P_LIGHT }]}>
-                                <Truck size={20} color={P} />
-                            </View>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.settingTitle}>Offer Self-Delivery</Text>
-                                <Text style={styles.settingSubtitle}>
-                                    Enable this if you have a vehicle and can deliver orders yourself to buyers in your area. You will keep the delivery fee.
-                                </Text>
-                            </View>
-                            <Switch
-                                trackColor={{ false: BORDER, true: P }}
-                                thumbColor="#fff"
-                                onValueChange={setSelfDeliveryEnabled}
-                                value={selfDeliveryEnabled}
-                            />
-                        </View>
 
-                        {selfDeliveryEnabled && (
-                            <View style={styles.expandedSection}>
-                                <Text style={styles.inputLabel}>What type of vehicle do you use?</Text>
-                                <Text style={styles.helperText}>This determines your base delivery fee and capacity.</Text>
-                                
-                                <View style={styles.vehicleGrid}>
-                                    {(['NONE', 'MOTORCYCLE', 'TRICYCLE', 'MULTICAB'] as VehicleType[]).map((type) => {
-                                        const isSelected = vehicleType === type;
-                                        return (
-                                            <Pressable
-                                                key={type}
-                                                style={[styles.vehicleCard, isSelected && styles.vehicleCardActive]}
-                                                onPress={() => setVehicleType(type)}
-                                            >
-                                                {type === 'MOTORCYCLE' && <Bike size={24} color={isSelected ? P : SUB} />}
-                                                {type === 'TRICYCLE' && <Box size={24} color={isSelected ? P : SUB} />}
-                                                {type === 'MULTICAB' && <Car size={24} color={isSelected ? P : SUB} />}
-                                                {type === 'NONE' && <Text style={{ fontSize: 24, color: isSelected ? P : SUB }}>—</Text>}
-                                                <Text style={[styles.vehicleText, isSelected && styles.vehicleTextActive]}>
-                                                    {type.charAt(0) + type.slice(1).toLowerCase()}
-                                                </Text>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
-                                
-                                {vehicleType === 'NONE' && (
-                                    <View style={styles.infoBanner}>
-                                        <Info size={16} color={AMBER} style={{ marginTop: 2 }} />
-                                        <Text style={styles.infoBannerText}>
-                                            Selecting 'None' means you will rely on third-party couriers (like hired habal-habal) for deliveries. You will not earn the delivery fee yourself.
+                            <View style={styles.card}>
+                                <View style={styles.settingRow}>
+                                    <View style={[styles.settingIcon, { backgroundColor: P_LIGHT }]}>
+                                        <Truck size={20} color={P} />
+                                    </View>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.settingTitle}>Offer Self-Delivery</Text>
+                                        <Text style={styles.settingSubtitle}>
+                                            Enable this if you have a vehicle and can deliver orders yourself to buyers in your area. You will keep the delivery fee.
                                         </Text>
                                     </View>
-                                )}
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Free Shipping Promo */}
-                    <Text style={styles.sectionLabel}>Free Shipping Promo</Text>
-                    
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
-                            <View style={[styles.settingIcon, { backgroundColor: '#FCE7F3' }]}>
-                                <Text style={{ fontSize: 20 }}>🎁</Text>
-                            </View>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.settingTitle}>Offer Free Shipping</Text>
-                                <Text style={styles.settingSubtitle}>
-                                    Waive the shipping fee for buyers who spend a certain amount at your shop.
-                                </Text>
-                            </View>
-                            <Switch
-                                trackColor={{ false: BORDER, true: P }}
-                                thumbColor="#fff"
-                                onValueChange={setFreeShippingEnabled}
-                                value={freeShippingEnabled}
-                            />
-                        </View>
-
-                        {freeShippingEnabled && (
-                            <View style={styles.expandedSection}>
-                                <View style={styles.infoBanner}>
-                                    <Info size={16} color={AMBER} style={{ marginTop: 2 }} />
-                                    <Text style={styles.infoBannerText}>
-                                        ⚠️ Warning: Offering free shipping means you will absorb the delivery cost yourself. This can vary wildly from ₱30 for local deliveries to over ₱350 for inter-island shipping.
-                                    </Text>
+                                    <Switch
+                                        trackColor={{ false: BORDER, true: P }}
+                                        thumbColor="#fff"
+                                        onValueChange={setSelfDeliveryEnabled}
+                                        value={selfDeliveryEnabled}
+                                    />
                                 </View>
 
-                                <Text style={[styles.inputLabel, { marginTop: 16 }]}>Minimum Order Amount (₱)</Text>
-                                <Text style={styles.helperText}>Buyers must spend this much in your shop to qualify.</Text>
-                                <TextInput
-                                    style={[styles.input, focusedInput === 'threshold' && styles.inputFocused]}
-                                    placeholder="E.g., 500"
-                                    placeholderTextColor={SUB}
-                                    keyboardType="numeric"
-                                    value={freeShippingThreshold}
-                                    onChangeText={setFreeShippingThreshold}
-                                    onFocus={() => setFocusedInput('threshold')}
-                                    onBlur={() => setFocusedInput(null)}
-                                />
-                            </View>
-                        )}
-                    </View>
+                                {selfDeliveryEnabled && (
+                                    <View style={styles.expandedSection}>
+                                        <Text style={styles.inputLabel}>What type of vehicle do you use?</Text>
+                                        <Text style={styles.helperText}>This determines your base delivery fee and capacity.</Text>
 
-                    {/* Pickup Setup */}
-                    <Text style={styles.sectionLabel}>Buyer Pickup</Text>
-                    <View style={styles.card}>
-                        <View style={styles.settingRow}>
-                            <View style={[styles.settingIcon, { backgroundColor: '#E0F2FE' }]}>
-                                <MapPin size={20} color="#0284C7" />
-                            </View>
-                            <View style={styles.settingInfo}>
-                                <Text style={styles.settingTitle}>Meetup Point (Optional)</Text>
-                                <Text style={styles.settingSubtitle}>
-                                    Specify a default meetup location (e.g., "Town Plaza" or "In front of Municipal Hall") if you allow buyers to pick up their orders for free.
-                                </Text>
-                            </View>
-                        </View>
-                        
-                        <View style={{ marginTop: 16 }}>
-                            <TextInput
-                                style={[styles.input, focusedInput === 'meetup' && styles.inputFocused]}
-                                placeholder="E.g., Madrid Town Plaza near Municipal Hall"
-                                placeholderTextColor={SUB}
-                                value={meetUpPoint}
-                                onChangeText={setMeetUpPoint}
-                                onFocus={() => setFocusedInput('meetup')}
-                                onBlur={() => setFocusedInput(null)}
-                            />
-                        </View>
-                    </View>
+                                        <View style={styles.vehicleGrid}>
+                                            {(['NONE', 'MOTORCYCLE', 'TRICYCLE', 'MULTICAB'] as VehicleType[]).map((type) => {
+                                                const isSelected = vehicleType === type;
+                                                return (
+                                                    <Pressable
+                                                        key={type}
+                                                        style={[styles.vehicleCard, isSelected && styles.vehicleCardActive]}
+                                                        onPress={() => setVehicleType(type)}
+                                                    >
+                                                        {type === 'MOTORCYCLE' && <Bike size={24} color={isSelected ? P : SUB} />}
+                                                        {type === 'TRICYCLE' && <Box size={24} color={isSelected ? P : SUB} />}
+                                                        {type === 'MULTICAB' && <Car size={24} color={isSelected ? P : SUB} />}
+                                                        {type === 'NONE' && <Text style={{ fontSize: 24, color: isSelected ? P : SUB }}>—</Text>}
+                                                        <Text style={[styles.vehicleText, isSelected && styles.vehicleTextActive]}>
+                                                            {type.charAt(0) + type.slice(1).toLowerCase()}
+                                                        </Text>
+                                                    </Pressable>
+                                                );
+                                            })}
+                                        </View>
 
-                    {/* Rate Preview */}
-                    <Text style={styles.sectionLabel}>Your Rate Preview</Text>
-                    <View style={styles.card}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                            <View>
-                                <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' }}>What buyers will pay</Text>
-                                <Text style={{ fontSize: 12, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Based on your current settings. Save to refresh.</Text>
-                            </View>
-                            {previewLoading && <ActivityIndicator size="small" color={P} />}
-                        </View>
-
-                        {ratePreview.length === 0 && !previewLoading ? (
-                            <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', fontStyle: 'italic', textAlign: 'center', paddingVertical: 12 }}>
-                                Save your settings to see your rate preview.
-                            </Text>
-                        ) : (
-                            ratePreview.map((rate, idx) => {
-                                const isLast = idx === ratePreview.length - 1;
-                                const isSelf = rate.resolvedType === 'SELF_DELIVERY';
-                                const badgeColor = isSelf ? GREEN : AMBER;
-                                const badgeLabel = isSelf ? 'Self-Delivery' : '3rd Party';
-                                return (
-                                    <View key={rate.tier} style={[
-                                        { paddingVertical: 12 },
-                                        !isLast && { borderBottomWidth: 1, borderBottomColor: BORDER }
-                                    ]}>
-                                        <Pressable 
-                                            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-                                            onPress={() => setExpandedRate(expandedRate === rate.tier ? null : rate.tier)}
-                                        >
-                                            <View>
-                                                <Text style={{ fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' }}>{rate.label}</Text>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                                    <View style={{ backgroundColor: badgeColor + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
-                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: badgeColor, fontFamily: 'Quicksand' }}>{badgeLabel}</Text>
-                                                    </View>
-                                                    {(rate as any).breakdown && (
-                                                        <Info size={14} color={SUB} />
-                                                    )}
-                                                </View>
-                                            </View>
-                                            <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' }}>
-                                                {rate.fee === 0 ? 'Free' : `₱${rate.fee}`}
-                                            </Text>
-                                        </Pressable>
-                                        
-                                        {expandedRate === rate.tier && (rate as any).breakdown && (
-                                            <View style={{ marginTop: 12, padding: 12, backgroundColor: '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: BORDER }}>
-                                                <Text style={{ fontSize: 12, fontWeight: '600', color: TEXT, marginBottom: 8 }}>Fee Calculation Breakdown:</Text>
-                                                {(rate as any).breakdown.map((line: string, i: number) => (
-                                                    <Text key={i} style={{ fontSize: 12, color: SUB, fontFamily: 'Quicksand', marginBottom: 4 }}>• {line}</Text>
-                                                ))}
+                                        {vehicleType === 'NONE' && (
+                                            <View style={styles.infoBanner}>
+                                                <Info size={16} color={AMBER} style={{ marginTop: 2 }} />
+                                                <Text style={styles.infoBannerText}>
+                                                    Selecting 'None' means you will rely on third-party couriers (like hired habal-habal) for deliveries. You will not earn the delivery fee yourself.
+                                                </Text>
                                             </View>
                                         )}
                                     </View>
-                                );
-                            })
-                        )}
-                    </View>
-                </>
-            )}
-                </ScrollView>
+                                )}
+                            </View>
+
+                            {/* Free Shipping Promo */}
+                            <Text style={styles.sectionLabel}>Free Shipping Promo</Text>
+
+                            <View style={styles.card}>
+                                <View style={styles.settingRow}>
+                                    <View style={[styles.settingIcon, { backgroundColor: '#FCE7F3' }]}>
+                                        <Box size={20} color="#A21CAF" />
+                                    </View>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.settingTitle}>Offer Free Shipping</Text>
+                                        <Text style={styles.settingSubtitle}>
+                                            Waive the shipping fee for buyers who spend a certain amount at your shop.
+                                        </Text>
+                                    </View>
+                                    <Switch
+                                        trackColor={{ false: BORDER, true: P }}
+                                        thumbColor="#fff"
+                                        onValueChange={setFreeShippingEnabled}
+                                        value={freeShippingEnabled}
+                                    />
+                                </View>
+
+                                {freeShippingEnabled && (
+                                    <View style={styles.expandedSection}>
+                                        <View style={styles.infoBanner}>
+                                            <Info size={16} color={AMBER} style={{ marginTop: 2 }} />
+                                            <Text style={styles.infoBannerText}>
+                                                ⚠️ Warning: Offering free shipping means you will absorb the delivery cost yourself. This can vary wildly from ₱30 for local deliveries to over ₱350 for inter-island shipping.
+                                            </Text>
+                                        </View>
+
+                                        <Text style={[styles.inputLabel, { marginTop: 16 }]}>Minimum Order Amount (₱)</Text>
+                                        <Text style={styles.helperText}>Buyers must spend this much in your shop to qualify.</Text>
+                                        <TextInput
+                                            style={[styles.input, focusedInput === 'threshold' && styles.inputFocused]}
+                                            placeholder="E.g., 500"
+                                            placeholderTextColor={SUB}
+                                            keyboardType="numeric"
+                                            value={freeShippingThreshold}
+                                            onChangeText={setFreeShippingThreshold}
+                                            onFocus={() => setFocusedInput('threshold')}
+                                            onBlur={() => setFocusedInput(null)}
+                                        />
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Pickup Setup */}
+                            <Text style={styles.sectionLabel}>Buyer Pickup</Text>
+                            <View style={styles.card}>
+                                <View style={styles.settingRow}>
+                                    <View style={[styles.settingIcon, { backgroundColor: '#E0F2FE' }]}>
+                                        <MapPin size={20} color="#0284C7" />
+                                    </View>
+                                    <View style={styles.settingInfo}>
+                                        <Text style={styles.settingTitle}>Meetup Point (Optional)</Text>
+                                        <Text style={styles.settingSubtitle}>
+                                            Specify a default meetup location (e.g., "Town Plaza" or "In front of Municipal Hall") if you allow buyers to pick up their orders for free.
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <View style={{ marginTop: 16 }}>
+                                    <TextInput
+                                        style={[styles.input, focusedInput === 'meetup' && styles.inputFocused]}
+                                        placeholder="E.g., Madrid Town Plaza near Municipal Hall"
+                                        placeholderTextColor={SUB}
+                                        value={meetUpPoint}
+                                        onChangeText={setMeetUpPoint}
+                                        onFocus={() => setFocusedInput('meetup')}
+                                        onBlur={() => setFocusedInput(null)}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Rate Preview */}
+                            <Text style={styles.sectionLabel}>Your Rate Preview</Text>
+                            <View style={styles.card}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                                    <View>
+                                        <Text style={{ fontSize: 16, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' }}>What buyers will pay</Text>
+                                        <Text style={{ fontSize: 12, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Based on your current settings. Save to refresh.</Text>
+                                    </View>
+                                    {previewLoading && <ActivityIndicator size="small" color={P} />}
+                                </View>
+
+                                {ratePreview.length === 0 && !previewLoading ? (
+                                    <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', fontStyle: 'italic', textAlign: 'center', paddingVertical: 12 }}>
+                                        Save your settings to see your rate preview.
+                                    </Text>
+                                ) : (
+                                    ratePreview.map((rate, idx) => {
+                                        const isLast = idx === ratePreview.length - 1;
+                                        const isSelf = rate.resolvedType === 'SELF_DELIVERY';
+                                        const badgeColor = isSelf ? GREEN : AMBER;
+                                        const badgeLabel = isSelf ? 'Self-Delivery' : '3rd Party';
+                                        return (
+                                            <View key={rate.tier} style={[
+                                                { paddingVertical: 12 },
+                                                !isLast && { borderBottomWidth: 1, borderBottomColor: BORDER }
+                                            ]}>
+                                                <Pressable
+                                                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                                                    onPress={() => setExpandedRate(expandedRate === rate.tier ? null : rate.tier)}
+                                                >
+                                                    <View>
+                                                        <Text style={{ fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand' }}>{rate.label}</Text>
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                                            <View style={{ backgroundColor: badgeColor + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                                                                <Text style={{ fontSize: 11, fontWeight: '700', color: badgeColor, fontFamily: 'Quicksand' }}>{badgeLabel}</Text>
+                                                            </View>
+                                                            {(rate as any).breakdown && (
+                                                                <Info size={14} color={SUB} />
+                                                            )}
+                                                        </View>
+                                                    </View>
+                                                    <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' }}>
+                                                        {rate.fee === 0 ? 'Free' : `₱${rate.fee}`}
+                                                    </Text>
+                                                </Pressable>
+
+                                                {expandedRate === rate.tier && (rate as any).breakdown && (
+                                                    <View style={{ marginTop: 12, padding: 12, backgroundColor: '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: BORDER }}>
+                                                        <Text style={{ fontSize: 12, fontWeight: '600', color: TEXT, marginBottom: 8 }}>Fee Calculation Breakdown:</Text>
+                                                        {(rate as any).breakdown.map((line: string, i: number) => (
+                                                            <Text key={i} style={{ fontSize: 12, color: SUB, fontFamily: 'Quicksand', marginBottom: 4 }}>• {line}</Text>
+                                                        ))}
+                                                    </View>
+                                                )}
+                                            </View>
+                                        );
+                                    })
+                                )}
+                            </View>
+                        </>
+                    </ScrollView>
+                </View>
             </View>
         </View>
     );
@@ -575,7 +573,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Quicksand',
         color: TEXT,
         backgroundColor: BG,
-        ...( { outlineStyle: 'none' } as any), // Remove default web outline
+        ...({ outlineStyle: 'none' } as any), // Remove default web outline
     },
     inputFocused: {
         borderColor: P,

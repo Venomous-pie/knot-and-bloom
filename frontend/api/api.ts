@@ -452,6 +452,7 @@ export const sellerAPI = {
     getSellers: () => apiClient.get<any[]>('/sellers'),
     getActiveSellers: () => apiClient.get<any[]>('/sellers/active'),
     updateSellerStatus: (id: number, status: string, rejectionReason?: string) => apiClient.put(`/sellers/${id}`, { status, rejectionReason }),
+    updateSellerProfile: (id: number, data: any) => apiClient.put(`/sellers/${id}`, data),
     markWelcomeSeen: () => apiClient.patch<{ success: boolean; token: string; customer: any }>('/sellers/me/welcome-seen', {}),
     cancelApplication: () => apiClient.delete('/sellers/me/application'),
     getDashboardStats: () => apiClient.get<any>('/sellers/me/dashboard-stats').then(res => res.data),
@@ -479,6 +480,8 @@ export const adminAPI = {
         apiClient.get<{ config: Record<string, string> }>('/admin/platform-config').then(res => res.data),
     updatePlatformConfig: (updates: Record<string, number | string>) =>
         apiClient.patch<{ success: boolean; updated: number }>('/admin/platform-config', updates).then(res => res.data),
+    getOrders: (params?: { limit?: number; offset?: number; status?: string }) => 
+        apiClient.get<{ orders: any[], total: number, pagination: any }>('/admin/orders', { params }),
 };
 
 // ============================================

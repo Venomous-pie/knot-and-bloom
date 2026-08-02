@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
-import { LayoutDashboard, Package, Users, Bell, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle } from 'lucide-react-native';
+import { LayoutDashboard, Package, Users, Bell, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, ShoppingBag } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { theme } from '@/constants/theme';
@@ -26,6 +26,7 @@ export default function AdminSidebar() {
 
     const menuItems = [
         { label: 'Dashboard', route: '/admin', icon: LayoutDashboard },
+        { label: 'Orders', route: '/admin/orders', icon: ShoppingBag },
         { label: 'Sellers', route: '/admin/sellers', icon: Users },
         { label: 'Products', route: '/admin/products', icon: Package },
     ];

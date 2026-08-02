@@ -205,6 +205,8 @@ model Order {
   paymentStatus           PaymentStatus   @default(PENDING)
   platformFee             Decimal         @default(0)
   proofPhotos             String?
+  progressImages          String[]
+  progressImagesRequested Boolean         @default(false)
   referenceNumber         String?         @unique
   rejectionReason         String?
   reminderStage           Int             @default(0)

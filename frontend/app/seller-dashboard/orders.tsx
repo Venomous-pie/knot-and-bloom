@@ -608,9 +608,9 @@ export default function SellerOrders() {
                                     order={selectedOrderForDetail}
                                     onClose={() => setSelectedOrderForDetail(null)}
                                     onOpenModal={openActionModal}
-                                    onQuickAction={(status, o) => {
+                                    onQuickAction={async (status, o) => {
                                         setSelectedOrder(o);
-                                        handleUpdateStatus(status, {}, [o]);
+                                        await handleUpdateStatus(status, {}, [o]);
                                     }}
                                 />
                             )}

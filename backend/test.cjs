@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const order = await prisma.order.findUnique({ where: { referenceNumber: 'KB-20260802-49D36A38' }}); console.log('ORDER', order?.shippingAddressSnapshot); await prisma.$disconnect(); } main();

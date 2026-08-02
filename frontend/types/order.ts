@@ -18,6 +18,7 @@ export interface Order {
     subtotal: number;
     platformFee: number;
     sellerEarnings: number;
+    sellerId?: number;
     
     // Additional Backend Fields
     referenceNumber?: string | null;
@@ -28,4 +29,6 @@ export interface Order {
     paymentStatus?: string;
     cancellationReason?: string | null;
     estimatedDeliveryDate?: string | null;
+    estimatedCompletionDate?: string | null;
+    progressImages?: string[];
 }

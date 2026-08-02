@@ -3,11 +3,11 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
+    "start": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web --clear",
+    "android": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --android",
+    "ios": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --ios",
+    "web": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --web",
     "lint": "expo lint",
     "test": "jest",
     "build:web": "expo export --platform web"
@@ -70,6 +70,7 @@
     "@types/jest": "^30.0.0",
     "@types/react": "^19.1.0",
     "@types/react-test-renderer": "^19.1.0",
+    "cross-env": "^10.1.0",
     "eslint": "9.25.0",
     "eslint-config-expo": "10.0.0",
     "jest": "^30.3.0",

@@ -170,7 +170,7 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
     try {
         const user = req.user as AuthPayload | undefined;
         const { id } = req.params;
-        const { status, message, estimatedCompletionDate, rejectionReason, trackingNumber, courierName, photos, shippingMethod, proofPhotos } = req.body;
+        const { status, message, estimatedCompletionDate, rejectionReason, trackingNumber, courierName, photos, shippingMethod, proofPhotos, progressImages } = req.body;
 
         if (!user) return res.status(401).json({ error: "Unauthorized" });
 
@@ -202,6 +202,10 @@ const updateOrderStatus = async (req: Request, res: Response, next: NextFunction
         // Status-specific validation & Logic
         const updateData: any = { status };
         let timelineTitle = `Order ${status}`;
+
+        if (progressImages && Array.isArray(progressImages)) {
+            updateData.progressImages = progressImages;
+        }
 
         if (status === 'CONFIRMED') {
             if (!estimatedCompletionDate) return res.status(400).json({ error: "Estimated completion date required" });

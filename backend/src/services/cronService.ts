@@ -13,6 +13,7 @@ class CronService {
             console.log('Running Order Auto-Complete & Reminder Cron Job...');
             this.processOrderAutoComplete();
             this.processOrderReminders();
+            this.processProgressImageReminders();
         });
 
         // Run every 5 minutes
@@ -184,6 +185,43 @@ class CronService {
 
         } catch (error) {
             console.error("Error in processOrderReminders:", error);
+        }
+    }
+
+    private async processProgressImageReminders() {
+        try {
+            const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+            
+            const ordersToRemind = await prisma.order.findMany({
+                where: {
+                    status: 'IN_PRODUCTION',
+                    progressImagesRequested: false,
+                    updated: { lt: threeDaysAgo }
+                },
+                include: { seller: true }
+            });
+
+            for (const order of ordersToRemind) {
+                if (!order.seller) continue;
+
+                // Update flag to prevent duplicate notifications
+                await prisma.order.update({
+                    where: { uid: order.uid },
+                    data: { progressImagesRequested: true }
+                });
+
+                // Notify Seller
+                notifications.send({
+                    type: 'email', // Or whatever channel is configured
+                    to: order.seller.email || '',
+                    subject: `Update Customer: Order #${order.uid} Progress Images`,
+                    body: `Your order #${order.uid} has been in production for over 3 days. Please upload up to 3 progress images via your Seller Dashboard to keep the customer updated!`
+                });
+
+                console.log(`Sent Progress Image Reminder for Order #${order.uid}`);
+            }
+        } catch (error) {
+            console.error("Error in processProgressImageReminders:", error);
         }
     }
 

@@ -62,6 +62,7 @@ interface OrderDetail {
     message: string | null;
     createdAt: string;
   }[];
+  progressImages?: string[];
 }
 
 interface OrderItemSnapshot {
@@ -563,6 +564,22 @@ export default function OrderDetailsPage() {
                 track your package.
               </Text>
             )}
+          </View>
+        )}
+
+        {order.progressImages && order.progressImages.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Production Updates</Text>
+            <Text style={styles.helpText}>
+              Your seller has uploaded these photos to show you the progress of your handmade items.
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingVertical: 12 }}>
+              {order.progressImages.map((uri, idx) => (
+                <View key={idx} style={{ width: 140, height: 140, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.border }}>
+                  <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                </View>
+              ))}
+            </ScrollView>
           </View>
         )}
 

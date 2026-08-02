@@ -1,7 +1,9 @@
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, ScrollView } from 'react-native';
-import { Clock, AlertTriangle, Lock, Package, CheckSquare, Square, X, MapPin, CreditCard, Mail } from 'lucide-react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { Clock, AlertTriangle, Lock, Package, CheckSquare, Square, X, MapPin, CreditCard, Mail, FileText, UploadCloud } from 'lucide-react-native';
 import type { Order } from '@/types/order';
+import ImageUploader from '../ImageUploader';
+import { orderAPI } from '@/api/api';
 
 const P = '#B36979', P_LIGHT = '#FDEEF1', BG = '#F4F4F8', CARD = '#FFFFFF';
 const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5', GREEN = '#10B981', RED = '#EF4444', AMBER = '#F59E0B';
@@ -54,42 +56,107 @@ const isLate = (order: Order) => {
 interface Props {
     order: Order;
     onOpenModal: (order: Order, type: 'ship' | 'accept' | 'reject') => void;
-    onQuickAction: (status: string, order: Order) => void;
+    onQuickAction: (status: string, order: Order) => Promise<void> | void;
     onClose?: () => void;
 }
 
 export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }: Props) {
     const late = isLate(order);
     const statusColor = getStatusColor(order.status);
+    const [submitting, setSubmitting] = React.useState(false);
+    
+    // Progress Images State
+    const [progressImages, setProgressImages] = React.useState<{uri: string, isUrl?: boolean}[]>(
+        order.progressImages ? order.progressImages.map(url => ({ uri: url, isUrl: true })) : []
+    );
+    const [savingImages, setSavingImages] = React.useState(false);
+
+    const getBuyerNote = () => {
+        if (!order.shippingAddressSnapshot) return null;
+        try {
+            const addr = JSON.parse(order.shippingAddressSnapshot);
+            if (!addr.notes) return null;
+            
+            // notes might be a JSON string of { [sellerId]: string }
+            let notesObj;
+            try {
+                notesObj = JSON.parse(addr.notes);
+            } catch (e) {
+                // If it's not JSON, maybe it's just a raw string
+                return typeof addr.notes === 'string' && addr.notes.trim() !== '' ? addr.notes : null;
+            }
+
+            if (order.sellerId && notesObj[order.sellerId]) {
+                const note = notesObj[order.sellerId];
+                return typeof note === 'string' ? note.trim() : null;
+            }
+
+            const noteValues = Object.values(notesObj) as string[];
+            if (noteValues.length > 0 && noteValues[0]) {
+                const note = noteValues[0];
+                return typeof note === 'string' ? note.trim() : null;
+            }
+        } catch (e) {
+            // ignore
+        }
+        return null;
+    };
+    const buyerNote = getBuyerNote();
+
+    const handleSaveProgressImages = async () => {
+        setSavingImages(true);
+        try {
+            const urls = progressImages.map(img => img.uri);
+            await orderAPI.updateStatus(order.uid, order.status, { 
+                progressImages: urls,
+                message: "Uploaded progress images."
+            });
+            Alert.alert("Success", "Progress images saved successfully!");
+        } catch (e) {
+            console.error(e);
+            Alert.alert("Error", "Failed to save progress images");
+        } finally {
+            setSavingImages(false);
+        }
+    };
+
+    const handleQuickAction = async (status: string, o: Order) => {
+        setSubmitting(true);
+        try {
+            await onQuickAction(status, o);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const renderActions = () => {
         switch (order.status) {
             case 'PENDING':
                 return (
                     <View style={s.actionRow}>
-                        <TouchableOpacity style={[s.btn, s.rejectBtn, { flex: 1 }]} onPress={() => onOpenModal(order, 'reject')}>
+                        <TouchableOpacity disabled={submitting} style={[s.btn, s.rejectBtn, { flex: 1, opacity: submitting ? 0.7 : 1 }]} onPress={() => onOpenModal(order, 'reject')}>
                             <Text style={s.rejectBtnText}>Decline</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[s.btn, s.primaryBtn, { flex: 1 }]} onPress={() => onOpenModal(order, 'accept')}>
+                        <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { flex: 1, opacity: submitting ? 0.7 : 1 }]} onPress={() => onOpenModal(order, 'accept')}>
                             <Text style={s.primaryBtnText}>Accept Order</Text>
                         </TouchableOpacity>
                     </View>
                 );
             case 'CONFIRMED':
                 return (
-                    <TouchableOpacity style={[s.btn, s.primaryBtn]} onPress={() => onQuickAction('IN_PRODUCTION', order)}>
-                        <Text style={s.primaryBtnText}>Start Production</Text>
+                    <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { opacity: submitting ? 0.7 : 1 }]} onPress={() => handleQuickAction('IN_PRODUCTION', order)}>
+                        {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.primaryBtnText}>Start Production</Text>}
                     </TouchableOpacity>
                 );
             case 'IN_PRODUCTION':
                 return (
-                    <TouchableOpacity style={[s.btn, s.primaryBtn]} onPress={() => onQuickAction('READY_TO_SHIP', order)}>
-                        <Text style={s.primaryBtnText}>Mark Ready to Ship</Text>
+                    <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { opacity: submitting ? 0.7 : 1 }]} onPress={() => handleQuickAction('READY_TO_SHIP', order)}>
+                        {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.primaryBtnText}>Mark Ready to Ship</Text>}
                     </TouchableOpacity>
                 );
             case 'READY_TO_SHIP':
                 return (
-                    <TouchableOpacity style={[s.btn, s.primaryBtn]} onPress={() => onOpenModal(order, 'ship')}>
+                    <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { opacity: submitting ? 0.7 : 1 }]} onPress={() => onOpenModal(order, 'ship')}>
                         <Text style={s.primaryBtnText}>Ship Order</Text>
                     </TouchableOpacity>
                 );
@@ -213,6 +280,47 @@ export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }
                     </View>
                 </View>
 
+                {buyerNote && (
+                    <View style={s.noteCard}>
+                        <View style={s.infoHeader}>
+                            <FileText size={16} color={P} />
+                            <Text style={s.infoTitle}>Note from Buyer</Text>
+                        </View>
+                        <Text style={s.noteText}>{buyerNote}</Text>
+                    </View>
+                )}
+
+                {order.status === 'IN_PRODUCTION' && (
+                    <View style={s.progressCard}>
+                        <View style={s.infoHeader}>
+                            <UploadCloud size={16} color={P} />
+                            <Text style={s.infoTitle}>Production Progress Images</Text>
+                        </View>
+                        <Text style={[s.infoText, { marginBottom: 12, color: SUB }]}>
+                            Upload up to 3 images to keep your customer updated.
+                        </Text>
+                        <ImageUploader
+                            images={progressImages}
+                            onImagesChange={setProgressImages}
+                            maxImages={3}
+                            compact={true}
+                        />
+                        {progressImages.length > 0 && (
+                            <TouchableOpacity 
+                                style={[s.saveImageBtn, savingImages && { opacity: 0.7 }]} 
+                                onPress={handleSaveProgressImages}
+                                disabled={savingImages}
+                            >
+                                {savingImages ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={s.saveImageBtnText}>Save Images</Text>
+                                )}
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
+
                 <View style={s.itemsList}>
                     {order.items.map(oi => (
                         <View key={oi.uid} style={s.itemRow}>
@@ -312,18 +420,23 @@ const s = StyleSheet.create({
     customerName: { fontSize: 16, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
     customerLabel: { fontSize: 12, color: SUB, fontFamily: 'Quicksand', fontWeight: '500' },
     
-    infoGrid: { flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap' },
+    infoGrid: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
     infoCard: { flex: 1, minWidth: 230, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderRadius: 16, padding: 16 },
     infoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    infoTitle: { fontSize: 14, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand' },
-    infoText: { fontSize: 13, color: TEXT, fontFamily: 'Quicksand', lineHeight: 18 },
-    shippingMethodTag: { marginTop: 12, backgroundColor: P_LIGHT, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    infoTitle: { fontFamily: 'Quicksand', fontSize: 13, fontWeight: '700', color: TEXT },
+    infoText: { fontFamily: 'Quicksand', fontSize: 13, color: TEXT, lineHeight: 18 },
+    noteCard: { backgroundColor: CARD, borderRadius: 12, padding: 16, marginTop: 12, borderWidth: 1, borderColor: BORDER },
+    noteText: { fontFamily: 'Quicksand', fontSize: 13, color: TEXT, lineHeight: 20, fontStyle: 'italic', marginTop: 8 },
+    progressCard: { backgroundColor: CARD, borderRadius: 12, padding: 16, marginVertical: 12, borderWidth: 1, borderColor: BORDER },
+    saveImageBtn: { backgroundColor: P, paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 12 },
+    saveImageBtnText: { color: '#FFF', fontFamily: 'Quicksand', fontWeight: '700', fontSize: 14 },
+    shippingMethodTag: { marginTop: 12, backgroundColor: BG, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
     shippingMethodText: { color: P, fontSize: 10, fontWeight: '800', fontFamily: 'Quicksand', textTransform: 'uppercase', letterSpacing: 0.5 },
     paymentDetailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
     paymentDetailLabel: { fontSize: 12, color: SUB, fontFamily: 'Quicksand', fontWeight: '600' },
     paymentDetailValue: { fontSize: 12, color: TEXT, fontFamily: 'Quicksand', fontWeight: '800' },
     
-    itemsList: { gap: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
+    itemsList: { backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 4, elevation: 1 },
     itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     image: { width: 56, height: 56, borderRadius: 12, backgroundColor: BG, borderWidth: 1, borderColor: BORDER },
     itemDetails: { flex: 1, justifyContent: 'center' },

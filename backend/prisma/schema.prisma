@@ -83,6 +83,7 @@ model Seller {
   portfolioLink         String?
   idType                String?
   idNumber              String?
+  idPhotos              String[]     @default([])
   termsAccepted         Boolean      @default(false)
   termsAcceptedAt       DateTime?
 

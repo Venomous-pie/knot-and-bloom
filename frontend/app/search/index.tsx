@@ -102,6 +102,9 @@ export default function SearchPage() {
 
     const submitSearch = (search: string) => {
         addToSearchHistory(search);
+        if (search.trim()) {
+            router.push(`/search/results?q=${encodeURIComponent(search.trim())}` as any);
+        }
     };
 
     return (

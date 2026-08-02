@@ -44,14 +44,10 @@ export default function ApplicationStatusPage() {
             setCancelModalVisible(false);
             if (Platform.OS !== 'web') {
                 Alert.alert("Success", "Application cancelled successfully.");
-            } else {
-                alert("Application cancelled successfully.");
             }
         } catch (error) {
             if (Platform.OS !== 'web') {
                 Alert.alert("Error", "Failed to cancel application.");
-            } else {
-                alert("Failed to cancel application.");
             }
         } finally {
             setIsCancelling(false);

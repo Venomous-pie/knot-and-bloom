@@ -62,7 +62,28 @@ export default function SellerApplyPage() {
     const [portfolioLink, setPortfolioLink] = useState("");
     const [idType, setIdType] = useState("");
     const [idNumber, setIdNumber] = useState("");
+    const [idPhotos, setIdPhotos] = useState<{uri: string, isUrl?: boolean}[]>([]);
     const [isIdTypeOpen, setIsIdTypeOpen] = useState(false);
+
+    // ID format rules per type
+    const ID_FORMATS: Record<string, { placeholder: string; maxLength: number; hint: string; regex: RegExp; keyboardType: any; autoCapitalize: any }> = {
+        "National ID":       { placeholder: "1234-5678-9101-5678", maxLength: 19, hint: "16 digits (XXXX-XXXX-XXXX-XXXX)", regex: /^\d{4}-\d{4}-\d{4}-\d{4}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "Driver's License":  { placeholder: "A01-23-456789", maxLength: 13, hint: "Format: X##-##-######", regex: /^[A-Z]\d{2}-\d{2}-\d{6}$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Passport":          { placeholder: "P1234567A", maxLength: 9, hint: "9 characters (letter + 7 digits + letter)", regex: /^[A-Z]\d{7}[A-Z]$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Postal ID":         { placeholder: "123456789012", maxLength: 12, hint: "12 digits", regex: /^\d{12}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "SSS":               { placeholder: "12-3456789-0", maxLength: 13, hint: "Format: ##-#######-#", regex: /^\d{2}-\d{7}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "PhilHealth":        { placeholder: "12-345678901-2", maxLength: 14, hint: "Format: ##-#########-#", regex: /^\d{2}-\d{9}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "TIN":               { placeholder: "123-456-789-000", maxLength: 15, hint: "Format: ###-###-###-###", regex: /^\d{3}-\d{3}-\d{3}-\d{3}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "GSIS":              { placeholder: "12345678901", maxLength: 11, hint: "11 digits", regex: /^\d{11}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "Voter's ID":        { placeholder: "1234567890123", maxLength: 17, hint: "Voter ID number as printed on card", regex: /^[A-Z0-9-]{6,17}$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "PRC ID":            { placeholder: "1234567", maxLength: 7, hint: "7 digits", regex: /^\d{7}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "School ID":         { placeholder: "Your school ID number", maxLength: 20, hint: "As printed on your school ID", regex: /^[A-Z0-9-]{4,20}$/i, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Other":             { placeholder: "Your ID number", maxLength: 30, hint: "Enter your ID number as printed", regex: /^.{4,30}$/, keyboardType: 'default', autoCapitalize: 'none' },
+    };
+
+    const currentIdFormat = idType ? ID_FORMATS[idType] : null;
+    const handleSetIdType = (type: string) => { setIdType(type); setIdNumber(""); setIsIdTypeOpen(false); };
+
 
     const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -85,7 +106,6 @@ export default function SellerApplyPage() {
             return combined;
         });
         setCategorySearch("");
-        setIsCategoryDropdownOpen(false);
     };
 
     const [loading, setLoading] = useState(false);
@@ -95,7 +115,7 @@ export default function SellerApplyPage() {
     const draftData = {
         currentStep, shopName, description, businessType, productCategories,
         isHandmade, hasPriorExperience, phoneNumber, email, socialLink,
-        legalName, businessAddress, portfolioLink, idType, idNumber, termsAccepted,
+        legalName, businessAddress, portfolioLink, idType, idNumber, idPhotos, termsAccepted,
         sampleItems, salesChannels, monthlyOrders
     };
 
@@ -119,6 +139,7 @@ export default function SellerApplyPage() {
             if (draft.portfolioLink) setPortfolioLink(draft.portfolioLink);
             if (draft.idType) setIdType(draft.idType);
             if (draft.idNumber) setIdNumber(draft.idNumber);
+            if (draft.idPhotos) setIdPhotos(draft.idPhotos);
             if (draft.termsAccepted !== undefined) setTermsAccepted(draft.termsAccepted);
             if (draft.sampleItems) setSampleItems(draft.sampleItems);
             if (draft.salesChannels) setSalesChannels(draft.salesChannels);
@@ -143,7 +164,6 @@ export default function SellerApplyPage() {
 
     // Check if already a seller
     const isAlreadySeller = user?.sellerProfile?.uid || user?.role === "SELLER";
-
 
 
     const validateStep1 = () => {
@@ -205,8 +225,16 @@ export default function SellerApplyPage() {
             newErrors.portfolioLink = "Please provide a valid link.";
         }
 
-        if (idType && !idNumber.trim()) {
-            newErrors.idNumber = "ID Number is required when an ID Type is selected.";
+        if (!idType) {
+            newErrors.idType = "ID Type is required.";
+        }
+        if (!idNumber.trim()) {
+            newErrors.idNumber = "ID Number is required.";
+        } else if (currentIdFormat && !currentIdFormat.regex.test(idNumber.trim())) {
+            newErrors.idNumber = `Invalid format. Expected: ${currentIdFormat.hint}.`;
+        }
+        if (idPhotos.length === 0) {
+            newErrors.idPhotos = "At least one ID photo (front) is required.";
         }
 
         setErrors(newErrors);
@@ -228,7 +256,7 @@ export default function SellerApplyPage() {
         portfolioLink.trim().length >= 3 &&
         phoneNumber.trim() !== '' && !/[a-zA-Z]/.test(phoneNumber.trim()) && phoneNumber.trim().replace(/[^0-9]/g, '').length >= 10 &&
         email.trim() !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-        (!idType || idNumber.trim() !== '');
+        idType !== '' && (currentIdFormat ? currentIdFormat.regex.test(idNumber.trim()) : idNumber.trim() !== '') && idPhotos.length > 0;
 
     const isNextDisabled = (currentStep === 1 && !isStep1Valid) || (currentStep === 2 && !isStep2Valid);
 
@@ -264,7 +292,7 @@ export default function SellerApplyPage() {
                 name: shopName.trim(),
                 description: description.trim() || undefined,
                 businessType: businessType,
-                productCategories: productCategories.length > 0 ? productCategories.join(", ") : undefined,
+                productCategories: productCategories.length > 0 ? productCategories : undefined,
                 isHandmade: isHandmade,
                 hasPriorExperience: hasPriorExperience,
                 sampleItems: sampleItems.map(i => i.uri),
@@ -278,6 +306,7 @@ export default function SellerApplyPage() {
                 portfolioLink: portfolioLink.trim() || undefined,
                 idType: idType.trim() || undefined,
                 idNumber: idNumber.trim() || undefined,
+                idPhotos: idPhotos.length > 0 ? idPhotos.map(i => i.uri) : undefined,
                 termsAccepted: termsAccepted,
             });
 
@@ -370,7 +399,12 @@ export default function SellerApplyPage() {
                         }}
                         onBlur={() => {
                             setFocusedField(null);
-                            setTimeout(() => setIsCategoryDropdownOpen(false), 200);
+                            setIsCategoryDropdownOpen(false);
+                        }}
+                        onKeyPress={(e) => {
+                            if (e.nativeEvent.key === 'Escape') {
+                                setIsCategoryDropdownOpen(false);
+                            }
                         }}
                         onSubmitEditing={() => {
                             handleAddCategoryInput(categorySearch);
@@ -385,7 +419,7 @@ export default function SellerApplyPage() {
                     
                     {isCategoryDropdownOpen && (
                         <View style={[styles.dropdownList, { maxHeight: 200, overflow: 'hidden', top: 50, zIndex: 100 }]}>
-                            <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                            <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="always">
                                 {(() => {
                                     const ALL_CATEGORIES = Object.values(categoryTitles);
                                     
@@ -419,6 +453,7 @@ export default function SellerApplyPage() {
                                                         { borderBottomWidth: options.length > 0 ? 1 : 0, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }
                                                     ]} 
                                                     onPress={() => handleAddCategoryInput(categorySearch)}
+                                                    {...(Platform.OS === 'web' ? { onMouseDown: (e: any) => e.preventDefault() } : {})}
                                                 >
                                                     <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>
                                                         + Add "{categorySearch.trim()}"
@@ -433,6 +468,7 @@ export default function SellerApplyPage() {
                                                         idx !== options.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }
                                                     ]} 
                                                     onPress={() => handleAddCategoryInput(opt)}
+                                                    {...(Platform.OS === 'web' ? { onMouseDown: (e: any) => e.preventDefault() } : {})}
                                                 >
                                                     <Text style={{ color: theme.colors.text }}>{opt}</Text>
                                                 </TouchableOpacity>
@@ -506,7 +542,7 @@ export default function SellerApplyPage() {
                     />
                 </TouchableOpacity>
                 {isBusinessTypeOpen && (
-                    <View style={styles.dropdownList}>
+                    <View style={[styles.dropdownList, { top: 'auto', bottom: 55, zIndex: 999 }]}>
                         {["Individual", "Registered Business"].map((opt, idx) => (
                             <TouchableOpacity 
                                 key={opt} 
@@ -535,7 +571,7 @@ export default function SellerApplyPage() {
 
             {hasPriorExperience && (
                 <View style={styles.experienceSection}>
-                    <View style={[styles.formGroup, { zIndex: 9 }]}>
+                    <View style={[styles.formGroup, { zIndex: 8, marginBottom: 0 }]}>
                         <Text style={styles.label}>Where do you currently sell?</Text>
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                             {[
@@ -570,7 +606,7 @@ export default function SellerApplyPage() {
                         </View>
                     </View>
 
-                    <View style={[styles.formGroup, { zIndex: 8 }]}>
+                    <View style={[styles.formGroup, { zIndex: 10, marginBottom: 0 }]}>
                         <Text style={styles.label}>Approximate monthly orders</Text>
                         <TouchableOpacity 
                             style={styles.input} 
@@ -588,7 +624,7 @@ export default function SellerApplyPage() {
                             />
                         </TouchableOpacity>
                         {isMonthlyOrdersOpen && (
-                            <View style={styles.dropdownList}>
+                            <View style={[styles.dropdownList, { top: 'auto', bottom: 55, zIndex: 999 }]}>
                                 {["1-5", "6-20", "21-50", "50+"].map((opt, idx) => (
                                     <TouchableOpacity 
                                         key={opt} 
@@ -605,7 +641,7 @@ export default function SellerApplyPage() {
                         )}
                     </View>
 
-                    <View style={styles.formGroup}>
+                    <View style={[styles.formGroup, { marginBottom: 0 }]}>
                         <Text style={styles.label}>Link to existing shop/page</Text>
                         <TextInput
                             style={[styles.input, focusedField === 'socialLink' && styles.inputFocused]}
@@ -725,23 +761,10 @@ export default function SellerApplyPage() {
             </View>
 
             <View style={styles.divider} />
-
-            <View style={styles.infoBox}>
-                <Ionicons name="shield-checkmark" size={24} color="#0066CC" />
-                <View style={{ flex: 1 }}>
-                    <Text style={[styles.infoBoxText, { fontWeight: 'bold', marginBottom: 4 }]}>
-                        Faster Approval (Super Optional)
-                    </Text>
-                    <Text style={styles.infoBoxText}>
-                        Providing a Government ID is completely optional, but it helps our team verify your application faster. You can totally skip this!
-                    </Text>
-                </View>
-            </View>
-
             <View style={[styles.formGroup, { zIndex: 9, marginTop: 16 }]}>
-                <Text style={styles.label}>ID Type (Optional)</Text>
+                <Text style={styles.label}>ID Type *</Text>
                 <TouchableOpacity 
-                    style={styles.input} 
+                    style={[styles.input, errors.idType && styles.inputError]} 
                     onPress={() => setIsIdTypeOpen(!isIdTypeOpen)}
                     activeOpacity={0.8}
                 >
@@ -757,35 +780,59 @@ export default function SellerApplyPage() {
                 </TouchableOpacity>
                 {isIdTypeOpen && (
                     <View style={styles.dropdownItemIdType}>
-                        {["Passport", "Driver's License", "National ID", "Postal ID", "Other"].map((opt) => (
+                        {["National ID", "Driver's License", "Passport", "Postal ID", "SSS", "PhilHealth", "TIN", "GSIS", "Voter's ID", "PRC ID", "School ID", "Other"].map((opt) => (
                             <TouchableOpacity 
                                 key={opt} 
                                 style={[styles.dropdownItem, { borderBottomWidth: 1, borderBottomColor: theme.colors.border} ]} 
-                                onPress={() => { setIdType(opt); setIsIdTypeOpen(false); }}
+                                onPress={() => handleSetIdType(opt)}
                             >
                                 <Text style={{ color: theme.colors.text }}>{opt}</Text>
                             </TouchableOpacity>
                         ))}
                     </View>
                 )}
+                {errors.idType && <Text style={styles.fieldError}>{errors.idType}</Text>}
             </View>
 
-            {idType ? (
-                <View style={[styles.formGroup, { zIndex: 1 }]}>
-                    <Text style={styles.label}>ID Number *</Text>
-                    <TextInput
-                        style={[styles.input, focusedField === 'idNumber' && styles.inputFocused, errors.idNumber && styles.inputError]}
-                        value={idNumber}
-                        onChangeText={setIdNumber}
-                        placeholder="Enter your ID Number"
-                        placeholderTextColor={theme.colors.textLight}
-                        selectionColor={theme.colors.primary}
-                        onFocus={() => setFocusedField('idNumber')}
-                        onBlur={() => setFocusedField(null)}
-                    />
-                    {errors.idNumber && <Text style={styles.fieldError}>{errors.idNumber}</Text>}
+            <View style={[styles.formGroup, { zIndex: 1 }]}>
+                <Text style={styles.label}>ID Photos (Front & Back) *</Text>
+                <Text style={styles.sublabel}>Please upload clear photos of your ID for automated verification.</Text>
+                <ImageUploader 
+                    images={idPhotos}
+                    onImagesChange={setIdPhotos}
+                    maxImages={2}
+                    compact
+                    hidePrimaryBadge
+                />
+                {errors.idPhotos && <Text style={styles.fieldError}>{errors.idPhotos}</Text>}
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 }}>
+                    <Text style={[styles.label, { marginTop: 0, marginBottom: 0 }]}>ID Number *</Text>
                 </View>
-            ) : null}
+                {currentIdFormat && (
+                    <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 6 }}>
+                        {currentIdFormat.hint}
+                    </Text>
+                )}
+                <TextInput
+                    style={[styles.input, focusedField === 'idNumber' && styles.inputFocused, errors.idNumber && styles.inputError]}
+                    value={idNumber}
+                    onChangeText={(text) => {
+                        const upper = currentIdFormat?.autoCapitalize === 'characters' ? text.toUpperCase() : text;
+                        if (currentIdFormat && upper.length > currentIdFormat.maxLength) return;
+                        setIdNumber(upper);
+                    }}
+                    placeholder={currentIdFormat?.placeholder ?? "Select an ID type first"}
+                    placeholderTextColor={theme.colors.textLight}
+                    selectionColor={theme.colors.primary}
+                    keyboardType={currentIdFormat?.keyboardType ?? 'default'}
+                    autoCapitalize={currentIdFormat?.autoCapitalize ?? 'none'}
+                    editable={!!idType}
+                    onFocus={() => setFocusedField('idNumber')}
+                    onBlur={() => setFocusedField(null)}
+                />
+                {errors.idNumber && <Text style={styles.fieldError}>{errors.idNumber}</Text>}
+            </View>
             
         </Animated.View>
     );
@@ -826,9 +873,17 @@ export default function SellerApplyPage() {
             </View>
 
             <View style={styles.reviewSection}>
-                <Text style={styles.reviewLabel}>ID Provided:</Text>
-                <Text style={styles.reviewValue}>{idType ? `${idType} (Hidden)` : "None (Skipped)"}</Text>
+                <Text style={styles.reviewLabel}>ID Verification:</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.reviewValue}>
+                        {idType || "Not selected"} {idNumber ? `— ${idNumber.length > 6 ? `${'•'.repeat(idNumber.length - 4)}${idNumber.slice(-4)}` : '••••'}` : ''}
+                    </Text>
+                    <Text style={[styles.reviewValue, { color: theme.colors.textLight, fontSize: 13, marginTop: 2 }]}>
+                        {idPhotos.length} photo{idPhotos.length !== 1 ? 's' : ''} uploaded
+                    </Text>
+                </View>
             </View>
+
 
             <View style={styles.reviewSection}>
                 <Text style={styles.reviewLabel}>Business Type:</Text>
@@ -1244,29 +1299,33 @@ const styles = StyleSheet.create({
     dropdownList: {
         borderWidth: 1,
         borderColor: theme.colors.border,
-        borderRadius: 8,
+        borderRadius: 12,
         marginTop: 4,
-        backgroundColor: "white",
+        backgroundColor: theme.colors.surface,
         position: 'absolute',
         top: 80,
         left: 0,
         right: 0,
         ...theme.shadows.md,
+        overflow: 'hidden',
     },
     dropdownItemIdType: {
         borderWidth: 1,
         borderColor: theme.colors.border,
-        borderRadius: 8,
+        borderRadius: 12,
         marginTop: 4,
-        backgroundColor: "white",
+        backgroundColor: theme.colors.surface,
         position: 'absolute',
         bottom: 60,
         left: 0,
         right: 0,
         ...theme.shadows.md,
+        maxHeight: 220,
+        overflow: 'hidden',
     },
     dropdownItem: {
-        padding: 16,
+        padding: 14,
+        backgroundColor: theme.colors.surface,
     },
     selectedPill: {
         flexDirection: 'row',

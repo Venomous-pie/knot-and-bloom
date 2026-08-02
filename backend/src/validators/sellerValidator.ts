@@ -15,33 +15,26 @@ const sellerBaseSchema = z.object({
     email: z.string().email().optional(),
     termsAccepted: z.boolean().optional(),
     businessType: z.string().optional(),
-    productCategories: z.string().optional(),
+    productCategories: z.union([z.array(z.string()), z.string()]).optional(),
     isHandmade: z.boolean().optional(),
     hasPriorExperience: z.boolean().optional(),
     legalName: z.string().min(2, "Legal name is required"),
     businessAddress: z.string().min(5, "Full address is required"),
     portfolioLink: z.string().min(2, "Personal social media link is required"),
-    idType: z.string().optional(),
-    idNumber: z.string().optional(),
+    idType: z.string().min(2, "ID Type is required"),
+    idNumber: z.string().min(4, "ID Number is too short").max(35, "ID Number is too long"),
+    idPhotos: z.array(z.string()).min(1, "At least one ID Photo is required"),
 });
 
-// Conditional refinement: idNumber required when idType is provided
-const idNumberRefinement = (data: any) =>
-    !data.idType || (data.idNumber && data.idNumber.trim().length > 0);
-const idNumberRefinementConfig = {
-    message: "ID Number is required when an ID Type is selected",
-    path: ["idNumber"] as [string],
-};
-
 // Validator for Upgrade (Just Store Info)
-export const sellerSchema = sellerBaseSchema.refine(idNumberRefinement, idNumberRefinementConfig);
+export const sellerSchema = sellerBaseSchema;
 
 // Validator for Direct Registration (Customer + Seller)
 export const registerSellerSchema = sellerBaseSchema.extend({
     email: z.string().email(),
     password: z.string().min(6, "Password must be at least 6 characters"),
     phone: z.string().optional(),
-}).refine(idNumberRefinement, idNumberRefinementConfig);
+});
 
 export type SellerInput = z.infer<typeof sellerSchema>;
 export type RegisterSellerInput = z.infer<typeof registerSellerSchema>;

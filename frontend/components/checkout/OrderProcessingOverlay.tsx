@@ -1,5 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { Modal, View, Text, StyleSheet, Animated, Easing, SafeAreaView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { MotiView, MotiText, AnimatePresence } from 'moti';
+import { Easing } from 'react-native-reanimated';
 import { theme } from '@/constants/theme';
 import { PackageOpen, Package, Gift, Sparkles } from 'lucide-react-native';
 
@@ -8,119 +10,133 @@ interface OrderProcessingOverlayProps {
     message: string | null;
 }
 
+const STAGES = ['open', 'closed', 'gift'] as const;
+type Stage = (typeof STAGES)[number];
+
+const STAGE_ICON: Record<Stage, React.ComponentType<any>> = {
+    open: PackageOpen,
+    closed: Package,
+    gift: Gift,
+};
+
+// How long each stage holds before advancing (ms)
+const STAGE_DURATIONS: Record<Stage, number> = {
+    open: 750,
+    closed: 750,
+    gift: 1400,
+};
+
+const SPARKLE_POSITIONS = [
+    { top: -34, left: -34, size: 22, delay: 0 },
+    { bottom: -22, right: -34, size: 30, delay: 120 },
+    { top: 6, right: -44, size: 18, delay: 240 },
+    { bottom: 4, left: -44, size: 16, delay: 360 },
+];
+
 export function OrderProcessingOverlay({ visible, message }: OrderProcessingOverlayProps) {
-    // We will animate a sequence from 0 to 3
-    // 0 -> 1: Open Package shows, then fades out
-    // 1 -> 2: Closed Package shows, then fades out
-    // 2 -> 3: Gift box shows and pulses
-    const animSequence = useRef(new Animated.Value(0)).current;
+    const [stage, setStage] = useState<Stage>('open');
 
     useEffect(() => {
-        if (visible) {
-            animSequence.setValue(0);
-            Animated.loop(
-                Animated.sequence([
-                    // Stage 1: Packing (Open box to closed box)
-                    Animated.timing(animSequence, {
-                        toValue: 1,
-                        duration: 800,
-                        easing: Easing.inOut(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                    // Stage 2: Tying (Closed box to gift)
-                    Animated.timing(animSequence, {
-                        toValue: 2,
-                        duration: 800,
-                        easing: Easing.inOut(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                    // Stage 3: Magic/Sparkle pulse
-                    Animated.timing(animSequence, {
-                        toValue: 3,
-                        duration: 1200,
-                        easing: Easing.inOut(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                ])
-            ).start();
-        }
-    }, [visible, animSequence]);
+        if (!visible) return;
+
+        setStage('open');
+        let index = 0;
+        let timer: ReturnType<typeof setTimeout>;
+
+        const advance = () => {
+            index = (index + 1) % STAGES.length;
+            const next = STAGES[index];
+            setStage(next);
+            timer = setTimeout(advance, STAGE_DURATIONS[next]);
+        };
+
+        timer = setTimeout(advance, STAGE_DURATIONS['open']);
+        return () => clearTimeout(timer);
+    }, [visible]);
 
     if (!visible) return null;
 
-    // Interpolations for each icon's scale and opacity
-    const openBoxOpacity = animSequence.interpolate({
-        inputRange: [0, 0.8, 1],
-        outputRange: [1, 1, 0],
-    });
-    const openBoxScale = animSequence.interpolate({
-        inputRange: [0, 0.5, 1],
-        outputRange: [0.5, 1, 0.8],
-    });
-
-    const closedBoxOpacity = animSequence.interpolate({
-        inputRange: [0.8, 1, 1.8, 2],
-        outputRange: [0, 1, 1, 0],
-    });
-    const closedBoxScale = animSequence.interpolate({
-        inputRange: [0.8, 1, 1.5, 2],
-        outputRange: [0.8, 1, 1, 0.8],
-    });
-
-    const giftBoxOpacity = animSequence.interpolate({
-        inputRange: [1.8, 2, 2.5, 3],
-        outputRange: [0, 1, 1, 0],
-    });
-    const giftBoxScale = animSequence.interpolate({
-        inputRange: [1.8, 2, 2.5, 3],
-        outputRange: [0.8, 1, 1.1, 1],
-    });
-
-    const sparklesOpacity = animSequence.interpolate({
-        inputRange: [2, 2.3, 2.7, 3],
-        outputRange: [0, 1, 1, 0],
-    });
-    const sparklesScale = animSequence.interpolate({
-        inputRange: [2, 2.5, 3],
-        outputRange: [0.5, 1.2, 0.8],
-    });
+    const Icon = STAGE_ICON[stage];
+    const isGiftStage = stage === 'gift';
 
     return (
         <Modal transparent={false} visible={visible} animationType="slide">
             <SafeAreaView style={styles.container}>
-                <View style={styles.animationContainer}>
-                    {/* Open Box */}
-                    <Animated.View style={[styles.iconLayer, { opacity: openBoxOpacity, transform: [{ scale: openBoxScale }] }]}>
-                        <PackageOpen size={80} color={theme.colors.primary} strokeWidth={1.5} />
-                    </Animated.View>
+                {/* Soft ambient glow pulsing behind everything */}
+                <MotiView
+                    style={styles.glow}
+                    from={{ opacity: 0.12, scale: 0.9 }}
+                    animate={{ opacity: 0.32, scale: 1.15 }}
+                    transition={{
+                        type: 'timing',
+                        duration: 1600,
+                        easing: Easing.inOut(Easing.ease),
+                        loop: true,
+                    }}
+                />
 
-                    {/* Closed Box */}
-                    <Animated.View style={[styles.iconLayer, { opacity: closedBoxOpacity, transform: [{ scale: closedBoxScale }] }]}>
-                        <Package size={80} color={theme.colors.primary} strokeWidth={1.5} />
-                    </Animated.View>
+                {/* Whole icon stack gently bobs up and down */}
+                <MotiView
+                    style={styles.animationContainer}
+                    from={{ translateY: 0 }}
+                    animate={{ translateY: -8 }}
+                    transition={{
+                        type: 'timing',
+                        duration: 1200,
+                        easing: Easing.inOut(Easing.sin),
+                        loop: true,
+                    }}
+                >
+                    {/* Icon swaps with a spring-driven pop + rotate, not a flat cross-fade */}
+                    <AnimatePresence exitBeforeEnter>
+                        <MotiView
+                            key={stage}
+                            style={styles.iconLayer}
+                            from={{ opacity: 0, scale: 0.4, rotate: '-18deg' }}
+                            animate={{ opacity: 1, scale: 1, rotate: '0deg' }}
+                            exit={{ opacity: 0, scale: 0.6, rotate: '18deg' }}
+                            transition={{ type: 'spring', damping: 12, stiffness: 160 }}
+                        >
+                            <Icon size={80} color={theme.colors.primary} strokeWidth={1.5} />
+                        </MotiView>
+                    </AnimatePresence>
 
-                    {/* Gift Box */}
-                    <Animated.View style={[styles.iconLayer, { opacity: giftBoxOpacity, transform: [{ scale: giftBoxScale }] }]}>
-                        <Gift size={80} color={theme.colors.primary} strokeWidth={1.5} />
-                    </Animated.View>
-                    
-                    {/* Sparkles around Gift */}
-                    <Animated.View style={[styles.iconLayer, { opacity: sparklesOpacity, transform: [{ scale: sparklesScale }] }]}>
-                        <View style={{ position: 'absolute', top: -30, left: -30 }}>
-                            <Sparkles size={24} color={theme.colors.primaryDark} />
-                        </View>
-                        <View style={{ position: 'absolute', bottom: -20, right: -30 }}>
-                            <Sparkles size={32} color={theme.colors.primaryDark} />
-                        </View>
-                        <View style={{ position: 'absolute', top: 10, right: -40 }}>
-                            <Sparkles size={20} color={theme.colors.primary} />
-                        </View>
-                    </Animated.View>
-                </View>
+                    {/* Sparkles pop in individually with staggered delays and a gentle loop */}
+                    {isGiftStage &&
+                        SPARKLE_POSITIONS.map((pos, idx) => (
+                            <MotiView
+                                key={idx}
+                                style={[styles.sparkle, pos]}
+                                from={{ opacity: 0, scale: 0, rotate: '0deg' }}
+                                animate={{ opacity: 1, scale: 1, rotate: '180deg' }}
+                                transition={{
+                                    type: 'timing',
+                                    duration: 900,
+                                    delay: pos.delay,
+                                    easing: Easing.out(Easing.exp),
+                                    loop: true,
+                                    repeatReverse: true,
+                                }}
+                            >
+                                <Sparkles
+                                    size={pos.size}
+                                    color={idx % 2 === 0 ? theme.colors.primaryDark : theme.colors.primary}
+                                />
+                            </MotiView>
+                        ))}
+                </MotiView>
 
                 <View style={styles.textContainer}>
                     <Text style={styles.title}>Handcrafting Your Order</Text>
-                    <Text style={styles.message}>{message || 'Wrapping things up...'}</Text>
+                    <MotiText
+                        key={message}
+                        style={styles.message}
+                        from={{ opacity: 0, translateY: 4 }}
+                        animate={{ opacity: 1, translateY: 0 }}
+                        transition={{ type: 'timing', duration: 400 }}
+                    >
+                        {message || 'Wrapping things up...'}
+                    </MotiText>
                 </View>
             </SafeAreaView>
         </Modal>
@@ -133,6 +149,13 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    glow: {
+        position: 'absolute',
+        width: 220,
+        height: 220,
+        borderRadius: 110,
+        backgroundColor: theme.colors.primary,
     },
     animationContainer: {
         width: 150,
@@ -147,6 +170,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         height: '100%',
+    },
+    sparkle: {
+        position: 'absolute',
     },
     textContainer: {
         alignItems: 'center',
@@ -166,5 +192,5 @@ const styles = StyleSheet.create({
         fontFamily: theme.typography.fontFamily,
         textAlign: 'center',
         lineHeight: 24,
-    }
+    },
 });

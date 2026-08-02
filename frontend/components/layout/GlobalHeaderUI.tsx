@@ -349,6 +349,14 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                                         setSearchQuery(text);
                                         handleSearch(text);
                                     }}
+                                    onSubmitEditing={(e) => {
+                                        const query = e.nativeEvent.text.trim();
+                                        if (query) {
+                                            router.push(`/search/results?q=${encodeURIComponent(query)}` as any);
+                                            setProducts([]);
+                                            desktopInputRef.current?.blur();
+                                        }
+                                    }}
                                     value={searchQuery}
                                 />
                             </View>

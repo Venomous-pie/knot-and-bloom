@@ -67,6 +67,7 @@ export const sellerController = {
                         portfolioLink: data.portfolioLink ?? null,
                         idType: data.idType ?? null,
                         idNumber: data.idNumber ?? null,
+                        idPhotos: data.idPhotos ?? [],
                         status: SellerStatus.PENDING
                     }
                 });
@@ -156,6 +157,7 @@ export const sellerController = {
                             portfolioLink: data.portfolioLink ?? null,
                             idType: data.idType ?? null,
                             idNumber: data.idNumber ?? null,
+                            idPhotos: data.idPhotos ?? [],
                             status: SellerStatus.PENDING,
                             rejectionReason: null, // Clear previous rejection reason
                             termsAccepted: data.termsAccepted ?? false,
@@ -212,6 +214,7 @@ export const sellerController = {
                     portfolioLink: data.portfolioLink ?? null,
                     idType: data.idType ?? null,
                     idNumber: data.idNumber ?? null,
+                    idPhotos: data.idPhotos ?? [],
                     status: SellerStatus.PENDING,
                     termsAccepted: data.termsAccepted ?? false,
                     termsAcceptedAt: data.termsAccepted ? new Date() : null
@@ -240,6 +243,7 @@ export const sellerController = {
             res.status(500).json({ error: "Failed to onboard seller" });
         }
     },
+
 
     // Get Seller by Slug (Public Profile)
     async getSellerBySlug(req: Request, res: Response) {

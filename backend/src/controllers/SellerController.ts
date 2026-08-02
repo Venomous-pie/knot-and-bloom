@@ -869,7 +869,10 @@ export const sellerController = {
                 totalOrdersDistribution,
                 recentOrders,
                 completedOrders,
-                unreadMessagesCount
+                unreadMessagesCount,
+                totalProductsCount,
+                paymentMethodsCount,
+                sellerShipping
             ] = await Promise.all([
                 prisma.order.findMany({ where: { sellerId, uploaded: { gte: startOfDay } }, select: { total: true } }),
                 prisma.order.findMany({ where: { sellerId, status: 'PENDING' }, select: { uid: true, uploaded: true } }),
@@ -879,7 +882,10 @@ export const sellerController = {
                 prisma.order.groupBy({ by: ['status'], where: { sellerId }, _count: { uid: true } }),
                 prisma.order.findMany({ where: { sellerId, uploaded: { gte: sevenDaysAgo } }, select: { uploaded: true, total: true } }),
                 prisma.order.findMany({ where: { sellerId, status: 'COMPLETED' }, select: { items: { select: { productId: true, price: true, quantity: true } } } }),
-                prisma.notification.count({ where: { userId: user.id, isRead: false } })
+                prisma.notification.count({ where: { userId: user.id, isRead: false } }),
+                prisma.product.count({ where: { sellerId, deletedAt: null } }),
+                prisma.paymentMethod.count({ where: { userId: user.id } }),
+                prisma.seller.findUnique({ where: { uid: sellerId }, select: { vehicleType: true, meetUpPoint: true, selfDeliveryEnabled: true } })
             ]);
 
             // 3. Process Data
@@ -989,6 +995,11 @@ export const sellerController = {
                     lastMonthSales: Number(lastMonthMetrics._sum.total || 0),
                     totalOrders: orderCounts,
                     conversionRate: 0 // Placeholder
+                },
+                onboarding: {
+                    hasProducts: totalProductsCount > 0,
+                    hasPayouts: paymentMethodsCount > 0,
+                    hasShipping: Boolean(sellerShipping && (sellerShipping.vehicleType !== 'NONE' || sellerShipping.meetUpPoint || sellerShipping.selfDeliveryEnabled))
                 },
                 performanceGraph: salesGraph,
                 topProducts: topProductsData,

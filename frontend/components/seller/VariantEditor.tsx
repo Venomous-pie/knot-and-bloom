@@ -615,7 +615,7 @@ export default function VariantEditor({
                                                 }
                                             }}
                                         />
-                                        {(materialInputs[index] || '').trim().length > 0 && (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5 && (
+                                        {((materialInputs[index] || '').trim().length > 0 && (variant.materials || '').split(',').map(s => s.trim()).filter(Boolean).length < 5) ? (
                                             <Pressable
                                                 style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, marginLeft: 8 }}
                                                 onPress={() => {
@@ -630,7 +630,7 @@ export default function VariantEditor({
                                             >
                                                 <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add</Text>
                                             </Pressable>
-                                        )}
+                                        ) : null}
                                     </View>
                                     {variantErrors[`variant-${index}-materials`] && (
                                         <Text style={styles.errorText}>{variantErrors[`variant-${index}-materials`]}</Text>
@@ -695,7 +695,7 @@ export default function VariantEditor({
                                                                     borderColor: isSug ? theme.colors.secondary + '50' : theme.colors.border,
                                                                     flexDirection: 'row', alignItems: 'center', gap: 4
                                                                 }}
-                                                                onPress={() => {
+                                                                onPressIn={() => {
                                                                     const parts = (variant.materials || '').split(',').map(s => s.trim()).filter(s => s);
                                                                     if (parts.length < 5 && !parts.includes(material)) {
                                                                         parts.push(material);

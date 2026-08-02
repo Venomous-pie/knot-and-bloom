@@ -12,6 +12,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    DeviceEventEmitter,
 } from 'react-native';
 
 const P       = '#B36979';
@@ -67,6 +68,7 @@ export default function SellerNotifications() {
         try {
             await notificationAPI.markAsRead(uid);
             setNotifications(prev => prev.map(n => n.uid === uid ? { ...n, isRead: true } : n));
+            DeviceEventEmitter.emit('notificationRead');
         } catch (error) {
             console.error('Failed to mark notification as read', error);
         }
@@ -76,6 +78,7 @@ export default function SellerNotifications() {
         try {
             await notificationAPI.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            DeviceEventEmitter.emit('notificationRead');
         } catch (error) {
             Alert.alert('Error', 'Failed to update notifications');
         }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, DeviceEventEmitter } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
 import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, Truck } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,9 +19,17 @@ export default function DashboardSidebar() {
 
     useEffect(() => {
         if (user && (user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE'))) {
-            sellerAPI.getSidebarStats()
-                .then(setSidebarStats)
-                .catch(console.error);
+            const fetchStats = () => {
+                sellerAPI.getSidebarStats()
+                    .then(setSidebarStats)
+                    .catch(console.error);
+            };
+            fetchStats();
+
+            const listener = DeviceEventEmitter.addListener('notificationRead', fetchStats);
+            return () => {
+                listener.remove();
+            };
         }
     }, [user]);
 

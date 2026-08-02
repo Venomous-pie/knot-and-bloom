@@ -421,14 +421,22 @@ export default function ProductFormWizard({
                     newErrors.categories = 'Please select at least one category.';
                     isValid = false;
                 }
+                if (formData.videoUrl && formData.videoUrl.trim() !== '') {
+                    try {
+                        new URL(formData.videoUrl);
+                    } catch (_) {
+                        newErrors.videoUrl = 'Please enter a valid URL (e.g., https://...).';
+                        isValid = false;
+                    }
+                }
                 break;
             case 2:
                 if (!formData.sku.trim()) {
                     newErrors.sku = 'Please enter or generate a Base SKU.';
                     isValid = false;
                 }
-                if (!formData.basePrice.trim() || isNaN(Number(formData.basePrice)) || Number(formData.basePrice) < 0) {
-                    newErrors.basePrice = 'Please enter a valid base price (0 or greater).';
+                if (!formData.basePrice.trim() || isNaN(Number(formData.basePrice)) || Number(formData.basePrice) <= 0) {
+                    newErrors.basePrice = 'Please enter a valid base price (greater than 0).';
                     isValid = false;
                 }
                 if (formData.discountPercentage && (isNaN(Number(formData.discountPercentage)) || Number(formData.discountPercentage) < 0 || Number(formData.discountPercentage) > 100)) {
@@ -780,7 +788,7 @@ export default function ProductFormWizard({
                                                                 borderColor: isSug ? theme.colors.secondary + '50' : theme.colors.border,
                                                                 flexDirection: 'row', alignItems: 'center', gap: 4
                                                             }}
-                                                            onPress={() => {
+                                                            onPressIn={() => {
                                                                 if (selectedCategories.length < 3 && !selectedCategories.includes(suggestion)) {
                                                                     setSelectedCategories(prev => [...prev, suggestion]);
                                                                     setCategorySearchQuery('');
@@ -1457,7 +1465,7 @@ export default function ProductFormWizard({
                                                     return (
                                                         <Pressable
                                                             key={suggestion}
-                                                            onPress={() => {
+                                                            onPressIn={() => {
                                                                 if (formData.tags.length < 10 && !formData.tags.includes(suggestion)) {
                                                                     setFormData(prev => ({ ...prev, tags: [...prev.tags, suggestion] }));
                                                                     setTagError(null);

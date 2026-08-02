@@ -80,7 +80,7 @@ export default function SellerSettingsPage() {
 
                     <Pressable
                         style={[styles.linkRow, { borderBottomWidth: 0 }]}
-                        onPress={() => router.push('/profile/payment-methods' as any)}
+                        onPress={() => router.push('/profile/account/payment-methods' as any)}
                     >
                         <View style={[styles.settingIcon, { backgroundColor: '#E0F2FE' }]}>
                             <CreditCard size={20} color={'#0284C7'} />

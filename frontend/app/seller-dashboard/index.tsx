@@ -51,6 +51,11 @@ interface DashboardStats {
     performanceGraph: Array<{ date: string; sales: number }>;
     topProducts: Array<{ id: number; name: string; image: string | null; revenue: number }>;
     recentReviews: Array<{ id: number; customerName: string; rating: number; comment: string; date: string }>;
+    onboarding?: {
+        hasProducts: boolean;
+        hasPayouts: boolean;
+        hasShipping: boolean;
+    };
 }
 
 
@@ -106,6 +111,7 @@ export default function SellerDashboardHome() {
     const displayStats = stats || {
         performanceSnapshot: { todayRevenue: 0, todayOrders: 0, todayVisitors: 0, pendingOrders: 0, lowStockItems: 0, unreadMessages: 0, pendingOrdersSeverity: 'NEUTRAL', lifetimeTotalOrders: 0 },
         quickStats: { thisMonthSales: 0, thisMonthOrders: 0, thisMonthEarnings: 0, lastMonthSales: 0, totalOrders: { PENDING: 0, PROCESSING: 0, COMPLETED: 0, CANCELLED: 0 }, conversionRate: 0 },
+        onboarding: { hasProducts: false, hasPayouts: false, hasShipping: false },
         performanceGraph: [],
         topProducts: [],
         recentReviews: []
@@ -426,6 +432,8 @@ export default function SellerDashboardHome() {
 
     const lifetimeTotalOrders = displayStats.performanceSnapshot?.lifetimeTotalOrders || 0;
     const showHybridOnboarding = lifetimeTotalOrders < 5;
+    const ob = displayStats.onboarding || { hasProducts: false, hasPayouts: false, hasShipping: false };
+    const completedSteps = [ob.hasProducts, ob.hasPayouts, ob.hasShipping, false].filter(Boolean).length;
 
     const OnboardingChecklist = showHybridOnboarding ? (
         <View style={s.card}>
@@ -435,18 +443,18 @@ export default function SellerDashboardHome() {
                     <Text style={{ fontSize: 14, color: SUB, fontFamily: 'Quicksand', lineHeight: 22 }}>Complete these essential steps to launch your store and start receiving orders from customers.</Text>
                 </View>
                 <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563', fontFamily: 'Quicksand' }}>0 / 4 Done</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563', fontFamily: 'Quicksand' }}>{completedSteps} / 4 Done</Text>
                 </View>
             </View>
 
             <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 16, overflow: 'hidden' }}>
                 <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/products/form' as any)}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: P_LIGHT, alignItems: 'center', justifyContent: 'center' }}>
-                            <Package size={20} color={P} />
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasProducts ? '#D1FAE5' : P_LIGHT, alignItems: 'center', justifyContent: 'center' }}>
+                            {ob.hasProducts ? <CheckCircle size={20} color={GREEN} /> : <Package size={20} color={P} />}
                         </View>
                         <View>
-                            <Text style={s.onboardingRowTxt}>Add your first product</Text>
+                            <Text style={[s.onboardingRowTxt, ob.hasProducts && { textDecorationLine: 'line-through', color: SUB }]}>Add your first product</Text>
                             <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Upload photos and set your pricing.</Text>
                         </View>
                     </View>
@@ -457,11 +465,11 @@ export default function SellerDashboardHome() {
 
                 <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/settings' as any)}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
-                            <DollarSign size={20} color={INDIGO} />
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasPayouts ? '#D1FAE5' : '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
+                            {ob.hasPayouts ? <CheckCircle size={20} color={GREEN} /> : <DollarSign size={20} color={INDIGO} />}
                         </View>
                         <View>
-                            <Text style={s.onboardingRowTxt}>Set up payouts</Text>
+                            <Text style={[s.onboardingRowTxt, ob.hasPayouts && { textDecorationLine: 'line-through', color: SUB }]}>Set up payouts</Text>
                             <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Link your GCash or Bank account.</Text>
                         </View>
                     </View>
@@ -472,11 +480,11 @@ export default function SellerDashboardHome() {
 
                 <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/shipping' as any)}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
-                            <Truck size={20} color={AMBER} />
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasShipping ? '#D1FAE5' : '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+                            {ob.hasShipping ? <CheckCircle size={20} color={GREEN} /> : <Truck size={20} color={AMBER} />}
                         </View>
                         <View>
-                            <Text style={s.onboardingRowTxt}>Configure shipping</Text>
+                            <Text style={[s.onboardingRowTxt, ob.hasShipping && { textDecorationLine: 'line-through', color: SUB }]}>Configure shipping</Text>
                             <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Set your delivery vehicle and meetup points.</Text>
                         </View>
                     </View>

@@ -10,7 +10,13 @@ class AuthEventEmitter {
     private listeners: Set<AuthEventListener> = new Set();
 
     emit(type: AuthEventType, payload?: AuthEventPayload) {
-        this.listeners.forEach(listener => listener(type, payload));
+        this.listeners.forEach(listener => {
+            try {
+                listener(type, payload);
+            } catch (err) {
+                console.error('authEvents listener error:', err);
+            }
+        });
     }
 
     subscribe(listener: AuthEventListener) {

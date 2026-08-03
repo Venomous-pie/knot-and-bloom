@@ -1,3 +1,5 @@
+import { LoginPayload, RegisterPayload } from '@/api/api';
+
 enum Role {
     USER = 'USER',
     SELLER = 'SELLER',
@@ -68,8 +70,8 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (data: any, returnTo?: string, rememberMe?: boolean) => Promise<void>;
-    register: (data: any) => Promise<void>;
+    login: (data: LoginPayload, returnTo?: string, rememberMe?: boolean) => Promise<void>;
+    register: (data: RegisterPayload) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     loginWithGoogle: (data: { token?: string, accessToken?: string }, returnTo?: string) => Promise<void>;

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { authEvents } from '@/utils/authEvents';
-import { getAuthToken, getRefreshToken, updateTokens } from '@/utils/tokenStore';
+import { getAuthToken, getRefreshToken, updateTokens, clearSession } from '@/utils/tokenStore';
 
 const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3030'}/api`;
 
@@ -93,7 +93,7 @@ api.interceptors.response.use(
                         }
                     } catch (refreshError) {
                         processQueue(refreshError, null);
-                        await updateTokens('', '').catch(() => {});
+                        await clearSession();
                     } finally {
                         isRefreshing = false;
                     }

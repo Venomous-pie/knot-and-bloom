@@ -94,6 +94,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
     const [state, setState] = useState<CheckoutState>(initialState);
     const [checkoutIdempotencyKey, setCheckoutIdempotencyKey] = useState<string>('');
     const [paymentIdempotencyKey, setPaymentIdempotencyKey] = useState<string>('');
+    const [completeIdempotencyKey, setCompleteIdempotencyKey] = useState<string>('');
 
     // Restore session from storage on mount
     useEffect(() => {
@@ -110,6 +111,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                             ...parsed,
                         }));
                         setCheckoutIdempotencyKey(parsed.idempotencyKey || generateIdempotencyKey());
+                        setCompleteIdempotencyKey(parsed.completeIdempotencyKey || generateIdempotencyKey());
                     } else {
                         // Clear expired session
                         await AsyncStorage.removeItem('checkoutSession');
@@ -129,11 +131,12 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 await AsyncStorage.setItem('checkoutSession', JSON.stringify({
                     ...state,
                     idempotencyKey: checkoutIdempotencyKey,
+                    completeIdempotencyKey: completeIdempotencyKey,
                 }));
             }
         };
         saveSession();
-    }, [state, checkoutIdempotencyKey]);
+    }, [state, checkoutIdempotencyKey, completeIdempotencyKey]);
 
     const setStep = useCallback((step: CheckoutStep) => {
         setState(prev => ({ ...prev, step, error: null }));
@@ -166,6 +169,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
         setState(initialState);
         setCheckoutIdempotencyKey('');
         setPaymentIdempotencyKey('');
+        setCompleteIdempotencyKey('');
     }, []);
 
     const initiateCheckout = useCallback(async (selectedItemIds: number[]): Promise<boolean> => {
@@ -179,6 +183,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
 
             const key = generateIdempotencyKey();
             setCheckoutIdempotencyKey(key);
+            setCompleteIdempotencyKey(generateIdempotencyKey());
 
             const response = await checkoutAPI.initiate(selectedItemIds, key);
             const data = response.data;
@@ -333,7 +338,13 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 stringifiedChoices[k.toString()] = v;
             }
 
-            const response = await checkoutAPI.complete(state.sessionId, paymentIdToUse, undefined, shippingInfoToUse, stringifiedChoices);
+            const response = await checkoutAPI.complete(
+                state.sessionId, 
+                paymentIdToUse, 
+                completeIdempotencyKey || generateIdempotencyKey(),
+                shippingInfoToUse, 
+                stringifiedChoices
+            );
             const data = response.data;
 
             if (data.success && (data.orderId || data.orderIds)) {

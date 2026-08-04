@@ -48,7 +48,7 @@ async function seedReviews() {
                 await prisma.review.create({
                     data: {
                         rating: 5,
-                        content: reviewTexts[i % reviewTexts.length],
+                        content: reviewTexts[i % reviewTexts.length] || "",
                         userId: buyer.uid,
                         productId: product.uid,
                         sellerId: product.sellerId,

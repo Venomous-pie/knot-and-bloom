@@ -33,9 +33,9 @@ model User {
   orders                Order[]
   paymentMethods        PaymentMethod[]
   refreshTokens         RefreshToken[]
+  reviews               Review[]
   sellerProfile         Seller?
   wishlist              Wishlist?
-  reviews               Review[]
 }
 
 model Seller {
@@ -60,6 +60,7 @@ model Seller {
   freeShippingThreshold Decimal             @default(0)
   hasPriorExperience    Boolean             @default(false)
   idNumber              String?
+  idPhotos              String[]            @default([])
   idType                String?
   isHandmade            Boolean             @default(false)
   legalName             String?
@@ -84,14 +85,13 @@ model Seller {
   totalWithdrawn        Decimal             @default(0)
   updatedAt             DateTime            @updatedAt
   vehicleType           VehicleType         @default(NONE)
-  idPhotos              String[]            @default([])
   orders                Order[]
   orderItems            OrderItem[]
   shipments             OrderShipment[]
   products              Product[]
+  reviews               Review[]
   user                  User                @relation(fields: [userId], references: [uid], onDelete: Cascade)
   withdrawalRequests    WithdrawalRequest[]
-  reviews               Review[]
 
   @@index([userId, hasSeenWelcomeModal])
 }
@@ -139,8 +139,8 @@ model Product {
   seller                  Seller?          @relation(fields: [sellerId], references: [uid])
   productOptions          ProductOption[]
   variants                ProductVariant[]
-  wishlistItems           WishlistItem[]
   reviews                 Review[]
+  wishlistItems           WishlistItem[]
 }
 
 model ProductVariant {
@@ -295,23 +295,21 @@ model OrderItem {
 }
 
 model Review {
-  uid         Int       @id @default(autoincrement())
-  rating      Int       @default(5)
+  uid         Int        @id @default(autoincrement())
+  rating      Int        @default(5)
   title       String?
   content     String?
-  photos      String[]  @default([])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
+  photos      String[]   @default([])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   userId      Int
   productId   Int
   sellerId    Int
-  orderItemId Int?      @unique
-
-  user        User      @relation(fields: [userId], references: [uid])
-  product     Product   @relation(fields: [productId], references: [uid])
-  seller      Seller    @relation(fields: [sellerId], references: [uid])
+  orderItemId Int?       @unique
   orderItem   OrderItem? @relation(fields: [orderItemId], references: [uid])
+  product     Product    @relation(fields: [productId], references: [uid])
+  seller      Seller     @relation(fields: [sellerId], references: [uid])
+  user        User       @relation(fields: [userId], references: [uid])
 
   @@index([productId])
   @@index([sellerId])
@@ -495,6 +493,22 @@ model PlatformConfig {
   updatedBy Int?
 }
 
+model CustomTag {
+  uid       Int      @id @default(autoincrement())
+  name      String   @unique
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CustomCategory {
+  uid       Int      @id @default(autoincrement())
+  name      String   @unique
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -588,20 +602,4 @@ enum ShipmentStatus {
   DELAYED_WEATHER
   COMPLETED
   FAILED
-}
-
-model CustomTag {
-  uid       Int      @id @default(autoincrement())
-  name      String   @unique
-  count     Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model CustomCategory {
-  uid       Int      @id @default(autoincrement())
-  name      String   @unique
-  count     Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }

@@ -302,7 +302,7 @@ class CronService {
         try {
             // @ts-ignore
             const badWords = await import('bad-words');
-            const Filter = badWords.default || badWords;
+            const Filter = (badWords as any).default || badWords;
             const filter = new Filter();
 
             // Check CustomCategories

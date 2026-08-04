@@ -1,4 +1,4 @@
-import { sellerAPI } from "@/api/api";
+import { sellerAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { RelativePathString, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -81,14 +81,14 @@ export default function ApplicationStatusPage() {
                         Are you sure you want to cancel your seller application? This action cannot be undone.
                     </Text>
                     <View style={styles.modalActions}>
-                        <Pressable 
+                        <Pressable
                             style={styles.modalCancelBtn}
                             onPress={() => setCancelModalVisible(false)}
                             disabled={isCancelling}
                         >
                             <Text style={styles.modalCancelBtnText}>No, Keep It</Text>
                         </Pressable>
-                        <Pressable 
+                        <Pressable
                             style={styles.modalConfirmBtn}
                             onPress={confirmCancel}
                             disabled={isCancelling}
@@ -119,15 +119,15 @@ export default function ApplicationStatusPage() {
                         <Text style={styles.subtitle}>
                             Thanks for applying! Our team is currently reviewing your shop details. This usually takes 1-2 business days.
                         </Text>
-                        
+
                         <View style={styles.buttonContainer}>
-                            <Pressable 
+                            <Pressable
                                 style={({ pressed, hovered }: any) => [
                                     styles.primaryBtn,
                                     hovered && { backgroundColor: theme.colors.primary },
                                     pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
                                 ]}
-                                onPress={handleRefresh} 
+                                onPress={handleRefresh}
                                 disabled={refreshing}
                             >
                                 {refreshing ? (
@@ -137,7 +137,7 @@ export default function ApplicationStatusPage() {
                                 )}
                             </Pressable>
 
-                                <Pressable 
+                            <Pressable
                                 style={({ pressed, hovered }: any) => [
                                     styles.destructiveBtn,
                                     hovered && { backgroundColor: theme.colors.subtle },
@@ -163,7 +163,7 @@ export default function ApplicationStatusPage() {
                         <Text style={styles.subtitle}>
                             Congratulations! Your shop is ready to go. Welcome to our curated marketplace of local makers.
                         </Text>
-                        
+
                         <View style={[styles.buttonContainer, { marginTop: 24 }]}>
                             <Pressable
                                 style={({ pressed, hovered }: any) => [
@@ -191,14 +191,14 @@ export default function ApplicationStatusPage() {
                         <Text style={styles.subtitle}>
                             Unfortunately, we couldn't approve your application at this time.
                         </Text>
-                        
+
                         <View style={styles.rejectionBox}>
                             <Info size={18} color={theme.colors.errorDark} style={{ marginTop: 2 }} />
                             <Text style={styles.rejectionReasonText}>
                                 {user.sellerProfile?.rejectionReason || "Information provided was incomplete. Please update your details and try again."}
                             </Text>
                         </View>
-                        
+
                         <View style={styles.buttonContainer}>
                             <Pressable
                                 style={({ pressed, hovered }: any) => [
@@ -211,7 +211,7 @@ export default function ApplicationStatusPage() {
                                 <Text style={styles.primaryBtnText}>Update Application</Text>
                             </Pressable>
 
-                                <Pressable 
+                            <Pressable
                                 style={({ pressed, hovered }: any) => [
                                     styles.destructiveBtn,
                                     hovered && { backgroundColor: theme.colors.subtle },
@@ -236,7 +236,7 @@ export default function ApplicationStatusPage() {
                         <Text style={styles.subtitle}>
                             You haven't submitted a seller application yet. Join our community of makers!
                         </Text>
-                        
+
                         <View style={[styles.buttonContainer, { marginTop: 24 }]}>
                             <Pressable
                                 style={({ pressed, hovered }: any) => [

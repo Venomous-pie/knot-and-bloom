@@ -1,4 +1,4 @@
-import { adminAPI } from "@/api/api";
+import { adminAPI } from "@/services/api";
 import { Stack } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import { Animated, RefreshControl, StyleSheet, Text, View, Platform, TouchableOpacity, ScrollView, TextInput } from "react-native";

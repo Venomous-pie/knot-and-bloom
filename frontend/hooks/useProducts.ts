@@ -1,4 +1,4 @@
-import { productAPI } from "@/api/api";
+import { productAPI } from "@/services/api";
 import { GetProductsParams, Product } from "@/types/products";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cacheProducts } from "@/utils/productCache";

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import { Truck, Store, CheckCircle2, MapPin } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 import { CheckoutProductList } from './CheckoutProductList';
-import type { LockedPriceItem } from '@/api/api';
+import type { LockedPriceItem } from '@/services/api';
 
 interface CheckoutSellerGroupProps {
     sellerId: number;

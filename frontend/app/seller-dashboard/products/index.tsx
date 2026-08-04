@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View, Animated, useWindowDimensions, TextInput, ScrollView, RefreshControl } from 'react-native';
-import { sellerProductsAPI } from '../../../api/api';
+import { sellerProductsAPI } from '../../../services/api';
 import InfoBox from '../../../components/ui/InfoBox';
 import Tooltip from '../../../components/ui/Tooltip';
 import DropdownMenu from '../../../components/ui/DropdownMenu';

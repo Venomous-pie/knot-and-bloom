@@ -1,4 +1,4 @@
-import { cartAPI } from "@/api/api";
+import { cartAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { CartItem as CartItemType } from "@/types/cart";
@@ -212,14 +212,14 @@ export default function CartPage() {
 
     const handleDeleteSelected = async () => {
         if (selectedItems.size === 0) return;
-        
+
         const confirmed = await confirm({
             title: "Delete Selected",
             message: `Remove ${selectedItems.size} item(s)?`,
             confirmText: "Delete",
             cancelText: "Cancel"
         });
-        
+
         if (confirmed) {
             Array.from(selectedItems).forEach(id => handleRemoveItem(id));
         }
@@ -257,7 +257,7 @@ export default function CartPage() {
                     data={shopGroups}
                     keyExtractor={(group) => group.sellerName}
                     contentContainerStyle={[
-                        cartItems.length === 0 ? styles.listContent : undefined, 
+                        cartItems.length === 0 ? styles.listContent : undefined,
                         cartItems.length > 0 ? { paddingBottom: 140 } : { flexGrow: 1, justifyContent: 'center' }
                     ]}
                     ListHeaderComponent={

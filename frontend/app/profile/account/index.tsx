@@ -1,4 +1,4 @@
-import { customerAPI } from '@/api/api';
+import { customerAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 import { RelativePathString, useRouter } from 'expo-router';

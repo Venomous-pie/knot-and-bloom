@@ -5,7 +5,7 @@ import {
     RefreshControl, StyleSheet, Text, TextInput,
     TouchableOpacity, View, Platform, Animated
 } from 'react-native';
-import { productAPI } from '../../api/api';
+import { productAPI } from '../../services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Product } from '../../types/products';
 import {

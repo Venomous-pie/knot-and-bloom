@@ -4,7 +4,7 @@ import {
     useWindowDimensions, Image, Pressable
 } from 'react-native';
 import { theme } from '@/constants/theme';
-import { sellerAPI } from '@/api/api';
+import { sellerAPI } from '@/services/api';
 import MakerCard from '@/components/product/MakerCard';
 import MakerSpotlightCard from '@/components/product/MakerSpotlightCard';
 import {

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, useWindowDimensions, Pressable } fr
 import { theme } from '@/constants/theme';
 import ProductCard from '@/components/product/ProductCard';
 import ProductCardSkeleton from '@/components/product/ProductCardSkeleton';
-import { productAPI } from '@/api/api';
+import { productAPI } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Product } from '@/types/products';
 import type { SearchHistoryItem } from '@/app/search/index';

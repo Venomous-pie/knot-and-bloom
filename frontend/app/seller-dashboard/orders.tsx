@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { sellerOrdersAPI } from "@/api/api";
+import { sellerOrdersAPI } from "@/services/api";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, Modal, Pressable, ScrollView, Animated } from "react-native";

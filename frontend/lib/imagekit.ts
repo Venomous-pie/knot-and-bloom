@@ -13,7 +13,7 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024;
 // Compression quality
 const COMPRESSION_QUALITY = 0.7;
 
-import { apiClient } from '../api/api';
+import { apiClient } from '../services/api';
 
 /**
  * Fetch authentication parameters from backend

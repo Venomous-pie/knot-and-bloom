@@ -6,7 +6,7 @@ import { theme } from '@/constants/theme';
 import StatCard from '@/components/ui/StatCard';
 import { Stack } from 'expo-router';
 import InfoBox from '@/components/ui/InfoBox';
-import { adminAPI } from '@/api/admin';
+import { adminAPI } from '@/services/admin';
 
 export default function AdminDashboard() {
     const { user } = useAuth();

@@ -19,7 +19,7 @@ import { Truck } from 'lucide-react-native';
 
 import { CheckoutProvider, useCheckout } from '@/contexts/CheckoutContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { addressAPI } from '@/api/api';
+import { addressAPI } from '@/services/api';
 import AddressSelector from '@/components/checkout/AddressSelector';
 import AddressForm from '@/components/checkout/AddressForm';
 import { Address } from '@/components/checkout/AddressCard';

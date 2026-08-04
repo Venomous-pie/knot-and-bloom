@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { sellerAPI } from '@/api/api';
+import { sellerAPI } from '@/services/api';
 import { BarChart } from 'react-native-gifted-charts';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Calendar, Package } from 'lucide-react-native';
 import StatCard from '../../components/ui/StatCard';

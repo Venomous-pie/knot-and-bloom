@@ -1,4 +1,4 @@
-import { orderAPI, cartAPI } from '@/api/api';
+import { orderAPI, cartAPI } from '@/services/api';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';

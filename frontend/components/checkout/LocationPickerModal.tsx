@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '@/constants/theme';
-import { locationAPI } from '@/api/api';
+import { locationAPI } from '@/services/api';
 
 export interface LocationSelection {
     region: string;

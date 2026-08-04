@@ -1,4 +1,4 @@
-import { wishlistAPI } from '@/api/api';
+import { wishlistAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 

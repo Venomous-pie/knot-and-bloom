@@ -1,4 +1,4 @@
-import { sellerAPI } from "@/api/api";
+import { sellerAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { theme } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
@@ -170,8 +170,8 @@ export default function SellerWelcomeModal({ visible, onClose }: Props) {
                             <Text style={styles.secondaryBtnText}>{stepData.secondary}</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
-                            style={styles.primaryBtn} 
+                        <TouchableOpacity
+                            style={styles.primaryBtn}
                             onPress={handleNext}
                             disabled={isSubmitting}
                         >

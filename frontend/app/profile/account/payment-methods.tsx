@@ -1,4 +1,4 @@
-import { paymentMethodAPI, PaymentMethod, PaymentMethodType, PaymentMethodInput } from '@/api/api';
+import { paymentMethodAPI, PaymentMethod, PaymentMethodType, PaymentMethodInput } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, useRouter } from 'expo-router';
 import { CreditCard, Plus } from 'lucide-react-native';

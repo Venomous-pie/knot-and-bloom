@@ -2,7 +2,7 @@ import { Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { Settings, Save, AlertTriangle, Truck } from 'lucide-react-native';
-import { adminAPI } from "@/api/api";
+import { adminAPI } from "@/services/api";
 
 const BG = '#F4F4F8';
 const CARD = '#FFFFFF';
@@ -11,7 +11,7 @@ const SUB = '#6B7280';
 const BORDER = '#E5E7EB';
 const P = '#B36979';
 
-type ConfigKey = 
+type ConfigKey =
     | 'fuelPricePerLiter'
     | 'motorcycleFuelEfficiency'
     | 'tricycleFuelEfficiency'
@@ -55,7 +55,7 @@ export default function AdminSettings() {
     const handleSave = async () => {
         try {
             setSaving(true);
-            
+
             // Convert strings to numbers for saving
             const updates: Record<string, number> = {};
             for (const [k, v] of Object.entries(config)) {
@@ -81,7 +81,7 @@ export default function AdminSettings() {
     return (
         <View style={s.container}>
             <Stack.Screen options={{ title: "Admin Settings" }} />
-            
+
             {/* Header Bar */}
             <View style={s.headerContainer}>
                 <View style={s.header}>
@@ -114,7 +114,7 @@ export default function AdminSettings() {
                         <Text style={s.sectionDesc}>
                             These variables are used to calculate the real-time delivery fee when a buyer checks out with a seller who offers self-delivery.
                         </Text>
-                        
+
                         <View style={s.card}>
                             <View style={s.inputRow}>
                                 <View style={s.inputInfo}>
@@ -129,7 +129,7 @@ export default function AdminSettings() {
                                 />
                             </View>
                             <View style={s.divider} />
-                            
+
                             <View style={s.inputRow}>
                                 <View style={s.inputInfo}>
                                     <Text style={s.inputLabel}>Motorcycle Fuel Efficiency (km/L)</Text>
@@ -237,14 +237,14 @@ const s = StyleSheet.create({
     subtitle: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 4 },
     saveBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
     saveBtnText: { color: '#FFF', fontSize: 14, fontWeight: 'bold', fontFamily: 'Quicksand' },
-    
+
     contentWrapper: { maxWidth: 1024, width: '100%', alignSelf: 'center', padding: 24 },
-    
+
     section: { marginBottom: 32 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
     sectionTitle: { fontSize: 18, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
     sectionDesc: { fontSize: 14, color: SUB, fontFamily: 'Quicksand', marginBottom: 16, lineHeight: 20 },
-    
+
     card: { backgroundColor: CARD, borderRadius: 12, borderWidth: 1, borderColor: BORDER, overflow: 'hidden' },
     inputRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
     inputInfo: { flex: 1, paddingRight: 24 },
@@ -252,7 +252,7 @@ const s = StyleSheet.create({
     inputSub: { fontSize: 13, color: SUB, fontFamily: 'Quicksand', lineHeight: 18 },
     input: { width: 100, backgroundColor: BG, borderWidth: 1, borderColor: BORDER, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, fontFamily: 'Quicksand', textAlign: 'right', fontWeight: '600' },
     divider: { height: 1, backgroundColor: BORDER },
-    
+
     warningBanner: { flexDirection: 'row', backgroundColor: '#FEF3C7', padding: 16, borderRadius: 8, marginTop: 16, borderWidth: 1, borderColor: '#FDE68A' },
     warningText: { fontSize: 13, color: '#92400E', fontFamily: 'Quicksand', lineHeight: 18 }
 });

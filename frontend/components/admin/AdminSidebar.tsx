@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { theme } from '@/constants/theme';
 import DropdownMenu from '@/components/ui/DropdownMenu';
-import { sellerAPI } from '@/api/api';
+import { sellerAPI } from '@/services/api';
 
 export default function AdminSidebar() {
     const router = useRouter();

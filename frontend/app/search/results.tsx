@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { theme } from '@/constants/theme';
 import ProductCard from "@/components/product/ProductCard";
-import { productAPI } from '@/api/api';
+import { productAPI } from '@/services/api';
 import { Product } from "@/types/products";
 import { normalizeSearchQuery } from "@/utils/searchUtils";
 import { categoryTitles, CATEGORY_REGISTRY } from "@/constants/categories";

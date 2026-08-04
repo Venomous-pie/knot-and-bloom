@@ -1,4 +1,4 @@
-import { sellerAPI } from "@/api/api";
+import { sellerAPI } from "@/services/api";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import { Alert, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, RefreshControl, Platform, Animated, Image, ActivityIndicator } from "react-native";
@@ -152,12 +152,12 @@ export default function AdminSellers() {
     const openActionModal = async (id: number, type: 'REJECT' | 'SUSPEND' | 'REACTIVATE', isAdminStore?: boolean) => {
         const isSuspend = type === 'SUSPEND';
         const isReactivate = type === 'REACTIVATE';
-        
+
         let title = 'Reject Application';
         let message = 'This will permanently reject their application. They will need to reapply.';
         let confirmText = 'Reject Application';
         let reasonPlaceholder = 'e.g. Incomplete portfolio...';
-        
+
         if (isAdminStore && isSuspend) {
             title = 'Hide Seller';
             message = 'This seller will be hidden from the marketplace.';
@@ -207,13 +207,13 @@ export default function AdminSellers() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'ACTIVE':    return GREEN;
-            case 'APPROVED':  return GREEN; // legacy — treat same as ACTIVE
-            case 'PENDING':   return AMBER;
+            case 'ACTIVE': return GREEN;
+            case 'APPROVED': return GREEN; // legacy — treat same as ACTIVE
+            case 'PENDING': return AMBER;
             case 'SUSPENDED': return RED;
-            case 'BANNED':    return '#991B1B';
-            case 'REJECTED':  return SUB;
-            default:          return SUB;
+            case 'BANNED': return '#991B1B';
+            case 'REJECTED': return SUB;
+            default: return SUB;
         }
     };
 
@@ -541,187 +541,187 @@ export default function AdminSellers() {
             {reviewModalVisible && selectedSeller && (
                 <ModalPortal>
                     <View style={s.modalOverlay}>
-                    <View style={[s.modalContent, { maxWidth: 680, maxHeight: '90%', width: '95%', padding: 0, overflow: 'hidden' }]}>
-                        {/* Header */}
-                        <View style={{ backgroundColor: P, padding: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <View>
-                                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFF', fontFamily: 'Quicksand' }}>Application Review</Text>
-                                    <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontFamily: 'Quicksand', marginTop: 2 }}>{selectedSeller.name}</Text>
-                                </View>
-                                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
-                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: 'Quicksand' }}>PENDING</Text>
+                        <View style={[s.modalContent, { maxWidth: 680, maxHeight: '90%', width: '95%', padding: 0, overflow: 'hidden' }]}>
+                            {/* Header */}
+                            <View style={{ backgroundColor: P, padding: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <View>
+                                        <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFF', fontFamily: 'Quicksand' }}>Application Review</Text>
+                                        <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontFamily: 'Quicksand', marginTop: 2 }}>{selectedSeller.name}</Text>
+                                    </View>
+                                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 }}>
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: 'Quicksand' }}>PENDING</Text>
+                                    </View>
                                 </View>
                             </View>
-                        </View>
 
-                        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 16 }}>
+                            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 16 }}>
 
-                            {/* Section: Identity */}
-                            <Text style={s.sectionHeader}>🪪 Identity Verification</Text>
-                            <View style={s.detailCard}>
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>ID Type</Text>
-                                    <Text style={s.detailValue}>{selectedSeller.idType || '—'}</Text>
+                                {/* Section: Identity */}
+                                <Text style={s.sectionHeader}>🪪 Identity Verification</Text>
+                                <View style={s.detailCard}>
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>ID Type</Text>
+                                        <Text style={s.detailValue}>{selectedSeller.idType || '—'}</Text>
+                                    </View>
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>ID Number</Text>
+                                        <Text style={[s.detailValue, { fontFamily: 'monospace' as any }]}>{selectedSeller.idNumber || '—'}</Text>
+                                    </View>
+                                    {selectedSeller.idPhotos && selectedSeller.idPhotos.length > 0 && (
+                                        <>
+                                            <View style={s.detailDivider} />
+                                            <Text style={[s.detailLabel, { marginBottom: 8 }]}>ID Photos</Text>
+                                            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                                                {selectedSeller.idPhotos.map((url, idx) => (
+                                                    <TouchableOpacity key={idx} onPress={() => { if (Platform.OS === 'web') window.open(url, '_blank'); }}>
+                                                        <img src={url} style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid #F0F0F5', cursor: 'pointer' } as any} />
+                                                        <Text style={{ fontSize: 11, color: SUB, fontFamily: 'Quicksand', marginTop: 4, textAlign: 'center' }}>{idx === 0 ? 'Front' : 'Back'}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </>
+                                    )}
                                 </View>
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>ID Number</Text>
-                                    <Text style={[s.detailValue, { fontFamily: 'monospace' as any }]}>{selectedSeller.idNumber || '—'}</Text>
-                                </View>
-                                {selectedSeller.idPhotos && selectedSeller.idPhotos.length > 0 && (
-                                    <>
+
+                                {/* Section: Business */}
+                                <Text style={s.sectionHeader}>🛍️ Business Details</Text>
+                                <View style={s.detailCard}>
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Shop Name</Text>
+                                        <Text style={s.detailValue}>{selectedSeller.name}</Text>
+                                    </View>
+                                    {selectedSeller.description ? (<>
                                         <View style={s.detailDivider} />
-                                        <Text style={[s.detailLabel, { marginBottom: 8 }]}>ID Photos</Text>
-                                        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                                            {selectedSeller.idPhotos.map((url, idx) => (
+                                        <View style={s.detailRow}>
+                                            <Text style={s.detailLabel}>Description</Text>
+                                            <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.description}</Text>
+                                        </View>
+                                    </>) : null}
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Business Type</Text>
+                                        <Text style={s.detailValue}>{selectedSeller.businessType || '—'}</Text>
+                                    </View>
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Categories</Text>
+                                        <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>
+                                            {Array.isArray(selectedSeller.productCategories)
+                                                ? selectedSeller.productCategories.join(', ')
+                                                : selectedSeller.productCategories || '—'}
+                                        </Text>
+                                    </View>
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Handmade</Text>
+                                        <View style={{ backgroundColor: selectedSeller.isHandmade ? '#D1FAE5' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: selectedSeller.isHandmade ? GREEN : RED, fontFamily: 'Quicksand' }}>{selectedSeller.isHandmade ? 'Yes' : 'No'}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Prior Experience</Text>
+                                        <View style={{ backgroundColor: selectedSeller.hasPriorExperience ? '#D1FAE5' : BG, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: '700', color: selectedSeller.hasPriorExperience ? GREEN : SUB, fontFamily: 'Quicksand' }}>{selectedSeller.hasPriorExperience ? 'Yes' : 'No'}</Text>
+                                        </View>
+                                    </View>
+                                    {selectedSeller.salesChannels && selectedSeller.salesChannels.length > 0 && (<>
+                                        <View style={s.detailDivider} />
+                                        <View style={s.detailRow}>
+                                            <Text style={s.detailLabel}>Sales Channels</Text>
+                                            <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.salesChannels.join(', ')}</Text>
+                                        </View>
+                                    </>)}
+                                    {selectedSeller.monthlyOrders && (<>
+                                        <View style={s.detailDivider} />
+                                        <View style={s.detailRow}>
+                                            <Text style={s.detailLabel}>Monthly Orders</Text>
+                                            <Text style={s.detailValue}>{selectedSeller.monthlyOrders}</Text>
+                                        </View>
+                                    </>)}
+                                </View>
+
+                                {/* Sample Items */}
+                                {selectedSeller.sampleItems && selectedSeller.sampleItems.length > 0 && (<>
+                                    <Text style={s.sectionHeader}>📸 Sample Items</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {selectedSeller.sampleItems.map((url, idx) => (
                                                 <TouchableOpacity key={idx} onPress={() => { if (Platform.OS === 'web') window.open(url, '_blank'); }}>
-                                                    <img src={url} style={{ width: 160, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid #F0F0F5', cursor: 'pointer' } as any} />
-                                                    <Text style={{ fontSize: 11, color: SUB, fontFamily: 'Quicksand', marginTop: 4, textAlign: 'center' }}>{idx === 0 ? 'Front' : 'Back'}</Text>
+                                                    <img src={url} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: '1px solid #F0F0F5', cursor: 'pointer' } as any} />
                                                 </TouchableOpacity>
                                             ))}
                                         </View>
-                                    </>
-                                )}
+                                    </ScrollView>
+                                </>)}
+
+                                {/* Section: Contact & Legal */}
+                                <Text style={s.sectionHeader}>📋 Contact & Legal</Text>
+                                <View style={s.detailCard}>
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Legal Name</Text>
+                                        <Text style={s.detailValue}>{selectedSeller.legalName || '—'}</Text>
+                                    </View>
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Email</Text>
+                                        <Text style={s.detailValue}>{selectedSeller.email}</Text>
+                                    </View>
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Phone</Text>
+                                        <Text style={s.detailValue}>{selectedSeller.phone || '—'}</Text>
+                                    </View>
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Address</Text>
+                                        <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.businessAddress || '—'}</Text>
+                                    </View>
+                                    {selectedSeller.portfolioLink && (<>
+                                        <View style={s.detailDivider} />
+                                        <View style={s.detailRow}>
+                                            <Text style={s.detailLabel}>Social Media</Text>
+                                            <Text style={[s.detailValue, { color: P, flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.portfolioLink}</Text>
+                                        </View>
+                                    </>)}
+                                    {selectedSeller.socialMediaLink && (<>
+                                        <View style={s.detailDivider} />
+                                        <View style={s.detailRow}>
+                                            <Text style={s.detailLabel}>Existing Shop</Text>
+                                            <Text style={[s.detailValue, { color: P, flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.socialMediaLink}</Text>
+                                        </View>
+                                    </>)}
+                                    <View style={s.detailDivider} />
+                                    <View style={s.detailRow}>
+                                        <Text style={s.detailLabel}>Applied</Text>
+                                        <Text style={s.detailValue}>{new Date(selectedSeller.createdAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                                    </View>
+                                </View>
+
+                            </ScrollView>
+
+                            {/* Action Buttons */}
+                            <View style={{ flexDirection: 'row', padding: 16, borderTopWidth: 1, borderTopColor: BORDER, gap: 10 }}>
+                                <TouchableOpacity style={[s.cancelBtn, { flex: 1, alignItems: 'center' }]} onPress={() => setReviewModalVisible(false)}>
+                                    <Text style={s.cancelBtnText}>Close</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[s.rejectConfirmBtn, { flex: 1, alignItems: 'center' }]}
+                                    onPress={() => { setReviewModalVisible(false); openActionModal(selectedSeller.uid, 'REJECT'); }}
+                                >
+                                    <Text style={s.rejectConfirmBtnText}>Reject</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[s.rejectConfirmBtn, { flex: 1.5, backgroundColor: GREEN, alignItems: 'center' }]}
+                                    onPress={() => { setReviewModalVisible(false); updateStatus(selectedSeller.uid, 'ACTIVE'); }}
+                                >
+                                    <Text style={s.rejectConfirmBtnText}>✓ Approve Seller</Text>
+                                </TouchableOpacity>
                             </View>
-
-                            {/* Section: Business */}
-                            <Text style={s.sectionHeader}>🛍️ Business Details</Text>
-                            <View style={s.detailCard}>
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Shop Name</Text>
-                                    <Text style={s.detailValue}>{selectedSeller.name}</Text>
-                                </View>
-                                {selectedSeller.description ? (<>
-                                    <View style={s.detailDivider} />
-                                    <View style={s.detailRow}>
-                                        <Text style={s.detailLabel}>Description</Text>
-                                        <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.description}</Text>
-                                    </View>
-                                </>) : null}
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Business Type</Text>
-                                    <Text style={s.detailValue}>{selectedSeller.businessType || '—'}</Text>
-                                </View>
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Categories</Text>
-                                    <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>
-                                        {Array.isArray(selectedSeller.productCategories)
-                                            ? selectedSeller.productCategories.join(', ')
-                                            : selectedSeller.productCategories || '—'}
-                                    </Text>
-                                </View>
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Handmade</Text>
-                                    <View style={{ backgroundColor: selectedSeller.isHandmade ? '#D1FAE5' : '#FEE2E2', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
-                                        <Text style={{ fontSize: 12, fontWeight: '700', color: selectedSeller.isHandmade ? GREEN : RED, fontFamily: 'Quicksand' }}>{selectedSeller.isHandmade ? 'Yes' : 'No'}</Text>
-                                    </View>
-                                </View>
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Prior Experience</Text>
-                                    <View style={{ backgroundColor: selectedSeller.hasPriorExperience ? '#D1FAE5' : BG, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 }}>
-                                        <Text style={{ fontSize: 12, fontWeight: '700', color: selectedSeller.hasPriorExperience ? GREEN : SUB, fontFamily: 'Quicksand' }}>{selectedSeller.hasPriorExperience ? 'Yes' : 'No'}</Text>
-                                    </View>
-                                </View>
-                                {selectedSeller.salesChannels && selectedSeller.salesChannels.length > 0 && (<>
-                                    <View style={s.detailDivider} />
-                                    <View style={s.detailRow}>
-                                        <Text style={s.detailLabel}>Sales Channels</Text>
-                                        <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.salesChannels.join(', ')}</Text>
-                                    </View>
-                                </>)}
-                                {selectedSeller.monthlyOrders && (<>
-                                    <View style={s.detailDivider} />
-                                    <View style={s.detailRow}>
-                                        <Text style={s.detailLabel}>Monthly Orders</Text>
-                                        <Text style={s.detailValue}>{selectedSeller.monthlyOrders}</Text>
-                                    </View>
-                                </>)}
-                            </View>
-
-                            {/* Sample Items */}
-                            {selectedSeller.sampleItems && selectedSeller.sampleItems.length > 0 && (<>
-                                <Text style={s.sectionHeader}>📸 Sample Items</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        {selectedSeller.sampleItems.map((url, idx) => (
-                                            <TouchableOpacity key={idx} onPress={() => { if (Platform.OS === 'web') window.open(url, '_blank'); }}>
-                                                <img src={url} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: '1px solid #F0F0F5', cursor: 'pointer' } as any} />
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </ScrollView>
-                            </>)}
-
-                            {/* Section: Contact & Legal */}
-                            <Text style={s.sectionHeader}>📋 Contact & Legal</Text>
-                            <View style={s.detailCard}>
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Legal Name</Text>
-                                    <Text style={s.detailValue}>{selectedSeller.legalName || '—'}</Text>
-                                </View>
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Email</Text>
-                                    <Text style={s.detailValue}>{selectedSeller.email}</Text>
-                                </View>
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Phone</Text>
-                                    <Text style={s.detailValue}>{selectedSeller.phone || '—'}</Text>
-                                </View>
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Address</Text>
-                                    <Text style={[s.detailValue, { flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.businessAddress || '—'}</Text>
-                                </View>
-                                {selectedSeller.portfolioLink && (<>
-                                    <View style={s.detailDivider} />
-                                    <View style={s.detailRow}>
-                                        <Text style={s.detailLabel}>Social Media</Text>
-                                        <Text style={[s.detailValue, { color: P, flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.portfolioLink}</Text>
-                                    </View>
-                                </>)}
-                                {selectedSeller.socialMediaLink && (<>
-                                    <View style={s.detailDivider} />
-                                    <View style={s.detailRow}>
-                                        <Text style={s.detailLabel}>Existing Shop</Text>
-                                        <Text style={[s.detailValue, { color: P, flexShrink: 1, textAlign: 'right' }]}>{selectedSeller.socialMediaLink}</Text>
-                                    </View>
-                                </>)}
-                                <View style={s.detailDivider} />
-                                <View style={s.detailRow}>
-                                    <Text style={s.detailLabel}>Applied</Text>
-                                    <Text style={s.detailValue}>{new Date(selectedSeller.createdAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</Text>
-                                </View>
-                            </View>
-
-                        </ScrollView>
-
-                        {/* Action Buttons */}
-                        <View style={{ flexDirection: 'row', padding: 16, borderTopWidth: 1, borderTopColor: BORDER, gap: 10 }}>
-                            <TouchableOpacity style={[s.cancelBtn, { flex: 1, alignItems: 'center' }]} onPress={() => setReviewModalVisible(false)}>
-                                <Text style={s.cancelBtnText}>Close</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[s.rejectConfirmBtn, { flex: 1, alignItems: 'center' }]}
-                                onPress={() => { setReviewModalVisible(false); openActionModal(selectedSeller.uid, 'REJECT'); }}
-                            >
-                                <Text style={s.rejectConfirmBtnText}>Reject</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[s.rejectConfirmBtn, { flex: 1.5, backgroundColor: GREEN, alignItems: 'center' }]}
-                                onPress={() => { setReviewModalVisible(false); updateStatus(selectedSeller.uid, 'ACTIVE'); }}
-                            >
-                                <Text style={s.rejectConfirmBtnText}>✓ Approve Seller</Text>
-                            </TouchableOpacity>
                         </View>
                     </View>
-                </View>
                 </ModalPortal>
             )}
         </View>
@@ -835,7 +835,7 @@ const s = StyleSheet.create({
     cancelBtnText: { color: SUB, fontWeight: '600', fontFamily: 'Quicksand', fontSize: 14 },
     rejectConfirmBtn: { backgroundColor: RED, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
     rejectConfirmBtnText: { color: 'white', fontWeight: '700', fontFamily: 'Quicksand', fontSize: 14 },
-    
+
     // Review Details (old small style - kept for any other use)
     reviewDetails: { backgroundColor: BG, borderRadius: 12, padding: 16, marginBottom: 24 },
     reviewField: { marginBottom: 12 },

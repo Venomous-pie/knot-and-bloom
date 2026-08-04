@@ -1,4 +1,4 @@
-import { cartAPI } from '@/api/api';
+import { cartAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import type { CartItem } from '@/types/cart';

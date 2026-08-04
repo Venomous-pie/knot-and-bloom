@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Save } from 'lucide-react-native';
 import SettingsSidebar from '@/components/seller/SettingsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { sellerAPI, apiClient } from '@/api/api';
+import { sellerAPI, apiClient } from '@/services/api';
 import { toastEvents } from '@/utils/toastEvents';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ImageUploader from '@/components/seller/ImageUploader';

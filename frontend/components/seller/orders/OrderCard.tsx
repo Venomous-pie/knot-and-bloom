@@ -3,7 +3,7 @@ import { Image, StyleSheet, Text, TouchableOpacity, View, ScrollView, ActivityIn
 import { Clock, AlertTriangle, Lock, Package, CheckSquare, Square, X, MapPin, CreditCard, Mail, FileText, UploadCloud } from 'lucide-react-native';
 import type { Order } from '@/types/order';
 import ImageUploader from '../ImageUploader';
-import { orderAPI } from '@/api/api';
+import { orderAPI } from '@/services/api';
 
 const P = '#B36979', P_LIGHT = '#FDEEF1', BG = '#F4F4F8', CARD = '#FFFFFF';
 const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5', GREEN = '#10B981', RED = '#EF4444', AMBER = '#F59E0B';

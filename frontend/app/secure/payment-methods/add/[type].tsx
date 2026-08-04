@@ -1,4 +1,4 @@
-import { paymentMethodAPI, PaymentMethodInput, PaymentMethodType } from '@/api/api';
+import { paymentMethodAPI, PaymentMethodInput, PaymentMethodType } from '@/services/api';
 import { theme } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ShieldCheck, Lock } from 'lucide-react-native';

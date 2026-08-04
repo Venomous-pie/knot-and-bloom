@@ -1,4 +1,4 @@
-import { notificationAPI } from '@/api/api';
+import { notificationAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Stack, useRouter } from 'expo-router';
 import { Bell, Box, Info, ShoppingBag, ChevronLeft } from 'lucide-react-native';

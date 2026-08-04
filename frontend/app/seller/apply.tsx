@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { sellerAPI } from "@/api/api";
+import { sellerAPI } from "@/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDraft } from "@/hooks/useDraft";
 import { Link, RelativePathString, useRouter } from "expo-router";
@@ -51,34 +51,34 @@ export default function SellerApplyPage() {
     const [phoneNumber, setPhoneNumber] = useState("");
     const [email, setEmail] = useState(""); // Add email state
     const [socialLink, setSocialLink] = useState("");
-    const [sampleItems, setSampleItems] = useState<{uri: string, isUrl?: boolean}[]>([]);
+    const [sampleItems, setSampleItems] = useState<{ uri: string, isUrl?: boolean }[]>([]);
     const [salesChannels, setSalesChannels] = useState<string[]>([]);
     const [monthlyOrders, setMonthlyOrders] = useState("");
     const [isMonthlyOrdersOpen, setIsMonthlyOrdersOpen] = useState(false);
-    
+
     // KYC Fields
     const [legalName, setLegalName] = useState("");
     const [businessAddress, setBusinessAddress] = useState("");
     const [portfolioLink, setPortfolioLink] = useState("");
     const [idType, setIdType] = useState("");
     const [idNumber, setIdNumber] = useState("");
-    const [idPhotos, setIdPhotos] = useState<{uri: string, isUrl?: boolean}[]>([]);
+    const [idPhotos, setIdPhotos] = useState<{ uri: string, isUrl?: boolean }[]>([]);
     const [isIdTypeOpen, setIsIdTypeOpen] = useState(false);
 
     // ID format rules per type
     const ID_FORMATS: Record<string, { placeholder: string; maxLength: number; hint: string; regex: RegExp; keyboardType: any; autoCapitalize: any }> = {
-        "National ID":       { placeholder: "1234-5678-9101-5678", maxLength: 19, hint: "16 digits (XXXX-XXXX-XXXX-XXXX)", regex: /^\d{4}-\d{4}-\d{4}-\d{4}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "Driver's License":  { placeholder: "A01-23-456789", maxLength: 13, hint: "Format: X##-##-######", regex: /^[A-Z]\d{2}-\d{2}-\d{6}$/, keyboardType: 'default', autoCapitalize: 'characters' },
-        "Passport":          { placeholder: "P1234567A", maxLength: 9, hint: "9 characters (letter + 7 digits + letter)", regex: /^[A-Z]\d{7}[A-Z]$/, keyboardType: 'default', autoCapitalize: 'characters' },
-        "Postal ID":         { placeholder: "123456789012", maxLength: 12, hint: "12 digits", regex: /^\d{12}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "SSS":               { placeholder: "12-3456789-0", maxLength: 13, hint: "Format: ##-#######-#", regex: /^\d{2}-\d{7}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "PhilHealth":        { placeholder: "12-345678901-2", maxLength: 14, hint: "Format: ##-#########-#", regex: /^\d{2}-\d{9}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "TIN":               { placeholder: "123-456-789-000", maxLength: 15, hint: "Format: ###-###-###-###", regex: /^\d{3}-\d{3}-\d{3}-\d{3}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "GSIS":              { placeholder: "12345678901", maxLength: 11, hint: "11 digits", regex: /^\d{11}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "Voter's ID":        { placeholder: "1234567890123", maxLength: 17, hint: "Voter ID number as printed on card", regex: /^[A-Z0-9-]{6,17}$/, keyboardType: 'default', autoCapitalize: 'characters' },
-        "PRC ID":            { placeholder: "1234567", maxLength: 7, hint: "7 digits", regex: /^\d{7}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "School ID":         { placeholder: "Your school ID number", maxLength: 20, hint: "As printed on your school ID", regex: /^[A-Z0-9-]{4,20}$/i, keyboardType: 'default', autoCapitalize: 'characters' },
-        "Other":             { placeholder: "Your ID number", maxLength: 30, hint: "Enter your ID number as printed", regex: /^.{4,30}$/, keyboardType: 'default', autoCapitalize: 'none' },
+        "National ID": { placeholder: "1234-5678-9101-5678", maxLength: 19, hint: "16 digits (XXXX-XXXX-XXXX-XXXX)", regex: /^\d{4}-\d{4}-\d{4}-\d{4}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "Driver's License": { placeholder: "A01-23-456789", maxLength: 13, hint: "Format: X##-##-######", regex: /^[A-Z]\d{2}-\d{2}-\d{6}$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Passport": { placeholder: "P1234567A", maxLength: 9, hint: "9 characters (letter + 7 digits + letter)", regex: /^[A-Z]\d{7}[A-Z]$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Postal ID": { placeholder: "123456789012", maxLength: 12, hint: "12 digits", regex: /^\d{12}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "SSS": { placeholder: "12-3456789-0", maxLength: 13, hint: "Format: ##-#######-#", regex: /^\d{2}-\d{7}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "PhilHealth": { placeholder: "12-345678901-2", maxLength: 14, hint: "Format: ##-#########-#", regex: /^\d{2}-\d{9}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "TIN": { placeholder: "123-456-789-000", maxLength: 15, hint: "Format: ###-###-###-###", regex: /^\d{3}-\d{3}-\d{3}-\d{3}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "GSIS": { placeholder: "12345678901", maxLength: 11, hint: "11 digits", regex: /^\d{11}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "Voter's ID": { placeholder: "1234567890123", maxLength: 17, hint: "Voter ID number as printed on card", regex: /^[A-Z0-9-]{6,17}$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "PRC ID": { placeholder: "1234567", maxLength: 7, hint: "7 digits", regex: /^\d{7}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "School ID": { placeholder: "Your school ID number", maxLength: 20, hint: "As printed on your school ID", regex: /^[A-Z0-9-]{4,20}$/i, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Other": { placeholder: "Your ID number", maxLength: 30, hint: "Enter your ID number as printed", regex: /^.{4,30}$/, keyboardType: 'default', autoCapitalize: 'none' },
     };
 
     const currentIdFormat = idType ? ID_FORMATS[idType] : null;
@@ -91,14 +91,14 @@ export default function SellerApplyPage() {
         if (!input.trim()) return;
         const parts = input.split(',').map(p => p.trim()).filter(Boolean);
         const ALL_CATEGORIES = Object.values(categoryTitles);
-        
+
         setProductCategories(prev => {
             const combined = [...prev];
             parts.forEach(part => {
                 const cased = part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
                 const exactMatch = ALL_CATEGORIES.find(c => c.toLowerCase() === cased.toLowerCase());
                 const finalCat = exactMatch || cased;
-                
+
                 if (!combined.some(c => c.toLowerCase() === finalCat.toLowerCase())) {
                     combined.push(finalCat);
                 }
@@ -174,11 +174,11 @@ export default function SellerApplyPage() {
         else if (trimmedName.length > 50) newErrors.shopName = "Shop name must be 50 characters or less";
 
         if (description.length > 500) newErrors.description = "Description must be 500 characters or less";
-        
+
         if (productCategories.length === 0) newErrors.productCategories = "At least one category is required";
-        
+
         if (sampleItems.length === 0) newErrors.sampleItems = "At least one sample item photo is required";
-        
+
         if (!isHandmade) newErrors.isHandmade = "You must confirm that your items are handmade";
 
         setErrors(newErrors);
@@ -187,7 +187,7 @@ export default function SellerApplyPage() {
 
     const validateStep2 = () => {
         const newErrors: Record<string, string> = {};
-        
+
         const trimmedPhone = phoneNumber.trim();
         if (!trimmedPhone) {
             newErrors.phoneNumber = "Phone number is required";
@@ -249,8 +249,8 @@ export default function SellerApplyPage() {
     };
 
     const isStep1Valid = shopName.trim().length >= 3 && shopName.trim().length <= 50 && description.length <= 500 && productCategories.length > 0 && sampleItems.length > 0 && isHandmade;
-    
-    const isStep2Valid = 
+
+    const isStep2Valid =
         legalName.trim().length >= 2 &&
         businessAddress.trim().length >= 5 &&
         portfolioLink.trim().length >= 3 &&
@@ -262,7 +262,7 @@ export default function SellerApplyPage() {
 
     const handleNext = () => {
         if (isNextDisabled) return;
-        
+
         let isValid = false;
         if (currentStep === 1) isValid = validateStep1();
         if (currentStep === 2) isValid = validateStep2();
@@ -364,13 +364,13 @@ export default function SellerApplyPage() {
 
             <View style={[styles.formGroup, { zIndex: 11 }]}>
                 <Text style={styles.label}>Product Categories *</Text>
-                
+
                 {productCategories.length > 0 && (
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
                         {productCategories.map(cat => (
-                            <TouchableOpacity 
-                                key={cat} 
-                                style={styles.selectedPill} 
+                            <TouchableOpacity
+                                key={cat}
+                                style={styles.selectedPill}
                                 onPress={() => setProductCategories(prev => prev.filter(c => c !== cat))}
                             >
                                 <Text style={styles.selectedPillText}>{cat} ✕</Text>
@@ -410,32 +410,32 @@ export default function SellerApplyPage() {
                             handleAddCategoryInput(categorySearch);
                         }}
                     />
-                    <Ionicons 
-                        name={isCategoryDropdownOpen ? "chevron-up" : "chevron-down"} 
-                        size={20} 
-                        color={theme.colors.textLight} 
-                        style={{ position: 'absolute', right: 14, top: 14 }} 
+                    <Ionicons
+                        name={isCategoryDropdownOpen ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={theme.colors.textLight}
+                        style={{ position: 'absolute', right: 14, top: 14 }}
                     />
-                    
+
                     {isCategoryDropdownOpen && (
                         <View style={[styles.dropdownList, { maxHeight: 200, overflow: 'hidden', top: 50, zIndex: 100 }]}>
                             <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="always">
                                 {(() => {
                                     const ALL_CATEGORIES = Object.values(categoryTitles);
-                                    
+
                                     // 1. Filter out already selected ones so we don't show duplicates
                                     const unselectedCategories = ALL_CATEGORIES.filter(c => !productCategories.includes(c));
-                                    
+
                                     // 2. Filter based on search text
                                     const filteredCategories = unselectedCategories.filter(c => c.toLowerCase().includes(categorySearch.toLowerCase().trim()));
-                                    
+
                                     // 3. Handle custom categories (if search doesn't exactly match any existing ALL_CATEGORIES)
                                     const isCustomValid = categorySearch.trim().length > 0;
                                     const exactMatchExists = ALL_CATEGORIES.some(c => c.toLowerCase() === categorySearch.toLowerCase().trim());
                                     const showCustomAdd = isCustomValid && !exactMatchExists && !productCategories.some(c => c.toLowerCase() === categorySearch.toLowerCase().trim());
-                                    
+
                                     const options = [...filteredCategories];
-                                    
+
                                     if (options.length === 0 && !showCustomAdd) {
                                         return (
                                             <View style={styles.dropdownItem}>
@@ -447,11 +447,11 @@ export default function SellerApplyPage() {
                                     return (
                                         <>
                                             {showCustomAdd && (
-                                                <TouchableOpacity 
+                                                <TouchableOpacity
                                                     style={[
-                                                        styles.dropdownItem, 
+                                                        styles.dropdownItem,
                                                         { borderBottomWidth: options.length > 0 ? 1 : 0, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.surface }
-                                                    ]} 
+                                                    ]}
                                                     onPress={() => handleAddCategoryInput(categorySearch)}
                                                     {...(Platform.OS === 'web' ? { onMouseDown: (e: any) => e.preventDefault() } : {})}
                                                 >
@@ -461,12 +461,12 @@ export default function SellerApplyPage() {
                                                 </TouchableOpacity>
                                             )}
                                             {options.map((opt, idx) => (
-                                                <TouchableOpacity 
-                                                    key={opt} 
+                                                <TouchableOpacity
+                                                    key={opt}
                                                     style={[
-                                                        styles.dropdownItem, 
+                                                        styles.dropdownItem,
                                                         idx !== options.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }
-                                                    ]} 
+                                                    ]}
                                                     onPress={() => handleAddCategoryInput(opt)}
                                                     {...(Platform.OS === 'web' ? { onMouseDown: (e: any) => e.preventDefault() } : {})}
                                                 >
@@ -486,7 +486,7 @@ export default function SellerApplyPage() {
             <View style={styles.formGroup}>
                 <Text style={styles.label}>Photo of 1-3 handmade items *</Text>
                 <Text style={styles.sublabel}>Show us a few examples of your work.</Text>
-                <ImageUploader 
+                <ImageUploader
                     images={sampleItems}
                     onImagesChange={setSampleItems}
                     maxImages={3}
@@ -528,28 +528,28 @@ export default function SellerApplyPage() {
 
             <View style={[styles.formGroup, { zIndex: 10 }]}>
                 <Text style={styles.label}>Business Type</Text>
-                <TouchableOpacity 
-                    style={styles.input} 
+                <TouchableOpacity
+                    style={styles.input}
                     onPress={() => setIsBusinessTypeOpen(!isBusinessTypeOpen)}
                     activeOpacity={0.8}
                 >
                     <Text style={{ color: theme.colors.text }}>{businessType}</Text>
-                    <Ionicons 
-                        name={isBusinessTypeOpen ? "chevron-up" : "chevron-down"} 
-                        size={20} 
-                        color={theme.colors.textLight} 
-                        style={{ position: 'absolute', right: 14, top: 14 }} 
+                    <Ionicons
+                        name={isBusinessTypeOpen ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={theme.colors.textLight}
+                        style={{ position: 'absolute', right: 14, top: 14 }}
                     />
                 </TouchableOpacity>
                 {isBusinessTypeOpen && (
                     <View style={[styles.dropdownList, { top: 'auto', bottom: 55, zIndex: 999 }]}>
                         {["Individual", "Registered Business"].map((opt, idx) => (
-                            <TouchableOpacity 
-                                key={opt} 
+                            <TouchableOpacity
+                                key={opt}
                                 style={[
-                                    styles.dropdownItem, 
+                                    styles.dropdownItem,
                                     idx === 0 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }
-                                ]} 
+                                ]}
                                 onPress={() => { setBusinessType(opt); setIsBusinessTypeOpen(false); }}
                             >
                                 <Text style={{ color: theme.colors.text }}>{opt}</Text>
@@ -579,16 +579,16 @@ export default function SellerApplyPage() {
                             ].map(channel => {
                                 const isSelected = salesChannels.includes(channel);
                                 return (
-                                    <TouchableOpacity 
-                                        key={channel} 
-                                        style={{ 
-                                            paddingHorizontal: 12, 
-                                            paddingVertical: 8, 
-                                            borderRadius: 20, 
-                                            backgroundColor: isSelected ? theme.colors.primary : theme.colors.subtle, 
-                                            borderWidth: 1, 
-                                            borderColor: isSelected ? theme.colors.primaryDark : theme.colors.border 
-                                        }} 
+                                    <TouchableOpacity
+                                        key={channel}
+                                        style={{
+                                            paddingHorizontal: 12,
+                                            paddingVertical: 8,
+                                            borderRadius: 20,
+                                            backgroundColor: isSelected ? theme.colors.primary : theme.colors.subtle,
+                                            borderWidth: 1,
+                                            borderColor: isSelected ? theme.colors.primaryDark : theme.colors.border
+                                        }}
                                         onPress={() => {
                                             if (isSelected) {
                                                 setSalesChannels(prev => prev.filter(c => c !== channel));
@@ -608,30 +608,30 @@ export default function SellerApplyPage() {
 
                     <View style={[styles.formGroup, { zIndex: 10, marginBottom: 0 }]}>
                         <Text style={styles.label}>Approximate monthly orders</Text>
-                        <TouchableOpacity 
-                            style={styles.input} 
+                        <TouchableOpacity
+                            style={styles.input}
                             onPress={() => setIsMonthlyOrdersOpen(!isMonthlyOrdersOpen)}
                             activeOpacity={0.8}
                         >
                             <Text style={{ color: monthlyOrders ? theme.colors.text : theme.colors.textLight }}>
                                 {monthlyOrders || "Select Range"}
                             </Text>
-                            <Ionicons 
-                                name={isMonthlyOrdersOpen ? "chevron-up" : "chevron-down"} 
-                                size={20} 
-                                color={theme.colors.textLight} 
-                                style={{ position: 'absolute', right: 14, top: 14 }} 
+                            <Ionicons
+                                name={isMonthlyOrdersOpen ? "chevron-up" : "chevron-down"}
+                                size={20}
+                                color={theme.colors.textLight}
+                                style={{ position: 'absolute', right: 14, top: 14 }}
                             />
                         </TouchableOpacity>
                         {isMonthlyOrdersOpen && (
                             <View style={[styles.dropdownList, { top: 'auto', bottom: 55, zIndex: 999 }]}>
                                 {["1-5", "6-20", "21-50", "50+"].map((opt, idx) => (
-                                    <TouchableOpacity 
-                                        key={opt} 
+                                    <TouchableOpacity
+                                        key={opt}
                                         style={[
-                                            styles.dropdownItem, 
+                                            styles.dropdownItem,
                                             idx !== 3 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }
-                                        ]} 
+                                        ]}
                                         onPress={() => { setMonthlyOrders(opt); setIsMonthlyOrdersOpen(false); }}
                                     >
                                         <Text style={{ color: theme.colors.text }}>{opt}</Text>
@@ -763,27 +763,27 @@ export default function SellerApplyPage() {
             <View style={styles.divider} />
             <View style={[styles.formGroup, { zIndex: 9, marginTop: 16 }]}>
                 <Text style={styles.label}>ID Type *</Text>
-                <TouchableOpacity 
-                    style={[styles.input, errors.idType && styles.inputError]} 
+                <TouchableOpacity
+                    style={[styles.input, errors.idType && styles.inputError]}
                     onPress={() => setIsIdTypeOpen(!isIdTypeOpen)}
                     activeOpacity={0.8}
                 >
                     <Text style={{ color: idType ? theme.colors.text : theme.colors.textLight }}>
                         {idType || "Select ID Type"}
                     </Text>
-                    <Ionicons 
-                        name={isIdTypeOpen ? "chevron-up" : "chevron-down"} 
-                        size={20} 
-                        color={theme.colors.textLight} 
-                        style={{ position: 'absolute', right: 14, top: 14 }} 
+                    <Ionicons
+                        name={isIdTypeOpen ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color={theme.colors.textLight}
+                        style={{ position: 'absolute', right: 14, top: 14 }}
                     />
                 </TouchableOpacity>
                 {isIdTypeOpen && (
                     <View style={styles.dropdownItemIdType}>
                         {["National ID", "Driver's License", "Passport", "Postal ID", "SSS", "PhilHealth", "TIN", "GSIS", "Voter's ID", "PRC ID", "School ID", "Other"].map((opt) => (
-                            <TouchableOpacity 
-                                key={opt} 
-                                style={[styles.dropdownItem, { borderBottomWidth: 1, borderBottomColor: theme.colors.border} ]} 
+                            <TouchableOpacity
+                                key={opt}
+                                style={[styles.dropdownItem, { borderBottomWidth: 1, borderBottomColor: theme.colors.border }]}
                                 onPress={() => handleSetIdType(opt)}
                             >
                                 <Text style={{ color: theme.colors.text }}>{opt}</Text>
@@ -797,7 +797,7 @@ export default function SellerApplyPage() {
             <View style={[styles.formGroup, { zIndex: 1 }]}>
                 <Text style={styles.label}>ID Photos (Front & Back) *</Text>
                 <Text style={styles.sublabel}>Please upload clear photos of your ID for automated verification.</Text>
-                <ImageUploader 
+                <ImageUploader
                     images={idPhotos}
                     onImagesChange={setIdPhotos}
                     maxImages={2}
@@ -805,7 +805,7 @@ export default function SellerApplyPage() {
                     hidePrimaryBadge
                 />
                 {errors.idPhotos && <Text style={styles.fieldError}>{errors.idPhotos}</Text>}
-                
+
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 }}>
                     <Text style={[styles.label, { marginTop: 0, marginBottom: 0 }]}>ID Number *</Text>
                 </View>
@@ -833,7 +833,7 @@ export default function SellerApplyPage() {
                 />
                 {errors.idNumber && <Text style={styles.fieldError}>{errors.idNumber}</Text>}
             </View>
-            
+
         </Animated.View>
     );
 
@@ -944,34 +944,34 @@ export default function SellerApplyPage() {
                     <View style={{ paddingTop: 20, paddingBottom: 10, backgroundColor: theme.colors.surface, zIndex: 100, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
                         <View style={[styles.stepIndicatorContainer, { marginBottom: 0, maxWidth: 600, alignSelf: 'center', paddingHorizontal: 24 }]}>
                             {[{ num: 1, label: 'Shop Info' }, { num: 2, label: 'Identity' }, { num: 3, label: 'Review' }].map(({ num: step, label }) => (
-                            <React.Fragment key={step}>
-                                <View style={{ alignItems: 'center' }}>
-                                    <View style={[
-                                        styles.stepCircle,
-                                        currentStep >= step && styles.stepCircleActive
-                                    ]}>
-                                        {currentStep > step ? (
-                                            <Ionicons name="checkmark" size={16} color="white" />
-                                        ) : (
-                                            <Text style={[styles.stepNumber, currentStep >= step && styles.stepNumberActive]}>
-                                                {step}
-                                            </Text>
-                                        )}
+                                <React.Fragment key={step}>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <View style={[
+                                            styles.stepCircle,
+                                            currentStep >= step && styles.stepCircleActive
+                                        ]}>
+                                            {currentStep > step ? (
+                                                <Ionicons name="checkmark" size={16} color="white" />
+                                            ) : (
+                                                <Text style={[styles.stepNumber, currentStep >= step && styles.stepNumberActive]}>
+                                                    {step}
+                                                </Text>
+                                            )}
+                                        </View>
+                                        <Text style={{ fontSize: 10, color: currentStep >= step ? theme.colors.primary : theme.colors.textLight, marginTop: 4, fontWeight: currentStep >= step ? '600' : '400' }}>
+                                            {label}
+                                        </Text>
                                     </View>
-                                    <Text style={{ fontSize: 10, color: currentStep >= step ? theme.colors.primary : theme.colors.textLight, marginTop: 4, fontWeight: currentStep >= step ? '600' : '400' }}>
-                                        {label}
-                                    </Text>
-                                </View>
-                                {step < 3 && (
-                                    <View style={[
-                                        styles.stepLine,
-                                        currentStep > step && styles.stepLineActive,
-                                        { marginBottom: 16 }
-                                    ]} />
-                                )}
-                            </React.Fragment>
-                        ))}
-                    </View>
+                                    {step < 3 && (
+                                        <View style={[
+                                            styles.stepLine,
+                                            currentStep > step && styles.stepLineActive,
+                                            { marginBottom: 16 }
+                                        ]} />
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </View>
                     </View>
                 )}
                 <ScrollView ref={scrollViewRef} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
@@ -1032,7 +1032,7 @@ export default function SellerApplyPage() {
                                             {currentStep < totalSteps ? (
                                                 <TouchableOpacity
                                                     style={[
-                                                        styles.nextButton, 
+                                                        styles.nextButton,
                                                         currentStep === 1 && styles.fullWidthButton,
                                                         isNextDisabled && styles.nextButtonDisabled
                                                     ]}

@@ -23,7 +23,7 @@ import {
     Switch,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import api from '@/api/api';
+import api from '@/services/api';
 import { useDraft } from '@/hooks/useDraft';
 import ImageUploader from './ImageUploader';
 import ProductPreview from './ProductPreview';

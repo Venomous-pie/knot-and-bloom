@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Save, Info, ChevronLeft, Lock, Landmark } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { paymentMethodAPI, PaymentMethodInput } from '@/api/api';
+import { paymentMethodAPI, PaymentMethodInput } from '@/services/api';
 import { toastEvents } from '@/utils/toastEvents';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 

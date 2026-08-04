@@ -1,4 +1,4 @@
-import { productAPI, notificationAPI, Notification } from "@/api/api";
+import { productAPI, notificationAPI, Notification } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDialog } from "@/contexts/DialogContext";
 import { useSocketContext } from "@/contexts/SocketContext";

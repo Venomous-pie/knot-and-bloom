@@ -5,7 +5,7 @@ import * as Linking from 'expo-linking';
 import { Svg, Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
-import { apiClient } from '@/api/api';
+import { apiClient } from '@/services/api';
 
 WebBrowser.maybeCompleteAuthSession();
 

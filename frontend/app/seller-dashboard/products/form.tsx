@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View, Animated } from 'react-native';
-import { sellerProductsAPI, productAPI } from '../../../api/api';
+import { sellerProductsAPI, productAPI } from '../../../services/api';
 import ProductFormWizard, { ProductFormData, ProductOption } from '../../../components/seller/ProductFormWizard';
 import { VariantData } from '../../../components/seller/VariantEditor';
 import InfoBox from '../../../components/ui/InfoBox';

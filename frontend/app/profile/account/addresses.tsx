@@ -1,4 +1,4 @@
-import { addressAPI, Address, AddressInput } from '@/api/api';
+import { addressAPI, Address, AddressInput } from '@/services/api';
 import { AddressCard } from '@/components/checkout/AddressCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, useRouter } from 'expo-router';

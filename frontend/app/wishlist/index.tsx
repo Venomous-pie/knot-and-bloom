@@ -1,4 +1,4 @@
-import { wishlistAPI } from '@/api/api';
+import { wishlistAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWishlist } from '@/contexts/WishlistContext';
 import ProductCard from '@/components/product/ProductCard';

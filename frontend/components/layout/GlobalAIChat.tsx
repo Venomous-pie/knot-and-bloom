@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { Send, User, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react-native';
-import { chatAPI, productAPI } from '@/api/api';
+import { chatAPI, productAPI } from '@/services/api';
 import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';

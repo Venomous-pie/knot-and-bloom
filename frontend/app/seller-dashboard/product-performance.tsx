@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { sellerAPI, sellerProductsAPI } from '@/api/api';
+import { sellerAPI, sellerProductsAPI } from '@/services/api';
 import { Package, TrendingUp, AlertTriangle, CheckCircle, BarChart2 } from 'lucide-react-native';
 import StatCard from '../../components/ui/StatCard';
 

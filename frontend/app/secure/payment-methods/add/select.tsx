@@ -4,7 +4,7 @@ import { ChevronRight, CreditCard, Landmark, Smartphone, X } from 'lucide-react-
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PaymentMethodType } from '@/api/api';
+import { PaymentMethodType } from '@/services/api';
 
 interface PaymentOption {
     label: string;

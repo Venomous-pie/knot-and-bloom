@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, useWindowDimensions, Image } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { productAPI } from '@/api/api';
+import { productAPI } from '@/services/api';
 import { categoryTitles, CATEGORY_REGISTRY, FALLBACK_CATEGORY_CONFIG } from '@/constants/categories';
 
 const PATTERNS = [

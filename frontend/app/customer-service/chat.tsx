@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { Send, User, ArrowLeft, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { chatAPI, productAPI } from '@/api/api';
+import { chatAPI, productAPI } from '@/services/api';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';

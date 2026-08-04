@@ -1,4 +1,4 @@
-import { checkoutAPI, LockedPriceItem } from '@/api/api';
+import { checkoutAPI, LockedPriceItem } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 

@@ -1,4 +1,4 @@
-import api, { authAPI, LoginPayload, RegisterPayload } from '@/api/api';
+import api, { authAPI, LoginPayload, RegisterPayload } from '@/services/api';
 import { authEvents } from '@/utils/authEvents';
 import type { AuthContextType, User } from '@/types/user';
 import { RelativePathString, useRouter, useSegments } from 'expo-router';

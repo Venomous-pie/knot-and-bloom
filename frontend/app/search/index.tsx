@@ -4,7 +4,7 @@ import { router, Stack } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { Search, ChevronLeft, History, X } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { productAPI } from '@/api/api';
+import { productAPI } from '@/services/api';
 import { Product } from '@/types/products';
 import SearchBarDropdown from '@/components/ui/SearchResults';
 

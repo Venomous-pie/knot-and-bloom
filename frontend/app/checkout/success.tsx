@@ -5,7 +5,7 @@ import { Check, ShoppingBag } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isMobile } from '@/constants/layout';
 import { useEffect, useState } from 'react';
-import { productAPI } from '@/api/api';
+import { productAPI } from '@/services/api';
 import { Product } from '@/types/products';
 import { useCart } from '@/contexts/CartContext';
 

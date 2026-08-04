@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, useWindowDimensions, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
-import { LockedPriceItem } from '@/api/api'; // Or import from Context if needed
+import { LockedPriceItem } from '@/services/api'; // Or import from Context if needed
 
 interface CartItem extends Omit<LockedPriceItem, 'image'> {
     image?: string | null;

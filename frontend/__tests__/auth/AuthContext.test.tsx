@@ -51,7 +51,7 @@ jest.mock('../../utils/authEvents', () => {
 
 // Import AuthProvider AFTER mocks are set up
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
-import { authAPI } from '../../api/api';
+import { authAPI } from '../../services/api';
 
 // ── Test Consumer ────────────────────────────────────────
 

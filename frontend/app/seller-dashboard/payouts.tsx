@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { CreditCard, Plus, Star, Building, CheckCircle, Trash2, Save, Landmark } from 'lucide-react-native';
 import SettingsSidebar from '@/components/seller/SettingsSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { paymentMethodAPI, PaymentMethod, PaymentMethodInput } from '@/api/api';
+import { paymentMethodAPI, PaymentMethod, PaymentMethodInput } from '@/services/api';
 import { toastEvents } from '@/utils/toastEvents';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 

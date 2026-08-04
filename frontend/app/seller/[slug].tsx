@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/seller/ImageCropperModal';
-import { apiClient, sellerOrdersAPI, reviewsAPI } from "@/api/api";
+import { apiClient, sellerOrdersAPI, reviewsAPI } from "@/services/api";
 import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, withSpring, interpolate, Extrapolation, ZoomIn } from "react-native-reanimated";
 import GlobalHeaderUI from "@/components/layout/GlobalHeaderUI";
 import {
@@ -337,14 +337,14 @@ export default function SellerProfile() {
                         </View>
 
                         <View style={styles.actionButtonsRow}>
-                            <Pressable 
+                            <Pressable
                                 style={styles.actionButtonPrimary}
                                 onPress={() => { setComingSoonFeature('follow'); setShowComingSoonModal(true); }}
                             >
                                 <Heart size={16} color="white" />
                                 <Text style={styles.actionButtonTextPrimary}>Follow</Text>
                             </Pressable>
-                            <Pressable 
+                            <Pressable
                                 style={styles.actionButtonSecondary}
                                 onPress={() => { setComingSoonFeature('contact'); setShowComingSoonModal(true); }}
                             >
@@ -595,10 +595,10 @@ export default function SellerProfile() {
                                 ))}
                             </View>
                         </View>
-                        
+
                         {review.title && <Text style={styles.reviewTitle}>{review.title}</Text>}
                         <Text style={styles.reviewText}>{review.content}</Text>
-                        
+
                         {review.product && (
                             <View style={styles.reviewProduct}>
                                 <Text style={styles.reviewProductText}>Purchased: {review.product.name}</Text>
@@ -708,11 +708,11 @@ export default function SellerProfile() {
                         </Pressable>
 
                         <Text style={styles.modalTitle}>Coming Soon!</Text>
-                        
+
                         <Text style={{ textAlign: 'center', marginBottom: 24, fontFamily: 'Quicksand', color: theme.colors.text, fontSize: 16 }}>
                             The {comingSoonFeature} feature is currently under development. Stay tuned!
                         </Text>
-                        
+
                         <Pressable style={styles.uploadButton} onPress={() => setShowComingSoonModal(false)}>
                             <Text style={styles.uploadButtonText}>Got it</Text>
                         </Pressable>

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { sellerAPI } from '@/api/api';
+import { sellerAPI } from '@/services/api';
 import { Star, MessageSquare, TrendingUp, Award } from 'lucide-react-native';
 import StatCard from '../../components/ui/StatCard';
 

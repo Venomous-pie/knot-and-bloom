@@ -1,4 +1,4 @@
-import { accountAPI } from '@/api/api';
+import { accountAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { theme } from '@/constants/theme';

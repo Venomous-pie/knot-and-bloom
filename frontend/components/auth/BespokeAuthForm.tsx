@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { authAPI } from "@/api/api";
+import { authAPI } from "@/services/api";
 import { theme } from "@/constants/theme";
 import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
 import { RelativePathString, useRouter, useLocalSearchParams } from "expo-router";
@@ -976,8 +976,8 @@ export default function BespokeAuthForm({
                         </Text>
 
                         {/* Boxed Inputs */}
-                        <Pressable 
-                            onPress={() => otpInputRef.current?.focus()} 
+                        <Pressable
+                            onPress={() => otpInputRef.current?.focus()}
                             style={{ flexDirection: "row", gap: 10, marginBottom: 32, justifyContent: 'center' }}
                         >
                             {[0, 1, 2, 3, 4, 5].map((index) => (
@@ -1042,14 +1042,14 @@ export default function BespokeAuthForm({
 
                         {/* Resend Logic */}
                         <View style={{ marginTop: 24, alignItems: "center" }}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={handleResendOtp}
                                 disabled={resendCooldown > 0 || otpLoading}
                             >
-                                <Text style={{ 
-                                    color: resendCooldown > 0 ? theme.colors.textLight : theme.colors.primary, 
-                                    fontWeight: "bold", 
-                                    fontSize: 16 
+                                <Text style={{
+                                    color: resendCooldown > 0 ? theme.colors.textLight : theme.colors.primary,
+                                    fontWeight: "bold",
+                                    fontSize: 16
                                 }}>
                                     {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend Code"}
                                 </Text>

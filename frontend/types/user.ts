@@ -1,4 +1,4 @@
-import { LoginPayload, RegisterPayload } from '@/api/api';
+import { LoginPayload, RegisterPayload } from '@/services/api';
 
 enum Role {
     USER = 'USER',

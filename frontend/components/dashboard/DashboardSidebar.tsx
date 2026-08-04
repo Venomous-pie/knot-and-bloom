@@ -4,7 +4,7 @@ import { useRouter, usePathname, Link } from 'expo-router';
 import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, Truck, Shield } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
-import { sellerAPI } from '@/api/api';
+import { sellerAPI } from '@/services/api';
 import { useQuery } from '@tanstack/react-query';
 import { theme } from '@/constants/theme';
 import DropdownMenu, { DropdownItem } from '@/components/ui/DropdownMenu';

@@ -1,4 +1,4 @@
-import { orderAPI } from "@/api/api";
+import { orderAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getStatusColor,
@@ -331,130 +331,130 @@ export default function OrderDetailsPage() {
           {(order.status === "SHIPPED" ||
             order.status === "DELIVERED" ||
             order.status === "DISPUTED") && (
-            <View
-              style={[
-                styles.infoBanner,
-                {
-                  backgroundColor:
-                    order.status === "DISPUTED" ? "#FEE2E2" : "#F0F9FF",
-                  borderColor:
-                    order.status === "DISPUTED" ? "#FECACA" : "#BAE6FD",
-                  marginBottom: 20,
-                },
-              ]}
-            >
-              {order.status === "DISPUTED" ? (
-                <>
-                  <Text style={[styles.infoBannerTitle, { color: "#B91C1C" }]}>
-                    🛑 Timer Paused
-                  </Text>
-                  <Text style={{ color: "#7F1D1D", marginBottom: 4 }}>
-                    This order is currently under dispute. The auto-confirmation
-                    timer is paused.
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text
-                    style={[
-                      styles.infoBannerText,
-                      { color: "#0369A1", marginBottom: 6 },
-                    ]}
-                  >
-                    🛡️ Knot & Bloom Guarantee
-                  </Text>
-                  {order.autoConfirmAt && (
-                    <Text style={{ color: "#0C4A6E", marginBottom: 12 }}>
-                      Order will automatically complete on:{" "}
-                      <Text style={{ fontWeight: "bold" }}>
-                        {new Date(order.autoConfirmAt).toLocaleDateString()}{" "}
-                        {new Date(order.autoConfirmAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
+              <View
+                style={[
+                  styles.infoBanner,
+                  {
+                    backgroundColor:
+                      order.status === "DISPUTED" ? "#FEE2E2" : "#F0F9FF",
+                    borderColor:
+                      order.status === "DISPUTED" ? "#FECACA" : "#BAE6FD",
+                    marginBottom: 20,
+                  },
+                ]}
+              >
+                {order.status === "DISPUTED" ? (
+                  <>
+                    <Text style={[styles.infoBannerTitle, { color: "#B91C1C" }]}>
+                      🛑 Timer Paused
                     </Text>
-                  )}
-
-                  <View style={{ flexDirection: "row", gap: 10 }}>
-                    <Pressable
-                      onPress={handleConfirmReceipt}
-                      disabled={actionLoading}
+                    <Text style={{ color: "#7F1D1D", marginBottom: 4 }}>
+                      This order is currently under dispute. The auto-confirmation
+                      timer is paused.
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text
                       style={[
-                        styles.actionButton,
-                        { backgroundColor: "#059669", flex: 2 },
+                        styles.infoBannerText,
+                        { color: "#0369A1", marginBottom: 6 },
                       ]}
                     >
-                      {actionLoading ? (
-                        <ActivityIndicator color="white" size="small" />
-                      ) : (
-                        <Text style={styles.actionButtonText}>
-                          Order Received
+                      🛡️ Knot & Bloom Guarantee
+                    </Text>
+                    {order.autoConfirmAt && (
+                      <Text style={{ color: "#0C4A6E", marginBottom: 12 }}>
+                        Order will automatically complete on:{" "}
+                        <Text style={{ fontWeight: "bold" }}>
+                          {new Date(order.autoConfirmAt).toLocaleDateString()}{" "}
+                          {new Date(order.autoConfirmAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </Text>
-                      )}
-                    </Pressable>
+                      </Text>
+                    )}
 
-                    {canExtend && (
+                    <View style={{ flexDirection: "row", gap: 10 }}>
                       <Pressable
-                        onPress={handleExtendGuarantee}
+                        onPress={handleConfirmReceipt}
                         disabled={actionLoading}
                         style={[
                           styles.actionButton,
-                          {
-                            backgroundColor: "white",
-                            borderWidth: 1,
-                            borderColor: theme.colors.border,
-                            flex: 1,
-                          },
+                          { backgroundColor: "#059669", flex: 2 },
                         ]}
                       >
-                        <Text
+                        {actionLoading ? (
+                          <ActivityIndicator color="white" size="small" />
+                        ) : (
+                          <Text style={styles.actionButtonText}>
+                            Order Received
+                          </Text>
+                        )}
+                      </Pressable>
+
+                      {canExtend && (
+                        <Pressable
+                          onPress={handleExtendGuarantee}
+                          disabled={actionLoading}
                           style={[
-                            styles.actionButtonText,
-                            { color: theme.colors.text },
+                            styles.actionButton,
+                            {
+                              backgroundColor: "white",
+                              borderWidth: 1,
+                              borderColor: theme.colors.border,
+                              flex: 1,
+                            },
                           ]}
                         >
-                          Extend
+                          <Text
+                            style={[
+                              styles.actionButtonText,
+                              { color: theme.colors.text },
+                            ]}
+                          >
+                            Extend
+                          </Text>
+                        </Pressable>
+                      )}
+                    </View>
+
+                    {/* Dispute & Receipt Actions */}
+                    <View
+                      style={{ flexDirection: "row", gap: 10, marginTop: 10 }}
+                    >
+                      <Pressable
+                        onPress={() => setReportModalVisible(true)}
+                        style={[styles.textBtn]}
+                      >
+                        <Text style={styles.textBtnText}>Report Issue</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setReceiptModalVisible(true)}
+                        style={[styles.textBtn]}
+                      >
+                        <Text style={[styles.textBtnText, { color: "#3B82F6" }]}>
+                          View Receipt
                         </Text>
                       </Pressable>
-                    )}
-                  </View>
+                    </View>
 
-                  {/* Dispute & Receipt Actions */}
-                  <View
-                    style={{ flexDirection: "row", gap: 10, marginTop: 10 }}
-                  >
-                    <Pressable
-                      onPress={() => setReportModalVisible(true)}
-                      style={[styles.textBtn]}
-                    >
-                      <Text style={styles.textBtnText}>Report Issue</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setReceiptModalVisible(true)}
-                      style={[styles.textBtn]}
-                    >
-                      <Text style={[styles.textBtnText, { color: "#3B82F6" }]}>
-                        View Receipt
+                    <View style={{ marginTop: 8 }}>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: theme.colors.textSecondary,
+                        }}
+                      >
+                        Extensions used: {order.extensionCount || 0} (Max:{" "}
+                        {order.status === "SHIPPED" ? 2 : 1})
                       </Text>
-                    </Pressable>
-                  </View>
-
-                  <View style={{ marginTop: 8 }}>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: theme.colors.textSecondary,
-                      }}
-                    >
-                      Extensions used: {order.extensionCount || 0} (Max:{" "}
-                      {order.status === "SHIPPED" ? 2 : 1})
-                    </Text>
-                  </View>
-                </>
-              )}
-            </View>
-          )}
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
 
           {/* Key Info Banner */}
           {order.status === "CONFIRMED" && order.estimatedCompletionDate && (
@@ -495,10 +495,10 @@ export default function OrderDetailsPage() {
                         styles.dot,
                         index === 0
                           ? {
-                              backgroundColor: getStatusColor(event.status),
-                              width: 12,
-                              height: 12,
-                            }
+                            backgroundColor: getStatusColor(event.status),
+                            width: 12,
+                            height: 12,
+                          }
                           : {},
                       ]}
                     />
@@ -670,7 +670,7 @@ export default function OrderDetailsPage() {
             <Text
               style={
                 order.paymentMethod &&
-                order.paymentMethod.toUpperCase() !== "COD"
+                  order.paymentMethod.toUpperCase() !== "COD"
                   ? [styles.totalLabel, { color: theme.colors.text }]
                   : styles.summaryLabel
               }
@@ -680,7 +680,7 @@ export default function OrderDetailsPage() {
             <Text
               style={
                 order.paymentMethod &&
-                order.paymentMethod.toUpperCase() !== "COD"
+                  order.paymentMethod.toUpperCase() !== "COD"
                   ? [styles.totalValue, { color: theme.colors.primary }]
                   : styles.summaryValue
               }
@@ -1234,7 +1234,7 @@ export default function OrderDetailsPage() {
                   photos = order.proofPhotos
                     ? JSON.parse(order.proofPhotos)
                     : [];
-                } catch (e) {}
+                } catch (e) { }
 
                 if (photos.length > 0) {
                   return (

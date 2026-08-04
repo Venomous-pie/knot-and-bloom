@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert, Modal, TextInput, TouchableOpacity, useWindowDimensions, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiClient } from '@/api/api';
+import { apiClient } from '@/services/api';
 import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard, ChevronLeft, ArrowUpCircle, Download, Info, Search, Calendar, Store } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import StatCard from '../../components/ui/StatCard';

@@ -19,7 +19,7 @@ import {
 import { theme } from '@/constants/theme';
 import ProductCard from "@/components/product/ProductCard";
 import ProductCardSkeleton from "@/components/product/ProductCardSkeleton";
-import { productAPI } from '@/api/api';
+import { productAPI } from '@/services/api';
 import { useWishlist } from "@/contexts/WishlistContext";
 import { UNIVERSAL_TAGS } from '@/constants/tagSuggestions';
 

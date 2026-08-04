@@ -1,4 +1,4 @@
-import { cartAPI, productAPI, sellerAPI } from "@/api/api";
+import { cartAPI, productAPI, sellerAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useCartAnimation } from "@/contexts/CartAnimationContext";
@@ -225,8 +225,8 @@ export default function ProductDetailPage() {
                 triggerCartAnimation({ x: pageX + btnWidth / 2, y: pageY + btnHeight / 2 });
             });
 
-            const isNewItem = !cartItems.some((item: any) => 
-                item.productId === product.uid && 
+            const isNewItem = !cartItems.some((item: any) =>
+                item.productId === product.uid &&
                 (selectedVariant ? item.productVariant?.name === selectedVariant : true)
             );
 
@@ -293,7 +293,7 @@ export default function ProductDetailPage() {
             setIsBuying(true);
             const response = await cartAPI.addToCart(user.uid, product.uid, quantity, selectedVariant, true);
             refreshCart();
-            
+
             if (response.data && response.data.cartItemId) {
                 router.push(`/checkout?items=${response.data.cartItemId}` as any);
             }
@@ -361,8 +361,8 @@ export default function ProductDetailPage() {
                     <View style={styles.sellerRatingRow}>
                         <Ionicons name="star" size={12} color={theme.colors.starGold} />
                         <Text style={styles.sellerRatingText}>
-                            {(product.seller as any)?.rating && Number((product.seller as any).rating) > 0 
-                                ? `${(product.seller as any).rating}/5.0` 
+                            {(product.seller as any)?.rating && Number((product.seller as any).rating) > 0
+                                ? `${(product.seller as any).rating}/5.0`
                                 : 'New Seller'}
                         </Text>
                     </View>
@@ -506,8 +506,8 @@ export default function ProductDetailPage() {
                                 {allImages.map((img, idx) => {
                                     const isActive = displayImage === img;
                                     return (
-                                        <Pressable 
-                                            key={idx} 
+                                        <Pressable
+                                            key={idx}
                                             style={[styles.thumbnailBox, isActive && styles.thumbnailBoxActive]}
                                             onPress={() => setSelectedImage(img)}
                                         >
@@ -539,11 +539,11 @@ export default function ProductDetailPage() {
                                         const isFilled = i <= Math.floor(rating);
                                         const isHalf = !isFilled && i === Math.ceil(rating) && (rating % 1) !== 0;
                                         return (
-                                            <Ionicons 
-                                                key={i} 
-                                                name={isFilled ? "star" : isHalf ? "star-half" : "star-outline"} 
-                                                size={14} 
-                                                color={theme.colors.starGold} 
+                                            <Ionicons
+                                                key={i}
+                                                name={isFilled ? "star" : isHalf ? "star-half" : "star-outline"}
+                                                size={14}
+                                                color={theme.colors.starGold}
                                             />
                                         );
                                     })}
@@ -616,10 +616,10 @@ export default function ProductDetailPage() {
                                 <Text style={styles.sectionTitle}>Quantity</Text>
                             </View>
                             <View style={styles.quantitySelector}>
-                                <Pressable 
+                                <Pressable
                                     style={({ pressed, hovered }: any) => [
-                                        styles.qtyButton, 
-                                        hovered && styles.qtyButtonHover, 
+                                        styles.qtyButton,
+                                        hovered && styles.qtyButtonHover,
                                         pressed && styles.qtyButtonPressed,
                                         quantity <= 1 && styles.qtyButtonDisabled
                                     ]}
@@ -629,10 +629,10 @@ export default function ProductDetailPage() {
                                     <Ionicons name="remove" size={20} color={quantity <= 1 ? theme.colors.textLight : theme.colors.text} />
                                 </Pressable>
                                 <Text style={styles.qtyText}>{quantity}</Text>
-                                <Pressable 
+                                <Pressable
                                     style={({ pressed, hovered }: any) => [
-                                        styles.qtyButton, 
-                                        hovered && styles.qtyButtonHover, 
+                                        styles.qtyButton,
+                                        hovered && styles.qtyButtonHover,
                                         pressed && styles.qtyButtonPressed,
                                         quantity >= maxStock && styles.qtyButtonDisabled
                                     ]}
@@ -686,12 +686,12 @@ export default function ProductDetailPage() {
                                             </>
                                         )}
                                     </Pressable>
-                                    <Pressable 
+                                    <Pressable
                                         style={({ pressed, hovered }: any) => [
                                             styles.inlineSaveButton,
                                             hovered && { backgroundColor: theme.colors.primaryLight, borderColor: theme.colors.primary },
                                             pressed && { transform: [{ scale: 0.98 }] }
-                                        ]} 
+                                        ]}
                                         onPress={handleToggleWishlist}
                                     >
                                         <Ionicons
@@ -803,10 +803,10 @@ export default function ProductDetailPage() {
                                         {product.processingTime ? `Estimated Delivery: ${product.processingTime}` : 'Estimated Delivery: 3-5 Business Days'}
                                     </Text>
                                     <Text style={styles.shippingInfoPrice}>
-                                        {product.shippingFeeOverride != null 
-                                            ? `₱${Number(product.shippingFeeOverride).toFixed(2)}` 
-                                            : ((product.seller as any)?.freeShippingEnabled 
-                                                ? `Standard Rate (Free over ₱${(product.seller as any).freeShippingThreshold})` 
+                                        {product.shippingFeeOverride != null
+                                            ? `₱${Number(product.shippingFeeOverride).toFixed(2)}`
+                                            : ((product.seller as any)?.freeShippingEnabled
+                                                ? `Standard Rate (Free over ₱${(product.seller as any).freeShippingThreshold})`
                                                 : 'Standard Rate applies')}
                                     </Text>
                                 </View>
@@ -883,9 +883,9 @@ export default function ProductDetailPage() {
                                 {loadingRecommendations ? (
                                     <>
                                         {[1, 2, 3].map((key) => (
-                                            <ProductCardSkeleton 
-                                                key={key} 
-                                                style={styles.recommendationCard} 
+                                            <ProductCardSkeleton
+                                                key={key}
+                                                style={styles.recommendationCard}
                                             />
                                         ))}
                                     </>
@@ -903,8 +903,8 @@ export default function ProductDetailPage() {
                             </View>
                             {!loadingRecommendations && recommendations.length > 5 && !showAllRecommendations && (
                                 <View style={{ alignItems: 'center', marginTop: 16 }}>
-                                    <Pressable 
-                                        style={styles.seeAllButton} 
+                                    <Pressable
+                                        style={styles.seeAllButton}
                                         onPress={() => setShowAllRecommendations(true)}
                                     >
                                         <Text style={styles.seeAllText}>Load More</Text>

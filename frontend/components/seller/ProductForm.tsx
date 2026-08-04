@@ -1,7 +1,7 @@
 import { categoryTitles } from "@/constants/categories";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { productGenerationAPI } from "@/api/api";
+import { productGenerationAPI } from "@/services/api";
 
 export interface ProductFormData {
     name: string;

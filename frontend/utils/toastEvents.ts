@@ -4,6 +4,7 @@ export interface ToastPayload {
     message: string;
     type?: ToastType;
     duration?: number;
+    onUndo?: () => void;
 }
 
 type ToastEventListener = (payload: ToastPayload) => void;

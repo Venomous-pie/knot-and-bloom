@@ -76,6 +76,48 @@ router.patch('/platform-config', authenticate, authorize([Role.ADMIN]), async (r
 });
 
 /**
+ * GET /api/admin/dashboard-stats
+ * Admin dashboard statistics
+ */
+router.get('/dashboard-stats', authenticate, authorize([Role.ADMIN]), async (req: Request, res: Response) => {
+    try {
+        const [
+            activeSellers,
+            pendingSellers,
+            activeProducts,
+            revenueResult
+        ] = await Promise.all([
+            prisma.seller.count({
+                where: { status: { in: ['ACTIVE', 'APPROVED'] } }
+            }),
+            prisma.seller.count({
+                where: { status: 'PENDING' }
+            }),
+            prisma.product.count({
+                where: { status: 'ACTIVE' }
+            }),
+            prisma.order.aggregate({
+                _sum: { total: true },
+                where: { status: { notIn: ['CANCELLED', 'REFUNDED'] } }
+            })
+        ]);
+
+        const totalRevenue = revenueResult._sum.total ? Number(revenueResult._sum.total) : 0;
+
+        res.json({
+            totalRevenue,
+            activeSellers,
+            pendingSellers,
+            activeProducts
+        });
+    } catch (error) {
+        console.error('GET dashboard-stats error:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+    }
+});
+
+
+/**
  * POST /api/admin/orders/:id/resolve-dispute
  * Admin resolves a disputed order.
  */

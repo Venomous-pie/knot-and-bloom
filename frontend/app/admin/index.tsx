@@ -6,6 +6,7 @@ import { theme } from '@/constants/theme';
 import StatCard from '@/components/ui/StatCard';
 import { Stack } from 'expo-router';
 import InfoBox from '@/components/ui/InfoBox';
+import { adminAPI } from '@/api/admin';
 
 export default function AdminDashboard() {
     const { user } = useAuth();
@@ -23,17 +24,8 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
         try {
             setLoading(true);
-            // In the future, this will be an actual API call
-            // const res = await adminAPI.getDashboardStats();
-            // setStats(res.data);
-            
-            // Mock data for visual setup
-            setStats({
-                totalRevenue: 15420.50,
-                activeSellers: 42,
-                pendingSellers: 3,
-                activeProducts: 156
-            });
+            const res = await adminAPI.getDashboardStats();
+            setStats(res);
         } catch (error) {
             console.error(error);
         } finally {

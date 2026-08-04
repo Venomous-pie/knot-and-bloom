@@ -1,9 +1,9 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { sellerOrdersAPI } from "@/api/api";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, Modal, Pressable, ScrollView, Animated } from "react-native";
-import { ChevronRight, Search, Filter, ArrowDownUp, CheckSquare, Square, ChevronLeft, AlertTriangle, Clock, TrendingUp, Package, X } from 'lucide-react-native';
+import { ChevronRight, Search, Filter, ArrowDownUp, CheckSquare, Square, ChevronLeft, AlertTriangle, Clock, TrendingUp, Package, X, RefreshCw } from 'lucide-react-native';
 import * as Print from 'expo-print';
 import { uploadToImageKit } from '@/lib/imagekit';
 
@@ -15,6 +15,7 @@ import RejectOrderModal, { RejectFormData } from '@/components/seller/orders/Rej
 import BulkActionBar from '@/components/seller/orders/BulkActionBar';
 import Tooltip from '@/components/ui/Tooltip';
 import StatCard from '@/components/ui/StatCard';
+import { toastEvents } from "@/utils/toastEvents";
 
 const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -37,7 +38,7 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const getStatusColor = (status: string) => {
     switch (status) {
         case 'PENDING': return AMBER;
-        case 'CONFIRMED': return BLUE;
+        case 'CONFIRMED': return '#0EA5E9'; // Sky blue to contrast with indigo
         case 'IN_PRODUCTION': return INDIGO;
         case 'READY_TO_SHIP': return PINK;
         case 'SHIPPED': return GREEN;
@@ -51,34 +52,35 @@ const getStatusColor = (status: string) => {
 
 const getOrderProcessingDays = (order: Order): number => {
     let maxDays = LATE_THRESHOLD_DAYS;
-    
+
     order.items?.forEach(item => {
         const pt = (item.product as any)?.processingTime;
         if (!pt) return;
-        
+
         let days = 0;
         const nums = pt.match(/\d+/g);
         if (nums && nums.length > 0) {
             days = Math.max(...nums.map(Number));
         }
-        
+
         if (pt.toLowerCase().includes('week')) {
             days *= 7;
         } else if (pt.toLowerCase().includes('month')) {
             days *= 30;
         }
-        
+
         if (days > maxDays) {
             maxDays = days;
         }
     });
-    
+
     return maxDays;
 };
 
 export default function SellerOrders() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
+    const params = useLocalSearchParams<{ filter?: string }>();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -96,8 +98,14 @@ export default function SellerOrders() {
 
     // Filters and Sort
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState(params.filter || 'ALL');
     const [sortBy, setSortBy] = useState<'NEWEST' | 'OLDEST' | 'MOST_OVERDUE'>('NEWEST');
+
+    useEffect(() => {
+        if (params.filter) {
+            setStatusFilter(params.filter);
+        }
+    }, [params.filter]);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -110,6 +118,9 @@ export default function SellerOrders() {
     const [acceptModalVisible, setAcceptModalVisible] = useState(false);
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+
+    // Safeguard queue for quick actions
+    const pendingUpdates = useRef<{ [uid: number]: ReturnType<typeof setTimeout> }>({});
 
     // Bulk Selection
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -287,6 +298,55 @@ export default function SellerOrders() {
         if (type === 'reject') setRejectModalVisible(true);
     };
 
+    const handleQuickActionSafe = (status: string, order: Order) => {
+        let actionName = status.replace(/_/g, ' ');
+        if (status === 'IN_PRODUCTION') actionName = 'Start Production';
+        else if (status === 'READY_TO_SHIP') actionName = 'Mark Ready to Ship';
+
+        Alert.alert("Confirm Action", `Are you sure you want to ${actionName.toLowerCase()} for Order #${order.referenceNumber || order.uid}?`, [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Yes, Confirm",
+                onPress: () => {
+                    // 1. Optimistic Update
+                    const originalStatus = order.status;
+                    setOrders(prev => prev.map(o => o.uid === order.uid ? { ...o, status } : o));
+
+                    // If in detail view, update that too optimistically
+                    if (selectedOrderForDetail?.uid === order.uid) {
+                        setSelectedOrderForDetail({ ...selectedOrderForDetail, status });
+                    }
+
+                    // 2. Show Undo Toast
+                    toastEvents.emit({
+                        message: `Order #${order.referenceNumber || order.uid} moved to ${status.replace(/_/g, ' ')}`,
+                        type: 'INFO',
+                        duration: 5000,
+                        onUndo: () => {
+                            // Cancel timeout
+                            if (pendingUpdates.current[order.uid]) {
+                                clearTimeout(pendingUpdates.current[order.uid]);
+                                delete pendingUpdates.current[order.uid];
+                            }
+                            // Revert optimistic update
+                            setOrders(prev => prev.map(o => o.uid === order.uid ? { ...o, status: originalStatus } : o));
+                            if (selectedOrderForDetail?.uid === order.uid) {
+                                setSelectedOrderForDetail({ ...selectedOrderForDetail, status: originalStatus });
+                            }
+                        }
+                    });
+
+                    // 3. Queue Real API Call
+                    pendingUpdates.current[order.uid] = setTimeout(() => {
+                        delete pendingUpdates.current[order.uid];
+                        // Execute the real API call without UI blocking
+                        handleUpdateStatus(status, {}, [order]);
+                    }, 5000);
+                }
+            }
+        ]);
+    };
+
     // Bulk Actions
     const handleBulkStartProduction = () => {
         const selected = orders.filter(o => selectedIds.has(o.uid));
@@ -439,10 +499,12 @@ export default function SellerOrders() {
                         <Text style={s.dateTxt}>View, manage, and fulfill your customer orders.</Text>
                         <Text style={s.pageSubtitle}>{orders.length} total orders</Text>
                     </View>
-                    <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={s.navBtn}>
-                        <Text style={s.navBtnText}>Manage Products</Text>
-                        <ChevronRight size={16} color={P} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={s.navBtn}>
+                            <Text style={s.navBtnText}>Manage Products</Text>
+                            <ChevronRight size={16} color={P} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
 
@@ -522,7 +584,7 @@ export default function SellerOrders() {
 
                                 <View style={s.tabsRow}>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsScroll}>
-                                        {['ALL', 'OVERDUE', 'PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED'].map(f => (
+                                        {['ALL', 'OVERDUE', 'PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'].map(f => (
                                             <TouchableOpacity
                                                 key={f}
                                                 style={[s.tab, statusFilter === f && s.tabActive]}
@@ -534,6 +596,10 @@ export default function SellerOrders() {
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
+                                    <TouchableOpacity onPress={fetchOrders} style={[s.navBtn, { backgroundColor: BG }]}>
+                                        {loading && orders.length > 0 ? <ActivityIndicator size="small" color={P} /> : <RefreshCw size={16} color={P} />}
+                                        <Text style={[s.navBtnText, { color: P }]}>Refresh</Text>
+                                    </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -609,8 +675,7 @@ export default function SellerOrders() {
                                     onClose={() => setSelectedOrderForDetail(null)}
                                     onOpenModal={openActionModal}
                                     onQuickAction={async (status, o) => {
-                                        setSelectedOrder(o);
-                                        await handleUpdateStatus(status, {}, [o]);
+                                        handleQuickActionSafe(status, o);
                                     }}
                                 />
                             )}

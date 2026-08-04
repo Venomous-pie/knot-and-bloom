@@ -32,12 +32,18 @@ export function calculatePrice(
     variant?: ProductVariant | null
 ): PriceCalculation {
     // Effective price: variant price OR basePrice (fallback)
-    const effectivePrice = variant?.price
+    let effectivePrice = variant?.price != null
         ? Number(variant.price)
         : Number(product.basePrice);
 
+    if (isNaN(effectivePrice)) {
+        if (__DEV__) console.warn(`[pricing] Invalid price detected for product ${product.uid}`);
+        effectivePrice = 0;
+    }
+
     // Discount hierarchy: variant discount > product discount
-    const discountPercentage = variant?.discountPercentage ?? product.discountPercentage ?? 0;
+    const rawDiscount = variant?.discountPercentage ?? product.discountPercentage ?? 0;
+    const discountPercentage = Math.max(0, Math.min(100, rawDiscount)); // Clamp to 0-100%
 
     // Calculate discounted price if discount exists
     const hasDiscount = discountPercentage > 0;
@@ -51,7 +57,7 @@ export function calculatePrice(
     return {
         effectivePrice: Math.round(effectivePrice * 100) / 100,
         discountPercentage,
-        discountedPrice: discountedPrice ? Math.round(discountedPrice * 100) / 100 : null,
+        discountedPrice: hasDiscount ? Math.round(discountedPrice! * 100) / 100 : null,
         finalPrice: Math.round(finalPrice * 100) / 100,
         hasDiscount,
     };
@@ -92,5 +98,8 @@ export function findLowestPrice(product: Product): {
  * Format a price for display
  */
 export function formatPrice(price: number, currency: string = '₱'): string {
+    if (price == null || isNaN(price)) {
+        return `${currency}0.00`;
+    }
     return `${currency}${price.toFixed(2)}`;
 }

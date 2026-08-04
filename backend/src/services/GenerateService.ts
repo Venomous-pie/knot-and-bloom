@@ -209,37 +209,48 @@ export async function generateOptionValues(optionName: string): Promise<string[]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function buildSKU(category: string, variants?: Array<{ name: string }>, name?: string): string {
-    const categoryCode = CategoryCodes[category] || category.substring(0, 3).toUpperCase();
+    const normalizedCategory = category.toLowerCase().replace(/[^a-z]/g, '');
+    let categoryCode = 'GEN';
+    
+    if (normalizedCategory.includes('crochet')) categoryCode = 'CROC';
+    else if (normalizedCategory.includes('wire')) categoryCode = 'WIRE';
+    else if (normalizedCategory.includes('bead')) categoryCode = 'BEAD';
+    else if (normalizedCategory.includes('bag')) categoryCode = 'BAG';
+    else if (normalizedCategory.includes('plush')) categoryCode = 'PLSH';
+    else if (normalizedCategory.includes('resin')) categoryCode = 'RSIN';
+    else if (normalizedCategory.includes('clay')) categoryCode = 'CLAY';
+    else if (normalizedCategory.includes('art')) categoryCode = 'ART';
+    else if (normalizedCategory.includes('accessories')) categoryCode = 'ACC';
+    else categoryCode = category.replace(/[^A-Za-z]/g, '').substring(0, 4).toUpperCase();
+
+    if (!categoryCode) categoryCode = 'GEN';
 
     const parts = [categoryCode];
 
     if (name) {
-        const cleanName = name.replace(/[^A-Za-z]/g, '').toUpperCase();
-        const consonants = cleanName.replace(/[AEIOU]/g, '');
-        const prefix = (consonants.length >= 3 ? consonants : cleanName).substring(0, 3);
-        if (prefix) parts.push(prefix);
+        const words = name.trim().split(/\s+/).filter(w => w.length > 0);
+        let nameAcronym = '';
+        if (words.length > 1) {
+            nameAcronym = words.map(w => w[0]?.toUpperCase()).join('').replace(/[^A-Z0-9]/g, '').substring(0, 4);
+        } else if (words.length === 1) {
+            nameAcronym = words[0]!.replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
+        }
+        
+        if (nameAcronym) {
+            parts.push(nameAcronym);
+        }
     }
-
-    const firstVariant = variants?.[0];
-    if (firstVariant?.name && firstVariant.name.toLowerCase() !== 'default') {
-        const variantCode = firstVariant.name.substring(0, 3).toUpperCase().replace(/\s/g, '');
-        parts.push(variantCode);
-    }
-
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    parts.push(random);
 
     return parts.join('-');
 }
 
 export async function generateProductSKU(input: GenerateSKUInput): Promise<string> {
-    let sku: string;
-    let attempts = 0;
-    const maxAttempts = 10;
+    const baseSku = buildSKU(input.category, input.variants, input.name);
+    
+    let sku = baseSku;
+    let sequence = 1;
 
-    do {
-        sku = buildSKU(input.category, input.variants, (input as any).name);
-
+    while (true) {
         const exists = await prisma.product.findUnique({
             where: { sku },
             select: { uid: true }
@@ -249,11 +260,9 @@ export async function generateProductSKU(input: GenerateSKUInput): Promise<strin
             return sku;
         }
 
-        attempts++;
-    } while (attempts < maxAttempts);
-
-    const extraRandom = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${sku}-${extraRandom}`;
+        sequence++;
+        sku = `${baseSku}-${sequence}`;
+    }
 }
 
 export async function generateVariantSKU(input: GenerateVariantSKUInput): Promise<string> {
@@ -261,19 +270,31 @@ export async function generateVariantSKU(input: GenerateVariantSKUInput): Promis
         return input.baseSKU;
     }
 
-    const cleanVariant = input.variantName.trim().substring(0, 3).toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const variantSKU = `${input.baseSKU}-${cleanVariant}${random}`;
-
-    const exists = await prisma.productVariant.findFirst({
-        where: { sku: variantSKU },
-        select: { uid: true }
-    });
-
-    if (exists) {
-        const extraRandom = Math.random().toString(36).substring(2, 4).toUpperCase();
-        return `${variantSKU}${extraRandom}`;
+    const words = input.variantName.trim().split(/\s+/).filter(w => w.length > 0);
+    let cleanVariant = '';
+    if (words.length > 1) {
+        cleanVariant = words.map(w => w[0]?.toUpperCase()).join('').replace(/[^A-Z0-9]/g, '').substring(0, 4);
+    } else if (words.length === 1) {
+        cleanVariant = words[0]!.replace(/[^A-Za-z0-9]/g, '').substring(0, 4).toUpperCase();
     }
+    
+    if (!cleanVariant) cleanVariant = 'VAR';
 
-    return variantSKU;
+    const baseVariantSKU = `${input.baseSKU}-${cleanVariant}`;
+    let variantSKU = baseVariantSKU;
+    let sequence = 1;
+
+    while (true) {
+        const exists = await prisma.productVariant.findFirst({
+            where: { sku: variantSKU },
+            select: { uid: true }
+        });
+
+        if (!exists) {
+            return variantSKU;
+        }
+
+        sequence++;
+        variantSKU = `${baseVariantSKU}-${sequence}`;
+    }
 }

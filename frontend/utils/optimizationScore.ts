@@ -29,6 +29,7 @@ interface ProductInput {
     processingTime?: string | null;
     basePrice?: number | string;
     discountPercentage?: number | string | null;
+    stock?: number | string | null;
     variants?: Array<{
         stock?: number | string;
         images?: string[];
@@ -43,7 +44,10 @@ export function calculateOptimizationScore(product: ProductInput): OptimizationR
 
     // ── Media (25 pts) ──────────────────────────────────────────────
     const hasMainImage = !!product.image;
-    const hasVariantImages = hasVariants && activeVariants.some(v => v.images && v.images.length > 0);
+    // Non-variant products shouldn't be penalized here; consider main image sufficient
+    const hasVariantImages = hasVariants 
+        ? activeVariants.some(v => v.images && v.images.length > 0)
+        : hasMainImage;
     const hasVideo = !!(product.videoUrl && product.videoUrl.trim().length > 0);
 
     const mediaCategory: ScoreCategory = {
@@ -115,7 +119,7 @@ export function calculateOptimizationScore(product: ProductInput): OptimizationR
     // ── Description & Details (20 pts) ───────────────────────────────
     const descLength = product.description?.length || 0;
     const hasGoodDesc = descLength >= 100;
-    const materialsStr = product.materials || (activeVariants[0] && activeVariants[0].materials) || '';
+    const materialsStr = product.materials || '';
     const hasMaterials = !!materialsStr && materialsStr.trim().length > 0;
     const hasCareInstructions = !!(product.careInstructions && product.careInstructions.trim().length > 0);
 
@@ -151,11 +155,25 @@ export function calculateOptimizationScore(product: ProductInput): OptimizationR
 
     // ── Fulfillment & Inventory (20 pts) ─────────────────────────────
     const hasProcessingTime = !!(product.processingTime && product.processingTime.trim().length > 0);
-    const hasStock = hasVariants && activeVariants.some(v => Number(v.stock || 0) > 0);
-    const hasLowStock = hasVariants && activeVariants.some(v => {
-        const s = Number(v.stock || 0);
-        return s > 0 && s <= 5;
-    });
+    
+    const getStockValue = (val: string | number | null | undefined) => {
+        const s = Number(val || 0);
+        return isNaN(s) ? 0 : s;
+    };
+
+    const hasStock = hasVariants 
+        ? activeVariants.some(v => getStockValue(v.stock) > 0)
+        : getStockValue(product.stock) > 0;
+        
+    const hasLowStock = hasVariants 
+        ? activeVariants.some(v => {
+            const s = getStockValue(v.stock);
+            return s > 0 && s <= 5;
+        })
+        : (() => {
+            const s = getStockValue(product.stock);
+            return s > 0 && s <= 5;
+        })();
 
     const inventoryCategory: ScoreCategory = {
         name: 'Fulfillment & Inventory',
@@ -189,9 +207,9 @@ export function calculateOptimizationScore(product: ProductInput): OptimizationR
 
     // ── Pricing (10 pts) ─────────────────────────────────────────────
     const price = Number(product.basePrice || 0);
-    const hasPrice = price > 0;
+    const hasPrice = !isNaN(price) && price > 0;
     const discount = Number(product.discountPercentage || 0);
-    const hasDiscount = discount > 0;
+    const hasDiscount = !isNaN(discount) && discount > 0 && discount <= 100;
 
     const pricingCategory: ScoreCategory = {
         name: 'Pricing',

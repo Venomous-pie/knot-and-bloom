@@ -1,6 +1,7 @@
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SocketProvider } from "@/contexts/SocketContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { CartAnimationProvider } from "@/contexts/CartAnimationContext";
 import { WishlistProvider } from "@/contexts/WishlistContext";
 import { DialogProvider } from "@/contexts/DialogContext";
 import { SellerSettingsProvider } from "@/contexts/SellerSettingsContext";
@@ -92,18 +93,20 @@ export default function RootLayout() {
         <AuthProvider>
           <SocketProvider>
             <CartProvider>
-              <WishlistProvider>
-                <DialogProvider>
-                  <SellerSettingsProvider>
-                    <NavBar />
-                    <CartAnimationOverlay />
-                    <OnboardingManager />
-                    <AuthToast />
-                    <GlobalToast />
-                    <GlobalAIChat />
-                  </SellerSettingsProvider>
-                </DialogProvider>
-              </WishlistProvider>
+              <CartAnimationProvider>
+                <WishlistProvider>
+                  <DialogProvider>
+                    <SellerSettingsProvider>
+                      <NavBar />
+                      <CartAnimationOverlay />
+                      <OnboardingManager />
+                      <AuthToast />
+                      <GlobalToast />
+                      <GlobalAIChat />
+                    </SellerSettingsProvider>
+                  </DialogProvider>
+                </WishlistProvider>
+              </CartAnimationProvider>
             </CartProvider>
           </SocketProvider>
         </AuthProvider>

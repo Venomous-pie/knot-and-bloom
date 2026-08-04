@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity,
+    View, Text, StyleSheet, ScrollView,
     ActivityIndicator, RefreshControl, Animated, Pressable,
-    useWindowDimensions, Image, Modal, TextInput
+    useWindowDimensions, Image, ImageBackground, Modal, TextInput, Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,22 @@ import {
 } from 'lucide-react-native';
 import Tooltip from '../../components/ui/Tooltip';
 import StatCard from '../../components/ui/StatCard';
+import ModalPortal from '../../components/ui/ModalPortal';
+import * as Clipboard from 'expo-clipboard';
+
+const TouchableOpacity = React.forwardRef(({ style, activeOpacity = 0.5, onPress, ...props }: any, ref: any) => (
+    <Pressable
+        ref={ref}
+        onPress={onPress}
+        {...props}
+        style={(state) => [
+            Platform.OS === 'web' && { cursor: 'pointer' } as any,
+            typeof style === 'function' ? style(state) : style,
+            state.pressed && { opacity: activeOpacity }
+        ]}
+    />
+));
+TouchableOpacity.displayName = 'TouchableOpacity';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const P = '#B36979';
@@ -72,10 +88,21 @@ export default function SellerDashboardHome() {
     const [shareModalVisible, setShareModalVisible] = useState(false);
     const [copied, setCopied] = useState(false);
     const [hasShared, setHasShared] = useState(false);
+    const [dismissedOnboarding, setDismissedOnboarding] = useState(false);
+    const [showCelebration, setShowCelebration] = useState(false);
+
+    // Animated values for the onboarding → celebration transition
+    const checklistOpacity = useRef(new Animated.Value(1)).current;
+    const celebrationOpacity = useRef(new Animated.Value(0)).current;
+    const celebrationScale = useRef(new Animated.Value(0.92)).current;
+    const cardHeight = useRef(new Animated.Value(1)).current; // 1 = full, 0 = collapsed
 
     useEffect(() => {
         AsyncStorage.getItem('onboarding_shared').then(res => {
             if (res === 'true') setHasShared(true);
+        });
+        AsyncStorage.getItem('onboarding_dismissed').then(res => {
+            if (res === 'true') setDismissedOnboarding(true);
         });
     }, []);
 
@@ -94,6 +121,24 @@ export default function SellerDashboardHome() {
         staleTime: 60 * 1000,
         refetchInterval: 300000, // Auto-refresh every 5 minutes
     });
+
+    // Trigger celebration when all 4 steps are done — only once
+    const prevCompletedRef = useRef(0);
+    useEffect(() => {
+        const completedNow = [stats?.onboarding?.hasProducts, stats?.onboarding?.hasPayouts, stats?.onboarding?.hasShipping, hasShared].filter(Boolean).length;
+        if (completedNow === 4 && prevCompletedRef.current < 4 && !dismissedOnboarding) {
+            setShowCelebration(true);
+            // Fade out checklist, then reveal celebration
+            Animated.sequence([
+                Animated.timing(checklistOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+                Animated.parallel([
+                    Animated.timing(celebrationOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+                    Animated.spring(celebrationScale, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
+                ])
+            ]).start();
+        }
+        prevCompletedRef.current = completedNow;
+    }, [stats?.onboarding?.hasProducts, stats?.onboarding?.hasPayouts, stats?.onboarding?.hasShipping, hasShared]);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -349,7 +394,10 @@ export default function SellerDashboardHome() {
                     { label: 'Cancelled', count: CANCELLED, icon: XCircle, color: RED, tip: 'Cancelled.' },
                 ].map((step, idx, arr) => (
                     <React.Fragment key={step.label}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                            onPress={() => router.push({ pathname: '/seller-dashboard/orders', params: { filter: step.label.toUpperCase() } } as any)}
+                        >
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                                 <View style={[s.pipelineIconVertical, { backgroundColor: step.color + '15' }]}>
                                     <step.icon size={20} color={step.color} />
@@ -360,7 +408,7 @@ export default function SellerDashboardHome() {
                                 </View>
                             </View>
                             <Text style={s.pipelineCountVertical}>{step.count}</Text>
-                        </View>
+                        </TouchableOpacity>
                         {idx < arr.length - 1 && <View style={s.pipelineDividerVertical} />}
                     </React.Fragment>
                 ))}
@@ -445,79 +493,157 @@ export default function SellerDashboardHome() {
     const lifetimeTotalOrders = displayStats.performanceSnapshot?.lifetimeTotalOrders || 0;
     const ob = displayStats.onboarding || { hasProducts: false, hasPayouts: false, hasShipping: false };
     const completedSteps = [ob.hasProducts, ob.hasPayouts, ob.hasShipping, hasShared].filter(Boolean).length;
-    const showHybridOnboarding = lifetimeTotalOrders < 5 && completedSteps < 4;
+    // Show the card if: not dismissed AND (not all steps done yet OR we're showing the celebration)
+    const showHybridOnboarding = !!stats && !dismissedOnboarding && lifetimeTotalOrders < 5 && (completedSteps < 4 || showCelebration);
+
+    const handleDismissOnboarding = () => {
+        setDismissedOnboarding(true);
+        setShowCelebration(false);
+        AsyncStorage.setItem('onboarding_dismissed', 'true');
+    };
 
     const OnboardingChecklist = showHybridOnboarding ? (
-        <View style={s.card}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-                <View style={{ flex: 1, paddingRight: 16 }}>
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand', marginBottom: 6 }}>Welcome to Knot & Bloom! 🎉</Text>
-                    <Text style={{ fontSize: 14, color: SUB, fontFamily: 'Quicksand', lineHeight: 22 }}>Complete these essential steps to launch your store and start receiving orders from customers.</Text>
-                </View>
-                <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563', fontFamily: 'Quicksand' }}>{completedSteps} / 4 Done</Text>
-                </View>
-            </View>
+        <View style={[s.card, showCelebration && { padding: 0, overflow: 'hidden' }]}>
+            {/* Celebration view — shown after all 4 steps complete */}
+            {showCelebration ? (
+                <Animated.View style={{ opacity: celebrationOpacity, transform: [{ scale: celebrationScale }] }}>
+                    {/* Background Elements (full bleed) */}
+                    <View style={StyleSheet.absoluteFill}>
+                        <View style={{ position: 'absolute', top: -20, left: -20, width: 140, height: 140, borderRadius: 70, backgroundColor: P_LIGHT, opacity: 0.6 }} />
+                        <View style={{ position: 'absolute', bottom: -50, right: -30, width: 220, height: 220, borderRadius: 110, backgroundColor: P_LIGHT, opacity: 0.4 }} />
+                        <View style={{ position: 'absolute', top: '15%', right: '8%', width: 80, height: 80, borderRadius: 40, backgroundColor: P_LIGHT, opacity: 0.5 }} />
+                        <View style={{ position: 'absolute', bottom: '20%', left: '5%', width: 60, height: 60, borderRadius: 30, backgroundColor: P_LIGHT, opacity: 0.6 }} />
 
-            <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 16, overflow: 'hidden' }}>
-                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/products/form' as any)}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasProducts ? '#D1FAE5' : P_LIGHT, alignItems: 'center', justifyContent: 'center' }}>
-                            {ob.hasProducts ? <CheckCircle size={20} color={GREEN} /> : <Package size={20} color={P} />}
+                        <View style={{ position: 'absolute', top: '25%', left: '35%', width: 6, height: 6, borderRadius: 3, backgroundColor: P, opacity: 0.15 }} />
+                        <View style={{ position: 'absolute', top: '55%', right: '25%', width: 8, height: 8, borderRadius: 4, backgroundColor: P, opacity: 0.15 }} />
+                        <View style={{ position: 'absolute', bottom: '35%', left: '20%', width: 6, height: 6, borderRadius: 3, backgroundColor: P, opacity: 0.15 }} />
+                        <View style={{ position: 'absolute', bottom: '15%', right: '40%', width: 8, height: 8, borderRadius: 4, backgroundColor: P, opacity: 0.15 }} />
+                        <View style={{ position: 'absolute', top: '70%', left: '15%', width: 6, height: 6, borderRadius: 3, backgroundColor: P, opacity: 0.15 }} />
+
+                        <Text style={{ position: 'absolute', top: '15%', left: '15%', fontSize: 32, opacity: 0.4 }}>🧶</Text>
+                        <Text style={{ position: 'absolute', top: '25%', right: '15%', fontSize: 28, opacity: 0.4 }}>🌸</Text>
+                        <Text style={{ position: 'absolute', bottom: '30%', left: '25%', fontSize: 36, opacity: 0.3 }}>✨</Text>
+                        <Text style={{ position: 'absolute', bottom: '15%', right: '20%', fontSize: 32, opacity: 0.4 }}>🧶</Text>
+                    </View>
+
+                    <View style={{ alignItems: 'center', paddingHorizontal: 40, paddingVertical: 52, backgroundColor: 'transparent' }}>
+                        {/* Animated heart SVG — web only */}
+                        {Platform.OS === 'web' ? (
+                            // @ts-ignore
+                            <div
+                                style={{ width: 145, height: 145, marginBottom: 16, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                                dangerouslySetInnerHTML={{ __html: `<svg fill="none" height="100%" width="100%" viewBox="0 0 148 148" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg"><g id="i0"><g transform="translate(74,74)"><g transform="scale(1,1)"><animateTransform repeatCount="indefinite" type="scale" attributeName="transform" dur="2s" begin="0s" calcMode="spline" values="1 1; 0.6 0.6; 1.3 1.3; 1 1; 1.05 1.05; 1 1; 1 1; 1 1" keyTimes="0; 0.0454545; 0.159091; 0.25; 0.318182; 0.431818; 0.5; 1" keySplines="0.333 0.115 0.48 1; 0.264 0 0.516 1; 0.373 0 0.605 1; 0.32 0 0.663 0.978; 0.29 0.002 0.64 0.973; 0 0 1 1; 0 0 1 1" fill="freeze" /><g transform="translate(-25,-22.5)"><g id="i1" transform="matrix(1,0,0,1,25,22.5)"><path stroke-linejoin="round" stroke-linecap="round" stroke-width="3.6" stroke="#fb3144" fill="#ff3144" d="M11.176,-20.5C6.301,-20.5,2.068,-17.976,0,-14.302C-2.067,-17.976,-6.301,-20.5,-11.175,-20.5C-18.577,-20.5,-23,-14.04,-23,-7.795C-23,6.995,-1.588,19.778,-0.676,20.315C-0.467,20.439,-0.234,20.5,0,20.5C0.234,20.5,0.467,20.439,0.676,20.315C1.588,19.778,23,6.995,23,-7.795C23,-14.04,18.577,-20.5,11.176,-20.5Z" /></g></g></g></g></g><g id="i2"><g transform="translate(74,74)"><g transform="scale(0,0)"><animateTransform repeatCount="indefinite" type="scale" attributeName="transform" dur="2s" begin="0s" calcMode="spline" values="0 0; 0 0; 0.24 0.24; 0.24 0.24; 0.24 0.24" keyTimes="0; 0.0454545; 0.318182; 0.5; 1" keySplines="0 0 1 1; 1 0 0 1; 0 0 1 1; 0 0 1 1" fill="freeze" /><g transform="translate(120.395,-32.605)"><g id="i3" transform="matrix(1,0,0,1,-120.395,32.605)"><ellipse ry="183.606" rx="183.606" cy="0" cx="0" stroke-width="240" stroke="#ff3144"><animate repeatCount="indefinite" attributeName="stroke-width" dur="2s" begin="0s" fill="freeze" values="240; 240; 0; 0; 0" keyTimes="0; 0.0454545; 0.318182; 0.5; 1" keySplines="0 0 1 1; 0.588 0 0.297 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /></ellipse></g></g></g></g></g><g transform="matrix(0.25,0,0,0.25,74,74)" id="i4"><g id="i5"><g id="i6"><ellipse ry="0" rx="0" cy="0" cx="0" fill="#ff3144"><animate repeatCount="indefinite" attributeName="cy" dur="2s" begin="0s" fill="freeze" values="0; 0; 189; 240; 240; 240" keyTimes="0; 0.0227275; 0.1363635; 0.340909; 0.5; 1" keySplines="0 0 1 1; 0.6 0 0.52 1; 0.333 0 0.38 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="rx" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="ry" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /></ellipse></g><g transform="rotate(45, 0, 0)" id="i7"><ellipse ry="0" rx="0" cy="0" cx="0" fill="#ff3144"><animate repeatCount="indefinite" attributeName="cy" dur="2s" begin="0s" fill="freeze" values="0; 0; 189; 240; 240; 240" keyTimes="0; 0.0227275; 0.1363635; 0.340909; 0.5; 1" keySplines="0 0 1 1; 0.6 0 0.52 1; 0.333 0 0.38 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="rx" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="ry" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /></ellipse></g><g transform="rotate(90, 0, 0)" id="i8"><ellipse ry="0" rx="0" cy="0" cx="0" fill="#ff3144"><animate repeatCount="indefinite" attributeName="cy" dur="2s" begin="0s" fill="freeze" values="0; 0; 189; 240; 240; 240" keyTimes="0; 0.0227275; 0.1363635; 0.340909; 0.5; 1" keySplines="0 0 1 1; 0.6 0 0.52 1; 0.333 0 0.38 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="rx" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="ry" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /></ellipse></g><g transform="rotate(135, 0, 0)" id="i9"><ellipse ry="0" rx="0" cy="0" cx="0" fill="#ff3144"><animate repeatCount="indefinite" attributeName="cy" dur="2s" begin="0s" fill="freeze" values="0; 0; 189; 240; 240; 240" keyTimes="0; 0.0227275; 0.1363635; 0.340909; 0.5; 1" keySplines="0 0 1 1; 0.6 0 0.52 1; 0.333 0 0.38 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="rx" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="ry" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /></ellipse></g><g transform="rotate(180, 0, 0)" id="i10"><ellipse ry="0" rx="0" cy="0" cx="0" fill="#ff3144"><animate repeatCount="indefinite" attributeName="cy" dur="2s" begin="0s" fill="freeze" values="0; 0; 189; 240; 240; 240" keyTimes="0; 0.0227275; 0.1363635; 0.340909; 0.5; 1" keySplines="0 0 1 1; 0.6 0 0.52 1; 0.333 0 0.38 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="rx" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636365; 0.5; 1" keySplines="0 0 1 1; 0.333 0 0.667 1; 0.333 0 0.667 1; 0 0 1 1; 0 0 1 1" calcMode="spline" /><animate repeatCount="indefinite" attributeName="ry" dur="2s" begin="0s" fill="freeze" values="0; 0; 14.5; 0; 0; 0" keyTimes="0; 0.0454545; 0.159091; 0.3636` }}
+
+                            />
+                        ) : (
+                            <Text style={{ fontSize: 56, marginBottom: 16 }}>❤️</Text>
+                        )}
+                        <Text style={{ fontSize: 22, fontWeight: '800', color: TEXT, fontFamily: 'Quicksand', textAlign: 'center', marginBottom: 8 }}>
+                            You're officially a Knot &amp; Bloom seller! 🌸
+                        </Text>
+                        <Text style={{ fontSize: 14, color: SUB, fontFamily: 'Quicksand', textAlign: 'center', lineHeight: 22, maxWidth: 360, marginBottom: 24 }}>
+                            Your store is live and ready to bloom. Every great seller started with a single step — this is yours. We're rooting for you! 🌿
+                        </Text>
+                        <Pressable
+                            onPress={handleDismissOnboarding}
+                            // @ts-ignore
+                            style={({ pressed, hovered }: any) => ({
+                                backgroundColor: P,
+                                paddingHorizontal: 28,
+                                paddingVertical: 12,
+                                borderRadius: 20,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 8,
+                                opacity: pressed ? 0.8 : hovered ? 0.9 : 1,
+                                transform: [{ scale: pressed ? 0.96 : hovered ? 1.02 : 1 }],
+                                transition: 'all 0.2s ease',
+                                cursor: 'pointer'
+                            })}
+                        >
+                            <Text style={{ color: '#fff', fontSize: 14, fontFamily: 'Quicksand', fontWeight: '700' }}>Start selling →</Text>
+                        </Pressable>
+                    </View>
+                </Animated.View>
+            ) : (
+                /* Checklist view */
+                <Animated.View style={{ opacity: checklistOpacity }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+                        <View style={{ flex: 1, paddingRight: 16 }}>
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand', marginBottom: 6 }}>Welcome to Knot &amp; Bloom! 🎉</Text>
+                            <Text style={{ fontSize: 14, color: SUB, fontFamily: 'Quicksand', lineHeight: 22 }}>Complete these essential steps to launch your store and start receiving orders from customers.</Text>
                         </View>
-                        <View>
-                            <Text style={[s.onboardingRowTxt, ob.hasProducts && { textDecorationLine: 'line-through', color: SUB }]}>Add your first product</Text>
-                            <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Upload photos and set your pricing.</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563', fontFamily: 'Quicksand' }}>{completedSteps} / 4 Done</Text>
+                            </View>
+                            <TouchableOpacity onPress={handleDismissOnboarding} style={{ padding: 4 }}>
+                                <XCircle size={20} color={SUB} />
+                            </TouchableOpacity>
                         </View>
                     </View>
-                    <ChevronRight size={18} color="#9CA3AF" />
-                </TouchableOpacity>
 
-                <View style={{ height: 1, backgroundColor: BORDER }} />
+                    <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 16, overflow: 'hidden' }}>
+                        <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/products/form' as any)}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasProducts ? '#D1FAE5' : P_LIGHT, alignItems: 'center', justifyContent: 'center' }}>
+                                    {ob.hasProducts ? <CheckCircle size={20} color={GREEN} /> : <Package size={20} color={P} />}
+                                </View>
+                                <View>
+                                    <Text style={[s.onboardingRowTxt, ob.hasProducts && { textDecorationLine: 'line-through', color: SUB }]}>Add your first product</Text>
+                                    <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Upload photos and set your pricing.</Text>
+                                </View>
+                            </View>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
 
-                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/payouts' as any)}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasPayouts ? '#D1FAE5' : '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
-                            {ob.hasPayouts ? <CheckCircle size={20} color={GREEN} /> : <DollarSign size={20} color={INDIGO} />}
-                        </View>
-                        <View>
-                            <Text style={[s.onboardingRowTxt, ob.hasPayouts && { textDecorationLine: 'line-through', color: SUB }]}>Set up payouts</Text>
-                            <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Link your GCash or Bank account.</Text>
-                        </View>
+                        <View style={{ height: 1, backgroundColor: BORDER }} />
+
+                        <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/payouts' as any)}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasPayouts ? '#D1FAE5' : '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
+                                    {ob.hasPayouts ? <CheckCircle size={20} color={GREEN} /> : <DollarSign size={20} color={INDIGO} />}
+                                </View>
+                                <View>
+                                    <Text style={[s.onboardingRowTxt, ob.hasPayouts && { textDecorationLine: 'line-through', color: SUB }]}>Set up payouts</Text>
+                                    <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Link your GCash or Bank account.</Text>
+                                </View>
+                            </View>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
+
+                        <View style={{ height: 1, backgroundColor: BORDER }} />
+
+                        <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/shipping' as any)}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasShipping ? '#D1FAE5' : '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+                                    {ob.hasShipping ? <CheckCircle size={20} color={GREEN} /> : <Truck size={20} color={AMBER} />}
+                                </View>
+                                <View>
+                                    <Text style={[s.onboardingRowTxt, ob.hasShipping && { textDecorationLine: 'line-through', color: SUB }]}>Configure shipping</Text>
+                                    <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Set your delivery vehicle and meetup points.</Text>
+                                </View>
+                            </View>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
+
+                        <View style={{ height: 1, backgroundColor: BORDER }} />
+
+                        <TouchableOpacity style={s.onboardingRow} onPress={() => setShareModalVisible(true)}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: hasShared ? '#D1FAE5' : '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
+                                    {hasShared ? <CheckCircle size={20} color={GREEN} /> : <Users size={20} color={INDIGO} />}
+                                </View>
+                                <View>
+                                    <Text style={[s.onboardingRowTxt, hasShared && { textDecorationLine: 'line-through', color: SUB }]}>Share your store link</Text>
+                                    <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Let your network know you're open.</Text>
+                                </View>
+                            </View>
+                            <ChevronRight size={18} color="#9CA3AF" />
+                        </TouchableOpacity>
                     </View>
-                    <ChevronRight size={18} color="#9CA3AF" />
-                </TouchableOpacity>
-
-                <View style={{ height: 1, backgroundColor: BORDER }} />
-
-                <TouchableOpacity style={s.onboardingRow} onPress={() => router.push('/seller-dashboard/shipping' as any)}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ob.hasShipping ? '#D1FAE5' : '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
-                            {ob.hasShipping ? <CheckCircle size={20} color={GREEN} /> : <Truck size={20} color={AMBER} />}
-                        </View>
-                        <View>
-                            <Text style={[s.onboardingRowTxt, ob.hasShipping && { textDecorationLine: 'line-through', color: SUB }]}>Configure shipping</Text>
-                            <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Set your delivery vehicle and meetup points.</Text>
-                        </View>
-                    </View>
-                    <ChevronRight size={18} color="#9CA3AF" />
-                </TouchableOpacity>
-
-                <View style={{ height: 1, backgroundColor: BORDER }} />
-
-                <TouchableOpacity style={s.onboardingRow} onPress={() => setShareModalVisible(true)}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: hasShared ? '#D1FAE5' : '#E0E7FF', alignItems: 'center', justifyContent: 'center' }}>
-                            {hasShared ? <CheckCircle size={20} color={GREEN} /> : <Users size={20} color={INDIGO} />}
-                        </View>
-                        <View>
-                            <Text style={[s.onboardingRowTxt, hasShared && { textDecorationLine: 'line-through', color: SUB }]}>Share your store link</Text>
-                            <Text style={{ fontSize: 13, color: SUB, fontFamily: 'Quicksand', marginTop: 2 }}>Let your network know you're open.</Text>
-                        </View>
-                    </View>
-                    <ChevronRight size={18} color="#9CA3AF" />
-                </TouchableOpacity>
-            </View>
+                </Animated.View>
+            )}
         </View>
     ) : null;
 
@@ -567,10 +693,18 @@ export default function SellerDashboardHome() {
                 <View style={{ height: 40 }} />
             </ScrollView>
 
-            {/* Share Link Modal */}
-            <Modal visible={shareModalVisible} transparent animationType="fade" onRequestClose={() => setShareModalVisible(false)}>
-                <View style={s.modalOverlay}>
-                    <View style={s.modalContent}>
+            <ModalPortal>
+                {shareModalVisible ? (
+                    <View style={Platform.OS === 'web' ? {
+                        position: 'fixed' as any,
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.4)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: 24,
+                        zIndex: 9999,
+                    } : s.modalOverlay}>
+                        <View style={s.modalContent}>
                             <View style={s.modalHeader}>
                                 <Text style={s.modalTitle}>Share Your Store</Text>
                                 <TouchableOpacity onPress={() => setShareModalVisible(false)}>
@@ -591,7 +725,9 @@ export default function SellerDashboardHome() {
                                 />
                                 <TouchableOpacity
                                     style={{ width: 48, height: 48, backgroundColor: copied ? GREEN : P, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
-                                    onPress={() => {
+                                    onPress={async () => {
+                                        const url = `knotandbloom.shop/shop/${user?.sellerProfile?.slug || ''}`;
+                                        await Clipboard.setStringAsync(url);
                                         setCopied(true);
                                         setHasShared(true);
                                         AsyncStorage.setItem('onboarding_shared', 'true');
@@ -604,7 +740,8 @@ export default function SellerDashboardHome() {
                             {copied && <Text style={{ color: GREEN, fontSize: 12, fontFamily: 'Quicksand', marginTop: 8, textAlign: 'center', fontWeight: '700' }}>Link copied to clipboard!</Text>}
                         </View>
                     </View>
-            </Modal>
+                ) : null}
+            </ModalPortal>
         </View>
     );
 }

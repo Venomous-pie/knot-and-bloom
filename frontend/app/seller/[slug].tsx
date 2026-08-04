@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/seller/ImageCropperModal';
-import { apiClient, sellerOrdersAPI } from "@/api/api";
+import { apiClient, sellerOrdersAPI, reviewsAPI } from "@/api/api";
 import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, withSpring, interpolate, Extrapolation, ZoomIn } from "react-native-reanimated";
 import GlobalHeaderUI from "@/components/layout/GlobalHeaderUI";
 import {
@@ -57,6 +57,9 @@ export default function SellerProfile() {
     const [seller, setSeller] = useState<SellerProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [reviewsMeta, setReviewsMeta] = useState<any>(null);
+    const [loadingReviews, setLoadingReviews] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('products');
     const [activeFilter, setActiveFilter] = useState<FilterType>('All');
     const [isEditingAbout, setIsEditingAbout] = useState(false);
@@ -170,7 +173,20 @@ export default function SellerProfile() {
                 setLoading(false);
             }
         };
+        const fetchReviews = async () => {
+            setLoadingReviews(true);
+            try {
+                const res = await reviewsAPI.getReviewsBySeller(slug as string);
+                setReviews(res.data?.data || []);
+                setReviewsMeta(res.data?.meta || null);
+            } catch (err) {
+                console.error("Failed to fetch reviews", err);
+            } finally {
+                setLoadingReviews(false);
+            }
+        };
         fetchSeller();
+        fetchReviews();
     }, [slug]);
 
     const handlePickImage = async (field: 'logo' | 'banner') => {
@@ -517,15 +533,82 @@ export default function SellerProfile() {
         </View>
     );
 
-    const renderReviewsSection = () => (
-        <View style={[styles.reviewsContainer, isDesktop && styles.reviewsContainerDesktop]}>
-            <View style={styles.emptyState}>
-                <MessageCircle size={40} color={theme.colors.border} />
-                <Text style={styles.emptyStateText}>No reviews yet</Text>
-                <Text style={styles.emptyStateSubtext}>Be the first to leave a review for this seller!</Text>
+    const renderReviewsSection = () => {
+        if (loadingReviews) {
+            return (
+                <View style={[styles.reviewsContainer, isDesktop && styles.reviewsContainerDesktop]}>
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                </View>
+            );
+        }
+
+        if (reviews.length === 0) {
+            return (
+                <View style={[styles.reviewsContainer, isDesktop && styles.reviewsContainerDesktop]}>
+                    <View style={styles.emptyState}>
+                        <MessageCircle size={40} color={theme.colors.border} />
+                        <Text style={styles.emptyStateText}>No reviews yet</Text>
+                        <Text style={styles.emptyStateSubtext}>Be the first to leave a review for this seller!</Text>
+                    </View>
+                </View>
+            );
+        }
+
+        return (
+            <View style={[styles.reviewsContainer, isDesktop && styles.reviewsContainerDesktop]}>
+                <View style={styles.reviewsHeader}>
+                    <Text style={styles.reviewsTitle}>Customer Reviews ({reviewsMeta?.totalCount || 0})</Text>
+                    <View style={styles.ratingOverview}>
+                        <Star size={24} color="#FF9800" fill="#FF9800" />
+                        <Text style={styles.averageRating}>
+                            {reviewsMeta?.averageRating ? reviewsMeta.averageRating.toFixed(1) : 0}
+                        </Text>
+                    </View>
+                </View>
+
+                {reviews.map((review) => (
+                    <View key={review.uid} style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                            <View style={styles.reviewerInfo}>
+                                {review.user?.avatar ? (
+                                    <Image source={{ uri: review.user.avatar }} style={styles.reviewerAvatar} />
+                                ) : (
+                                    <View style={[styles.reviewerAvatar, styles.avatarPlaceholder]}>
+                                        <Text style={styles.avatarInitials}>{review.user?.name?.charAt(0) || 'U'}</Text>
+                                    </View>
+                                )}
+                                <View>
+                                    <Text style={styles.reviewerName}>{review.user?.name || 'Anonymous'}</Text>
+                                    <Text style={styles.reviewDate}>
+                                        {new Date(review.createdAt).toLocaleDateString()}
+                                    </Text>
+                                </View>
+                            </View>
+                            <View style={styles.starRow}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                        key={star}
+                                        size={14}
+                                        color={star <= review.rating ? "#FF9800" : theme.colors.border}
+                                        fill={star <= review.rating ? "#FF9800" : "transparent"}
+                                    />
+                                ))}
+                            </View>
+                        </View>
+                        
+                        {review.title && <Text style={styles.reviewTitle}>{review.title}</Text>}
+                        <Text style={styles.reviewText}>{review.content}</Text>
+                        
+                        {review.product && (
+                            <View style={styles.reviewProduct}>
+                                <Text style={styles.reviewProductText}>Purchased: {review.product.name}</Text>
+                            </View>
+                        )}
+                    </View>
+                ))}
             </View>
-        </View>
-    );
+        );
+    };
 
     const renderItem: ListRenderItem<any> = ({ item }) => {
         if (activeTab === 'products') {
@@ -1133,6 +1216,115 @@ const styles = StyleSheet.create({
     },
     emptyStateSubtext: {
         fontSize: 14,
+        color: theme.colors.textLight,
+        fontFamily: 'Quicksand',
+    },
+    reviewsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        paddingHorizontal: 16,
+        marginBottom: 20,
+    },
+    reviewsTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        fontFamily: 'Quicksand',
+    },
+    ratingOverview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#FFF3E0',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+    },
+    averageRating: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#FF9800',
+        fontFamily: 'Quicksand',
+    },
+    reviewCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        width: '92%',
+        shadowColor: theme.colors.shadow,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    reviewHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    reviewerInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    reviewerAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    avatarPlaceholder: {
+        backgroundColor: theme.colors.subtle,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarInitials: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: theme.colors.primary,
+        fontFamily: 'Quicksand',
+    },
+    reviewerName: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        fontFamily: 'Quicksand',
+    },
+    reviewDate: {
+        fontSize: 12,
+        color: theme.colors.textLight,
+        fontFamily: 'Quicksand',
+    },
+    starRow: {
+        flexDirection: 'row',
+        gap: 2,
+    },
+    reviewTitle: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        fontFamily: 'Quicksand',
+        marginBottom: 4,
+    },
+    reviewText: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        lineHeight: 22,
+        fontFamily: 'Quicksand',
+        marginBottom: 12,
+    },
+    reviewProduct: {
+        backgroundColor: theme.colors.background,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    reviewProductText: {
+        fontSize: 12,
         color: theme.colors.textLight,
         fontFamily: 'Quicksand',
     },

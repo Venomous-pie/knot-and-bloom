@@ -1,11 +1,11 @@
-import { categoryTitles } from '@/constants/categories';
+import { categoryTitles, CATEGORY_REGISTRY } from '@/constants/categories';
 import { TAG_SUGGESTIONS, UNIVERSAL_TAGS, validateTag } from '@/constants/tagSuggestions';
 import { isMobile } from '@/constants/layout';
 import { theme } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { useSellerSettings } from '@/contexts/SellerSettingsContext';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronDown, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift, Search, Hash, Type, AlignLeft, AlertTriangle } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronDown, RefreshCcw, Sparkles, Lock, Package, Tag, Image as ImageIcon, Layers, FileText, PhilippinePeso, Percent, Archive, Truck, Gift, Search, Hash, Type, AlignLeft, AlertTriangle, X } from 'lucide-react-native';
 import { calculateOptimizationScore, type OptimizationResult, type ScoreCategory } from '@/utils/optimizationScore';
 import React, { useEffect, useState, useRef } from 'react';
 import {
@@ -244,29 +244,23 @@ export default function ProductFormWizard({
     }, [formData.name]);
 
     const getSuggestedCategories = () => {
-        const name = formData.name.toLowerCase();
-        if (!name) return [];
-        const suggestions: string[] = [];
-        if (name.includes('crochet bouquet') || name.includes('crochet flower')) suggestions.push('Crochet Flower Bouquets');
-        if (name.includes('fuzzy wire bouquet') || name.includes('pipe cleaner bouquet')) suggestions.push('Fuzzy Wire Bouquets');
-        if (name.includes('crochet key') || name.includes('crochet keychain')) suggestions.push('Crochet Key Chains');
-        if (name.includes('amigurumi') || name.includes('plushie')) suggestions.push('Amigurumi Plushies');
-        if (name.includes('crochet')) suggestions.push('Crochet');
-        if (name.includes('fuzzy wire') || name.includes('pipe cleaner')) suggestions.push('Fuzzy Wire Art');
-        if (name.includes('wire flower')) suggestions.push('Wire Flowers');
-        if (name.includes('gift box') || name.includes('gift set')) suggestions.push('Gift Boxes/Sets');
-        if (name.includes('hair tie')) suggestions.push('Hair Ties');
-        if (name.includes('bead') || name.includes('bracelet') || name.includes('necklace')) suggestions.push('Beaded Jewelry');
-        if (name.includes('phone charm') || name.includes('phone strap')) suggestions.push('Phone Charms');
-        if (name.includes('scrunchie')) suggestions.push('Scrunchies');
-        if (name.includes('resin')) suggestions.push('Resin Crafts');
-        if (name.includes('bookmark')) suggestions.push('Bookmarks');
-        if (name.includes('tote bag') || name.includes('canvas bag')) suggestions.push('Tote Bags');
-        if (name.includes('sticker') || name.includes('print')) suggestions.push('Stickers & Prints');
-        if (name.includes('clay')) suggestions.push('Clay Accessories');
-        if (name.includes('key chain') || name.includes('keychain')) suggestions.push('Key Chains');
-        if (name.includes('bouquet') || name.includes('flower')) suggestions.push('Flower Boquets');
-        return suggestions;
+        const textToSearch = `${formData.name} ${formData.description || ''}`.toLowerCase();
+        if (!textToSearch.trim()) return [];
+
+        const suggestions = new Set<string>();
+
+        CATEGORY_REGISTRY.forEach(category => {
+            if (textToSearch.includes(category.title.toLowerCase())) {
+                suggestions.add(category.title);
+            }
+            category.tags.forEach(tag => {
+                if (textToSearch.includes(tag.toLowerCase())) {
+                    suggestions.add(category.title);
+                }
+            });
+        });
+
+        return Array.from(suggestions);
     };
 
     const handleChange = (field: keyof ProductFormData, value: string) => {
@@ -679,9 +673,9 @@ export default function ProductFormWizard({
                             {/* Category Dropdown */}
                             <View style={[styles.field, { marginBottom: 0, zIndex: 999999}]}>
                                 <View style={styles.fieldLabelRow}>
-                                    <Text style={styles.fieldLabel}>Category (Max 3) *</Text>
-                                    <Text style={{ fontSize: 11, color: selectedCategories.length > 3 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
-                                        {selectedCategories.length}/3
+                                    <Text style={styles.fieldLabel}>Category (Max 5) *</Text>
+                                    <Text style={{ fontSize: 11, color: selectedCategories.length > 5 ? theme.colors.error : theme.colors.textLight, fontFamily: 'Quicksand' }}>
+                                        {selectedCategories.length}/5
                                     </Text>
                                 </View>
                                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: selectedCategories.length > 0 ? 8 : 0 }}>
@@ -709,8 +703,8 @@ export default function ProductFormWizard({
                                             let currentCats = [...selectedCategories];
                                             let lastPart = parts.pop() || '';
                                             for (const part of parts) {
-                                                const p = part.trim();
-                                                if (p && currentCats.length < 3 && !currentCats.includes(p)) {
+                                                const p = toTitleCase(part.trim());
+                                                if (p && currentCats.length < 5 && !currentCats.includes(p)) {
                                                     currentCats.push(p);
                                                 }
                                             }
@@ -722,34 +716,26 @@ export default function ProductFormWizard({
                                             if (errors.categories) setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
                                         }
                                     }}
-                                    placeholder={selectedCategories.length >= 3 ? 'Maximum categories reached' : 'Type a category and press Enter...'}
+                                    placeholder={selectedCategories.length >= 5 ? 'Maximum categories reached' : 'Type a category and press Enter...'}
                                     placeholderTextColor={theme.colors.textLight}
+                                    autoCapitalize="words"
                                     selectionColor={theme.colors.primary}
-                                    editable={selectedCategories.length < 3}
+                                    editable={selectedCategories.length < 5}
                                     maxLength={40}
                                     onFocus={() => {
-                                        if (selectedCategories.length < 3) {
+                                        if (selectedCategories.length < 5) {
                                             setFocusedField('category');
                                             setIsCategoryDropdownOpen(true);
                                         }
                                     }}
                                     onBlur={() => {
                                         setFocusedField(null);
-                                        setTimeout(() => {
-                                            setIsCategoryDropdownOpen(false);
-                                            if (categorySearchQuery.trim()) {
-                                                const p = categorySearchQuery.trim();
-                                                if (selectedCategories.length < 3 && !selectedCategories.includes(p)) {
-                                                    setSelectedCategories(prev => [...prev, p]);
-                                                    setCategorySearchQuery('');
-                                                }
-                                            }
-                                        }, 200);
+                                        // removed the auto-close logic here so it persists unless clicked outside
                                     }}
                                     onSubmitEditing={() => {
                                         if (categorySearchQuery.trim()) {
-                                            const p = categorySearchQuery.trim();
-                                            if (selectedCategories.length < 3 && !selectedCategories.includes(p)) {
+                                            const p = toTitleCase(categorySearchQuery.trim());
+                                            if (selectedCategories.length < 5 && !selectedCategories.includes(p)) {
                                                 setSelectedCategories(prev => [...prev, p]);
                                                 setCategorySearchQuery('');
                                             }
@@ -757,7 +743,7 @@ export default function ProductFormWizard({
                                     }}
                                 />
                                 
-                                {isCategoryDropdownOpen && selectedCategories.length < 3 && (() => {
+                                {isCategoryDropdownOpen && selectedCategories.length < 5 && (() => {
                                     const suggestedCats = getSuggestedCategories();
                                     const filteredCategories = categories.filter(c => c.toLowerCase().includes(categorySearchQuery.toLowerCase()) && !selectedCategories.includes(c));
                                     const sortedCategories = [...filteredCategories].sort((a, b) => {
@@ -772,9 +758,17 @@ export default function ProductFormWizard({
 
                                     return (
                                         <View style={{ marginTop: 8, padding: 12, backgroundColor: theme.colors.primary + '0A', borderRadius: 8 }}>
-                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 8 }}>
-                                                💡 Suggested categories {categorySearchQuery.trim() ? 'matching your input' : 'for your product'}:
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                                <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', flex: 1 }}>
+                                                    💡 Suggested categories {categorySearchQuery.trim() ? 'matching your input' : 'for your product'}:
+                                                </Text>
+                                                <Pressable 
+                                                    onPress={() => setIsCategoryDropdownOpen(false)}
+                                                    style={{ padding: 4, marginLeft: 8 }}
+                                                >
+                                                    <X size={16} color={theme.colors.textLight} />
+                                                </Pressable>
+                                            </View>
                                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                                                 {sortedCategories.map(suggestion => {
                                                     const isSug = suggestedCats.includes(suggestion) && !categorySearchQuery;
@@ -789,10 +783,9 @@ export default function ProductFormWizard({
                                                                 flexDirection: 'row', alignItems: 'center', gap: 4
                                                             }}
                                                             onPressIn={() => {
-                                                                if (selectedCategories.length < 3 && !selectedCategories.includes(suggestion)) {
+                                                                if (selectedCategories.length < 5 && !selectedCategories.includes(suggestion)) {
                                                                     setSelectedCategories(prev => [...prev, suggestion]);
                                                                     setCategorySearchQuery('');
-                                                                    setIsCategoryDropdownOpen(false);
                                                                     if (errors.categories) {
                                                                         setErrors(prev => { const n = { ...prev }; delete n.categories; return n; });
                                                                     }
@@ -1377,6 +1370,7 @@ export default function ProductFormWizard({
                                     }}
                                     placeholder={formData.tags.length >= 10 ? 'Maximum tags reached' : 'Type a tag and press Enter (e.g. handmade, crochet)'}
                                     placeholderTextColor={theme.colors.textLight}
+                                    autoCapitalize="words"
                                     selectionColor={theme.colors.primary}
                                     editable={formData.tags.length < 10}
                                     maxLength={35}
@@ -1388,8 +1382,7 @@ export default function ProductFormWizard({
                                     }}
                                     onBlur={() => {
                                         setFocusedField(null);
-                                        // Delay hiding suggestions so tap events fire
-                                        setTimeout(() => setShowTagSuggestions(false), 200);
+                                        // Delay removed to keep suggestions open unless manually closed
                                         if (tagInput.trim()) {
                                             const result = validateTag(tagInput, formData.tags);
                                             if (result.valid) {
@@ -1456,9 +1449,17 @@ export default function ProductFormWizard({
 
                                     return (
                                         <View style={{ marginTop: 8, padding: 12, backgroundColor: theme.colors.primary + '0A', borderRadius: 8 }}>
-                                            <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', marginBottom: 8 }}>
-                                                💡 Suggested tags {tagInput.trim() ? 'matching your input' : 'for your categories'}:
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                                <Text style={{ fontSize: 12, color: theme.colors.textLight, fontFamily: 'Quicksand', flex: 1 }}>
+                                                    💡 Suggested tags {tagInput.trim() ? 'matching your input' : 'for your categories'}:
+                                                </Text>
+                                                <Pressable 
+                                                    onPress={() => setShowTagSuggestions(false)}
+                                                    style={{ padding: 4, marginLeft: 8 }}
+                                                >
+                                                    <X size={16} color={theme.colors.textLight} />
+                                                </Pressable>
+                                            </View>
                                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                                                 {sorted.slice(0, 12).map((suggestion) => {
                                                     const isSug = smartSuggestions.has(suggestion) && !tagInput.trim();

@@ -18,7 +18,7 @@ export interface UpdateOrderStatusPayload {
 
 export const sellerAPI = {
     getSellers: () => apiClient.get<any[]>('/sellers'),
-    getActiveSellers: () => apiClient.get<any[]>('/sellers/active'),
+    getActiveSellers: () => apiClient.get<{ spotlightMakers: any[]; regularMakers: any[]; total: number; pagination: any }>('/sellers/active'),
     updateSellerStatus: (id: number, status: string, rejectionReason?: string) => apiClient.put(`/sellers/${id}`, { status, rejectionReason }),
     updateSellerProfile: (id: number, data: UpdateSellerProfilePayload) => apiClient.put(`/sellers/${id}`, data),
     markWelcomeSeen: () => apiClient.patch<{ success: boolean; token: string; customer: any }>('/sellers/me/welcome-seen', {}),

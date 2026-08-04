@@ -1,6 +1,6 @@
 import { productAPI } from "@/api/api";
 import { GetProductsParams, Product } from "@/types/products";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cacheProducts } from "@/utils/productCache";
 
 interface UseProductsOptions extends GetProductsParams {
@@ -18,95 +18,147 @@ interface UseProductsResult {
     updateParams: (newParams: Partial<GetProductsParams>) => void;
 }
 
-// Global cache for product queries to eliminate loading delays
-const queryCache: Record<string, { products: Product[], total: number, hasMore: boolean }> = {};
+interface CacheEntry {
+    products: Product[];
+    total: number;
+    hasMore: boolean;
+    timestamp: number;
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 50;
+const queryCache = new Map<string, CacheEntry>();
+
+export const clearProductQueryCache = () => {
+    queryCache.clear();
+};
+
+const stableStringify = (obj: any): string => {
+    if (!obj || typeof obj !== 'object') return JSON.stringify(obj);
+    const keys = Object.keys(obj).sort();
+    const sortedObj: any = {};
+    keys.forEach(k => { sortedObj[k] = obj[k]; });
+    return JSON.stringify(sortedObj);
+};
 
 export const useProducts = (options: UseProductsOptions = {}): UseProductsResult => {
-    // Generate initial cache key
-    const initialParams = { limit: 20, offset: 0, ...options };
-    const initialCacheKey = JSON.stringify(initialParams);
-    const cachedData = queryCache[initialCacheKey];
+    const { initialFetch = true, ...restOptions } = options;
+    const initialParams = { limit: 20, offset: 0, ...restOptions };
+    const initialCacheKey = stableStringify(initialParams);
+
+    // Check cache on initialization
+    let cachedData = queryCache.get(initialCacheKey);
+    if (cachedData && Date.now() - cachedData.timestamp > CACHE_TTL) {
+        queryCache.delete(initialCacheKey);
+        cachedData = undefined;
+    }
 
     const [products, setProducts] = useState<Product[]>(cachedData?.products || []);
-    // If we have cached data, we don't need to show the initial loading state
-    const [loading, setLoading] = useState(cachedData ? false : true);
+    // Don't show loading on mount if we have valid cache
+    const [loading, setLoading] = useState(cachedData ? false : initialFetch);
     const [error, setError] = useState<string | null>(null);
     const [total, setTotal] = useState(cachedData?.total || 0);
     const [hasMore, setHasMore] = useState(cachedData?.hasMore || false);
 
     const [params, setParams] = useState<GetProductsParams>(initialParams);
 
-    const fetchProducts = useCallback(async (currentParams: GetProductsParams, isLoadMore = false) => {
-        try {
-            const cacheKey = JSON.stringify(currentParams);
-            const hasCache = !!queryCache[cacheKey];
-            
-            // Only show loading if we are NOT loading more AND we don't have cached data for this query
-            if (!isLoadMore && !hasCache) {
-                setLoading(true);
-                setProducts([]);
-            }
-            
-            setError(null);
+    const latestRequestRef = useRef<string | null>(null);
+    const hasMounted = useRef(false);
 
+    const fetchProducts = useCallback(async (currentParams: GetProductsParams, isLoadMore = false) => {
+        const cacheKey = stableStringify(currentParams);
+        latestRequestRef.current = cacheKey;
+
+        let hasValidCache = false;
+
+        if (!isLoadMore) {
+            const cached = queryCache.get(cacheKey);
+            if (cached && Date.now() - cached.timestamp <= CACHE_TTL) {
+                // Cache hit! Update UI instantly.
+                setProducts(cached.products);
+                setTotal(cached.total);
+                setHasMore(cached.hasMore);
+                setError(null);
+                setLoading(false);
+                hasValidCache = true;
+                // Note: We still proceed to fetch in the background for stale-while-revalidate
+            }
+        }
+
+        if (!isLoadMore && !hasValidCache) {
+            setLoading(true);
+            setProducts([]);
+            setError(null);
+        }
+
+        try {
             const response = await productAPI.getProducts(currentParams);
 
+            // Staleness guard: if a newer request was fired while this was in flight, discard this response
+            if (latestRequestRef.current !== cacheKey) return;
+
             if (isLoadMore) {
-                setProducts(prev => {
-                    const newProducts = [...prev, ...response.data.products];
-                    // Update cache for load more? It's tricky with offset, usually we just cache page 0.
-                    return newProducts;
-                });
+                setProducts(prev => [...prev, ...response.data.products]);
+                // We deliberately don't update queryCache for loadMore (offset > 0) to avoid 
+                // caching deep scroll states. Cache only retains page 1.
             } else {
                 setProducts(response.data.products);
-                cacheProducts(response.data.products);
-                // Save to cache for instant subsequent loads
-                queryCache[cacheKey] = {
+                cacheProducts(response.data.products); // Update entity cache
+
+                // Update global query cache
+                queryCache.set(cacheKey, {
                     products: response.data.products,
                     total: response.data.total,
-                    hasMore: response.data.pagination.hasMore
-                };
+                    hasMore: response.data.pagination.hasMore,
+                    timestamp: Date.now()
+                });
+
+                // Enforce max cache size (evict oldest)
+                if (queryCache.size > MAX_CACHE_SIZE) {
+                    const firstKey = queryCache.keys().next().value;
+                    if (firstKey) queryCache.delete(firstKey);
+                }
             }
 
             setTotal(response.data.total);
             setHasMore(response.data.pagination.hasMore);
+            setError(null);
         } catch (err: any) {
+            if (latestRequestRef.current !== cacheKey) return;
+
             console.error("Failed to fetch products:", err);
             setError(err.message || "Failed to load products");
         } finally {
-            setLoading(false);
+            if (latestRequestRef.current === cacheKey) {
+                setLoading(false);
+            }
         }
     }, []);
 
-    useEffect(() => {
-        const newParams = { limit: 20, offset: 0, ...options };
-        const cacheKey = JSON.stringify(newParams);
+    const optionsKey = stableStringify(options);
 
-        if (cacheKey !== JSON.stringify(params)) {
-            setParams(newParams);
-            
-            if (queryCache[cacheKey]) {
-                // Instantly load from cache to prevent skeleton flash
-                setProducts(queryCache[cacheKey].products);
-                setTotal(queryCache[cacheKey].total);
-                setHasMore(queryCache[cacheKey].hasMore);
-                setLoading(false);
-            }
-            
-            if (options.initialFetch !== false) {
-                fetchProducts(newParams, false);
+    useEffect(() => {
+        if (!hasMounted.current) {
+            hasMounted.current = true;
+            if (initialFetch) {
+                fetchProducts(params, false);
             }
         } else {
-            // Initial mount where params match the default state
-            if (options.initialFetch !== false) {
+            // Options prop changed, reset to new options
+            const { initialFetch: _ignored, ...newRestOptions } = options;
+            const newParams = { limit: 20, offset: 0, ...newRestOptions };
+            setParams(newParams);
+            if (initialFetch) {
                 fetchProducts(newParams, false);
             }
         }
-    }, [JSON.stringify(options)]); 
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [optionsKey]);
 
     const refresh = async () => {
         const newParams = { ...params, offset: 0 };
         setParams(newParams);
+        // Imperative calls fetch regardless of initialFetch prop
         await fetchProducts(newParams, false);
     };
 
@@ -121,6 +173,7 @@ export const useProducts = (options: UseProductsOptions = {}): UseProductsResult
     const updateParams = (newParams: Partial<GetProductsParams>) => {
         const updated = { ...params, ...newParams, offset: 0 };
         setParams(updated);
+        // Imperative calls fetch regardless of initialFetch prop
         fetchProducts(updated, false);
     };
 

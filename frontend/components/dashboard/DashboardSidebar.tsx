@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, DeviceEventEmitter } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
-import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, Truck } from 'lucide-react-native';
+import { LayoutDashboard, Package, ShoppingBag, DollarSign, Bell, AlertTriangle, PenTool, TrendingUp, BarChart2, Star, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, Truck, Shield } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { sellerAPI } from '@/api/api';
@@ -50,6 +50,7 @@ export default function DashboardSidebar() {
     ];
 
     const globalItems = [
+        ...(user?.role === 'ADMIN' ? [{ label: 'Admin Dashboard', route: '/admin', icon: Shield }] : []),
         { label: 'Shop Home', route: '/', icon: Home },
         { label: 'Store Settings', route: '/seller-dashboard/settings', icon: Settings },
     ];

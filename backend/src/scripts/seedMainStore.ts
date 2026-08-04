@@ -79,21 +79,21 @@ const placeholder = (hex: string, label = '+') =>
     `https://placehold.co/800x800/${hex}/white?text=${encodeURIComponent(label)}`;
 
 // ── Upload all seed images ────────────────────────────────────────────────────
-async function uploadSeedImages(): Promise<{
-    ami: string[];
-    crobag: string[];
-    flow: string[];
-}> {
+async function uploadSeedImages(): Promise<any> {
     console.log('\n📤 Uploading seed images to ImageKit...');
+
+        const uploadFileFromSrc = async (srcPath: string, filename: string, folder: string): Promise<string> => {
+        if (!fs.existsSync(srcPath)) {
+            console.warn(`  ⚠️  File not found: ${srcPath}`);
+            return placeholder('E8C4C8', filename);
+        }
+        const url = await uploadToImageKit(srcPath, filename, folder);
+        return url ?? placeholder('E8C4C8', filename);
+    };
 
     const uploadFile = async (filename: string, folder: string): Promise<string> => {
         const localPath = path.join(SEED_IMG_DIR, filename);
-        if (!fs.existsSync(localPath)) {
-            console.warn(`  ⚠️  File not found: ${localPath}`);
-            return placeholder('E8C4C8', filename);
-        }
-        const url = await uploadToImageKit(localPath, filename, folder);
-        return url ?? placeholder('E8C4C8', filename);
+        return uploadFileFromSrc(localPath, filename, folder);
     };
 
     const ami: string[] = [];
@@ -106,8 +106,58 @@ async function uploadSeedImages(): Promise<{
     const flow: string[] = [];
     for (let i = 1; i <= 5; i++) flow.push(await uploadFile(`flow_${i}.jpg`, 'fuzzy-flowers'));
 
-    return { ami, crobag, flow };
+    const lumina_logo = await uploadFile('lumina_logo.png', 'store_assets');
+    const lumina_banner = await uploadFile('lumina_banner.png', 'store_assets');
+    const pintura_logo = await uploadFile('pintura_logo.png', 'store_assets');
+    const pintura_banner = await uploadFileFromSrc(path.join(SEED_IMG_DIR, 'pintura_banner.png'), 'pintura_banner.png', 'store_assets');
+
+    const ami_logo = await uploadFileFromSrc(path.join(SEED_IMG_DIR, 'ami_logo.png'), 'ami_logo.png', 'store_assets');
+    const ami_banner = await uploadFileFromSrc(path.join(SEED_IMG_DIR, 'ami_banner.png'), 'ami_banner.png', 'store_assets');
+    const crobag_logo = await uploadFileFromSrc(path.join(SEED_IMG_DIR, 'crobag_logo.png'), 'crobag_logo.png', 'store_assets');
+    const crobag_banner = await uploadFileFromSrc(path.join(SEED_IMG_DIR, 'crobag_banner.png'), 'crobag_banner.png', 'store_assets');
+    const lena_logo = await uploadFileFromSrc(path.join(SEED_IMG_DIR, 'lena_logo.png'), 'lena_logo.png', 'store_assets');
+    const lena_banner = await uploadFileFromSrc(path.join(SEED_IMG_DIR, 'lena_banner.png'), 'lena_banner.png', 'store_assets');
+
+    const newImgs = {
+        beaded_bracelets: [] as string[],
+        beaded_necklace: [] as string[],
+        crochet_purse: [] as string[],
+        crochet_set_one: [] as string[],
+        crochet_set_two: [] as string[],
+        crochet_tops: [] as string[],
+        fuzzy_keychains: [] as string[],
+        fuzzy_wire_bouquet: [] as string[],
+        hair_ties: [] as string[],
+        paintings: [] as string[],
+        resin_door: [] as string[]
+    };
+
+    const PRODUCT_IMAGES_DIR = 'C:\\Users\\User\\knot-and-bloom\\frontend\\assets\\product_images';
+    
+    const uploadNewDir = async (dir: string, arr: string[]) => {
+        const fullPath = path.join(PRODUCT_IMAGES_DIR, dir);
+        if (!fs.existsSync(fullPath)) return;
+        const files = fs.readdirSync(fullPath).filter(f => f.endsWith('.jpg') || f.endsWith('.png'));
+        for (const file of files) {
+            arr.push(await uploadFileFromSrc(path.join(fullPath, file), file, dir));
+        }
+    };
+
+    await uploadNewDir('beaded_bracelets', newImgs.beaded_bracelets);
+    await uploadNewDir('beaded_necklace', newImgs.beaded_necklace);
+    await uploadNewDir('crochet_purse', newImgs.crochet_purse);
+    await uploadNewDir('crochet_set_one_shop_type', newImgs.crochet_set_one);
+    await uploadNewDir('crochet_set_two_shop_type', newImgs.crochet_set_two);
+    await uploadNewDir('crochet_tops', newImgs.crochet_tops);
+    await uploadNewDir('fuzzy_keychains', newImgs.fuzzy_keychains);
+    await uploadNewDir('fuzzy_wire_bouquet', newImgs.fuzzy_wire_bouquet);
+    await uploadNewDir('hair_ties', newImgs.hair_ties);
+    await uploadNewDir('paintings', newImgs.paintings);
+    await uploadNewDir('resin_door_decorations', newImgs.resin_door);
+
+    return { ami, crobag, flow, newImgs, lumina_logo, lumina_banner, pintura_logo, pintura_banner, ami_logo, ami_banner, crobag_logo, crobag_banner, lena_logo, lena_banner };
 }
+
 
 // ── Seller definitions ────────────────────────────────────────────────────────
 const SELLER_DEFS = [
@@ -216,7 +266,75 @@ const SELLER_DEFS = [
             freeShippingThreshold: 0,
         },
     },
+
+    {
+        user: {
+            name: 'Luisa Mina',
+            email: 'luisa.mina@knotbloom-seed.com',
+            password: 'Password123!',
+            phone: '+639201234004',
+        },
+        seller: {
+            name: 'Lumina Beads',
+            slug: 'lumina-beads',
+            description: 'Handcrafted beaded jewelry and elegant hair ties that add a sparkle to your everyday look. Each piece is carefully strung with premium glass beads and crystals.',
+            businessAddress: 'Brgy. San Antonio, Pasig City, Metro Manila',
+            legalName: 'Luisa Mina S. Perez',
+            phone: '+639201234004',
+            productCategories: ['beaded-jewelry', 'hair-tie'],
+            isHandmade: true,
+            hasPriorExperience: true,
+            salesChannels: ['Instagram', 'Pop-up Markets'],
+            monthlyOrders: '31-60 orders',
+            sampleItems: ['Glass bead bracelet', 'Pearl necklace', 'Satin hair ties'],
+            portfolioLink: 'https://www.instagram.com/luminabeads',
+            idType: 'Passport',
+            idNumber: 'P1234567A',
+            termsAccepted: true,
+            sellerCitymunCode: '137404000',
+            sellerProvCode: '1374',
+            sellerRegCode: '13',
+            selfDeliveryEnabled: false,
+            commissionRate: 0.12,
+            freeShippingEnabled: true,
+            freeShippingThreshold: 1000,
+        },
+    },
+    {
+        user: {
+            name: 'Leo Tolentino',
+            email: 'leo.tolentino@knotbloom-seed.com',
+            password: 'Password123!',
+            phone: '+639211234005',
+        },
+        seller: {
+            name: 'Pintura at Likha',
+            slug: 'pintura-at-likha',
+            description: 'Original canvas paintings and beautiful resin door decorations. I pour my heart and soul into every brushstroke and resin cast to bring vibrant art into your home.',
+            businessAddress: 'Brgy. UP Campus, Quezon City, Metro Manila',
+            legalName: 'Leo Alfonso T. Tolentino',
+            phone: '+639211234005',
+            productCategories: ['paintings-wall-art', 'resin-crafts'],
+            isHandmade: true,
+            hasPriorExperience: true,
+            salesChannels: ['Facebook', 'Art Exhibits'],
+            monthlyOrders: '1-10 orders',
+            sampleItems: ['Acrylic landscape painting', 'Resin floral door sign'],
+            portfolioLink: 'https://www.facebook.com/pinturaatlikha',
+            idType: 'UMID',
+            idNumber: 'CRN-123-456-789-0',
+            termsAccepted: true,
+            sellerCitymunCode: '137404000',
+            sellerProvCode: '1374',
+            sellerRegCode: '13',
+            selfDeliveryEnabled: true,
+            commissionRate: 0.12,
+            freeShippingEnabled: false,
+            freeShippingThreshold: 0,
+        },
+    }
 ];
+
 
 // ── Pricing helper ────────────────────────────────────────────────────────────
 function calcDiscountedPrice(basePrice: number, pct?: number | null): number | null {
@@ -225,12 +343,382 @@ function calcDiscountedPrice(basePrice: number, pct?: number | null): number | n
 }
 
 // ── Product definitions ───────────────────────────────────────────────────────
-function buildProductDefs(imgs: { ami: string[]; crobag: string[]; flow: string[] }) {
+function buildProductDefs(imgs: any) {
     const ami = imgs.ami;
     const bag = imgs.crobag;
     const flo = imgs.flow;
-
     return [
+        // ═══════════════════════════ NEW PRODUCTS ═══════════════════════
+        {
+            si: 0,
+            name: 'Fuzzy Monster Keychain Plushies',
+            sku: 'AMI-FZKY-10004',
+            categories: ['fuzzy-wire-art', 'key-chains', 'mini-stuffed-toy'],
+            basePrice: 180,
+            discountPercentage: 5,
+            description: 'Super cute fuzzy monster keychain plushies! Guaranteed to bring a smile to your face. These are made with premium soft faux fur yarn, perfect for bags, keys, or gifts. Get them in assorted colors! They are durable, adorable, and extremely huggable.',
+            materials: 'Premium soft faux fur yarn, polyester stuffing, metal keychain ring',
+            careInstructions: 'Spot clean only with a damp cloth. Do not submerge in water.',
+            tags: ['keychain', 'plushie', 'fuzzy', 'monster', 'cute', 'gift'],
+            metaTitle: 'Fuzzy Monster Keychain Plushies | Cute Bag Charms',
+            metaDescription: 'Adorable handmade fuzzy monster keychains in assorted colors. Premium soft faux fur yarn bag charms.',
+            image: imgs.newImgs.fuzzy_keychains[0] || imgs.ami[0],
+            images: imgs.newImgs.fuzzy_keychains.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@aminimaria/video/1234567890',
+            fulfillmentType: FulfillmentType.READY_TO_SHIP,
+            processingTime: '1-2 business days',
+            isCodAllowed: true,
+            isLocalPickupAllowed: false,
+            isCustomOrderAllowed: false,
+            isBundle: false,
+            minOrderQty: 1,
+            maxOrderQty: 20,
+            soldCount: 88,
+            productOptions: [
+                {
+                    name: 'Color Variation',
+                    position: 0,
+                    values: [
+                        { value: 'Variation 1', imageUrl: imgs.newImgs.fuzzy_keychains[0] },
+                        { value: 'Variation 2', imageUrl: imgs.newImgs.fuzzy_keychains[1] },
+                        { value: 'Variation 3', imageUrl: imgs.newImgs.fuzzy_keychains[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Variation 1', sku: 'AMI-FZKY-10004-V1', stock: 10, price: 180, discountPercentage: 5, images: [imgs.newImgs.fuzzy_keychains[0]], isEnabled: true, options: { 'Color Variation': 'Variation 1' } },
+                { name: 'Variation 2', sku: 'AMI-FZKY-10004-V2', stock: 12, price: 180, discountPercentage: 5, images: [imgs.newImgs.fuzzy_keychains[1]], isEnabled: true, options: { 'Color Variation': 'Variation 2' } },
+                { name: 'Variation 3', sku: 'AMI-FZKY-10004-V3', stock: 8, price: 180, discountPercentage: 5, images: [imgs.newImgs.fuzzy_keychains[2]], isEnabled: true, options: { 'Color Variation': 'Variation 3' } },
+            ],
+        },
+        {
+            si: 1,
+            name: 'Handmade Crochet Everyday Purse',
+            sku: 'BAG-HCEP-20004',
+            categories: ['crochet-bags', 'accessories'],
+            basePrice: 550,
+            discountPercentage: 10,
+            description: 'A beautifully handmade crochet everyday purse that fits your essentials perfectly! Made with thick cotton cord for durability. Features a secure button closure and a comfortable strap. Perfect for quick errands, coffee dates, or casual walks.',
+            materials: '100% thick cotton cord yarn, wooden button closure, woven lining',
+            careInstructions: 'Hand wash gently in cold water. Lay flat to dry to maintain shape. Do not bleach.',
+            tags: ['crochet', 'purse', 'bag', 'handmade', 'cotton', 'everyday'],
+            metaTitle: 'Handmade Crochet Everyday Purse | The Crobag Studio',
+            metaDescription: 'Durable, stylish crochet purse handmade with thick cotton cord. Perfect for everyday essentials.',
+            image: imgs.newImgs.crochet_purse[0] || imgs.crobag[0],
+            images: imgs.newImgs.crochet_purse.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@thecrobagstudio/video/1234567890',
+            fulfillmentType: FulfillmentType.MADE_TO_ORDER,
+            processingTime: '3-5 business days',
+            isCodAllowed: true,
+            isLocalPickupAllowed: true,
+            isCustomOrderAllowed: false,
+            minOrderQty: 1,
+            maxOrderQty: 5,
+            soldCount: 42,
+            productOptions: [
+                {
+                    name: 'Style',
+                    position: 0,
+                    values: [
+                        { value: 'Style A', imageUrl: imgs.newImgs.crochet_purse[0] },
+                        { value: 'Style B', imageUrl: imgs.newImgs.crochet_purse[1] },
+                        { value: 'Style C', imageUrl: imgs.newImgs.crochet_purse[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Style A', sku: 'BAG-HCEP-20004-A', stock: 6, price: 550, discountPercentage: 10, images: [imgs.newImgs.crochet_purse[0]], isEnabled: true, options: { 'Style': 'Style A' } },
+                { name: 'Style B', sku: 'BAG-HCEP-20004-B', stock: 6, price: 550, discountPercentage: 10, images: [imgs.newImgs.crochet_purse[1]], isEnabled: true, options: { 'Style': 'Style B' } },
+                { name: 'Style C', sku: 'BAG-HCEP-20004-C', stock: 8, price: 550, discountPercentage: 10, images: [imgs.newImgs.crochet_purse[2]], isEnabled: true, options: { 'Style': 'Style C' } },
+            ],
+        },
+        {
+            si: 1,
+            name: 'Boho Summer Crochet Crop Tops',
+            sku: 'BAG-BOHC-20005',
+            categories: ['tops', 'crochet'],
+            basePrice: 890,
+            discountPercentage: 15,
+            description: 'Embrace the summer vibes with these stunning boho crochet crop tops! Hand-stitched with lightweight, breathable milk cotton yarn. Perfect for beach trips, festivals, or paired with high-waisted jeans. Adjustable tie-back strings for a perfect fit!',
+            materials: 'Soft milk cotton yarn (80% cotton, 20% acrylic)',
+            careInstructions: 'Hand wash gently. Do not wring or twist. Lay flat to air dry. Do not iron.',
+            tags: ['crochet', 'top', 'summer', 'boho', 'beach', 'apparel'],
+            metaTitle: 'Boho Summer Crochet Crop Tops | Beach Wear PH',
+            metaDescription: 'Hand-stitched lightweight crochet crop tops. Perfect for summer, beach trips, and music festivals.',
+            image: imgs.newImgs.crochet_tops[0] || imgs.crobag[0],
+            images: imgs.newImgs.crochet_tops.slice(0, 5),
+            videoUrl: 'https://www.instagram.com/p/1234567890/',
+            fulfillmentType: FulfillmentType.READY_TO_SHIP,
+            processingTime: '1-2 business days',
+            isCodAllowed: true,
+            isLocalPickupAllowed: false,
+            isCustomOrderAllowed: true,
+            minOrderQty: 1,
+            maxOrderQty: 10,
+            soldCount: 105,
+            productOptions: [
+                {
+                    name: 'Design',
+                    position: 0,
+                    values: [
+                        { value: 'Design A', imageUrl: imgs.newImgs.crochet_tops[0] },
+                        { value: 'Design B', imageUrl: imgs.newImgs.crochet_tops[1] },
+                        { value: 'Design C', imageUrl: imgs.newImgs.crochet_tops[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Design A', sku: 'BAG-BOHC-20005-A', stock: 15, price: 890, discountPercentage: 15, images: [imgs.newImgs.crochet_tops[0]], isEnabled: true, options: { 'Design': 'Design A' } },
+                { name: 'Design B', sku: 'BAG-BOHC-20005-B', stock: 12, price: 890, discountPercentage: 15, images: [imgs.newImgs.crochet_tops[1]], isEnabled: true, options: { 'Design': 'Design B' } },
+                { name: 'Design C', sku: 'BAG-BOHC-20005-C', stock: 10, price: 890, discountPercentage: 15, images: [imgs.newImgs.crochet_tops[2]], isEnabled: true, options: { 'Design': 'Design C' } },
+            ],
+        },
+        {
+            si: 2,
+            name: 'Premium Fuzzy Wire Floral Arrangement',
+            sku: 'FLW-PRMA-30004',
+            categories: ['fuzzy-wire-bouquet', 'flower-bouquets'],
+            basePrice: 1250,
+            discountPercentage: 10,
+            description: 'Upgrade your gifting with our Premium Fuzzy Wire Floral Arrangements. This extra-large bouquet features an intricate mix of faux roses, daisies, and lavender crafted entirely from soft fuzzy chenille wires. Wrapped beautifully in premium frosted paper and tied with a silk ribbon. A gift that truly lasts forever!',
+            materials: 'Fuzzy chenille wire, premium frosted wrapper, silk ribbon, faux pearl accents',
+            careInstructions: 'Keep away from moisture and direct sunlight. Dust lightly with a soft brush.',
+            tags: ['fuzzy-wire', 'bouquet', 'premium', 'forever-flowers', 'gift', 'romantic'],
+            metaTitle: 'Premium Fuzzy Wire Floral Arrangement | Extra Large Bouquet',
+            metaDescription: 'Extra-large premium fuzzy wire floral arrangement. Intricate mix of faux roses and daisies wrapped in frosted paper.',
+            image: imgs.newImgs.fuzzy_wire_bouquet[0] || imgs.flow[0],
+            images: imgs.newImgs.fuzzy_wire_bouquet.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@lenasblooms/video/1234567890',
+            fulfillmentType: FulfillmentType.MADE_TO_ORDER,
+            processingTime: '5-7 business days',
+            isCodAllowed: true,
+            isLocalPickupAllowed: true,
+            isCustomOrderAllowed: true,
+            minOrderQty: 1,
+            maxOrderQty: 5,
+            soldCount: 56,
+            productOptions: [
+                {
+                    name: 'Style',
+                    position: 0,
+                    values: [
+                        { value: 'Style 1', imageUrl: imgs.newImgs.fuzzy_wire_bouquet[0] },
+                        { value: 'Style 2', imageUrl: imgs.newImgs.fuzzy_wire_bouquet[1] },
+                        { value: 'Style 3', imageUrl: imgs.newImgs.fuzzy_wire_bouquet[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Style 1', sku: 'FLW-PRMA-30004-1', stock: 6, price: 1250, discountPercentage: 10, images: [imgs.newImgs.fuzzy_wire_bouquet[0]], isEnabled: true, options: { 'Style': 'Style 1' } },
+                { name: 'Style 2', sku: 'FLW-PRMA-30004-2', stock: 6, price: 1250, discountPercentage: 10, images: [imgs.newImgs.fuzzy_wire_bouquet[1]], isEnabled: true, options: { 'Style': 'Style 2' } },
+                { name: 'Style 3', sku: 'FLW-PRMA-30004-3', stock: 6, price: 1250, discountPercentage: 10, images: [imgs.newImgs.fuzzy_wire_bouquet[2]], isEnabled: true, options: { 'Style': 'Style 3' } },
+            ],
+        },
+        {
+            si: 3,
+            name: 'Sparkling Glass Bead Bracelets',
+            sku: 'LUM-SGBB-40001',
+            categories: ['beaded-jewelry'],
+            basePrice: 350,
+            discountPercentage: 20,
+            description: 'Add a touch of elegance to your wrist with these sparkling glass bead bracelets! Each bead is carefully selected to catch the light beautifully. Strung on high-quality elastic cord for a comfortable fit. Perfect for stacking or wearing on its own.',
+            materials: 'Premium facet glass beads, high-quality elastic cord, gold-plated spacer beads',
+            careInstructions: 'Avoid contact with water, perfume, and lotions to prevent tarnishing of spacer beads. Roll on and off your wrist.',
+            tags: ['beaded', 'bracelet', 'jewelry', 'sparkling', 'glass-beads', 'elegant'],
+            metaTitle: 'Sparkling Glass Bead Bracelets | Lumina Beads PH',
+            metaDescription: 'Elegant sparkling glass bead bracelets handcrafted with premium faceted beads and gold-plated spacers.',
+            image: imgs.newImgs.beaded_bracelets[0],
+            images: imgs.newImgs.beaded_bracelets.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@luminabeads/video/1234567890',
+            fulfillmentType: FulfillmentType.READY_TO_SHIP,
+            processingTime: '1-2 business days',
+            isCodAllowed: true,
+            isLocalPickupAllowed: false,
+            isCustomOrderAllowed: false,
+            minOrderQty: 1,
+            maxOrderQty: 30,
+            soldCount: 142,
+            productOptions: [
+                {
+                    name: 'Color Tone',
+                    position: 0,
+                    values: [
+                        { value: 'Tone A', imageUrl: imgs.newImgs.beaded_bracelets[0] },
+                        { value: 'Tone B', imageUrl: imgs.newImgs.beaded_bracelets[1] },
+                        { value: 'Tone C', imageUrl: imgs.newImgs.beaded_bracelets[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Tone A', sku: 'LUM-SGBB-40001-A', stock: 20, price: 350, discountPercentage: 20, images: [imgs.newImgs.beaded_bracelets[0]], isEnabled: true, options: { 'Color Tone': 'Tone A' } },
+                { name: 'Tone B', sku: 'LUM-SGBB-40001-B', stock: 15, price: 350, discountPercentage: 20, images: [imgs.newImgs.beaded_bracelets[1]], isEnabled: true, options: { 'Color Tone': 'Tone B' } },
+                { name: 'Tone C', sku: 'LUM-SGBB-40001-C', stock: 12, price: 350, discountPercentage: 20, images: [imgs.newImgs.beaded_bracelets[2]], isEnabled: true, options: { 'Color Tone': 'Tone C' } },
+            ],
+        },
+        {
+            si: 3,
+            name: 'Elegant Beaded Necklaces Choker',
+            sku: 'LUM-EBNC-40002',
+            categories: ['beaded-jewelry'],
+            basePrice: 480,
+            discountPercentage: 15,
+            description: 'Complete your outfit with our Elegant Beaded Necklaces! Designed to sit perfectly on the collarbone as a choker or slightly lower. Made with a mix of seed beads, pearls, and crystals. Features a sturdy lobster clasp and extension chain.',
+            materials: 'Seed beads, faux pearls, crystal accents, stainless steel lobster clasp and extension chain',
+            careInstructions: 'Store in a dry place. Avoid wearing in the shower or pool. Wipe gently with a soft cloth.',
+            tags: ['beaded', 'necklace', 'choker', 'jewelry', 'elegant', 'pearls'],
+            metaTitle: 'Elegant Beaded Necklaces Choker | Handcrafted Jewelry',
+            metaDescription: 'Handcrafted beaded choker necklaces made with seed beads, pearls, and stainless steel clasps.',
+            image: imgs.newImgs.beaded_necklace[0],
+            images: imgs.newImgs.beaded_necklace.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@luminabeads/video/1234567891',
+            fulfillmentType: FulfillmentType.READY_TO_SHIP,
+            processingTime: '1-2 business days',
+            isCodAllowed: true,
+            isLocalPickupAllowed: false,
+            isCustomOrderAllowed: false,
+            minOrderQty: 1,
+            maxOrderQty: 20,
+            soldCount: 95,
+            productOptions: [
+                {
+                    name: 'Design',
+                    position: 0,
+                    values: [
+                        { value: 'Design 1', imageUrl: imgs.newImgs.beaded_necklace[0] },
+                        { value: 'Design 2', imageUrl: imgs.newImgs.beaded_necklace[1] },
+                        { value: 'Design 3', imageUrl: imgs.newImgs.beaded_necklace[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Design 1', sku: 'LUM-EBNC-40002-1', stock: 15, price: 480, discountPercentage: 15, images: [imgs.newImgs.beaded_necklace[0]], isEnabled: true, options: { 'Design': 'Design 1' } },
+                { name: 'Design 2', sku: 'LUM-EBNC-40002-2', stock: 12, price: 480, discountPercentage: 15, images: [imgs.newImgs.beaded_necklace[1]], isEnabled: true, options: { 'Design': 'Design 2' } },
+                { name: 'Design 3', sku: 'LUM-EBNC-40002-3', stock: 10, price: 480, discountPercentage: 15, images: [imgs.newImgs.beaded_necklace[2]], isEnabled: true, options: { 'Design': 'Design 3' } },
+            ],
+        },
+        {
+            si: 3,
+            name: 'Oversized Silk Scrunchies & Hair Ties',
+            sku: 'LUM-OSST-40003',
+            categories: ['hair-tie', 'scrunchies'],
+            basePrice: 150,
+            discountPercentage: 10,
+            description: 'Treat your hair with care! Our oversized silk scrunchies prevent hair breakage, frizz, and those annoying ponytail creases. Super soft, luxurious feel with strong inner elastic to hold thick hair securely all day long.',
+            materials: '100% Satin silk fabric, strong braided elastic band',
+            careInstructions: 'Hand wash cold with mild detergent. Air dry only. Do not bleach or tumble dry.',
+            tags: ['scrunchie', 'hair-tie', 'satin', 'silk', 'hair-care', 'accessory'],
+            metaTitle: 'Oversized Silk Scrunchies & Hair Ties | Anti-Frizz',
+            metaDescription: 'Luxurious oversized satin silk scrunchies that prevent hair breakage and frizz. Strong elastic for thick hair.',
+            image: imgs.newImgs.hair_ties[0],
+            images: imgs.newImgs.hair_ties.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@luminabeads/video/1234567892',
+            fulfillmentType: FulfillmentType.READY_TO_SHIP,
+            processingTime: '1 business day',
+            isCodAllowed: true,
+            isLocalPickupAllowed: false,
+            isCustomOrderAllowed: false,
+            minOrderQty: 1,
+            maxOrderQty: 50,
+            soldCount: 310,
+            productOptions: [
+                {
+                    name: 'Color',
+                    position: 0,
+                    values: [
+                        { value: 'Color 1', imageUrl: imgs.newImgs.hair_ties[0] },
+                        { value: 'Color 2', imageUrl: imgs.newImgs.hair_ties[1] },
+                        { value: 'Color 3', imageUrl: imgs.newImgs.hair_ties[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Color 1', sku: 'LUM-OSST-40003-1', stock: 50, price: 150, discountPercentage: 10, images: [imgs.newImgs.hair_ties[0]], isEnabled: true, options: { 'Color': 'Color 1' } },
+                { name: 'Color 2', sku: 'LUM-OSST-40003-2', stock: 45, price: 150, discountPercentage: 10, images: [imgs.newImgs.hair_ties[1]], isEnabled: true, options: { 'Color': 'Color 2' } },
+                { name: 'Color 3', sku: 'LUM-OSST-40003-3', stock: 30, price: 150, discountPercentage: 10, images: [imgs.newImgs.hair_ties[2]], isEnabled: true, options: { 'Color': 'Color 3' } },
+            ],
+        },
+        {
+            si: 4,
+            name: 'Original Acrylic Landscape Canvas Paintings',
+            sku: 'PIN-OACP-50001',
+            categories: ['paintings-wall-art'],
+            basePrice: 3500,
+            discountPercentage: 15,
+            description: 'Breathe life into your space with an original acrylic canvas painting! These one-of-a-kind artworks capture stunning landscapes with vivid colors and deep textures. Painted on high-quality stretched canvas, ready to hang. A perfect statement piece for your living room or office.',
+            materials: 'Professional grade acrylic paints, 100% cotton stretched canvas, UV-resistant varnish finish',
+            careInstructions: 'Dust lightly with a soft, dry cloth. Keep away from direct, harsh sunlight and high humidity areas.',
+            tags: ['painting', 'canvas', 'acrylic', 'landscape', 'original-art', 'wall-decor'],
+            metaTitle: 'Original Acrylic Landscape Canvas Paintings | Pintura at Likha',
+            metaDescription: 'Stunning original acrylic landscape paintings on stretched canvas. Ready to hang vivid artworks for your home.',
+            image: imgs.newImgs.paintings[0],
+            images: imgs.newImgs.paintings.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@pinturaatlikha/video/1234567890',
+            fulfillmentType: FulfillmentType.READY_TO_SHIP,
+            processingTime: '2-3 business days',
+            isCodAllowed: false,
+            isLocalPickupAllowed: true,
+            isCustomOrderAllowed: true,
+            minOrderQty: 1,
+            maxOrderQty: 1,
+            soldCount: 18,
+            productOptions: [
+                {
+                    name: 'Artwork',
+                    position: 0,
+                    values: [
+                        { value: 'Artwork A', imageUrl: imgs.newImgs.paintings[0] },
+                        { value: 'Artwork B', imageUrl: imgs.newImgs.paintings[1] },
+                        { value: 'Artwork C', imageUrl: imgs.newImgs.paintings[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Artwork A', sku: 'PIN-OACP-50001-A', stock: 10, price: 3500, discountPercentage: 15, images: [imgs.newImgs.paintings[0]], isEnabled: true, options: { 'Artwork': 'Artwork A' } },
+                { name: 'Artwork B', sku: 'PIN-OACP-50001-B', stock: 10, price: 3500, discountPercentage: 15, images: [imgs.newImgs.paintings[1]], isEnabled: true, options: { 'Artwork': 'Artwork B' } },
+                { name: 'Artwork C', sku: 'PIN-OACP-50001-C', stock: 10, price: 3500, discountPercentage: 15, images: [imgs.newImgs.paintings[2]], isEnabled: true, options: { 'Artwork': 'Artwork C' } },
+            ],
+        },
+        {
+            si: 4,
+            name: 'Handcrafted Resin Floral Door Decorations',
+            sku: 'PIN-HRFD-50002',
+            categories: ['resin-crafts', 'home-decor'],
+            basePrice: 850,
+            discountPercentage: 5,
+            description: 'Welcome guests with a beautiful Handcrafted Resin Floral Door Decoration! Embedded with real dried pressed flowers, gold flakes, and high-quality epoxy resin for a glass-like finish. Includes a sturdy hanging chain. Perfect for front doors, bedrooms, or garden gates.',
+            materials: 'High-quality UV epoxy resin, dried pressed flowers, gold flakes, metal hanging chain',
+            careInstructions: 'Wipe with a microfiber cloth. Avoid extreme heat to prevent the resin from softening.',
+            tags: ['resin', 'door-decor', 'floral', 'handmade', 'signage', 'home-decor'],
+            metaTitle: 'Handcrafted Resin Floral Door Decorations | Floral Signs',
+            metaDescription: 'Beautiful handcrafted resin door decorations embedded with real dried flowers and gold flakes. High-quality epoxy finish.',
+            image: imgs.newImgs.resin_door[0],
+            images: imgs.newImgs.resin_door.slice(0, 5),
+            videoUrl: 'https://www.tiktok.com/@pinturaatlikha/video/1234567891',
+            fulfillmentType: FulfillmentType.MADE_TO_ORDER,
+            processingTime: '7-10 business days',
+            isCodAllowed: true,
+            isLocalPickupAllowed: true,
+            isCustomOrderAllowed: true,
+            minOrderQty: 1,
+            maxOrderQty: 10,
+            soldCount: 45,
+            productOptions: [
+                {
+                    name: 'Design',
+                    position: 0,
+                    values: [
+                        { value: 'Design 1', imageUrl: imgs.newImgs.resin_door[0] },
+                        { value: 'Design 2', imageUrl: imgs.newImgs.resin_door[1] },
+                        { value: 'Design 3', imageUrl: imgs.newImgs.resin_door[2] },
+                    ],
+                },
+            ],
+            variants: [
+                { name: 'Design 1', sku: 'PIN-HRFD-50002-1', stock: 8, price: 850, discountPercentage: 5, images: [imgs.newImgs.resin_door[0]], isEnabled: true, options: { 'Design': 'Design 1' } },
+                { name: 'Design 2', sku: 'PIN-HRFD-50002-2', stock: 6, price: 850, discountPercentage: 5, images: [imgs.newImgs.resin_door[1]], isEnabled: true, options: { 'Design': 'Design 2' } },
+                { name: 'Design 3', sku: 'PIN-HRFD-50002-3', stock: 10, price: 850, discountPercentage: 5, images: [imgs.newImgs.resin_door[2]], isEnabled: true, options: { 'Design': 'Design 3' } },
+            ],
+        },
         // ═══════════════════════════ SELLER 0 — Ami ni Maria ═══════════════════════
         {
             si: 0,
@@ -742,8 +1230,27 @@ async function seedMainStore() {
 
     // 2. Create sellers
     console.log('\n👤 Creating sellers...');
-    for (const def of SELLER_DEFS) {
+        for (const def of SELLER_DEFS) {
         const { user: ud, seller: sd } = def;
+
+        let avatarUrl = undefined;
+        let bannerUrl = undefined;
+        if (sd.slug === 'lumina-beads') {
+            avatarUrl = imgs.lumina_logo;
+            bannerUrl = imgs.lumina_banner;
+        } else if (sd.slug === 'pintura-at-likha') {
+            avatarUrl = imgs.pintura_logo;
+            bannerUrl = imgs.pintura_banner;
+        } else if (sd.slug === 'ami-ni-maria') {
+            avatarUrl = imgs.ami_logo;
+            bannerUrl = imgs.ami_banner;
+        } else if (sd.slug === 'the-crobag-studio') {
+            avatarUrl = imgs.crobag_logo;
+            bannerUrl = imgs.crobag_banner;
+        } else if (sd.slug === 'lenas-blooms') {
+            avatarUrl = imgs.lena_logo;
+            bannerUrl = imgs.lena_banner;
+        }
 
         let user = await prisma.user.findUnique({ where: { email: ud.email } });
         if (!user) {
@@ -754,11 +1261,18 @@ async function seedMainStore() {
                     password,
                     phone: ud.phone,
                     role: Role.SELLER,
+                    avatar: avatarUrl
                 },
             });
             console.log(`  ✅ Created user: ${ud.name}`);
         } else {
             console.log(`  ⏭️  User exists: ${ud.email}`);
+            if (avatarUrl) {
+                await prisma.user.update({
+                    where: { email: ud.email },
+                    data: { avatar: avatarUrl }
+                });
+            }
         }
 
         let seller = await prisma.seller.findUnique({ where: { userId: user.uid } });
@@ -794,18 +1308,48 @@ async function seedMainStore() {
                     freeShippingEnabled: sd.freeShippingEnabled,
                     freeShippingThreshold: sd.freeShippingThreshold,
                     selfDeliveryEnabled: sd.selfDeliveryEnabled,
+                    banner: bannerUrl,
+                    logo: avatarUrl,
                 },
             });
             console.log(`  ✅ Created seller: ${sd.name}`);
         } else {
             console.log(`  ⏭️  Seller exists: ${sd.slug}`);
+            if (bannerUrl || avatarUrl) {
+                await prisma.seller.update({
+                    where: { slug: sd.slug },
+                    data: { 
+                        ...(bannerUrl && { banner: bannerUrl }),
+                        ...(avatarUrl && { logo: avatarUrl })
+                    }
+                });
+            }
         }
 
         createdSellers.push({ uid: seller.uid, email: ud.email });
     }
 
+    // 2.5 Create dummy buyers for reviews
+    console.log('\n👤 Creating dummy buyers...');
+    const buyerNames = ['Juan Dela Cruz', 'Maria Clara', 'Andres Bonifacio', 'Jose Rizal'];
+    const dummyBuyers = [];
+    for (let i = 0; i < buyerNames.length; i++) {
+        let buyer = await prisma.user.findUnique({ where: { email: `buyer${i}@knotbloom-seed.com` } });
+        if (!buyer) {
+            buyer = await prisma.user.create({
+                data: {
+                    name: buyerNames[i]!,
+                    email: `buyer${i}@knotbloom-seed.com`,
+                    password: 'Password123!',
+                    role: 'USER',
+                }
+            });
+        }
+        dummyBuyers.push(buyer);
+    }
+
     // 3. Create products
-    console.log('\n📦 Creating products...');
+    console.log('\n📦 Creating products and reviews...');
     const productDefs = buildProductDefs(imgs);
     let created = 0;
     let skipped = 0;
@@ -909,7 +1453,37 @@ async function seedMainStore() {
             });
         }
 
-        console.log(`  ✅ ${p.name} [${p.variants.length} variants, ${p.productOptions.length} option groups]`);
+        // Create dummy reviews if soldCount > 0
+        if (p.soldCount > 0) {
+            const numReviews = Math.min(p.soldCount, dummyBuyers.length);
+            for (let i = 0; i < numReviews; i++) {
+                const buyer = dummyBuyers[i]!;
+                const existingReview = await prisma.review.findFirst({
+                    where: { productId: product.uid, userId: buyer.uid }
+                });
+                
+                if (!existingReview) {
+                    const reviewTexts = [
+                        "Ganda ng quality! Super worth it for the price. Will order again soon.",
+                        "Seller was very responsive. The item arrived securely packed and in perfect condition.",
+                        "Ang cute! Exact to the description and photos. My daughter loved it.",
+                        "Highly recommended. Handcrafted with care and attention to detail."
+                    ];
+                    
+                    await prisma.review.create({
+                        data: {
+                            rating: 5,
+                            content: reviewTexts[i % reviewTexts.length] || "",
+                            userId: buyer.uid,
+                            productId: product.uid,
+                            sellerId: sellerInfo.uid,
+                        }
+                    });
+                }
+            }
+        }
+
+        console.log(`  ✅ ${p.name} [${p.variants.length} variants, ${p.productOptions.length} option groups, ${p.soldCount > 0 ? dummyBuyers.length : 0} reviews]`);
         created++;
     }
 

@@ -228,6 +228,9 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
                 return newProduct;
             });
 
+            // Track custom taxonomy
+            trackCustomTaxonomy(parsedInput.tags, parsedInput.categories).catch(console.error);
+
             // Invalidate product caches
             cache.deletePattern('product:');
             return product;
@@ -318,9 +321,12 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
     }
 
     if (searchTerm) {
+        const titleCasedTerm = searchTerm.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
         const searchOR = [
             { name: { contains: searchTerm, mode: 'insensitive' } },
             { description: { contains: searchTerm, mode: 'insensitive' } },
+            { tags: { hasSome: [searchTerm, searchTerm.toLowerCase(), titleCasedTerm] } },
+            { categories: { hasSome: [searchTerm, searchTerm.toLowerCase(), titleCasedTerm] } },
         ];
 
         whereClause.AND = [
@@ -532,6 +538,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
         return products;
     }
 
+    const titleCasedTerm = searchTerm.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     const products = await prisma.product.findMany({
         where: {
             AND: [
@@ -540,6 +547,8 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
                     OR: [
                         { name: { contains: searchTerm, mode: 'insensitive' } },
                         { description: { contains: searchTerm, mode: 'insensitive' } },
+                        { tags: { hasSome: [searchTerm, searchTerm.toLowerCase(), titleCasedTerm] } },
+                        { categories: { hasSome: [searchTerm, searchTerm.toLowerCase(), titleCasedTerm] } },
                     ]
                 }
             ]
@@ -826,6 +835,9 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
 
         return updatedProduct;
     });
+
+    // Track custom taxonomy
+    trackCustomTaxonomy(parsedInput.tags, parsedInput.categories).catch(console.error);
 
     // Emit Realtime Update
     supabaseService.emit('product:updated', { productId: parsedId, version: result.version });
@@ -1147,3 +1159,29 @@ export const getSimilarProducts = async (productId: string) => {
 
     return finalSimilar;
 };
+
+// Helper to track user-submitted custom tags and categories
+async function trackCustomTaxonomy(tags?: string[], categories?: string[]) {
+    try {
+        if (categories && categories.length > 0) {
+            for (const cat of categories) {
+                await prisma.customCategory.upsert({
+                    where: { name: cat },
+                    update: { count: { increment: 1 } },
+                    create: { name: cat, count: 1 }
+                });
+            }
+        }
+        if (tags && tags.length > 0) {
+            for (const tag of tags) {
+                await prisma.customTag.upsert({
+                    where: { name: tag },
+                    update: { count: { increment: 1 } },
+                    create: { name: tag, count: 1 }
+                });
+            }
+        }
+    } catch (e) {
+        console.error('Failed to track custom taxonomy:', e);
+    }
+}

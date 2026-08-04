@@ -8,90 +8,90 @@ datasource db {
 }
 
 model User {
-  uid                   Int       @id @default(autoincrement())
+  uid                   Int                   @id @default(autoincrement())
   name                  String
-  email                 String   @unique
+  email                 String                @unique
   password              String?
-  phone                 String?   @unique
+  phone                 String?               @unique
   address               String?
   avatar                String?
-  role                  Role      @default(USER)
-  passwordResetRequired Boolean   @default(false)
-  googleId              String?   @unique
-  trustScore            Int       @default(100)
-  codCancellationCount  Int       @default(0)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  role                  Role                  @default(USER)
+  passwordResetRequired Boolean               @default(false)
+  googleId              String?               @unique
+  trustScore            Int                   @default(100)
+  codCancellationCount  Int                   @default(0)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
   deletedAt             DateTime?
   deletionRequestedAt   DateTime?
   deletionScheduledFor  DateTime?
-
-  sellerProfile        Seller?
-  addresses            Address[]
-  cart                 Cart?
-  checkoutSessions     CheckoutSession[]
-  notifications        Notification[]
-  notificationSettings NotificationSettings?
-  orders               Order[]
-  paymentMethods       PaymentMethod[]
-  refreshTokens        RefreshToken[]
-  wishlist             Wishlist?
+  addresses             Address[]
+  cart                  Cart?
+  checkoutSessions      CheckoutSession[]
+  notifications         Notification[]
+  notificationSettings  NotificationSettings?
+  orders                Order[]
+  paymentMethods        PaymentMethod[]
+  refreshTokens         RefreshToken[]
+  sellerProfile         Seller?
+  wishlist              Wishlist?
+  reviews               Review[]
 }
 
 model Seller {
-  uid                 Int          @id @default(autoincrement())
-  name                String
-  slug                String       @unique
-  userId              Int          @unique
-  user                User         @relation(fields: [userId], references: [uid], onDelete: Cascade)
-  logo                String?
-  banner              String?
-  status              SellerStatus @default(PENDING)
-  email               String       @unique
-  phone               String?
-  hasSeenWelcomeModal Boolean      @default(false)
-  pendingBalance      Decimal      @default(0)
-  availableBalance    Decimal      @default(0)
-  totalWithdrawn      Decimal      @default(0)
-  totalSales          Decimal      @default(0)
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
-  approvedAt          DateTime?
-  rejectionReason     String?
-  description         String?
-  totalOrders         Int          @default(0)
-  selfDeliveryEnabled Boolean      @default(false)
-  vehicleType         VehicleType  @default(NONE)
-  commissionRate      Decimal      @default(0.05)
-  freeShippingEnabled   Boolean      @default(false)
-  freeShippingThreshold Decimal      @default(0)
-  productCategories     String[]     @default([])
+  uid                   Int                 @id @default(autoincrement())
+  name                  String
+  slug                  String              @unique
+  logo                  String?
+  banner                String?
+  email                 String              @unique
+  phone                 String?
+  status                SellerStatus        @default(PENDING)
+  hasSeenWelcomeModal   Boolean             @default(false)
+  userId                Int                 @unique
+  approvedAt            DateTime?
+  availableBalance      Decimal             @default(0)
   businessAddress       String?
-  socialMediaLink       String?
-  meetUpPoint           String?
   businessType          String?
+  commissionRate        Decimal             @default(0.05)
+  createdAt             DateTime            @default(now())
+  description           String?
+  freeShippingEnabled   Boolean             @default(false)
+  freeShippingThreshold Decimal             @default(0)
+  hasPriorExperience    Boolean             @default(false)
+  idNumber              String?
+  idType                String?
+  isHandmade            Boolean             @default(false)
+  legalName             String?
+  meetUpPoint           String?
+  monthlyOrders         String?
+  pendingBalance        Decimal             @default(0)
+  portfolioLink         String?
+  productCategories     String[]            @default([])
+  rating                Decimal?
+  rejectionReason       String?
+  salesChannels         String[]            @default([])
+  sampleItems           String[]            @default([])
+  selfDeliveryEnabled   Boolean             @default(false)
   sellerCitymunCode     String?
   sellerProvCode        String?
   sellerRegCode         String?
-  rating                Decimal?
-  isHandmade            Boolean      @default(false)
-  hasPriorExperience    Boolean      @default(false)
-  sampleItems           String[]     @default([])
-  salesChannels         String[]     @default([])
-  monthlyOrders         String?
-  legalName             String?
-  portfolioLink         String?
-  idType                String?
-  idNumber              String?
-  idPhotos              String[]     @default([])
-  termsAccepted         Boolean      @default(false)
+  socialMediaLink       String?
+  termsAccepted         Boolean             @default(false)
   termsAcceptedAt       DateTime?
-
-  orders             Order[]
-  orderItems         OrderItem[]
-  products           Product[]
-  withdrawalRequests WithdrawalRequest[]
-  shipments          OrderShipment[]
+  totalOrders           Int                 @default(0)
+  totalSales            Decimal             @default(0)
+  totalWithdrawn        Decimal             @default(0)
+  updatedAt             DateTime            @updatedAt
+  vehicleType           VehicleType         @default(NONE)
+  idPhotos              String[]            @default([])
+  orders                Order[]
+  orderItems            OrderItem[]
+  shipments             OrderShipment[]
+  products              Product[]
+  user                  User                @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  withdrawalRequests    WithdrawalRequest[]
+  reviews               Review[]
 
   @@index([userId, hasSeenWelcomeModal])
 }
@@ -120,10 +120,12 @@ model Product {
   metaTitle               String?
   rejectionReason         String?
   tags                    String[]
-  images                  String[]
+  bundleQuantity          Int?
   careInstructions        String?
   customOrderInstructions String?
   fulfillmentType         FulfillmentType  @default(READY_TO_SHIP)
+  images                  String[]
+  isBundle                Boolean          @default(false)
   isCustomOrderAllowed    Boolean          @default(false)
   isLocalPickupAllowed    Boolean          @default(false)
   localPickupInstructions String?
@@ -132,14 +134,13 @@ model Product {
   processingTime          String?
   shippingFeeOverride     Decimal?
   videoUrl                String?
-  bundleQuantity          Int?
-  isBundle                Boolean          @default(false)
   cartItems               CartItem[]
   orderItems              OrderItem[]
   seller                  Seller?          @relation(fields: [sellerId], references: [uid])
   productOptions          ProductOption[]
   variants                ProductVariant[]
   wishlistItems           WishlistItem[]
+  reviews                 Review[]
 }
 
 model ProductVariant {
@@ -153,8 +154,8 @@ model ProductVariant {
   discountedPrice    Decimal?
   soldCount          Int                  @default(0)
   images             String[]
-  reservedStock      Int                  @default(0)
   isEnabled          Boolean              @default(true)
+  reservedStock      Int                  @default(0)
   cartItems          CartItem[]
   product            Product              @relation(fields: [productId], references: [uid], onDelete: Cascade)
   optionValues       ProductOptionValue[] @relation("ProductOptionValueToProductVariant")
@@ -164,8 +165,8 @@ model ProductVariant {
 
 model Cart {
   uid     Int        @id @default(autoincrement())
-  userId  Int        @unique
   updated DateTime   @updatedAt
+  userId  Int        @unique
   user    User       @relation(fields: [userId], references: [uid])
   items   CartItem[]
 }
@@ -183,7 +184,6 @@ model CartItem {
 
 model Order {
   uid                     Int             @id @default(autoincrement())
-  userId                  Int
   products                String
   discount                Decimal?
   total                   Decimal
@@ -205,8 +205,6 @@ model Order {
   paymentStatus           PaymentStatus   @default(PENDING)
   platformFee             Decimal         @default(0)
   proofPhotos             String?
-  progressImages          String[]
-  progressImagesRequested Boolean         @default(false)
   referenceNumber         String?         @unique
   rejectionReason         String?
   reminderStage           Int             @default(0)
@@ -215,8 +213,11 @@ model Order {
   shippingFee             Decimal         @default(0)
   shippingMethod          String?
   subtotal                Decimal         @default(0)
-  user                    User            @relation(fields: [userId], references: [uid])
+  userId                  Int
+  progressImages          String[]
+  progressImagesRequested Boolean         @default(false)
   seller                  Seller?         @relation(fields: [sellerId], references: [uid])
+  user                    User            @relation(fields: [userId], references: [uid])
   items                   OrderItem[]
   shipments               OrderShipment[]
   timeline                OrderTimeline[]
@@ -225,7 +226,6 @@ model Order {
 
 model CheckoutSession {
   uid            Int            @id @default(autoincrement())
-  userId         Int
   cartSnapshot   String
   lockedPrices   String
   totalAmount    Decimal
@@ -234,6 +234,7 @@ model CheckoutSession {
   idempotencyKey String         @unique
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+  userId         Int
   user           User           @relation(fields: [userId], references: [uid])
   payments       Payment[]
 }
@@ -290,11 +291,34 @@ model OrderItem {
   order            Order     @relation(fields: [orderId], references: [uid])
   product          Product   @relation(fields: [productId], references: [uid])
   seller           Seller?   @relation(fields: [sellerId], references: [uid])
+  review           Review?
+}
+
+model Review {
+  uid         Int       @id @default(autoincrement())
+  rating      Int       @default(5)
+  title       String?
+  content     String?
+  photos      String[]  @default([])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  userId      Int
+  productId   Int
+  sellerId    Int
+  orderItemId Int?      @unique
+
+  user        User      @relation(fields: [userId], references: [uid])
+  product     Product   @relation(fields: [productId], references: [uid])
+  seller      Seller    @relation(fields: [sellerId], references: [uid])
+  orderItem   OrderItem? @relation(fields: [orderItemId], references: [uid])
+
+  @@index([productId])
+  @@index([sellerId])
 }
 
 model Address {
   uid              Int      @id @default(autoincrement())
-  userId           Int
   label            String?
   fullName         String
   phone            String
@@ -311,6 +335,7 @@ model Address {
   province         String?
   region           String?
   landmark         String?
+  userId           Int
   zoneTierOverride Int?
   user             User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
@@ -320,7 +345,6 @@ model Address {
 
 model PaymentMethod {
   uid           Int               @id @default(autoincrement())
-  userId        Int
   type          PaymentMethodType
   accountName   String
   accountNumber String
@@ -328,6 +352,7 @@ model PaymentMethod {
   isDefault     Boolean           @default(false)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  userId        Int
   user          User              @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
   @@index([userId])
@@ -336,24 +361,24 @@ model PaymentMethod {
 
 model NotificationSettings {
   uid            Int      @id @default(autoincrement())
-  userId         Int      @unique
   orderUpdates   Boolean  @default(true)
   promotions     Boolean  @default(true)
   systemMessages Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  userId         Int      @unique
   user           User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
 }
 
 model Notification {
   uid       Int      @id @default(autoincrement())
-  userId    Int
   title     String
   message   String
   type      String
   isRead    Boolean  @default(false)
   data      String?
   createdAt DateTime @default(now())
+  userId    Int
   user      User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
   @@index([userId])
@@ -403,8 +428,8 @@ model WithdrawalRequest {
 
 model Wishlist {
   uid     Int            @id @default(autoincrement())
-  userId  Int            @unique
   updated DateTime       @updatedAt
+  userId  Int            @unique
   user    User           @relation(fields: [userId], references: [uid], onDelete: Cascade)
   items   WishlistItem[]
 }
@@ -563,4 +588,20 @@ enum ShipmentStatus {
   DELAYED_WEATHER
   COMPLETED
   FAILED
+}
+
+model CustomTag {
+  uid       Int      @id @default(autoincrement())
+  name      String   @unique
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CustomCategory {
+  uid       Int      @id @default(autoincrement())
+  name      String   @unique
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

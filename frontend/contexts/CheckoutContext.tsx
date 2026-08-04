@@ -109,8 +109,12 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                         setState(prev => ({
                             ...prev,
                             ...parsed,
+                            isProcessing: false,
+                            statusMessage: null,
+                            error: null,
                         }));
                         setCheckoutIdempotencyKey(parsed.idempotencyKey || generateIdempotencyKey());
+                        setPaymentIdempotencyKey(parsed.paymentIdempotencyKey || generateIdempotencyKey());
                         setCompleteIdempotencyKey(parsed.completeIdempotencyKey || generateIdempotencyKey());
                     } else {
                         // Clear expired session
@@ -128,15 +132,19 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
     useEffect(() => {
         const saveSession = async () => {
             if (state.sessionId) {
+                // Strip transient UI state from being persisted to prevent being stuck on reload
+                const { isProcessing, statusMessage, error, ...stateToSave } = state;
+                
                 await AsyncStorage.setItem('checkoutSession', JSON.stringify({
-                    ...state,
+                    ...stateToSave,
                     idempotencyKey: checkoutIdempotencyKey,
+                    paymentIdempotencyKey: paymentIdempotencyKey,
                     completeIdempotencyKey: completeIdempotencyKey,
                 }));
             }
         };
         saveSession();
-    }, [state, checkoutIdempotencyKey, completeIdempotencyKey]);
+    }, [state, checkoutIdempotencyKey, paymentIdempotencyKey, completeIdempotencyKey]);
 
     const setStep = useCallback((step: CheckoutStep) => {
         setState(prev => ({ ...prev, step, error: null }));
@@ -155,12 +163,15 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
         try {
             // Always request DELIVERY estimates (by passing empty choices) so the frontend 
             // always has the delivery fee to fall back to if the user toggles back from PICKUP.
+            // Note: This intentionally ignores user's actual choices (e.g., PICKUP selection).
             const response = await checkoutAPI.estimateShipping(state.sessionId, address, {});
             if (response.data.success) {
-                setState(prev => ({ ...prev, shippingEstimates: response.data.estimates }));
+                setState(prev => ({ ...prev, shippingEstimates: response.data.estimates, error: null }));
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error estimating shipping', error);
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to estimate shipping';
+            setState(prev => ({ ...prev, error: errorMessage }));
         }
     }, [state.sessionId]);
 
@@ -209,6 +220,8 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
             }
         } catch (error: any) {
             const errorMessage = error.response?.data?.message || error.message || 'Failed to start checkout';
+            // Clear old session from storage on failure to prevent stale data resurrecting
+            await AsyncStorage.removeItem('checkoutSession');
             setState(prev => ({
                 ...prev,
                 isProcessing: false,
@@ -347,11 +360,11 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
             );
             const data = response.data;
 
-            if (data.success && (data.orderId || data.orderIds)) {
+            if (data.success && (data.orderId != null || data.orderIds != null)) {
                 setState(prev => ({
                     ...prev,
-                    orderId: data.orderId || (data.orderIds ? data.orderIds[0] : null),
-                    orderIds: data.orderIds || (data.orderId ? [data.orderId] : []),
+                    orderId: data.orderId ?? (data.orderIds ? data.orderIds[0] : null),
+                    orderIds: data.orderIds ?? (data.orderId != null ? [data.orderId] : []),
                     step: 'confirmation',
                     isProcessing: false,
                     statusMessage: null,

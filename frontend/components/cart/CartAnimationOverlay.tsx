@@ -1,4 +1,4 @@
-import { useCart } from '@/contexts/CartContext';
+import { useCartAnimation } from '@/contexts/CartAnimationContext';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, View } from 'react-native';
@@ -11,7 +11,7 @@ const CART_ICON_TARGET = {
 };
 
 export default function CartAnimationOverlay() {
-    const { animationStartPos, clearAnimation, cartIconPosition } = useCart();
+    const { animationStartPos, clearAnimation, cartIconPosition } = useCartAnimation();
     const animatedValue = useRef(new Animated.Value(0)).current;
 
     const targetPos = cartIconPosition || CART_ICON_TARGET;

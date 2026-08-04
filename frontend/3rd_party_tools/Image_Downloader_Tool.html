@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image batch renamer</title>
+<style>
+  :root{
+    --ink:#1c1b19;
+    --ink-soft:#6b6a64;
+    --ink-faint:#a3a19a;
+    --line:#e4e2da;
+    --paper:#fefdfb;
+    --panel:#f6f4ee;
+    --panel-2:#efece3;
+    --accent:#a8542f;
+    --accent-soft:#f2e2d8;
+    --good:#3f7a3f;
+    --good-soft:#eef6ec;
+    --warn-ink:#7a4a12;
+    --warn-bg:#fdf3e7;
+    --warn-line:#eecb9c;
+    --radius:12px;
+    --shadow:0 1px 2px rgba(28,27,25,.04), 0 6px 16px rgba(28,27,25,.05);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding:2.25rem 1.5rem 5rem;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:780px;margin:0 auto;}
+  h1{font-size:1.5rem;font-weight:700;margin:0 0 .3rem;letter-spacing:-.01em;}
+  .sub{color:var(--ink-soft);font-size:.92rem;margin:0 0 1.75rem;line-height:1.5;}
+
+  .warn{
+    background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-ink);
+    border-radius:var(--radius);padding:.75rem 1rem;font-size:.85rem;margin-bottom:1.25rem;display:none;
+  }
+
+  /* --- step section shell --- */
+  .step{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:1.1rem 1.15rem;margin-bottom:1rem;
+  }
+  .step-head{display:flex;align-items:center;gap:.55rem;margin-bottom:.75rem;}
+  .step-num{
+    width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;
+    font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .step-title{font-size:.85rem;font-weight:700;color:var(--ink);}
+  .step-title small{font-weight:500;color:var(--ink-soft);margin-left:.4rem;}
+
+  .folderbar{
+    display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+  }
+  .folderbar button{
+    background:#fff;border:1px solid var(--line);border-radius:9px;
+    padding:.55rem .9rem;font-size:.85rem;cursor:pointer;font-weight:600;
+    transition:background .12s,border-color .12s,transform .08s;
+  }
+  .folderbar button:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .folderbar button:active{transform:scale(.97);}
+  .folderbar .status{font-size:.85rem;color:var(--ink-soft);}
+  .folderbar .status strong{color:var(--ink);}
+  .folderbar .status.ok::before{content:"●";color:var(--good);margin-right:.4em;font-size:.7em;}
+  .folderbar .status.pending::before{content:"●";color:var(--warn-ink);margin-right:.4em;font-size:.7em;}
+  .folderbar .status.none::before{content:"○";color:var(--ink-faint);margin-right:.4em;font-size:.7em;}
+
+  .historybtn{
+    margin-left:auto;background:none;border:1px solid var(--line);border-radius:9px;
+    padding:.5rem .8rem;font-size:.8rem;color:var(--ink);cursor:pointer;font-weight:600;
+    display:flex;align-items:center;gap:.4rem;
+  }
+  .historybtn:hover{background:#fff;border-color:var(--accent);}
+  .historybtn .dot{
+    display:none;width:6px;height:6px;border-radius:50%;background:var(--accent);
+  }
+  .historybtn.has-items .dot{display:inline-block;}
+
+  .historypanel{
+    display:none;border:1px solid var(--line);border-radius:var(--radius);
+    margin-top:.85rem;overflow:hidden;background:#fff;
+  }
+  .historypanel.show{display:block;}
+  .historypanel .hrow{
+    display:flex;align-items:center;gap:.85rem;padding:.65rem .8rem;
+    background:#fff;border-bottom:1px solid var(--line);font-size:.82rem;
+  }
+  .historypanel .hrow:last-child{border-bottom:none;}
+  .historypanel .hthumbs{display:flex;flex-shrink:0;}
+  .historypanel .hthumbs img{
+    width:34px;height:34px;object-fit:cover;border-radius:6px;border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--line);margin-left:-10px;cursor:pointer;background:#eee;
+    transition:transform .1s;
+  }
+  .historypanel .hthumbs img:first-child{margin-left:0;}
+  .historypanel .hthumbs img:hover{transform:translateY(-2px);}
+  .historypanel .hthumbs .more{
+    width:34px;height:34px;border-radius:6px;background:var(--panel-2);color:var(--ink-soft);
+    display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;
+    margin-left:-10px;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);
+  }
+  .historypanel .hmeta{flex:1;min-width:0;}
+  .historypanel .hmeta strong{display:block;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .historypanel .hmeta span{color:var(--ink-soft);font-size:.76rem;}
+  .historypanel .hactions{display:flex;gap:.4rem;flex-shrink:0;}
+  .historypanel .hrow button{
+    background:none;border:1px solid var(--line);border-radius:7px;
+    padding:.35rem .65rem;font-size:.76rem;color:var(--ink);cursor:pointer;font-weight:600;white-space:nowrap;
+  }
+  .historypanel .hrow button:hover{background:var(--panel);}
+  .historypanel .hrow button.danger:hover{background:var(--warn-bg);border-color:var(--warn-line);color:var(--warn-ink);}
+  .historypanel .hempty{padding:1.5rem 1rem;text-align:center;color:var(--ink-soft);font-size:.85rem;}
+
+  .controls{
+    display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;
+  }
+  .field{display:flex;flex-direction:column;gap:.3rem;}
+  .field label{font-size:.72rem;color:var(--ink-soft);font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+  .field input{
+    border:1px solid var(--line);border-radius:8px;padding:.55rem .65rem;
+    font-size:.9rem;background:#fff;color:var(--ink);
+  }
+  .field input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent);}
+  #basename{width:220px;}
+  #startnum{width:80px;}
+  #padwidth{width:70px;}
+
+  .folder-preview{font-size:.8rem;color:var(--ink-soft);margin-top:.75rem;}
+  .folder-preview code{background:var(--panel-2);padding:.15rem .4rem;border-radius:5px;color:var(--ink);}
+
+  .basename-warning{
+    display:none;font-size:.8rem;color:var(--warn-ink);background:var(--warn-bg);border:1px solid var(--warn-line);
+    border-radius:8px;padding:.55rem .75rem;margin-top:.75rem;
+  }
+  .basename-warning.show{display:block;}
+
+  .dropzone{
+    border:2px dashed var(--line);border-radius:10px;
+    padding:1.75rem 1rem;text-align:center;color:var(--ink-soft);
+    cursor:pointer;margin-bottom:.75rem;transition:border-color .15s, background .15s;
+    font-size:.9rem;background:#fff;
+  }
+  .dropzone:hover{border-color:var(--accent);}
+  .dropzone.drag{border-color:var(--accent);background:var(--accent-soft);}
+  .dropzone strong{color:var(--ink);}
+  #fileinput{display:none;}
+
+  .urlrow{display:flex;gap:.5rem;margin-bottom:.4rem;}
+  .urlrow input{
+    flex:1;border:1px solid var(--line);border-radius:8px;padding:.55rem .65rem;
+    font-size:.85rem;background:#fff;color:var(--ink);
+  }
+  .urlrow input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent);}
+  .urlrow button{
+    background:#fff;border:1px solid var(--line);border-radius:8px;
+    padding:.55rem .9rem;font-size:.85rem;cursor:pointer;font-weight:600;
+  }
+  .urlrow button:hover{background:var(--accent-soft);border-color:var(--accent);}
+  .urlstatus{font-size:.78rem;color:var(--ink-soft);min-height:1.1em;}
+  .urlstatus.error{color:#b3411f;}
+
+  .linkpreview{
+    display:none;align-items:center;gap:.9rem;
+    background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:.75rem 1rem;margin-top:.6rem;
+  }
+  .linkpreview.show{display:flex;}
+  .linkpreview img{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex-shrink:0;}
+  .linkpreview .msg{font-size:.82rem;color:var(--ink-soft);}
+  .linkpreview .msg strong{color:var(--ink);}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;}
+  .toolbar .count{font-size:.85rem;color:var(--ink-soft);font-weight:600;}
+  .toolbar button{
+    background:none;border:1px solid var(--line);border-radius:8px;
+    padding:.4rem .75rem;font-size:.8rem;color:var(--ink);cursor:pointer;font-weight:600;
+  }
+  .toolbar button:hover{background:var(--panel);}
+
+  ul#list{list-style:none;margin:0 0 1.5rem;padding:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;box-shadow:var(--shadow);}
+  li.row{
+    display:flex;align-items:center;gap:.7rem;
+    padding:.5rem .6rem;background:#fff;border-bottom:1px solid var(--line);
+    cursor:grab;transition:background .1s;
+  }
+  li.row:hover{background:#fbfaf7;}
+  li.row:last-child{border-bottom:none;}
+  li.row.dragging{opacity:.4;}
+  li.row.done{background:var(--good-soft);}
+  li.row.done:hover{background:#e6f2e3;}
+  li.row .handle{color:var(--ink-faint);font-size:.9rem;cursor:grab;flex-shrink:0;user-select:none;letter-spacing:-2px;}
+  li.row .thumb{position:relative;flex-shrink:0;width:44px;height:44px;border-radius:7px;overflow:hidden;border:1px solid var(--line);cursor:zoom-in;background:#f2f1ec;}
+  li.row .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  li.row .thumb::after{
+    content:"";position:absolute;inset:0;background:rgba(28,27,25,0);transition:background .12s;
+  }
+  li.row .thumb:hover::after{background:rgba(28,27,25,.15);}
+  li.row .badge{
+    position:absolute;bottom:2px;right:2px;background:var(--good);color:#fff;border-radius:50%;
+    width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;line-height:1;
+  }
+  li.row .names{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+  li.row .oldname{font-size:.74rem;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  li.row .newname{font-size:.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  li.row .remove{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:1.1rem;line-height:1;padding:.3rem .45rem;border-radius:6px;flex-shrink:0;}
+  li.row .remove:hover{color:var(--accent);background:var(--accent-soft);}
+
+  .empty{padding:2rem 1.25rem;text-align:center;color:var(--ink-soft);font-size:.85rem;}
+
+  .action{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;position:sticky;bottom:1rem;}
+  #saveBtn{
+    background:var(--ink);color:#fff;border:none;border-radius:9px;
+    padding:.7rem 1.2rem;font-size:.9rem;font-weight:700;cursor:pointer;
+    box-shadow:var(--shadow);transition:background .12s,transform .08s;
+  }
+  #saveBtn:disabled{background:var(--line);color:var(--ink-soft);cursor:not-allowed;box-shadow:none;}
+  #saveBtn:not(:disabled):hover{background:var(--accent);}
+  #saveBtn:not(:disabled):active{transform:scale(.98);}
+  .hint{font-size:.78rem;color:var(--ink-soft);}
+
+  .drag-overlay{
+    display:none;position:fixed;inset:0;z-index:999;
+    background:rgba(168,84,47,.08);border:3px dashed var(--accent);
+    align-items:center;justify-content:center;pointer-events:none;
+  }
+  .drag-overlay.show{display:flex;}
+  .drag-overlay span{
+    background:var(--ink);color:#fff;padding:.6rem 1.1rem;border-radius:8px;
+    font-size:1rem;font-weight:600;
+  }
+
+  /* --- toast --- */
+  .toast{
+    position:fixed;left:50%;bottom:1.5rem;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:.6rem 1.1rem;border-radius:9px;font-size:.85rem;
+    font-weight:600;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .18s, transform .18s;
+    z-index:1200;display:flex;align-items:center;gap:.5rem;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast::before{content:"✓";color:var(--good);font-weight:900;}
+  .toast.err::before{content:"!";color:#e08a4a;}
+
+  /* --- lightbox --- */
+  .lightbox{
+    display:none;position:fixed;inset:0;z-index:1100;background:rgba(20,18,16,.92);
+    align-items:center;justify-content:center;flex-direction:column;padding:2rem 1rem;
+  }
+  .lightbox.show{display:flex;}
+  .lightbox img{max-width:min(90vw,900px);max-height:72vh;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5);object-fit:contain;background:#111;}
+  .lightbox-caption{color:#fff;font-size:.85rem;margin-top:.9rem;opacity:.85;max-width:80vw;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lightbox-close{
+    position:absolute;top:1rem;right:1.2rem;background:rgba(255,255,255,.12);border:none;color:#fff;
+    width:38px;height:38px;border-radius:50%;font-size:1.3rem;cursor:pointer;line-height:1;
+  }
+  .lightbox-close:hover{background:rgba(255,255,255,.22);}
+  .lightbox-nav{
+    position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.12);border:none;color:#fff;
+    width:44px;height:44px;border-radius:50%;font-size:1.5rem;cursor:pointer;line-height:1;
+  }
+  .lightbox-nav:hover{background:rgba(255,255,255,.22);}
+  .lightbox-nav.prev{left:1rem;}
+  .lightbox-nav.next{right:1rem;}
+  .lightbox-nav:disabled{opacity:.25;cursor:default;}
+  .lightbox-nav:disabled:hover{background:rgba(255,255,255,.12);}
+
+  @media (max-width:480px){
+    body{padding:1.25rem 1rem 4rem;}
+    #basename{width:100%;}
+    .controls{gap:.6rem;}
+    .field{flex:1 1 80px;}
+    .lightbox-nav{width:38px;height:38px;font-size:1.2rem;}
+  }
+</style>
+</head>
+<body>
+<div class="drag-overlay" id="dragOverlay"><span>Drop to add images</span></div>
+<div class="toast" id="toast"></div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose" title="Close (Esc)">&times;</button>
+  <button class="lightbox-nav prev" id="lightboxPrev" title="Previous">&lsaquo;</button>
+  <img id="lightboxImg" alt="">
+  <button class="lightbox-nav next" id="lightboxNext" title="Next">&rsaquo;</button>
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<div class="wrap">
+  <h1>Image batch renamer</h1>
+  <p class="sub">Upload images, set a base name, and save them renamed and numbered straight into a folder on your computer.</p>
+
+  <div class="warn" id="unsupported">
+    Your browser doesn't support saving straight to a folder (this needs Chrome, Edge, or another Chromium browser). Open this file in Chrome or Edge to use it.
+  </div>
+
+  <!-- Step 1: destination -->
+  <div class="step">
+    <div class="step-head">
+      <span class="step-num">1</span>
+      <span class="step-title">Destination folder</span>
+    </div>
+    <div class="folderbar">
+      <button id="pickFolderBtn">Choose product_images folder</button>
+      <span class="status none" id="folderStatus">No folder selected yet.</span>
+      <button class="historybtn" id="historyToggleBtn"><span class="dot"></span>History</button>
+    </div>
+    <div class="historypanel" id="historyPanel"></div>
+  </div>
+
+  <!-- Step 2: naming -->
+  <div class="step">
+    <div class="step-head">
+      <span class="step-num">2</span>
+      <span class="step-title">Naming pattern</span>
+    </div>
+    <div class="controls">
+      <div class="field">
+        <label for="basename">Base name</label>
+        <input id="basename" type="text" placeholder="e.g. product-red-mug" value="product">
+      </div>
+      <div class="field">
+        <label for="startnum">Start at</label>
+        <input id="startnum" type="number" value="1" min="0">
+      </div>
+      <div class="field">
+        <label for="padwidth">Digits</label>
+        <input id="padwidth" type="number" value="1" min="1" max="6">
+      </div>
+    </div>
+    <div class="basename-warning" id="basenameWarning"></div>
+    <div class="folder-preview">Files will be saved as <code id="patternPreview">product_images/product/product_1.jpg</code></div>
+  </div>
+
+  <!-- Step 3: add images -->
+  <div class="step">
+    <div class="step-head">
+      <span class="step-num">3</span>
+      <span class="step-title">Add images</span>
+    </div>
+    <div class="dropzone" id="dropzone">
+      <div><strong>Click to choose images</strong> — or drop images or an image link anywhere on this page</div>
+    </div>
+    <input type="file" id="fileinput" accept="image/*" multiple>
+
+    <div class="urlrow">
+      <input type="text" id="urlInput" placeholder="or paste an image link and press enter">
+      <button id="urlAddBtn">Preview</button>
+    </div>
+    <div class="urlstatus" id="urlStatus"></div>
+    <div class="linkpreview" id="linkPreview">
+      <img id="linkPreviewImg" alt="">
+      <div class="msg">This link can't be downloaded automatically — right-click the image and choose <strong>Save image as…</strong>, then drag the downloaded file into the box above.</div>
+    </div>
+  </div>
+
+  <!-- Step 4: review + save -->
+  <div class="toolbar">
+    <span class="count" id="count">0 images</span>
+    <button id="clearBtn">Clear all</button>
+  </div>
+
+  <ul id="list"></ul>
+
+  <div class="action">
+    <button id="saveBtn" disabled>Save to folder</button>
+    <span class="hint" id="hint">Drag rows to reorder before saving.</span>
+  </div>
+</div>
+
+<script>
+let files = []; // {id, file, url}
+let dragIndex = null;
+let rootHandle = null; // product_images directory handle
+let pendingHandle = null; // previously-used handle, not yet re-granted permission
+
+const supportsFS = 'showDirectoryPicker' in window;
+if (!supportsFS) document.getElementById('unsupported').style.display = 'block';
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileinput');
+const list = document.getElementById('list');
+const countEl = document.getElementById('count');
+const saveBtn = document.getElementById('saveBtn');
+const hint = document.getElementById('hint');
+const basenameInput = document.getElementById('basename');
+const startnumInput = document.getElementById('startnum');
+const padwidthInput = document.getElementById('padwidth');
+const patternPreview = document.getElementById('patternPreview');
+const clearBtn = document.getElementById('clearBtn');
+const pickFolderBtn = document.getElementById('pickFolderBtn');
+const folderStatus = document.getElementById('folderStatus');
+const basenameWarning = document.getElementById('basenameWarning');
+const dragOverlay = document.getElementById('dragOverlay');
+const historyToggleBtn = document.getElementById('historyToggleBtn');
+const historyPanel = document.getElementById('historyPanel');
+const toastEl = document.getElementById('toast');
+
+// --- toast ---
+let toastTimer = null;
+function showToast(msg, isErr) {
+  clearTimeout(toastTimer);
+  toastEl.textContent = msg;
+  toastEl.className = 'toast show' + (isErr ? ' err' : '');
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+// --- lightbox ---
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxCaption = document.getElementById('lightboxCaption');
+const lightboxPrev = document.getElementById('lightboxPrev');
+const lightboxNext = document.getElementById('lightboxNext');
+const lightboxClose = document.getElementById('lightboxClose');
+let lightboxItems = []; // [{url, name}]
+let lightboxIndex = 0;
+
+function openLightbox(items, index) {
+  lightboxItems = items;
+  lightboxIndex = index;
+  renderLightbox();
+  lightbox.classList.add('show');
+}
+function renderLightbox() {
+  const item = lightboxItems[lightboxIndex];
+  if (!item) return;
+  lightboxImg.src = item.url;
+  lightboxImg.alt = item.name || '';
+  lightboxCaption.textContent = item.name ? `${item.name}  ·  ${lightboxIndex + 1} of ${lightboxItems.length}` : '';
+  lightboxPrev.disabled = lightboxItems.length <= 1;
+  lightboxNext.disabled = lightboxItems.length <= 1;
+}
+function closeLightbox() {
+  lightbox.classList.remove('show');
+  lightboxImg.src = '';
+}
+lightboxClose.addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+lightboxPrev.addEventListener('click', () => { lightboxIndex = (lightboxIndex - 1 + lightboxItems.length) % lightboxItems.length; renderLightbox(); });
+lightboxNext.addEventListener('click', () => { lightboxIndex = (lightboxIndex + 1) % lightboxItems.length; renderLightbox(); });
+window.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('show')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft' && lightboxItems.length > 1) lightboxPrev.click();
+  if (e.key === 'ArrowRight' && lightboxItems.length > 1) lightboxNext.click();
+});
+
+// --- tiny IndexedDB helper (handles + save history) ---
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('image-renamer-db', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('handles')) db.createObjectStore('handles');
+      if (!db.objectStoreNames.contains('history')) db.createObjectStore('history', { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(store, key, value) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(value, key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(store, key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const r = tx.objectStore(store).get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbGetAll(store) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly');
+    const r = tx.objectStore(store).getAll();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbDelete(store, key) {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+async function initFolder() {
+  if (!supportsFS) return;
+  try {
+    const saved = await idbGet('handles', 'root');
+    if (!saved) return;
+    const perm = await saved.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      rootHandle = saved;
+      folderStatus.innerHTML = `Saving into: <strong>${rootHandle.name}</strong>`;
+      folderStatus.className = 'status ok';
+    } else {
+      pendingHandle = saved;
+      folderStatus.innerHTML = `Previously used: <strong>${saved.name}</strong> — click to reconnect`;
+      folderStatus.className = 'status pending';
+    }
+    updateSaveState();
+    checkBasenameWarning();
+  } catch (e) { /* nothing saved yet */ }
+  await refreshHistoryBadge();
+}
+
+pickFolderBtn.addEventListener('click', async () => {
+  if (!supportsFS) return;
+  try {
+    if (pendingHandle) {
+      const perm = await pendingHandle.requestPermission({ mode: 'readwrite' });
+      if (perm === 'granted') {
+        rootHandle = pendingHandle;
+        pendingHandle = null;
+        folderStatus.innerHTML = `Saving into: <strong>${rootHandle.name}</strong>`;
+        folderStatus.className = 'status ok';
+        updateSaveState();
+        checkBasenameWarning();
+        return;
+      }
+    }
+    rootHandle = await window.showDirectoryPicker();
+    pendingHandle = null;
+    await idbSet('handles', 'root', rootHandle);
+    folderStatus.innerHTML = `Saving into: <strong>${rootHandle.name}</strong>`;
+    folderStatus.className = 'status ok';
+    updateSaveState();
+    checkBasenameWarning();
+  } catch (e) {
+    // user cancelled
+  }
+});
+
+dropzone.addEventListener('click', () => fileInput.click());
+
+window.addEventListener('dragover', e => {
+  if (e.dataTransfer.types.includes('application/x-row-reorder')) return;
+  e.preventDefault();
+  dragOverlay.classList.add('show');
+});
+window.addEventListener('dragleave', e => {
+  if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+    dragOverlay.classList.remove('show');
+  }
+});
+window.addEventListener('drop', e => {
+  if (e.dataTransfer.types.includes('application/x-row-reorder')) return;
+  e.preventDefault();
+  dragOverlay.classList.remove('show');
+
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    addFiles(e.dataTransfer.files);
+    return;
+  }
+
+  const uriList = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+  if (uriList) {
+    const url = uriList.split('\n').map(s => s.trim()).filter(Boolean)[0];
+    if (url) handleLink(url);
+  }
+});
+fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+
+const urlInput = document.getElementById('urlInput');
+const urlAddBtn = document.getElementById('urlAddBtn');
+const urlStatus = document.getElementById('urlStatus');
+const linkPreview = document.getElementById('linkPreview');
+const linkPreviewImg = document.getElementById('linkPreviewImg');
+
+function submitUrlInput() {
+  const url = urlInput.value.trim();
+  if (!url) return;
+  handleLink(url);
+}
+urlAddBtn.addEventListener('click', submitUrlInput);
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitUrlInput(); });
+
+async function handleLink(url) {
+  if (!/^https?:\/\//i.test(url)) {
+    urlStatus.textContent = 'That doesn\'t look like a link.';
+    urlStatus.className = 'urlstatus error';
+    return;
+  }
+  linkPreview.classList.remove('show');
+  urlStatus.textContent = 'Fetching…';
+  urlStatus.className = 'urlstatus';
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('request failed');
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) throw new Error('not an image');
+
+    let name;
+    try {
+      const pathname = new URL(url).pathname;
+      name = pathname.split('/').filter(Boolean).pop() || 'image';
+      if (!/\.[a-zA-Z0-9]+$/.test(name)) name += '.' + (blob.type.split('/')[1] || 'jpg');
+    } catch {
+      name = 'image.jpg';
+    }
+
+    const file = new File([blob], name, { type: blob.type });
+    files.push({ id: Math.random().toString(36).slice(2), file, url: URL.createObjectURL(blob), saved: false });
+    render();
+    urlStatus.textContent = `Added ${name}`;
+    urlInput.value = '';
+  } catch (err) {
+    // The site blocks cross-origin fetching — fall back to a manual save
+    urlStatus.textContent = 'That site blocks automatic downloads — save it manually below.';
+    urlStatus.className = 'urlstatus error';
+    linkPreviewImg.src = url;
+    linkPreview.classList.add('show');
+  }
+}
+
+linkPreviewImg.addEventListener('error', () => {
+  urlStatus.textContent = 'That link didn\'t load as an image — check the URL and try again.';
+  urlStatus.className = 'urlstatus error';
+  linkPreview.classList.remove('show');
+});
+
+function addFiles(fileList) {
+  let added = 0;
+  Array.from(fileList).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    files.push({ id: Math.random().toString(36).slice(2), file, url: URL.createObjectURL(file), saved: false });
+    added++;
+  });
+  if (added > 0) showToast(`Added ${added} image${added === 1 ? '' : 's'}`);
+  render();
+}
+
+function ext(name) {
+  const m = name.match(/\.([a-zA-Z0-9]+)$/);
+  return m ? m[1].toLowerCase() : 'jpg';
+}
+
+function sanitize(name) {
+  return name.trim().replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '-') || 'product';
+}
+
+function pad(n, width) {
+  const s = String(n);
+  return s.length >= width ? s : '0'.repeat(width - s.length) + s;
+}
+
+function newFileName(index) {
+  const base = sanitize(basenameInput.value);
+  const start = parseInt(startnumInput.value, 10) || 0;
+  const width = Math.max(1, parseInt(padwidthInput.value, 10) || 1);
+  const num = pad(start + index, width);
+  const e = ext(files[index].file.name);
+  return `${base}_${num}.${e}`;
+}
+
+function updatePreview() {
+  const base = sanitize(basenameInput.value);
+  const start = parseInt(startnumInput.value, 10) || 0;
+  const width = Math.max(1, parseInt(padwidthInput.value, 10) || 1);
+  patternPreview.textContent = `product_images/${base}/${base}_${pad(start, width)}.jpg`;
+}
+
+let basenameCheckTimer = null;
+function checkBasenameWarning() {
+  clearTimeout(basenameCheckTimer);
+  basenameCheckTimer = setTimeout(async () => {
+    if (!rootHandle) { basenameWarning.classList.remove('show'); return; }
+    const base = sanitize(basenameInput.value);
+    try {
+      await rootHandle.getDirectoryHandle(base, { create: false });
+      basenameWarning.textContent = `A folder named "${base}" already exists in product_images — matching filenames will be overwritten when you save.`;
+      basenameWarning.classList.add('show');
+    } catch (e) {
+      basenameWarning.classList.remove('show');
+    }
+  }, 250);
+}
+
+function updateSaveState() {
+  saveBtn.disabled = files.length === 0 || !rootHandle;
+  hint.textContent = !rootHandle
+    ? 'Choose a folder above, then drag rows to reorder before saving.'
+    : 'Drag rows to reorder before saving.';
+}
+
+function render() {
+  updatePreview();
+  countEl.textContent = `${files.length} image${files.length === 1 ? '' : 's'}`;
+  updateSaveState();
+
+  if (files.length === 0) {
+    list.innerHTML = '<div class="empty">No images yet — add some above.</div>';
+    return;
+  }
+
+  const lightboxSource = files.map(f => ({ url: f.url, name: f.file.name }));
+
+  list.innerHTML = '';
+  files.forEach((f, i) => {
+    const li = document.createElement('li');
+    li.className = 'row' + (f.saved ? ' done' : '');
+    li.draggable = true;
+    li.dataset.index = i;
+
+    li.innerHTML = `
+      <span class="handle" title="Drag to reorder">&#8942;&#8942;</span>
+      <span class="thumb" title="Click to preview">
+        <img src="${f.url}" alt="">
+        ${f.saved ? '<span class="badge">&check;</span>' : ''}
+      </span>
+      <span class="names">
+        <span class="oldname">${f.file.name}</span>
+        <span class="newname">${newFileName(i)}</span>
+      </span>
+      <button class="remove" title="Remove" data-id="${f.id}">&times;</button>
+    `;
+
+    li.querySelector('.thumb').addEventListener('click', () => openLightbox(lightboxSource, i));
+
+    li.addEventListener('dragstart', e => {
+      dragIndex = i;
+      li.classList.add('dragging');
+      e.dataTransfer.setData('application/x-row-reorder', String(i));
+    });
+    li.addEventListener('dragend', () => li.classList.remove('dragging'));
+    li.addEventListener('dragover', e => e.preventDefault());
+    li.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const dropIndex = i;
+      if (dragIndex === null || dragIndex === dropIndex) return;
+      const moved = files.splice(dragIndex, 1)[0];
+      files.splice(dropIndex, 0, moved);
+      dragIndex = null;
+      render();
+    });
+
+    li.querySelector('.remove').addEventListener('click', () => {
+      files = files.filter(x => x.id !== f.id);
+      render();
+    });
+
+    list.appendChild(li);
+  });
+}
+
+[basenameInput, startnumInput, padwidthInput].forEach(el => el.addEventListener('input', render));
+basenameInput.addEventListener('input', checkBasenameWarning);
+clearBtn.addEventListener('click', () => { files = []; render(); });
+
+saveBtn.addEventListener('click', async () => {
+  if (files.length === 0 || !rootHandle) return;
+  saveBtn.disabled = true;
+  const originalLabel = saveBtn.textContent;
+
+  const base = sanitize(basenameInput.value);
+  let baseDirHandle;
+  try {
+    baseDirHandle = await rootHandle.getDirectoryHandle(base, { create: true });
+  } catch (e) {
+    showToast('Could not access the destination folder — try reselecting it.', true);
+    updateSaveState();
+    return;
+  }
+  const savedFiles = [];
+
+  try {
+    for (let i = 0; i < files.length; i++) {
+      saveBtn.textContent = `Saving ${i + 1} of ${files.length}…`;
+      const name = newFileName(i);
+      const fileHandle = await baseDirHandle.getFileHandle(name, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(files[i].file);
+      await writable.close();
+      files[i].saved = true;
+      savedFiles.push({ name, blob: files[i].file });
+    }
+  } catch (e) {
+    showToast('Something went wrong while saving — please try again.', true);
+    render();
+    saveBtn.textContent = originalLabel;
+    updateSaveState();
+    return;
+  }
+
+  try {
+    await addHistoryEntry(base, savedFiles);
+    showToast(`Saved ${savedFiles.length} image${savedFiles.length === 1 ? '' : 's'} to "${base}"`);
+  } catch (e) {
+    console.warn('Could not save history (IndexedDB unavailable in this context):', e);
+    showToast('Saved — but history isn\'t available in this context (try serving over http instead of file://).', true);
+  }
+  basenameWarning.classList.remove('show');
+
+  render();
+  saveBtn.textContent = 'Saved';
+  setTimeout(() => { saveBtn.textContent = originalLabel; updateSaveState(); }, 1500);
+});
+
+// --- history ---
+async function addHistoryEntry(base, savedFiles) {
+  const entry = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())),
+    timestamp: Date.now(),
+    basename: base,
+    files: savedFiles
+  };
+  await idbSet('history', entry.id, entry);
+
+  const all = await idbGetAll('history');
+  if (all.length > 30) {
+    all.sort((a, b) => a.timestamp - b.timestamp);
+    const toRemove = all.slice(0, all.length - 30);
+    for (const e of toRemove) await idbDelete('history', e.id);
+  }
+  await refreshHistoryBadge();
+  if (historyPanel.classList.contains('show')) renderHistory();
+}
+
+async function refreshHistoryBadge() {
+  try {
+    const all = await idbGetAll('history');
+    historyToggleBtn.classList.toggle('has-items', all.length > 0);
+  } catch (e) { /* ignore */ }
+}
+
+function formatTime(ts) {
+  return new Date(ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+let historyObjectUrls = [];
+function revokeHistoryUrls() {
+  historyObjectUrls.forEach(u => URL.revokeObjectURL(u));
+  historyObjectUrls = [];
+}
+
+async function renderHistory() {
+  revokeHistoryUrls();
+  let all;
+  try {
+    all = await idbGetAll('history');
+  } catch (e) {
+    historyPanel.innerHTML = '<div class="hempty">History isn\'t available when opening this file directly — try serving it over http instead of file://.</div>';
+    return;
+  }
+  all.sort((a, b) => b.timestamp - a.timestamp);
+
+  if (all.length === 0) {
+    historyPanel.innerHTML = '<div class="hempty">No saves yet — your save history will show up here, and it sticks around even after you close the page.</div>';
+    return;
+  }
+
+  historyPanel.innerHTML = '';
+  all.forEach(entry => {
+    const entryUrls = entry.files.map(f => {
+      const u = URL.createObjectURL(f.blob);
+      historyObjectUrls.push(u);
+      return { url: u, name: f.name };
+    });
+
+    const row = document.createElement('div');
+    row.className = 'hrow';
+
+    const maxThumbs = 4;
+    const thumbsHtml = entryUrls.slice(0, maxThumbs).map((it, idx) =>
+      `<img src="${it.url}" data-idx="${idx}" alt="" title="${it.name}">`
+    ).join('');
+    const moreCount = entryUrls.length - maxThumbs;
+    const moreHtml = moreCount > 0 ? `<span class="more">+${moreCount}</span>` : '';
+
+    row.innerHTML = `
+      <div class="hthumbs">${thumbsHtml}${moreHtml}</div>
+      <div class="hmeta">
+        <strong>${entry.basename}</strong>
+        <span>${formatTime(entry.timestamp)} · ${entry.files.length} image${entry.files.length === 1 ? '' : 's'}</span>
+      </div>
+      <div class="hactions">
+        <button class="restore">Load into editor</button>
+        <button class="danger delete">Delete</button>
+      </div>
+    `;
+
+    row.querySelectorAll('.hthumbs img').forEach((img, idx) => {
+      img.addEventListener('click', () => openLightbox(entryUrls, idx));
+    });
+    row.querySelector('.restore').addEventListener('click', () => restoreHistoryEntry(entry));
+    row.querySelector('.delete').addEventListener('click', async () => {
+      await idbDelete('history', entry.id);
+      await refreshHistoryBadge();
+      renderHistory();
+      showToast('Removed from history');
+    });
+    historyPanel.appendChild(row);
+  });
+}
+
+function restoreHistoryEntry(entry) {
+  basenameInput.value = entry.basename;
+  files = entry.files.map(f => ({
+    id: Math.random().toString(36).slice(2),
+    file: f.blob instanceof File ? f.blob : new File([f.blob], f.name, { type: f.blob.type || 'image/jpeg' }),
+    url: URL.createObjectURL(f.blob),
+    saved: false
+  }));
+  historyPanel.classList.remove('show');
+  render();
+  checkBasenameWarning();
+  showToast(`Loaded backup from ${formatTime(entry.timestamp)}`);
+}
+
+historyToggleBtn.addEventListener('click', () => {
+  historyPanel.classList.toggle('show');
+  if (historyPanel.classList.contains('show')) renderHistory();
+  else revokeHistoryUrls();
+});
+
+render();
+initFolder();
+</script>
+</body>
+</html>

@@ -13,25 +13,28 @@ import {
     Package, RotateCcw, List, LayoutGrid, AlignJustify
 } from 'lucide-react-native';
 import StatCard from '@/components/ui/StatCard';
+import { useDialog } from '@/contexts/DialogContext';
+import { toastEvents } from '@/utils/toastEvents';
 
 /** Renders a button with a native tooltip on web hover */
-function TooltipBtn({ label, style, onPress, children }: { label: string; style: any; onPress: () => void; children: React.ReactNode }) {
+function TooltipBtn({ label, style, onPress, loading, disabled, children }: { label: string; style: any; onPress: () => void; loading?: boolean; disabled?: boolean; children: React.ReactNode }) {
     if (Platform.OS === 'web') {
         return (
             <TouchableOpacity
-                style={style}
+                style={[style, (disabled || loading) && { opacity: 0.6 }]}
                 onPress={onPress}
+                disabled={disabled || loading}
                 // @ts-ignore – web-only title prop for native browser tooltip
                 title={label}
                 accessibilityLabel={label}
             >
-                {children}
+                {loading ? <ActivityIndicator size="small" color={style.borderColor || '#FFF'} /> : children}
             </TouchableOpacity>
         );
     }
     return (
-        <TouchableOpacity style={style} onPress={onPress} accessibilityLabel={label}>
-            {children}
+        <TouchableOpacity style={[style, (disabled || loading) && { opacity: 0.6 }]} onPress={onPress} disabled={disabled || loading} accessibilityLabel={label}>
+            {loading ? <ActivityIndicator size="small" color={style.borderColor || '#FFF'} /> : children}
         </TouchableOpacity>
     );
 }
@@ -51,14 +54,11 @@ const STATUS_TABS = ['ALL', 'PENDING', 'ACTIVE', 'SUSPENDED'];
 
 export default function AdminProducts() {
     const { user, loading: authLoading } = useAuth();
+    const { confirm } = useDialog();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-
-    // Modal state
-    const [rejectModalVisible, setRejectModalVisible] = useState(false);
-    const [rejectionReason, setRejectionReason] = useState('');
-    const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+    const [actionLoading, setActionLoading] = useState<number | null>(null);
 
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
@@ -112,46 +112,63 @@ export default function AdminProducts() {
     };
 
     const updateStatus = async (id: number, status: string, reason?: string) => {
-        if (status === 'SUSPENDED' && !reason) {
-            setSelectedProductId(id);
-            setRejectionReason('');
-            setRejectModalVisible(true);
+        const product = products.find(p => p.uid === id);
+        const isAdminStore = product?.seller?.slug === 'knot-and-bloom' || product?.seller?.name?.toLowerCase().includes('knot & bloom');
+
+        if (!reason && (status === 'SUSPENDED' || status === 'ACTIVE')) {
+            const isPending = product?.status === 'PENDING';
+            const isReactivate = status === 'ACTIVE' && product?.status === 'SUSPENDED';
+            
+            let title = isPending ? 'Reject Product' : 'Suspend Product';
+            let message = isPending
+                ? 'This product will be rejected and hidden from the marketplace.'
+                : 'This product will be suspended and hidden from the marketplace. The seller will be notified.';
+            let confirmText = isPending ? 'Reject Product' : 'Suspend Product';
+            let reasonPlaceholder = isPending ? 'e.g. Violation of policy...' : 'e.g. Inappropriate content...';
+
+            if (isAdminStore && !isPending && !isReactivate) {
+                title = 'Hide Product';
+                message = 'This product will be hidden from the marketplace.';
+                confirmText = 'Hide Product';
+                reasonPlaceholder = 'e.g. Out of season...';
+            } else if (isReactivate) {
+                title = isAdminStore ? 'Show Product' : 'Reactivate Product';
+                message = isAdminStore ? 'This product will be visible on the marketplace again.' : 'This product will be visible on the marketplace again. The seller will be notified.';
+                confirmText = isAdminStore ? 'Show Product' : 'Reactivate Product';
+                reasonPlaceholder = 'e.g. Issue resolved...';
+            }
+
+            const result = await confirm({
+                title,
+                message,
+                confirmText,
+                isDestructive: !isReactivate,
+                withReason: true,
+                reasonPlaceholder,
+            });
+            if (result && typeof result === 'object' && result.confirmed) {
+                updateStatus(id, status, result.reason);
+            }
             return;
         }
         try {
+            setActionLoading(id);
             await productAPI.updateProductStatus(id, status, reason);
             setProducts(prev =>
                 prev.map(p => p.uid === id ? { ...p, status: status as Product['status'] } : p)
             );
             const msg = status === 'ACTIVE' ? 'approved' : 'suspended';
-            if (Platform.OS === 'web') {
-                window.alert(`Product ${msg} successfully`);
-            } else {
-                Alert.alert("Success", `Product ${msg} successfully`);
-            }
+            toastEvents.emit({ message: `Product ${msg} successfully`, type: 'SUCCESS' });
             if ((statusFilter === 'PENDING' || statusFilter === 'ACTIVE') && status !== statusFilter) {
                 setProducts(prev => prev.filter(p => p.uid !== id));
             }
         } catch (error) {
             console.error(error);
-            if (Platform.OS === 'web') {
-                window.alert("Failed to update product status");
-            } else {
-                Alert.alert("Error", "Failed to update product status");
-            }
+            toastEvents.emit({ message: 'Failed to update product status', type: 'ERROR' });
+        } finally {
+            setActionLoading(null);
         }
     };
-
-    const confirmRejection = () => {
-        if (!selectedProductId) return;
-        if (!rejectionReason.trim()) {
-            Alert.alert("Required", "Please provide a reason for suspension.");
-            return;
-        }
-        updateStatus(selectedProductId, 'SUSPENDED', rejectionReason);
-        setRejectModalVisible(false);
-    };
-
     const getStatusColor = (status: string | null | undefined) => {
         switch (status) {
             case 'ACTIVE': return GREEN;
@@ -172,6 +189,12 @@ export default function AdminProducts() {
             );
         }
         return true;
+    }).sort((a, b) => {
+        const aIsAdmin = a.seller?.slug === 'knot-and-bloom' || a.seller?.name?.toLowerCase().includes('knot & bloom');
+        const bIsAdmin = b.seller?.slug === 'knot-and-bloom' || b.seller?.name?.toLowerCase().includes('knot & bloom');
+        if (aIsAdmin && !bIsAdmin) return -1;
+        if (!aIsAdmin && bIsAdmin) return 1;
+        return 0;
     });
 
     const stats = {
@@ -180,12 +203,16 @@ export default function AdminProducts() {
         active: products.filter(p => p.status === 'ACTIVE').length,
     };
 
-    const numCols = viewMode === 'grid' ? Math.max(2, Math.floor(containerWidth / 180)) : 1;
-    const gridGap = 12;
-    const cardWidth = viewMode === 'grid' ? (containerWidth - (numCols - 1) * gridGap) / numCols : '100%';
+    const maxContentWidth = 1280 - 40; // listContent max width (1280) minus padding (20 + 20)
+    const effectiveContainerWidth = Math.min(containerWidth, maxContentWidth);
+    const minCardWidth = 260;
+    const numCols = viewMode === 'grid' ? Math.max(1, Math.floor(effectiveContainerWidth / minCardWidth)) : 1;
+    const gridGap = 16;
+    const cardWidth = viewMode === 'grid' ? Math.floor((effectiveContainerWidth - (numCols - 1) * gridGap) / numCols) : '100%';
 
     const renderItem = ({ item }: { item: Product }) => {
         const statusColor = getStatusColor(item.status);
+        const isAdminStore = item.seller?.slug === 'knot-and-bloom' || item.seller?.name?.toLowerCase().includes('knot & bloom');
 
         if (viewMode === 'grid') {
             return (
@@ -204,22 +231,26 @@ export default function AdminProducts() {
                     <View style={s.gridActions}>
                         {item.status === 'PENDING' && (
                             <>
-                                <TooltipBtn label="Approve" style={s.gridBtnPrimary} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
+                                <TooltipBtn label="Approve" style={s.gridBtnPrimary} onPress={() => updateStatus(item.uid, 'ACTIVE')} loading={actionLoading === item.uid}>
                                     <CheckCircle size={14} color="#FFF" />
+                                    <Text style={s.gridBtnPrimaryText}>Approve</Text>
                                 </TooltipBtn>
-                                <TooltipBtn label="Reject" style={s.gridBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
+                                <TooltipBtn label="Reject" style={s.gridBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')} loading={actionLoading === item.uid}>
                                     <XCircle size={14} color={RED} />
+                                    <Text style={s.gridBtnRedText}>Reject</Text>
                                 </TooltipBtn>
                             </>
                         )}
                         {item.status === 'ACTIVE' && (
-                            <TooltipBtn label="Suspend" style={s.gridBtnAmber} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
+                            <TooltipBtn label={isAdminStore ? "Hide" : "Suspend"} style={s.gridBtnAmber} onPress={() => updateStatus(item.uid, 'SUSPENDED')} loading={actionLoading === item.uid}>
                                 <AlertTriangle size={14} color={AMBER} />
+                                <Text style={s.gridBtnAmberText}>{isAdminStore ? "Hide" : "Suspend"}</Text>
                             </TooltipBtn>
                         )}
                         {item.status === 'SUSPENDED' && (
-                            <TooltipBtn label="Reactivate" style={s.gridBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
+                            <TooltipBtn label={isAdminStore ? "Show" : "Reactivate"} style={s.gridBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')} loading={actionLoading === item.uid}>
                                 <RotateCcw size={14} color={GREEN} />
+                                <Text style={s.gridBtnGreenText}>{isAdminStore ? "Show" : "Reactivate"}</Text>
                             </TooltipBtn>
                         )}
                     </View>
@@ -251,22 +282,26 @@ export default function AdminProducts() {
                     <View style={s.compactActions}>
                         {item.status === 'PENDING' && (
                             <>
-                                <TooltipBtn label="Approve" style={s.compactOutlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
-                                    <CheckCircle size={16} color={GREEN} />
+                                <TooltipBtn label="Approve" style={s.compactOutlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')} loading={actionLoading === item.uid}>
+                                    <CheckCircle size={14} color={GREEN} />
+                                    <Text style={s.compactOutlineBtnGreenText}>Approve</Text>
                                 </TooltipBtn>
-                                <TooltipBtn label="Reject" style={s.compactOutlineBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
-                                    <XCircle size={16} color={RED} />
+                                <TooltipBtn label="Reject" style={s.compactOutlineBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')} loading={actionLoading === item.uid}>
+                                    <XCircle size={14} color={RED} />
+                                    <Text style={s.compactOutlineBtnRedText}>Reject</Text>
                                 </TooltipBtn>
                             </>
                         )}
                         {item.status === 'ACTIVE' && (
-                            <TooltipBtn label="Suspend" style={s.compactOutlineBtnAmber} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
-                                <AlertTriangle size={16} color={AMBER} />
+                            <TooltipBtn label={isAdminStore ? "Hide" : "Suspend"} style={s.compactOutlineBtnAmber} onPress={() => updateStatus(item.uid, 'SUSPENDED')} loading={actionLoading === item.uid}>
+                                <AlertTriangle size={14} color={AMBER} />
+                                <Text style={s.compactOutlineBtnAmberText}>{isAdminStore ? "Hide" : "Suspend"}</Text>
                             </TooltipBtn>
                         )}
                         {item.status === 'SUSPENDED' && (
-                            <TooltipBtn label="Reactivate" style={s.compactOutlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
-                                <RotateCcw size={16} color={GREEN} />
+                            <TooltipBtn label={isAdminStore ? "Show" : "Reactivate"} style={s.compactOutlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')} loading={actionLoading === item.uid}>
+                                <RotateCcw size={14} color={GREEN} />
+                                <Text style={s.compactOutlineBtnGreenText}>{isAdminStore ? "Show" : "Reactivate"}</Text>
                             </TooltipBtn>
                         )}
                     </View>
@@ -297,26 +332,26 @@ export default function AdminProducts() {
                 <View style={s.actions}>
                     {item.status === 'PENDING' && (
                         <>
-                            <TooltipBtn label="Approve" style={s.primaryBtn} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
+                            <TooltipBtn label="Approve" style={s.primaryBtn} onPress={() => updateStatus(item.uid, 'ACTIVE')} loading={actionLoading === item.uid}>
                                 <CheckCircle size={14} color="#FFF" />
                                 <Text style={s.primaryBtnText}>Approve</Text>
                             </TooltipBtn>
-                            <TooltipBtn label="Reject" style={s.outlineBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
+                            <TooltipBtn label="Reject" style={s.outlineBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')} loading={actionLoading === item.uid}>
                                 <XCircle size={14} color={RED} />
                                 <Text style={s.outlineBtnRedText}>Reject</Text>
                             </TooltipBtn>
                         </>
                     )}
                     {item.status === 'ACTIVE' && (
-                        <TooltipBtn label="Suspend this product" style={s.outlineBtnAmber} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
+                        <TooltipBtn label={isAdminStore ? "Hide" : "Suspend this product"} style={s.outlineBtnAmber} onPress={() => updateStatus(item.uid, 'SUSPENDED')} loading={actionLoading === item.uid}>
                             <AlertTriangle size={14} color={AMBER} />
-                            <Text style={s.outlineBtnAmberText}>Suspend</Text>
+                            <Text style={s.outlineBtnAmberText}>{isAdminStore ? "Hide" : "Suspend"}</Text>
                         </TooltipBtn>
                     )}
                     {item.status === 'SUSPENDED' && (
-                        <TooltipBtn label="Reactivate product" style={s.outlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
+                        <TooltipBtn label={isAdminStore ? "Show" : "Reactivate product"} style={s.outlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')} loading={actionLoading === item.uid}>
                             <RotateCcw size={14} color={GREEN} />
-                            <Text style={s.outlineBtnGreenText}>Reactivate</Text>
+                            <Text style={s.outlineBtnGreenText}>{isAdminStore ? "Show" : "Reactivate"}</Text>
                         </TooltipBtn>
                     )}
                 </View>
@@ -468,33 +503,6 @@ export default function AdminProducts() {
                 }
             />
             </View>
-
-            {/* Suspension Modal */}
-            {rejectModalVisible && (
-                <View style={s.modalOverlay}>
-                    <View style={s.modalContent}>
-                        <Text style={s.modalTitle}>Suspend Product</Text>
-                        <Text style={s.modalSubtitle}>Please provide a reason for this action. This may be communicated to the seller.</Text>
-                        <TextInput
-                            style={s.modalInput}
-                            value={rejectionReason}
-                            onChangeText={setRejectionReason}
-                            placeholder="e.g. Violation of policy, misleading details..."
-                            placeholderTextColor={SUB}
-                            multiline
-                            numberOfLines={4}
-                        />
-                        <View style={s.modalActions}>
-                            <TouchableOpacity style={s.cancelBtn} onPress={() => setRejectModalVisible(false)}>
-                                <Text style={s.cancelBtnText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={s.confirmBtn} onPress={confirmRejection}>
-                                <Text style={s.confirmBtnText}>Confirm Suspension</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            )}
         </View>
     );
 }
@@ -557,10 +565,14 @@ const s = StyleSheet.create({
     gridName: { fontSize: 14, fontWeight: '700', color: TEXT, marginBottom: 6, fontFamily: 'Quicksand' },
     gridPrice: { fontSize: 16, fontWeight: '800', color: TEXT, marginBottom: 6, fontFamily: 'Quicksand' },
     gridActions: { flexDirection: 'row', gap: 8, marginTop: 'auto' },
-    gridBtnPrimary: { flex: 1, backgroundColor: P, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    gridBtnRed: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: RED, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    gridBtnAmber: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: AMBER, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    gridBtnGreen: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+    gridBtnPrimary: { flex: 1, backgroundColor: P, paddingVertical: 10, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+    gridBtnPrimaryText: { color: '#FFF', fontSize: 12, fontWeight: '700', fontFamily: 'Quicksand' },
+    gridBtnRed: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: RED, paddingVertical: 10, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+    gridBtnRedText: { color: RED, fontSize: 12, fontWeight: '700', fontFamily: 'Quicksand' },
+    gridBtnAmber: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: AMBER, paddingVertical: 10, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+    gridBtnAmberText: { color: AMBER, fontSize: 12, fontWeight: '700', fontFamily: 'Quicksand' },
+    gridBtnGreen: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, paddingVertical: 10, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+    gridBtnGreenText: { color: GREEN, fontSize: 12, fontWeight: '700', fontFamily: 'Quicksand' },
 
     // Compact View
     compactHeaderRow: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 8, marginBottom: 8 },
@@ -574,18 +586,21 @@ const s = StyleSheet.create({
     badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
     badgeText: { fontSize: 10, fontWeight: '700', fontFamily: 'Quicksand' },
     compactColSeller: { width: 140 },
-    compactColActions: { width: 80 },
-    compactActions: { flexDirection: 'row', gap: 8, width: 80, justifyContent: 'flex-end' },
+    compactColActions: { width: 180 },
+    compactActions: { flexDirection: 'row', gap: 8, width: 180, justifyContent: 'flex-end' },
     compactActionBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
-    compactOutlineBtnGreen: { width: 36, height: 36, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, alignItems: 'center', justifyContent: 'center' },
-    compactOutlineBtnRed: { width: 36, height: 36, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: RED, alignItems: 'center', justifyContent: 'center' },
-    compactOutlineBtnAmber: { width: 36, height: 36, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: AMBER, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnGreen: { flexDirection: 'row', gap: 4, height: 32, paddingHorizontal: 12, borderRadius: 10, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnGreenText: { color: GREEN, fontSize: 12, fontWeight: '600', fontFamily: 'Quicksand' },
+    compactOutlineBtnRed: { flexDirection: 'row', gap: 4, height: 32, paddingHorizontal: 12, borderRadius: 10, backgroundColor: CARD, borderWidth: 1, borderColor: RED, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnRedText: { color: RED, fontSize: 12, fontWeight: '600', fontFamily: 'Quicksand' },
+    compactOutlineBtnAmber: { flexDirection: 'row', gap: 4, height: 32, paddingHorizontal: 12, borderRadius: 10, backgroundColor: CARD, borderWidth: 1, borderColor: AMBER, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnAmberText: { color: AMBER, fontSize: 12, fontWeight: '600', fontFamily: 'Quicksand' },
 
     emptyState: { paddingVertical: 60, alignItems: 'center' },
     emptyText: { fontSize: 14, color: SUB, fontFamily: 'Quicksand', fontStyle: 'italic' },
 
     // Modal
-    modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 },
+    modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: 20 },
     modalContent: { backgroundColor: CARD, borderRadius: 24, padding: 24, width: '100%', maxWidth: 420, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10 },
     modalTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 8, fontFamily: 'Quicksand' },
     modalSubtitle: { fontSize: 13, color: SUB, marginBottom: 20, fontFamily: 'Quicksand' },

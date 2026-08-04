@@ -34,6 +34,12 @@ class CronService {
             console.log('Running Daily Fuel Price Fetch...');
             fuelService.updateFuelPriceConfig();
         });
+
+        // Run daily at 4 AM for taxonomy cleanup
+        cron.schedule('0 4 * * *', () => {
+            console.log('Running Daily Taxonomy Cleanup...');
+            this.processTaxonomyCleanup();
+        });
     }
 
     private async processOrderAutoComplete() {
@@ -289,6 +295,61 @@ class CronService {
             }
         } catch (error) {
             console.error("Error in cleanupExpiredRefreshTokens:", error);
+        }
+    }
+
+    private async processTaxonomyCleanup() {
+        try {
+            // @ts-ignore
+            const badWords = await import('bad-words');
+            const Filter = badWords.default || badWords;
+            const filter = new Filter();
+
+            // Check CustomCategories
+            const categories = await prisma.customCategory.findMany();
+            for (const cat of categories) {
+                if (filter.isProfane(cat.name)) {
+                    console.log(`Deleting profane category: ${cat.name}`);
+                    await prisma.customCategory.delete({ where: { uid: cat.uid } });
+
+                    // Find products with this category
+                    const products = await prisma.product.findMany({
+                        where: { categories: { has: cat.name } }
+                    });
+                    
+                    for (const product of products) {
+                        const newCats = product.categories.filter(c => c !== cat.name);
+                        await prisma.product.update({
+                            where: { uid: product.uid },
+                            data: { categories: newCats }
+                        });
+                    }
+                }
+            }
+
+            // Check CustomTags
+            const tags = await prisma.customTag.findMany();
+            for (const tag of tags) {
+                if (filter.isProfane(tag.name)) {
+                    console.log(`Deleting profane tag: ${tag.name}`);
+                    await prisma.customTag.delete({ where: { uid: tag.uid } });
+
+                    // Find products with this tag
+                    const products = await prisma.product.findMany({
+                        where: { tags: { has: tag.name } }
+                    });
+                    
+                    for (const product of products) {
+                        const newTags = product.tags.filter(t => t !== tag.name);
+                        await prisma.product.update({
+                            where: { uid: product.uid },
+                            data: { tags: newTags }
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error during taxonomy cleanup:', error);
         }
     }
 }

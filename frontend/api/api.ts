@@ -16,3 +16,4 @@ export * from './chat';
 export * from './earnings';
 export * from './services';
 export * from './order';
+export * from './reviews';

@@ -1,6 +1,8 @@
 import { apiClient } from './client';
 
 export const adminAPI = {
+    getDashboardStats: () =>
+        apiClient.get<{ totalRevenue: number; activeSellers: number; pendingSellers: number; activeProducts: number }>('/admin/dashboard-stats').then(res => res.data),
     getPlatformConfig: () =>
         apiClient.get<{ config: Record<string, string> }>('/admin/platform-config').then(res => res.data),
     updatePlatformConfig: (updates: Record<string, number | string>) =>

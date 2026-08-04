@@ -1,23 +1,30 @@
 import { sellerAPI } from "@/api/api";
 import { Stack, useRouter } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
-import { ActivityIndicator, Alert, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, RefreshControl, Platform, Animated } from "react-native";
-import { Search, Filter, Shield, CheckCircle, XCircle, Clock, AlertTriangle, Users, List, LayoutGrid, AlignJustify } from 'lucide-react-native';
+import { Alert, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View, TextInput, RefreshControl, Platform, Animated, Image, ActivityIndicator } from "react-native";
+import { Search, Shield, CheckCircle, XCircle, Clock, AlertTriangle, Users, List, LayoutGrid, AlignJustify } from 'lucide-react-native';
 import InfoBox from "@/components/ui/InfoBox";
 import StatCard from "@/components/ui/StatCard";
+import ModalPortal from "@/components/ui/ModalPortal";
+import { useDialog } from "@/contexts/DialogContext";
+import { toastEvents } from "@/utils/toastEvents";
 
 /** Web-native tooltip on hover for icon buttons */
-function TooltipBtn({ label, style, onPress, children }: { label: string; style: any; onPress: () => void; children: React.ReactNode }) {
+function TooltipBtn({ label, style, onPress, loading, disabled, children }: { label: string; style: any; onPress: () => void; loading?: boolean; disabled?: boolean; children: React.ReactNode }) {
     if (Platform.OS === 'web') {
         return (
-            <TouchableOpacity style={style} onPress={onPress}
+            <TouchableOpacity style={[style, (disabled || loading) && { opacity: 0.6 }]} onPress={onPress} disabled={disabled || loading}
                 // @ts-ignore
                 title={label} accessibilityLabel={label}>
-                {children}
+                {loading ? <ActivityIndicator size="small" color={style.borderColor || '#FFF'} /> : children}
             </TouchableOpacity>
         );
     }
-    return <TouchableOpacity style={style} onPress={onPress} accessibilityLabel={label}>{children}</TouchableOpacity>;
+    return (
+        <TouchableOpacity style={[style, (disabled || loading) && { opacity: 0.6 }]} onPress={onPress} disabled={disabled || loading} accessibilityLabel={label}>
+            {loading ? <ActivityIndicator size="small" color={style.borderColor || '#FFF'} /> : children}
+        </TouchableOpacity>
+    );
 }
 
 const P = '#B36979';
@@ -38,7 +45,7 @@ interface Seller {
     name: string;
     email: string;
     slug: string;
-    status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'REJECTED';
+    status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'REJECTED' | 'APPROVED';
     createdAt: string;
     // Identity
     idType?: string;
@@ -66,21 +73,18 @@ const TABS = ['ALL', 'PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED'];
 
 export default function AdminSellers() {
     const router = useRouter();
+    const { confirm } = useDialog();
     const [sellers, setSellers] = useState<Seller[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
+    const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('list');
     const [containerWidth, setContainerWidth] = useState(900);
 
-    // Modal state
-    const [rejectModalVisible, setRejectModalVisible] = useState(false);
-    const [rejectionReason, setRejectionReason] = useState("");
-    const [selectedSellerId, setSelectedSellerId] = useState<number | null>(null);
-
-    // Review Modal State
+    // Review Modal State (stays inline — it's a full detail panel, not a simple confirm)
     const [reviewModalVisible, setReviewModalVisible] = useState(false);
     const [selectedSeller, setSelectedSeller] = useState<Seller | null>(null);
 
@@ -133,33 +137,59 @@ export default function AdminSellers() {
 
     const updateStatus = async (id: number, status: string, reason?: string) => {
         try {
+            setActionLoading(id);
             await sellerAPI.updateSellerStatus(id, status, reason);
             setSellers(prev => prev.map(s => s.uid === id ? { ...s, status: status as any } : s));
-            if (Platform.OS === 'web') {
-                window.alert(`Seller status updated to ${status}`);
-            } else {
-                Alert.alert("Success", `Seller status updated to ${status}`);
-            }
+            toastEvents.emit({ message: `Seller status updated to ${status}`, type: 'SUCCESS' });
         } catch (error: any) {
             const msg = error.response?.data?.error || "Failed to update status";
-            if (Platform.OS === 'web') {
-                window.alert(msg);
-            } else {
-                Alert.alert("Error", msg);
-            }
+            toastEvents.emit({ message: msg, type: 'ERROR' });
+        } finally {
+            setActionLoading(null);
         }
     };
 
-    const openRejectModal = (id: number) => {
-        setSelectedSellerId(id);
-        setRejectionReason("");
-        setRejectModalVisible(true);
-    };
+    const openActionModal = async (id: number, type: 'REJECT' | 'SUSPEND' | 'REACTIVATE', isAdminStore?: boolean) => {
+        const isSuspend = type === 'SUSPEND';
+        const isReactivate = type === 'REACTIVATE';
+        
+        let title = 'Reject Application';
+        let message = 'This will permanently reject their application. They will need to reapply.';
+        let confirmText = 'Reject Application';
+        let reasonPlaceholder = 'e.g. Incomplete portfolio...';
+        
+        if (isAdminStore && isSuspend) {
+            title = 'Hide Seller';
+            message = 'This seller will be hidden from the marketplace.';
+            confirmText = 'Hide Seller';
+            reasonPlaceholder = 'e.g. Taking a break...';
+        } else if (isAdminStore && isReactivate) {
+            title = 'Show Seller';
+            message = 'This seller will be visible on the marketplace again.';
+            confirmText = 'Show Seller';
+            reasonPlaceholder = 'e.g. Issue resolved...';
+        } else if (isSuspend) {
+            title = 'Suspend Seller';
+            message = 'Their account will be deactivated and all listings hidden. You can reactivate at any time.';
+            confirmText = 'Suspend Seller';
+            reasonPlaceholder = 'e.g. Violation of terms...';
+        } else if (isReactivate) {
+            title = 'Reactivate Seller';
+            message = 'Their account will be active and visible again. The seller will be notified.';
+            confirmText = 'Reactivate Seller';
+            reasonPlaceholder = 'e.g. Issue resolved...';
+        }
 
-    const handleReject = () => {
-        if (selectedSellerId) {
-            updateStatus(selectedSellerId, 'REJECTED', rejectionReason);
-            setRejectModalVisible(false);
+        const result = await confirm({
+            title,
+            message,
+            confirmText,
+            isDestructive: !isReactivate,
+            withReason: true,
+            reasonPlaceholder,
+        });
+        if (result && typeof result === 'object' && result.confirmed) {
+            updateStatus(id, isReactivate ? 'ACTIVE' : (isSuspend ? 'SUSPENDED' : 'REJECTED'), result.reason);
         }
     };
 
@@ -167,35 +197,55 @@ export default function AdminSellers() {
         const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter;
         const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.email.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
+    }).sort((a, b) => {
+        const aIsAdmin = a.slug === 'knot-and-bloom' || a.name.toLowerCase().includes('knot & bloom');
+        const bIsAdmin = b.slug === 'knot-and-bloom' || b.name.toLowerCase().includes('knot & bloom');
+        if (aIsAdmin && !bIsAdmin) return -1;
+        if (!aIsAdmin && bIsAdmin) return 1;
+        return 0;
     });
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'ACTIVE': return GREEN;
-            case 'PENDING': return AMBER;
+            case 'ACTIVE':    return GREEN;
+            case 'APPROVED':  return GREEN; // legacy — treat same as ACTIVE
+            case 'PENDING':   return AMBER;
             case 'SUSPENDED': return RED;
-            case 'BANNED': return '#991B1B';
-            case 'REJECTED': return SUB;
-            default: return SUB;
+            case 'BANNED':    return '#991B1B';
+            case 'REJECTED':  return SUB;
+            default:          return SUB;
         }
     };
 
-    const numCols = viewMode === 'grid' ? Math.max(2, Math.floor(containerWidth / 250)) : 1;
+    const getStatusLabel = (status: string) => {
+        if (status === 'APPROVED') return 'ACTIVE'; // legacy label normalisation
+        return status;
+    };
+
+    const maxContentWidth = 1280 - 40; // listContent max width (1280) minus padding (20 + 20)
+    const effectiveContainerWidth = Math.min(containerWidth, maxContentWidth);
+    const minCardWidth = 260;
+    const numCols = viewMode === 'grid' ? Math.max(1, Math.floor(effectiveContainerWidth / minCardWidth)) : 1;
     const gridGap = 16;
-    const cardWidth = viewMode === 'grid' ? (containerWidth - (numCols - 1) * gridGap) / numCols : '100%';
+    const cardWidth = viewMode === 'grid' ? Math.floor((effectiveContainerWidth - (numCols - 1) * gridGap) / numCols) : '100%';
 
     const renderItem = ({ item }: { item: Seller }) => {
         const statusColor = getStatusColor(item.status);
+        const isAdminStore = item.slug === 'knot-and-bloom' || item.name.toLowerCase().includes('knot & bloom');
 
         if (viewMode === 'grid') {
             return (
                 <View style={[s.gridCard, { width: cardWidth }]}>
                     <View style={s.gridHeaderRow}>
-                        <View style={s.avatarContainer}>
-                            <Text style={s.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
-                        </View>
+                        {item.logo ? (
+                            <Image source={{ uri: item.logo }} style={s.avatarContainer} />
+                        ) : (
+                            <View style={s.avatarContainer}>
+                                <Text style={s.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+                            </View>
+                        )}
                         <View style={[s.badge, { backgroundColor: `${statusColor}20` }]}>
-                            <Text style={[s.badgeText, { color: statusColor }]}>{item.status}</Text>
+                            <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
                         </View>
                     </View>
                     <View style={s.gridInfo}>
@@ -207,22 +257,26 @@ export default function AdminSellers() {
                     <View style={s.gridActions}>
                         {item.status === 'PENDING' && (
                             <>
-                                <TooltipBtn label="Review ID & Approve" style={s.gridBtnPrimary} onPress={() => openReviewModal(item)}>
+                                <TooltipBtn label="Review ID & Approve" style={s.gridBtnPrimary} onPress={() => openReviewModal(item)} loading={actionLoading === item.uid}>
                                     <Shield size={14} color="#FFF" />
+                                    <Text style={s.gridBtnPrimaryText}>Review</Text>
                                 </TooltipBtn>
-                                <TooltipBtn label="Reject" style={s.gridBtnRed} onPress={() => openRejectModal(item.uid)}>
+                                <TooltipBtn label="Reject" style={s.gridBtnRed} onPress={() => openActionModal(item.uid, 'REJECT')} loading={actionLoading === item.uid}>
                                     <XCircle size={14} color={RED} />
+                                    <Text style={s.gridBtnRedText}>Reject</Text>
                                 </TooltipBtn>
                             </>
                         )}
-                        {item.status === 'ACTIVE' && (
-                            <TooltipBtn label="Suspend" style={s.gridBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
+                        {(item.status === 'ACTIVE' || item.status === 'APPROVED') && (
+                            <TooltipBtn label={isAdminStore ? "Hide" : "Suspend"} style={s.gridBtnRed} onPress={() => openActionModal(item.uid, 'SUSPEND', isAdminStore)} loading={actionLoading === item.uid}>
                                 <AlertTriangle size={14} color={RED} />
+                                <Text style={s.gridBtnRedText}>{isAdminStore ? "Hide" : "Suspend"}</Text>
                             </TooltipBtn>
                         )}
                         {(item.status === 'SUSPENDED' || item.status === 'REJECTED') && (
-                            <TooltipBtn label="Reactivate" style={s.gridBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
+                            <TooltipBtn label={isAdminStore ? "Show" : "Reactivate"} style={s.gridBtnGreen} onPress={() => openActionModal(item.uid, 'REACTIVATE', isAdminStore)} loading={actionLoading === item.uid}>
                                 <CheckCircle size={14} color={GREEN} />
+                                <Text style={s.gridBtnGreenText}>{isAdminStore ? "Show" : "Reactivate"}</Text>
                             </TooltipBtn>
                         )}
                     </View>
@@ -234,13 +288,20 @@ export default function AdminSellers() {
             return (
                 <View style={s.compactCard}>
                     <View style={s.compactInfo}>
+                        {item.logo ? (
+                            <Image source={{ uri: item.logo }} style={s.compactAvatar} />
+                        ) : (
+                            <View style={s.compactAvatar}>
+                                <Text style={s.compactAvatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+                            </View>
+                        )}
                         <View style={s.compactColMain}>
                             <Text style={s.compactName} numberOfLines={1}>{item.name}</Text>
                             <Text style={s.compactEmail} numberOfLines={1}>{item.email}</Text>
                         </View>
                         <View style={s.compactColStatus}>
                             <View style={[s.badge, { backgroundColor: `${statusColor}20`, alignSelf: 'flex-start' }]}>
-                                <Text style={[s.badgeText, { color: statusColor }]}>{item.status}</Text>
+                                <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
                             </View>
                         </View>
                         <View style={s.compactColDate}>
@@ -250,22 +311,26 @@ export default function AdminSellers() {
                     <View style={s.compactActions}>
                         {item.status === 'PENDING' && (
                             <>
-                                <TooltipBtn label="Review ID & Approve" style={s.compactOutlineBtnGreen} onPress={() => openReviewModal(item)}>
-                                    <Shield size={16} color={GREEN} />
+                                <TooltipBtn label="Review ID & Approve" style={s.compactOutlineBtnGreen} onPress={() => openReviewModal(item)} loading={actionLoading === item.uid}>
+                                    <Shield size={14} color={GREEN} />
+                                    <Text style={s.compactOutlineBtnGreenText}>Review</Text>
                                 </TooltipBtn>
-                                <TooltipBtn label="Reject" style={s.compactOutlineBtnRed} onPress={() => openRejectModal(item.uid)}>
-                                    <XCircle size={16} color={RED} />
+                                <TooltipBtn label="Reject" style={s.compactOutlineBtnRed} onPress={() => openActionModal(item.uid, 'REJECT')} loading={actionLoading === item.uid}>
+                                    <XCircle size={14} color={RED} />
+                                    <Text style={s.compactOutlineBtnRedText}>Reject</Text>
                                 </TooltipBtn>
                             </>
                         )}
-                        {item.status === 'ACTIVE' && (
-                            <TooltipBtn label="Suspend" style={s.compactOutlineBtnAmber} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
-                                <AlertTriangle size={16} color={AMBER} />
+                        {(item.status === 'ACTIVE' || item.status === 'APPROVED') && (
+                            <TooltipBtn label={isAdminStore ? "Hide" : "Suspend"} style={s.compactOutlineBtnRed} onPress={() => openActionModal(item.uid, 'SUSPEND', isAdminStore)} loading={actionLoading === item.uid}>
+                                <AlertTriangle size={14} color={RED} />
+                                <Text style={s.compactOutlineBtnRedText}>{isAdminStore ? "Hide" : "Suspend"}</Text>
                             </TooltipBtn>
                         )}
                         {(item.status === 'SUSPENDED' || item.status === 'REJECTED') && (
-                            <TooltipBtn label="Reactivate" style={s.compactOutlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
-                                <CheckCircle size={16} color={GREEN} />
+                            <TooltipBtn label={isAdminStore ? "Show" : "Reactivate"} style={s.compactOutlineBtnGreen} onPress={() => openActionModal(item.uid, 'REACTIVATE', isAdminStore)} loading={actionLoading === item.uid}>
+                                <CheckCircle size={14} color={GREEN} />
+                                <Text style={s.compactOutlineBtnGreenText}>{isAdminStore ? "Show" : "Reactivate"}</Text>
                             </TooltipBtn>
                         )}
                     </View>
@@ -276,14 +341,18 @@ export default function AdminSellers() {
         return (
             <View style={s.card}>
                 <View style={s.cardInfo}>
-                    <View style={s.avatarContainer}>
-                        <Text style={s.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
-                    </View>
+                    {item.logo ? (
+                        <Image source={{ uri: item.logo }} style={s.avatarContainer} />
+                    ) : (
+                        <View style={s.avatarContainer}>
+                            <Text style={s.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
+                        </View>
+                    )}
                     <View style={s.detailsContainer}>
                         <View style={s.nameRow}>
                             <Text style={s.name}>{item.name}</Text>
                             <View style={[s.badge, { backgroundColor: `${statusColor}20` }]}>
-                                <Text style={[s.badgeText, { color: statusColor }]}>{item.status}</Text>
+                                <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
                             </View>
                         </View>
                         <Text style={s.email}>{item.email}</Text>
@@ -294,26 +363,26 @@ export default function AdminSellers() {
                 <View style={s.actions}>
                     {item.status === 'PENDING' && (
                         <>
-                            <TooltipBtn label="Review ID & Approve" style={s.primaryBtn} onPress={() => openReviewModal(item)}>
+                            <TooltipBtn label="Review ID & Approve" style={s.primaryBtn} onPress={() => openReviewModal(item)} loading={actionLoading === item.uid}>
                                 <Shield size={14} color="#FFF" />
                                 <Text style={s.primaryBtnText}>Review & Approve</Text>
                             </TooltipBtn>
-                            <TooltipBtn label="Reject application" style={s.outlineBtnRed} onPress={() => openRejectModal(item.uid)}>
+                            <TooltipBtn label="Reject application" style={s.outlineBtnRed} onPress={() => openActionModal(item.uid, 'REJECT')} loading={actionLoading === item.uid}>
                                 <XCircle size={14} color={RED} />
                                 <Text style={s.outlineBtnRedText}>Reject</Text>
                             </TooltipBtn>
                         </>
                     )}
-                    {item.status === 'ACTIVE' && (
-                        <TooltipBtn label="Suspend seller" style={s.outlineBtnRed} onPress={() => updateStatus(item.uid, 'SUSPENDED')}>
+                    {(item.status === 'ACTIVE' || item.status === 'APPROVED') && (
+                        <TooltipBtn label={isAdminStore ? "Hide seller" : "Suspend seller"} style={s.outlineBtnRed} onPress={() => openActionModal(item.uid, 'SUSPEND', isAdminStore)} loading={actionLoading === item.uid}>
                             <AlertTriangle size={14} color={RED} />
-                            <Text style={s.outlineBtnRedText}>Suspend</Text>
+                            <Text style={s.outlineBtnRedText}>{isAdminStore ? "Hide" : "Suspend"}</Text>
                         </TooltipBtn>
                     )}
                     {(item.status === 'SUSPENDED' || item.status === 'REJECTED') && (
-                        <TooltipBtn label="Reactivate seller" style={s.outlineBtnGreen} onPress={() => updateStatus(item.uid, 'ACTIVE')}>
+                        <TooltipBtn label={isAdminStore ? "Show seller" : "Reactivate seller"} style={s.outlineBtnGreen} onPress={() => openActionModal(item.uid, 'REACTIVATE', isAdminStore)} loading={actionLoading === item.uid}>
                             <CheckCircle size={14} color={GREEN} />
-                            <Text style={s.outlineBtnGreenText}>Reactivate</Text>
+                            <Text style={s.outlineBtnGreenText}>{isAdminStore ? "Show" : "Reactivate"}</Text>
                         </TooltipBtn>
                     )}
                 </View>
@@ -468,36 +537,10 @@ export default function AdminSellers() {
                 />
             </View>
 
-            {/* Rejection Modal */}
-            {rejectModalVisible && (
-                <View style={s.modalOverlay}>
-                    <View style={s.modalContent}>
-                        <Text style={s.modalTitle}>Reject Application</Text>
-                        <Text style={s.modalSubtitle}>Please provide a reason for rejection. This will be visible to the applicant.</Text>
-                        <TextInput
-                            style={s.input}
-                            value={rejectionReason}
-                            onChangeText={setRejectionReason}
-                            placeholder="e.g. Incomplete portfolio..."
-                            placeholderTextColor={SUB}
-                            multiline
-                            numberOfLines={4}
-                        />
-                        <View style={s.modalActions}>
-                            <TouchableOpacity style={s.cancelBtn} onPress={() => setRejectModalVisible(false)}>
-                                <Text style={s.cancelBtnText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={s.rejectConfirmBtn} onPress={handleReject}>
-                                <Text style={s.rejectConfirmBtnText}>Reject Application</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            )}
-
             {/* Review Modal — Full Application Detail */}
             {reviewModalVisible && selectedSeller && (
-                <View style={s.modalOverlay}>
+                <ModalPortal>
+                    <View style={s.modalOverlay}>
                     <View style={[s.modalContent, { maxWidth: 680, maxHeight: '90%', width: '95%', padding: 0, overflow: 'hidden' }]}>
                         {/* Header */}
                         <View style={{ backgroundColor: P, padding: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
@@ -666,7 +709,7 @@ export default function AdminSellers() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[s.rejectConfirmBtn, { flex: 1, alignItems: 'center' }]}
-                                onPress={() => { setReviewModalVisible(false); openRejectModal(selectedSeller.uid); }}
+                                onPress={() => { setReviewModalVisible(false); openActionModal(selectedSeller.uid, 'REJECT'); }}
                             >
                                 <Text style={s.rejectConfirmBtnText}>Reject</Text>
                             </TouchableOpacity>
@@ -679,6 +722,7 @@ export default function AdminSellers() {
                         </View>
                     </View>
                 </View>
+                </ModalPortal>
             )}
         </View>
     );
@@ -742,27 +786,35 @@ const s = StyleSheet.create({
     gridInfo: { flex: 1, paddingBottom: 12 },
     gridName: { fontSize: 16, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand', marginBottom: 4 },
     gridActions: { flexDirection: 'row', gap: 8, marginTop: 'auto' },
-    gridBtnPrimary: { flex: 1, backgroundColor: P, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    gridBtnRed: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: RED, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    gridBtnGreen: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+    gridBtnPrimary: { flex: 1, backgroundColor: P, paddingVertical: 10, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+    gridBtnPrimaryText: { color: '#FFF', fontSize: 12, fontWeight: '700', fontFamily: 'Quicksand' },
+    gridBtnRed: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: RED, paddingVertical: 10, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+    gridBtnRedText: { color: RED, fontSize: 12, fontWeight: '700', fontFamily: 'Quicksand' },
+    gridBtnGreen: { flex: 1, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, paddingVertical: 10, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+    gridBtnGreenText: { color: GREEN, fontSize: 12, fontWeight: '700', fontFamily: 'Quicksand' },
 
     // Compact View
     compactHeaderRow: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 8, marginBottom: 8 },
     compactHeaderTxt: { fontSize: 12, fontWeight: '700', color: SUB, fontFamily: 'Quicksand', textTransform: 'uppercase', letterSpacing: 0.5 },
     compactCard: { flexDirection: 'row', backgroundColor: CARD, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 24, marginBottom: 8, alignItems: 'center', borderWidth: 1, borderColor: BORDER },
     compactInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+    compactAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: P_LIGHT, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    compactAvatarText: { fontSize: 14, fontWeight: '700', color: P, fontFamily: 'Quicksand' },
     compactColMain: { flex: 2, paddingRight: 16 },
     compactName: { fontSize: 14, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand', marginBottom: 2 },
     compactEmail: { fontSize: 12, color: SUB, fontFamily: 'Quicksand' },
     compactColStatus: { width: 100 },
     compactColDate: { width: 100 },
-    compactColActions: { width: 80 },
-    compactActions: { flexDirection: 'row', gap: 8, width: 80, justifyContent: 'flex-end' },
+    compactColActions: { width: 180 },
+    compactActions: { flexDirection: 'row', gap: 8, width: 180, justifyContent: 'flex-end' },
     compactActionBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: BG, alignItems: 'center', justifyContent: 'center' },
     compactActionBtnRed: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' },
-    compactOutlineBtnGreen: { width: 36, height: 36, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, alignItems: 'center', justifyContent: 'center' },
-    compactOutlineBtnRed: { width: 36, height: 36, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: RED, alignItems: 'center', justifyContent: 'center' },
-    compactOutlineBtnAmber: { width: 36, height: 36, borderRadius: 12, backgroundColor: CARD, borderWidth: 1, borderColor: AMBER, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnGreen: { flexDirection: 'row', gap: 4, height: 32, paddingHorizontal: 12, borderRadius: 10, backgroundColor: CARD, borderWidth: 1, borderColor: GREEN, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnGreenText: { color: GREEN, fontSize: 12, fontWeight: '600', fontFamily: 'Quicksand' },
+    compactOutlineBtnRed: { flexDirection: 'row', gap: 4, height: 32, paddingHorizontal: 12, borderRadius: 10, backgroundColor: CARD, borderWidth: 1, borderColor: RED, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnRedText: { color: RED, fontSize: 12, fontWeight: '600', fontFamily: 'Quicksand' },
+    compactOutlineBtnAmber: { flexDirection: 'row', gap: 4, height: 32, paddingHorizontal: 12, borderRadius: 10, backgroundColor: CARD, borderWidth: 1, borderColor: AMBER, alignItems: 'center', justifyContent: 'center' },
+    compactOutlineBtnAmberText: { color: AMBER, fontSize: 12, fontWeight: '600', fontFamily: 'Quicksand' },
 
     // Skeletons
     skeletonCard: { backgroundColor: CARD, borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: BORDER, flexDirection: 'row', alignItems: 'center', gap: 16 },
@@ -773,7 +825,7 @@ const s = StyleSheet.create({
     skeletonBtn: { width: 100, height: 36, borderRadius: 16, backgroundColor: '#E2E8F0' },
 
     // Modal
-    modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 },
+    modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: 20 },
     modalContent: { backgroundColor: CARD, borderRadius: 24, padding: 24, width: '100%', maxWidth: 400, shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10 },
     modalTitle: { fontSize: 18, fontWeight: '700', color: TEXT, marginBottom: 8, fontFamily: 'Quicksand' },
     modalSubtitle: { fontSize: 13, color: SUB, marginBottom: 20, fontFamily: 'Quicksand' },

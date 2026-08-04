@@ -1,6 +1,7 @@
 import { cartAPI, productAPI, sellerAPI } from "@/api/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { useCartAnimation } from "@/contexts/CartAnimationContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import ProductCard from "@/components/product/ProductCard";
 import type { Product } from "@/types/products";
@@ -102,7 +103,8 @@ export default function ProductDetailPage() {
     const displayImage = selectedImage || product?.image || null;
 
     const { user } = useAuth();
-    const { refreshCart, triggerCartAnimation, setCartCount, cartCount, cartItems } = useCart();
+    const { refreshCart, cartItems } = useCart();
+    const { triggerCartAnimation } = useCartAnimation();
     const { wishlistedProductIds, toggleWishlist } = useWishlist();
     const buttonRef = useRef<View>(null);
 
@@ -176,7 +178,8 @@ export default function ProductDetailPage() {
         const fetchMakers = async () => {
             try {
                 const response = await sellerAPI.getActiveSellers();
-                setMakers(response.data.slice(0, 5));
+                const allMakers = response.data?.regularMakers ?? [];
+                setMakers(allMakers.slice(0, 5));
             } catch (err) {
                 console.warn('Could not load makers', err);
             }
@@ -228,17 +231,13 @@ export default function ProductDetailPage() {
             );
 
             if (isNewItem) {
-                setCartCount(cartCount + 1);
+                // Optimistic UI updates removed since we rely on server truth and loading states
             }
 
             cartAPI.addToCart(user.uid, product.uid, quantity, selectedVariant).then(response => {
-                if (response.data && response.data.cartCount !== undefined) {
-                    setCartCount(response.data.cartCount);
-                }
                 refreshCart();
             }).catch(error => {
                 console.error("❌ API Failed:", error);
-                if (isNewItem) setCartCount(cartCount);
                 Alert.alert("Error", "Failed to add item to cart. Please try again.");
             });
 
@@ -293,9 +292,6 @@ export default function ProductDetailPage() {
         try {
             setIsBuying(true);
             const response = await cartAPI.addToCart(user.uid, product.uid, quantity, selectedVariant, true);
-            if (response.data && response.data.cartCount !== undefined) {
-                setCartCount(response.data.cartCount);
-            }
             refreshCart();
             
             if (response.data && response.data.cartItemId) {

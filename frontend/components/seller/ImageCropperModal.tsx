@@ -9,9 +9,8 @@ import {
     ActivityIndicator,
     PanResponder,
     useWindowDimensions,
-    Platform,
 } from 'react-native';
-import { X, Check, SkipForward, Crop, Square, RectangleHorizontal } from 'lucide-react-native';
+import { X, Check, Crop, Square, RectangleHorizontal } from 'lucide-react-native';
 import { cropImage } from '@/lib/imagekit';
 
 interface ImageCropperModalProps {
@@ -48,6 +47,7 @@ export default function ImageCropperModal({
     const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
     const [cropArea, setCropArea] = useState({ x: 0, y: 0, width: 0, height: 0 });
     const [loading, setLoading] = useState(false);
+    const [imageError, setImageError] = useState<string | null>(null);
 
     // Calculate max preview size
     const maxPreviewWidth = Math.min(screenWidth - 48, 600);
@@ -63,7 +63,7 @@ export default function ImageCropperModal({
     const displayHeight = imageSize.height * displayScale;
 
     // PanResponder for dragging
-    const startPos = React.useRef({ x: 0, y: 0 });
+    const startPos = React.useRef({ x: 0, y: 0, w: 0, h: 0 });
 
     const panResponder = React.useMemo(
         () =>
@@ -71,7 +71,7 @@ export default function ImageCropperModal({
                 onStartShouldSetPanResponder: () => true,
                 onPanResponderGrant: () => {
                     setCropArea((prev) => {
-                        startPos.current = { x: prev.x, y: prev.y };
+                        startPos.current = { x: prev.x, y: prev.y, w: prev.width, h: prev.height };
                         return prev;
                     });
                 },
@@ -87,24 +87,87 @@ export default function ImageCropperModal({
                         return { ...prev, x: boundedX, y: boundedY };
                     });
                 },
-                onPanResponderRelease: () => {
-                    // Snap or final bounds check if needed
-                },
             }),
         [displayScale, imageSize]
     );
 
+    const createResizeResponder = (corner: 'tl' | 'tr' | 'bl' | 'br') => {
+        return PanResponder.create({
+            onStartShouldSetPanResponder: (evt: any, gestureState: any) => true,
+            // Prevent parent pan responder from taking over
+            onPanResponderTerminationRequest: () => false,
+            onPanResponderGrant: (evt: any, gestureState: any) => {
+                setCropArea((prev) => {
+                    startPos.current = { x: prev.x, y: prev.y, w: prev.width, h: prev.height };
+                    return prev;
+                });
+            },
+            onPanResponderMove: (evt: any, gestureState: any) => {
+                setCropArea((prev) => {
+                    const start = startPos.current;
+                    const MIN_SIZE = 20 / displayScale;
+                    
+                    // Fixed anchor points (the corner opposite to the one being dragged)
+                    const anchorX = corner === 'tl' || corner === 'bl' ? start.x + start.w : start.x;
+                    const anchorY = corner === 'tl' || corner === 'tr' ? start.y + start.h : start.y;
 
+                    // Proposed new corner position based on gesture
+                    let rawCornerX = (corner === 'tl' || corner === 'bl' ? start.x : start.x + start.w) + gestureState.dx / displayScale;
+                    let rawCornerY = (corner === 'tl' || corner === 'tr' ? start.y : start.y + start.h) + gestureState.dy / displayScale;
+
+                    // Clamp proposed corner to image bounds
+                    rawCornerX = Math.max(0, Math.min(rawCornerX, imageSize.width));
+                    rawCornerY = Math.max(0, Math.min(rawCornerY, imageSize.height));
+
+                    // Calculate proposed width and height
+                    let newW = Math.abs(rawCornerX - anchorX);
+                    let newH = Math.abs(rawCornerY - anchorY);
+
+                    // Enforce min size
+                    newW = Math.max(newW, MIN_SIZE);
+                    newH = Math.max(newH, MIN_SIZE);
+
+                    if (selectedRatio.ratio) {
+                        const ratio = selectedRatio.ratio;
+                        // Find largest box that fits in the bounding box while maintaining ratio
+                        if (newW / newH > ratio) {
+                            newW = newH * ratio;
+                        } else {
+                            newH = newW / ratio;
+                        }
+                    }
+
+                    // Reconstruct x, y from anchor and new width/height
+                    const newX = corner === 'tl' || corner === 'bl' ? anchorX - newW : anchorX;
+                    const newY = corner === 'tl' || corner === 'tr' ? anchorY - newH : anchorY;
+
+                    return { x: newX, y: newY, width: newW, height: newH };
+                });
+            }
+        });
+    };
+
+    const resizeResponders = React.useMemo(() => ({
+        tl: createResizeResponder('tl'),
+        tr: createResizeResponder('tr'),
+        bl: createResizeResponder('bl'),
+        br: createResizeResponder('br'),
+    }), [displayScale, imageSize, selectedRatio.ratio]);
 
     useEffect(() => {
         if (imageUri) {
+            setImageSize({ width: 0, height: 0 }); // reset on swap
+            setImageError(null);
             Image.getSize(
                 imageUri,
                 (width, height) => {
                     setImageSize({ width, height });
                     updateCropArea(width, height, selectedRatio.ratio);
                 },
-                (error) => console.error('Failed to get image size:', error)
+                (error) => {
+                    console.error('Failed to get image size:', error);
+                    setImageError('Failed to load image. It may be corrupted or inaccessible.');
+                }
             );
         }
     }, [imageUri]);
@@ -184,16 +247,22 @@ export default function ImageCropperModal({
                 <View style={styles.modal}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Pressable style={styles.closeButton} onPress={onCancel}>
+                        <Pressable accessibilityLabel="Close" style={styles.closeButton} onPress={onCancel}>
                             <X size={20} color="#666" />
                         </Pressable>
                         <Text style={styles.title}>Crop Image</Text>
-
                     </View>
 
                     {/* Image Preview with Crop Overlay */}
                     <View style={styles.previewContainer}>
-                        {imageSize.width > 0 ? (
+                        {imageError ? (
+                            <View style={styles.errorContainer}>
+                                <Text style={styles.errorText}>{imageError}</Text>
+                                <Pressable style={styles.errorButton} onPress={onCancel}>
+                                    <Text style={styles.errorButtonText}>Go Back</Text>
+                                </Pressable>
+                            </View>
+                        ) : imageSize.width > 0 ? (
                             <View style={{ width: displayWidth, height: displayHeight, position: 'relative' }}>
                                 <Image
                                     source={{ uri: imageUri }}
@@ -205,15 +274,23 @@ export default function ImageCropperModal({
                                 <View style={[styles.cropOverlay, { bottom: 0, left: 0, right: 0, height: displayHeight - cropDisplayY - cropDisplayHeight }]} />
                                 <View style={[styles.cropOverlay, { top: cropDisplayY, left: 0, width: cropDisplayX, height: cropDisplayHeight }]} />
                                 <View style={[styles.cropOverlay, { top: cropDisplayY, right: 0, width: displayWidth - cropDisplayX - cropDisplayWidth, height: cropDisplayHeight }]} />
-                                {/* Crop border */}
+                                
+                                {/* Crop border for panning */}
                                 <View 
                                     {...panResponder.panHandlers}
                                     style={[styles.cropBorder, {
-                                    left: cropDisplayX,
-                                    top: cropDisplayY,
-                                    width: cropDisplayWidth,
-                                    height: cropDisplayHeight,
-                                }]} />
+                                        left: cropDisplayX,
+                                        top: cropDisplayY,
+                                        width: cropDisplayWidth,
+                                        height: cropDisplayHeight,
+                                    }]}
+                                >
+                                    {/* Resize Handles */}
+                                    <View {...resizeResponders.tl.panHandlers} style={[styles.resizeHandle, styles.handleTL]} />
+                                    <View {...resizeResponders.tr.panHandlers} style={[styles.resizeHandle, styles.handleTR]} />
+                                    <View {...resizeResponders.bl.panHandlers} style={[styles.resizeHandle, styles.handleBL]} />
+                                    <View {...resizeResponders.br.panHandlers} style={[styles.resizeHandle, styles.handleBR]} />
+                                </View>
                             </View>
                         ) : (
                             <ActivityIndicator size="large" color="#B36979" />
@@ -295,15 +372,26 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#333',
     },
-    skipButton: {
-        flexDirection: 'row',
+    errorContainer: {
         alignItems: 'center',
-        gap: 4,
+        padding: 24,
     },
-    skipText: {
+    errorText: {
+        color: '#D32F2F',
         fontSize: 14,
-        color: '#B36979',
-        fontWeight: '500',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    errorButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 8,
+    },
+    errorButtonText: {
+        color: '#333',
+        fontSize: 14,
+        fontWeight: '600',
     },
     previewContainer: {
         padding: 24,
@@ -320,6 +408,36 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#B36979',
         borderStyle: 'dashed',
+    },
+    resizeHandle: {
+        position: 'absolute',
+        width: 16,
+        height: 16,
+        backgroundColor: '#B36979',
+        borderColor: 'white',
+        borderWidth: 2,
+        borderRadius: 8,
+        zIndex: 10,
+    },
+    handleTL: {
+        top: -8,
+        left: -8,
+        cursor: 'nw-resize' as any,
+    },
+    handleTR: {
+        top: -8,
+        right: -8,
+        cursor: 'ne-resize' as any,
+    },
+    handleBL: {
+        bottom: -8,
+        left: -8,
+        cursor: 'sw-resize' as any,
+    },
+    handleBR: {
+        bottom: -8,
+        right: -8,
+        cursor: 'se-resize' as any,
     },
     ratioContainer: {
         flexDirection: 'row',

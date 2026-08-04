@@ -1,12 +1,19 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
-import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+import { createClient, RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://aws-1-ap-south-1.pooler.supabase.com';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'dummy_key';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error("🚨 CRITICAL: Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Realtime features will silently fail.");
+}
 
 // Create a singleton client for the frontend
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(
+    SUPABASE_URL || 'https://aws-1-ap-south-1.pooler.supabase.com', 
+    SUPABASE_ANON_KEY || 'dummy_key'
+);
 
 // A wrapper to mimic socket.io's .on and .off methods for seamless migration
 export interface MockSocket {
@@ -32,12 +39,13 @@ const SocketContext = createContext<SocketContextType>({
 });
 
 export function SocketProvider({ children }: { children: ReactNode }) {
-    const { user, token } = useAuth();
+    const { user } = useAuth(); // Removed token dependency to avoid dropping rooms on silent refresh
     const channelsRef = useRef<Map<string, RealtimeChannel>>(new Map());
     const eventListenersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
     const [isConnected, setIsConnected] = useState(false);
 
     // Mock socket object that mimics socket.io behavior
+    // Note: socketRef.current is never reassigned to ensure closures like disconnect() remain valid.
     const socketRef = useRef<MockSocket>({
         connected: false,
         on: (event, callback) => {
@@ -54,7 +62,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             }
         },
         emit: (event, data) => {
-            console.log(`[Supabase Mock Socket] emit called for ${event}, but Supabase client-side broadcast requires channel context. Backend will handle most emits.`);
+            console.warn(`[Supabase Mock Socket] emit called for ${event}. Broadcast requires channel context. Silently ignoring.`);
         },
         disconnect: () => {
             channelsRef.current.forEach(channel => supabase.removeChannel(channel));
@@ -75,13 +83,28 @@ export function SocketProvider({ children }: { children: ReactNode }) {
                     listeners.forEach(cb => cb(payload.payload));
                 }
             })
-            .subscribe((status) => {
+            .subscribe((status, err) => {
                 if (status === 'SUBSCRIBED') {
                     setIsConnected(true);
                     socketRef.current.connected = true;
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.error(`[SocketContext] Failed to subscribe to ${roomName}:`, status, err);
+                    channelsRef.current.delete(roomName); // Remove so it can be retried
+                    
+                    if (channelsRef.current.size === 0) {
+                        setIsConnected(false);
+                        socketRef.current.connected = false;
+                    }
+                } else if (status === 'CLOSED') {
+                    channelsRef.current.delete(roomName);
+                    if (channelsRef.current.size === 0) {
+                        setIsConnected(false);
+                        socketRef.current.connected = false;
+                    }
                 }
             });
 
+        // Set synchronously to prevent rapid join/leave race conditions from spawning duplicate channels
         channelsRef.current.set(roomName, channel);
     }, []);
 
@@ -90,27 +113,33 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         if (channel) {
             supabase.removeChannel(channel);
             channelsRef.current.delete(roomName);
+            
+            // Re-evaluate global connection state
+            if (channelsRef.current.size === 0) {
+                setIsConnected(false);
+                socketRef.current.connected = false;
+            }
         }
     }, []);
 
     useEffect(() => {
-        // Only connect if user is authenticated and we have a token
-        if (!user || !token) {
+        // Only connect if user is authenticated
+        if (!user || !user.uid) {
             socketRef.current.disconnect();
             setIsConnected(false);
             return;
         }
 
         // Auto-join user's personal room on login
-        if (user.uid) {
-            joinRoom(`user_${user.uid}`);
-        }
+        const personalRoom = `user_${user.uid}`;
+        joinRoom(personalRoom);
 
         return () => {
-            socketRef.current.disconnect();
-            setIsConnected(false);
+            // We specifically only leave the personal room on cleanup, rather than calling disconnect(),
+            // to ensure other active rooms (e.g. chat) aren't dropped if this effect re-runs.
+            leaveRoom(personalRoom);
         };
-    }, [user?.uid, token, joinRoom]);
+    }, [user?.uid, joinRoom, leaveRoom]);
 
     return (
         <SocketContext.Provider value={{ socket: socketRef.current, isConnected, joinRoom, leaveRoom }}>

@@ -22,7 +22,13 @@ export async function ensureAdminSellerProfile(userId: number, email: string): P
             name: "Knot & Bloom", // Default official name
             slug: defaultSlug,
             email: email,
-            description: "Official Knot & Bloom Store",
+            description: "Knot & Bloom Official Store. Supporting local crafters, hobbyists, and artists by providing a unified platform to showcase their handcrafted goods.",
+            logo: "https://ik.imagekit.io/33733vhue6/seed/official_store/logo_uZ1BZjD-d.png",
+            banner: "https://ik.imagekit.io/33733vhue6/seed/official_store/banner_7NgEq4iXt.png",
+            legalName: "Knot & Bloom Inc.",
+            businessType: "CORPORATION",
+            businessAddress: "Manila, Philippines",
+            hasSeenWelcomeModal: true,
             status: SellerStatus.ACTIVE, // Auto-active
         }
     });

@@ -25,15 +25,16 @@ export default function RejectOrderModal({ visible, order, submitting, onClose, 
     }, [visible]);
 
     return (
-        <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
+        <Modal animationType="none" transparent visible={visible} onRequestClose={onClose}>
             <View style={s.overlay}>
                 <View style={s.content}>
                     <Text style={[s.title, { color: RED }]}>Reject Order #{order?.uid}</Text>
 
                     <Text style={s.label}>Reason for rejection *</Text>
                     <TextInput
-                        style={[s.input, { height: 80, textAlignVertical: 'top' }]}
+                        style={[s.input, { height: 120, textAlignVertical: 'top' }]}
                         placeholder="e.g. Out of stock, Cannot fulfill timeline..."
+                        placeholderTextColor="#AAA"
                         multiline
                         value={rejectionReason}
                         onChangeText={setRejectionReason}
@@ -59,11 +60,11 @@ export default function RejectOrderModal({ visible, order, submitting, onClose, 
 
 const s = StyleSheet.create({
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    content: { backgroundColor: CARD, width: '90%', maxWidth: 1000, maxHeight: '90%', padding: 32, borderRadius: 24, elevation: 5 },
+    content: { backgroundColor: CARD, width: '90%', maxWidth: 500, padding: 32, borderRadius: 24, elevation: 5 },
     title: { fontSize: 22, fontWeight: '700', marginBottom: 8, color: TEXT, fontFamily: 'Quicksand' },
     label: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand', marginBottom: 8 },
     input: { borderWidth: 2, borderColor: BORDER, borderRadius: 12, padding: 14, fontSize: 15, backgroundColor: BG, color: TEXT, fontFamily: 'Quicksand', marginBottom: 24, outlineStyle: 'none' as any },
-    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 32 },
+    modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 8 },
     cancelBtn: { padding: 14, borderRadius: 12, justifyContent: 'center' },
     confirmBtn: { backgroundColor: P, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16, justifyContent: 'center' },
     btnText: { color: SUB, fontWeight: '700', fontFamily: 'Quicksand' },

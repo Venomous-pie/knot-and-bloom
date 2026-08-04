@@ -859,7 +859,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                         platformFee: totalPlatformFee, // What the platform keeps
                         sellerEarnings: sellerEarnings, // What the seller takes home
                         discount: 0,
-                        status: OrderStatus.CONFIRMED,
+                        status: OrderStatus.PENDING,
                         paymentMethod: successfulPayment.method,
                         // If COD and amount > 0, it means a deposit was paid -> PARTIALLY_PAID
                         // If COD and amount == 0, it means trust-based -> PENDING (Collect full on delivery)

@@ -37,15 +37,28 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
     const containerRef = useRef<View>(null);
 
     const [uploadingImages, setUploadingImages] = useState<{id: string; uri: string; progress: number; name: string}[]>([]);
-    const [showUrlInput, setShowUrlInput] = useState(false);
-    const [urlInput, setUrlInput] = useState('');
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const imagesRef = useRef(images);
+    const mounted = useRef(true);
+    
     useEffect(() => {
         imagesRef.current = images;
     }, [images]);
+
+    useEffect(() => {
+        return () => { mounted.current = false; };
+    }, []);
+
+    const startFakeProgress = (id: string, initialIncrement: number) => {
+        return setInterval(() => {
+            if (!mounted.current) return;
+            setUploadingImages(prev => prev.map(u => 
+                u.id === id && u.progress < 90 ? { ...u, progress: Math.min(90, u.progress + initialIncrement) } : u
+            ));
+        }, 500);
+    };
 
     // Crop modal state
     const [showCropModal, setShowCropModal] = useState(false);
@@ -72,26 +85,32 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                     const file = item.getAsFile();
                     if (file) {
                         if (file.size > 5 * 1024 * 1024) {
-                            Alert.alert("File Too Large", `${file.name} exceeds the 5MB limit.`);
+                            confirm({
+                                title: "File Too Large",
+                                message: `${file.name} exceeds the 5MB limit.`,
+                                confirmText: "OK",
+                            });
                             continue;
                         }
                         const uri = URL.createObjectURL(file);
                         const id = Math.random().toString();
-                        setUploadingImages(prev => [...prev, { id, uri, progress: 0, name: file.name }]);
+                        if (mounted.current) {
+                            setUploadingImages(prev => [...prev, { id, uri, progress: 0, name: file.name }]);
+                        }
 
-                        const interval = setInterval(() => {
-                            setUploadingImages(prev => prev.map(u => 
-                                u.id === id && u.progress < 90 ? { ...u, progress: u.progress + 15 } : u
-                            ));
-                        }, 500);
+                        const interval = startFakeProgress(id, 15);
 
                         const uploaded = await uploadSingleImage(uri, file.name);
                         
                         clearInterval(interval);
-                        setUploadingImages(prev => prev.filter(u => u.id !== id));
+                        URL.revokeObjectURL(uri); // Cleanup blob memory leak
                         
-                        if (uploaded) {
-                            onImagesChange([...imagesRef.current, uploaded]);
+                        if (mounted.current) {
+                            setUploadingImages(prev => prev.filter(u => u.id !== id));
+                            
+                            if (uploaded) {
+                                onImagesChange([...imagesRef.current, uploaded]);
+                            }
                         }
                     }
                     break;
@@ -126,31 +145,33 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
             setUploadingImages(prev => [...prev, ...newUploads]);
 
             const uploadPromises = newUploads.map(async (upload) => {
-                const interval = setInterval(() => {
-                    setUploadingImages(prev => prev.map(u => 
-                        u.id === upload.id && u.progress < 90 ? { ...u, progress: u.progress + Math.random() * 15 } : u
-                    ));
-                }, 500);
+                const interval = startFakeProgress(upload.id, 15);
 
                 const uploaded = await uploadSingleImage(upload.uri, upload.name);
                 
                 clearInterval(interval);
-                // Set progress to 100% instead of deleting right away, so it stays on screen until parent state updates
-                setUploadingImages(prev => prev.map(u => 
-                    u.id === upload.id ? { ...u, progress: 100 } : u
-                ));
+                
+                if (mounted.current) {
+                    // Set progress to 100% instead of deleting right away, so it stays on screen until parent state updates
+                    setUploadingImages(prev => prev.map(u => 
+                        u.id === upload.id ? { ...u, progress: 100 } : u
+                    ));
+                }
                 return uploaded;
             });
 
             const results = await Promise.all(uploadPromises);
-            const successfulUploads = results.filter(Boolean) as ImageItem[];
             
-            // Delete all from uploadingImages at once
-            const uploadIds = newUploads.map(u => u.id);
-            setUploadingImages(prev => prev.filter(u => !uploadIds.includes(u.id)));
+            if (mounted.current) {
+                const successfulUploads = results.filter(Boolean) as ImageItem[];
+                
+                // Delete all from uploadingImages at once
+                const uploadIds = newUploads.map(u => u.id);
+                setUploadingImages(prev => prev.filter(u => !uploadIds.includes(u.id)));
 
-            if (successfulUploads.length > 0) {
-                onImagesChange([...imagesRef.current, ...successfulUploads]);
+                if (successfulUploads.length > 0) {
+                    onImagesChange([...imagesRef.current, ...successfulUploads]);
+                }
             }
         }
     };
@@ -162,25 +183,24 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
         const id = Math.random().toString();
         setUploadingImages(prev => [...prev, { id, uri: croppedUri, progress: 0, name: current?.name || 'cropped.jpg' }]);
 
-        const interval = setInterval(() => {
-            setUploadingImages(prev => prev.map(u => 
-                u.id === id && u.progress < 90 ? { ...u, progress: u.progress + 15 } : u
-            ));
-        }, 500);
+        const interval = startFakeProgress(id, 15);
 
         const uploaded = await uploadSingleImage(croppedUri, current?.name);
         
         clearInterval(interval);
-        setUploadingImages(prev => prev.filter(u => u.id !== id));
+        
+        if (mounted.current) {
+            setUploadingImages(prev => prev.filter(u => u.id !== id));
 
-        if (uploaded) {
-            const newImages = [...imagesRef.current];
-            newImages[currentCropIndex] = uploaded;
-            onImagesChange(newImages);
+            if (uploaded) {
+                const newImages = [...imagesRef.current];
+                newImages[currentCropIndex] = uploaded;
+                onImagesChange(newImages);
+            }
+
+            setPendingImages([]);
+            setCurrentCropIndex(0);
         }
-
-        setPendingImages([]);
-        setCurrentCropIndex(0);
     };
 
     const moveImage = (fromIndex: number, toIndex: number) => {
@@ -275,19 +295,17 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                 name: name || `image_${Date.now()}.jpg`,
             });
             return { uri: result.url, isUrl: true };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Upload failed:', error);
-            return { uri, isUrl: false };
+            if (mounted.current) {
+                confirm({
+                    title: 'Upload Failed',
+                    message: error?.message || 'Failed to upload image. It may be too large or the network connection failed.',
+                    confirmText: 'OK',
+                });
+            }
+            return null; // Stop silent substitution of local blob uri
         }
-    };
-
-    const addUrlImage = () => {
-        if (!urlInput.trim()) return;
-        if (images.length >= maxImages) return;
-
-        onImagesChange([...images, { uri: urlInput.trim(), isUrl: true }]);
-        setUrlInput('');
-        setShowUrlInput(false);
     };
 
     const removeImage = async (index: number) => {
@@ -333,7 +351,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                     onPress={pickImages}
                 >
                     <View style={[styles.iconContainer, compact && styles.compactIconContainer]}>
-                        <ImagePlus size={compact ? 24 : 40} color="#B36979" />
+                        <ImagePlus size={compact ? 24 : 40} color={theme.colors.primary} />
                     </View>
                     <Text style={styles.dropzoneTitle}>{compact ? 'Add Image' : 'Upload Product Images'}</Text>
                     {!compact && (
@@ -363,7 +381,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                         {images.map((image, index) => {
                             const isPrimary = !hidePrimaryBadge && index === 0;
                             const isHovered = hoveredIndex === index;
-                            const showArrows = !hidePrimaryBadge && (Platform.OS === 'web' ? isHovered : true);
+                            const showArrows = (Platform.OS === 'web' ? isHovered : true);
                             
                             return (
                                 <View
@@ -371,6 +389,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                                     style={[
                                         styles.imageWrapper,
                                         isPrimary ? styles.primaryImageWrapper : styles.secondaryImageWrapper,
+                                        { width: imageSize, height: imageSize },
                                         draggedIndex === index && { opacity: 0.5 }
                                     ]}
                                     ref={el => {
@@ -402,12 +421,12 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                                         <View style={styles.centerArrowsOverlay} pointerEvents="box-none">
                                             <View style={styles.centerArrowsContainer}>
                                                 {index > 0 && (
-                                                    <Pressable style={styles.centerArrowButton} onPress={() => moveImage(index, index - 1)}>
+                                                    <Pressable accessibilityLabel="Move left" style={styles.centerArrowButton} onPress={() => moveImage(index, index - 1)}>
                                                         <Text style={styles.centerArrowText}>←</Text>
                                                     </Pressable>
                                                 )}
                                                 {index < images.length - 1 && (
-                                                    <Pressable style={styles.centerArrowButton} onPress={() => moveImage(index, index + 1)}>
+                                                    <Pressable accessibilityLabel="Move right" style={styles.centerArrowButton} onPress={() => moveImage(index, index + 1)}>
                                                         <Text style={styles.centerArrowText}>→</Text>
                                                     </Pressable>
                                                 )}
@@ -416,10 +435,10 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                                     )}
 
                                     <View style={styles.actionsOverlay}>
-                                        <Pressable testID="crop-image-btn" style={styles.actionButton} onPress={() => openCropper(index)}>
-                                            <Crop size={14} color="#333" />
+                                        <Pressable accessibilityLabel="Crop image" testID="crop-image-btn" style={styles.actionButton} onPress={() => openCropper(index)}>
+                                            <Crop size={14} color={theme.colors.text} />
                                         </Pressable>
-                                        <Pressable testID="delete-image-btn" style={[styles.actionButton, styles.deleteButton]} onPress={() => removeImage(index)}>
+                                        <Pressable accessibilityLabel="Delete image" testID="delete-image-btn" style={[styles.actionButton, styles.deleteButton]} onPress={() => removeImage(index)}>
                                             <Trash2 size={14} color={theme.colors.primary} />
                                         </Pressable>
                                     </View>
@@ -429,7 +448,7 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
 
                         {/* Uploading Images */}
                         {uploadingImages.map((upload) => (
-                            <View key={upload.id} style={[styles.imageWrapper, styles.secondaryImageWrapper]}>
+                            <View key={upload.id} style={[styles.imageWrapper, styles.secondaryImageWrapper, { width: imageSize, height: imageSize }]}>
                                 <Image
                                     source={{ uri: upload.uri }}
                                     style={[styles.image, { opacity: 0.5 }]}
@@ -441,13 +460,18 @@ export default function ImageUploader({ images, onImagesChange, maxImages = 5, c
                             </View>
                         ))}
 
-                        {canAddMore && uploadingImages.length === 0 && (
+                        {canAddMore && (
                             <Pressable
-                                style={[styles.secondaryImageWrapper, styles.uploadingWrapper, { borderColor: '#E8D5D9', backgroundColor: '#FCFAFA' }]}
+                                accessibilityLabel="Add more images"
+                                style={[
+                                    styles.secondaryImageWrapper, 
+                                    styles.uploadingWrapper, 
+                                    { width: imageSize, height: imageSize, borderColor: theme.colors.border, backgroundColor: theme.colors.backgroundAlt }
+                                ]}
                                 onPress={pickImages}
                             >
-                                <ImagePlus size={24} color="#B36979" />
-                                <Text style={[styles.uploadingText, { color: '#B36979', marginTop: 4 }]}>Add</Text>
+                                <ImagePlus size={24} color={theme.colors.primary} />
+                                <Text style={[styles.uploadingText, { color: theme.colors.primary, marginTop: 4 }]}>Add</Text>
                             </Pressable>
                         )}
                     </View>
@@ -472,13 +496,13 @@ const styles = StyleSheet.create({
     },
     emptyDropzone: {
         borderWidth: 2,
-        borderColor: '#E8D5D9',
+        borderColor: theme.colors.border,
         borderStyle: 'dashed',
         borderRadius: 16,
         padding: 32,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FCFAFA',
+        backgroundColor: theme.colors.backgroundAlt,
         minHeight: 200,
     },
     compactDropzone: {
@@ -490,7 +514,7 @@ const styles = StyleSheet.create({
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: '#F7EEF0',
+        backgroundColor: theme.colors.backgroundAlt,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
@@ -504,7 +528,7 @@ const styles = StyleSheet.create({
     dropzoneTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#B36979',
+        color: theme.colors.primary,
         marginBottom: 8,
     },
     dropzoneSubtitle: {
@@ -542,20 +566,6 @@ const styles = StyleSheet.create({
         color: theme.colors.error || '#D32F2F',
         fontFamily: 'Quicksand',
     },
-    smallAddButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F7EEF0',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        gap: 4,
-    },
-    smallAddText: {
-        fontSize: 13,
-        color: '#B36979',
-        fontWeight: '600',
-    },
     gridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -568,20 +578,14 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     primaryImageWrapper: {
-        width: 100,
-        height: 100,
         borderWidth: 2,
-        borderColor: '#B36979',
+        borderColor: theme.colors.primary,
     },
     secondaryImageWrapper: {
-        width: 100,
-        height: 100,
         borderWidth: 1,
-        borderColor: '#E8D5D9',
+        borderColor: theme.colors.border,
     },
     uploadingWrapper: {
-        width: 100,
-        height: 100,
         borderRadius: 8,
         borderWidth: 2,
         borderColor: '#eee',
@@ -638,11 +642,6 @@ const styles = StyleSheet.create({
     deleteButton: {
         backgroundColor: '#FFF',
     },
-    actionText: {
-        fontSize: 14,
-        color: '#333',
-        fontWeight: 'bold',
-    },
     centerArrowsOverlay: {
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
@@ -671,54 +670,6 @@ const styles = StyleSheet.create({
         color: '#333',
         fontWeight: 'bold',
     },
-    urlSection: {
-        marginTop: 4,
-    },
-    urlToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    urlToggleText: {
-        fontSize: 14,
-        color: '#B36979',
-        fontWeight: '500',
-    },
-    urlInputContainer: {
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
-    },
-    urlInput: {
-        flex: 1,
-        height: 44,
-        borderWidth: 1,
-        borderColor: '#DDD',
-        borderRadius: 8,
-        paddingHorizontal: 14,
-        fontSize: 14,
-        backgroundColor: '#FFF',
-        color: '#333',
-        outlineStyle: 'none' as any,
-    },
-    urlInputFocused: {
-        borderColor: '#B36979',
-    },
-    urlAddButton: {
-        backgroundColor: '#B36979',
-        paddingHorizontal: 16,
-        height: 44,
-        justifyContent: 'center',
-        borderRadius: 8,
-    },
-    urlAddButtonText: {
-        color: 'white',
-        fontWeight: '600',
-        fontSize: 14,
-    },
-    urlCancelButton: {
-        padding: 8,
-    },
     uploadProgressContainer: {
         position: 'absolute',
         bottom: 0,
@@ -729,6 +680,6 @@ const styles = StyleSheet.create({
     },
     uploadProgressBar: {
         height: '100%',
-        backgroundColor: '#B36979',
+        backgroundColor: theme.colors.primary,
     },
 });

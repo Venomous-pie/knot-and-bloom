@@ -80,7 +80,7 @@ export default function CheckoutSuccessPage() {
                             <Pressable
                                 key={product.uid}
                                 style={styles.productCard}
-                                onPress={() => router.push(`/(tabs)/index?productId=${product.uid}` as any)}
+                                onPress={() => router.push(`/product/${product.uid}` as any)}
                             >
                                 <Image
                                     source={{ uri: product.image || 'https://via.placeholder.com/150' }}

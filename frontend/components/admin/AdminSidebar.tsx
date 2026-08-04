@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { useRouter, usePathname, Link } from 'expo-router';
-import { LayoutDashboard, Package, Users, Bell, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, ShoppingBag } from 'lucide-react-native';
+import { LayoutDashboard, Package, Users, Bell, Settings, Home, LogOut, ChevronUp, ChevronDown, User, HelpCircle, ShoppingBag, Store } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDialog } from '@/contexts/DialogContext';
 import { theme } from '@/constants/theme';
@@ -32,6 +32,7 @@ export default function AdminSidebar() {
     ];
 
     const globalItems = [
+        { label: 'Seller Dashboard', route: '/seller-dashboard', icon: Store },
         { label: 'Notifications', route: '/admin/notifications', icon: Bell },
         { label: 'Shop Home', route: '/', icon: Home },
         { label: 'Platform Settings', route: '/admin/settings', icon: Settings },

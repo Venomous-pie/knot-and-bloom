@@ -1,4 +1,5 @@
 import { CATEGORY_REGISTRY } from './categories';
+import { toTitleCase } from '../utils/textUtils';
 
 /**
  * Curated tag suggestions mapped to product categories.
@@ -6,14 +7,14 @@ import { CATEGORY_REGISTRY } from './categories';
  * instead of typing freeform text that could be misspelled or irrelevant.
  */
 export const TAG_SUGGESTIONS: Record<string, string[]> = Object.fromEntries(
-    CATEGORY_REGISTRY.map(c => [c.title, c.tags])
+    CATEGORY_REGISTRY.map(c => [c.title, c.tags.map(toTitleCase)])
 );
 
 /** Universal tags that apply to any handmade product */
 export const UNIVERSAL_TAGS = [
     'handmade', 'artisan', 'gift', 'unique', 'custom',
     'eco-friendly', 'local', 'philippine-made', 'small business',
-];
+].map(toTitleCase);
 
 /**
  * Validates a single tag string.
@@ -23,14 +24,17 @@ export function validateTag(
     raw: string,
     existingTags: string[],
 ): { valid: true; cleaned: string } | { valid: false; reason: string } {
-    // 1. Basic cleanup: trim, lowercase, collapse whitespace
-    let cleaned = raw.trim().toLowerCase().replace(/\s+/g, ' ');
+    // 1. Basic cleanup: trim, collapse whitespace
+    let cleaned = raw.trim().replace(/\s+/g, ' ');
 
     // 2. Strip anything that isn't a letter, number, space, or hyphen
-    cleaned = cleaned.replace(/[^a-z0-9\s\-]/g, '');
+    cleaned = cleaned.replace(/[^a-zA-Z0-9\s\-]/g, '');
 
     // Re-trim after stripping (in case leading/trailing special chars)
     cleaned = cleaned.trim();
+    
+    // Apply title case
+    cleaned = toTitleCase(cleaned);
 
     // 3. Empty after cleanup
     if (!cleaned) {

@@ -13,6 +13,7 @@ import { computeShippingFee } from '../utils/shippingUtils.js';
 import type { ShippingConfig } from '../utils/shippingUtils.js';
 import { getShippingConfig } from '../utils/platformConfigUtils.js';
 import { kycService } from '../services/kycService.js';
+import { calculateSpotlightAndRegularMakers } from '../utils/sellerRanking.js';
 
 export const sellerController = {
     // Flow B: Direct Register as Seller (Public)
@@ -281,6 +282,7 @@ export const sellerController = {
                 where: { slug },
                 include: {
                     products: {
+                        where: { status: 'ACTIVE', deletedAt: null },
                         take: 20,
                         orderBy: { uploaded: 'desc' },
                         include: { variants: true }
@@ -343,7 +345,28 @@ export const sellerController = {
                 return res.status(404).json({ error: "Seller not found" });
             }
 
-            // Admin approving seller: set to APPROVED (not ACTIVE yet) and send notification
+            // Admin reactivating a suspended seller: set directly back to ACTIVE
+            if (user.role === Role.ADMIN && updates.status === SellerStatus.ACTIVE && currentSeller.status === SellerStatus.SUSPENDED) {
+                const seller = await prisma.seller.update({
+                    where: { uid: targetSellerId },
+                    data: { status: SellerStatus.ACTIVE }
+                });
+
+                await prisma.notification.create({
+                    data: {
+                        userId: currentSeller.userId,
+                        title: '✅ Account Reactivated',
+                        message: 'Your seller account has been reactivated. Your listings are now visible on Knot & Bloom again.',
+                        type: 'system',
+                    }
+                });
+                supabaseService.emitToRoom(`user_${currentSeller.userId}`, 'notification:new', {});
+
+                return res.json(seller);
+            }
+
+            // Admin approving a new seller application: set to APPROVED (not ACTIVE yet)
+            // Role upgrade happens only after user completes onboarding
             if (user.role === Role.ADMIN && updates.status === SellerStatus.ACTIVE && currentSeller.status !== SellerStatus.ACTIVE) {
                 // Set status to APPROVED — role upgrade happens only after user completes onboarding
                 await prisma.seller.update({
@@ -446,17 +469,22 @@ export const sellerController = {
                 status: SellerStatus.ACTIVE,
             };
 
-            const [sellers, total] = await Promise.all([
+            const [allSellers, total] = await Promise.all([
                 prisma.seller.findMany({
                     where,
                     orderBy: { approvedAt: 'desc' },
+                    include: { user: { select: { trustScore: true } } },
                     take: limit,
                     skip: offset,
                 }),
                 prisma.seller.count({ where }),
             ]);
+
+            const { spotlightMakers, regularMakers } = calculateSpotlightAndRegularMakers(allSellers, 'knot-and-bloom-official');
+
             res.json({
-                sellers,
+                spotlightMakers,
+                regularMakers,
                 total,
                 pagination: {
                     limit,
@@ -467,6 +495,7 @@ export const sellerController = {
                 },
             });
         } catch (error) {
+            console.error(error);
             res.status(500).json({ error: 'Failed to list active sellers' });
         }
     },

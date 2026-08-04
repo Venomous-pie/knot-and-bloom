@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDialog } from "@/contexts/DialogContext";
 import { useSocketContext } from "@/contexts/SocketContext";
 import { useCart } from "@/contexts/CartContext";
+import { useCartAnimation } from "@/contexts/CartAnimationContext";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { getNavbarMargin, isMobile } from "@/constants/layout";
 import { theme } from "@/constants/theme";
@@ -132,7 +133,8 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const { confirm } = useDialog();
-    const { cartCount, setCartIconPosition } = useCart();
+    const { cartCount } = useCart();
+    const { setCartIconPosition } = useCartAnimation();
     const { wishlistCount } = useWishlist();
     const [isFocused, setIsFocused] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);

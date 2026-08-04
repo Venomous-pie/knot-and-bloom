@@ -22,19 +22,30 @@ export const getStatusColor = (status: string): string =>
 export const getStatusBgColor = (status: string): string =>
     getStatusEntry(status).bg;
 
+type ValidStatusKey = Exclude<StatusKey, 'DEFAULT'>;
+
+const STATUS_LABELS: Record<ValidStatusKey, string> = {
+    PENDING: 'To Pay',
+    CONFIRMED: 'Confirmed',
+    PROCESSING: 'Processing',
+    IN_PRODUCTION: 'In Production',
+    READY_TO_SHIP: 'Ready to Ship',
+    SHIPPED: 'Shipped',
+    DELIVERED: 'Delivered',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+    REFUNDED: 'Refunded',
+    DISPUTED: 'Disputed',
+};
+
 export const getStatusLabel = (status: string): string => {
-    switch (status) {
-        case 'PENDING': return 'To Pay';
-        case 'CONFIRMED': return 'Confirmed';
-        case 'PROCESSING': return 'Processing';
-        case 'IN_PRODUCTION': return 'In Production';
-        case 'READY_TO_SHIP': return 'Ready to Ship';
-        case 'SHIPPED': return 'Shipped';
-        case 'DELIVERED': return 'Delivered';
-        case 'COMPLETED': return 'Completed';
-        case 'CANCELLED': return 'Cancelled';
-        case 'REFUNDED': return 'Refunded';
-        case 'DISPUTED': return 'Disputed';
-        default: return status;
+    if (isStatusKey(status)) {
+        if (status === 'DEFAULT') return status;
+        return STATUS_LABELS[status as ValidStatusKey];
     }
+
+    if (__DEV__) {
+        console.warn(`[orderStatus] Unrecognized order status received: "${status}"`);
+    }
+    return status;
 };

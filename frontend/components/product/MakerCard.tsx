@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useRouter, RelativePathString } from 'expo-router';
 import { Star, ArrowRight, User as UserIcon } from 'lucide-react-native';
 import { User } from '@/types/user';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface MakerCardProps {
     maker: Partial<User>;
@@ -19,6 +20,7 @@ export default function MakerCard({ maker }: MakerCardProps) {
     const avatar = sellerObj.logo || sellerObj.avatar;
     const rating = sellerObj.rating || sellerObj.sellerRating ? parseFloat((sellerObj.rating || sellerObj.sellerRating).toString()).toFixed(1) : 'New';
     const totalSales = sellerObj.totalSales || sellerObj.sellerTotalSales || 0;
+    const categories: string[] = sellerObj.productCategories || [];
 
     const handlePress = () => {
         if (slug) {
@@ -35,18 +37,33 @@ export default function MakerCard({ maker }: MakerCardProps) {
             ]}
             onPress={handlePress}
         >
+            {/* Subtle gradient background */}
+            <LinearGradient
+                colors={['#FFFFFF', '#FDF8F9']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+            />
+
             {/* Background Decoration */}
             <View style={styles.decorationCircle} />
 
             <View style={styles.content}>
                 <View style={styles.headerRow}>
-                    <View style={styles.avatarContainer}>
-                        {avatar ? (
-                            <Image source={{ uri: avatar }} style={styles.avatar} />
-                        ) : (
-                            <UserIcon size={32} color={theme.colors.textLight} />
-                        )}
-                    </View>
+                    <LinearGradient
+                        colors={['#B36979', '#C9A0AA']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.avatarRing}
+                    >
+                        <View style={styles.avatarContainer}>
+                            {avatar ? (
+                                <Image source={{ uri: avatar }} style={styles.avatar} />
+                            ) : (
+                                <UserIcon size={32} color={theme.colors.textLight} />
+                            )}
+                        </View>
+                    </LinearGradient>
                     <View style={styles.statsContainer}>
                         <View style={styles.statBadge}>
                             <Star size={14} color={theme.colors.starGold} fill={theme.colors.starGold} />
@@ -64,13 +81,28 @@ export default function MakerCard({ maker }: MakerCardProps) {
                     <Text style={styles.makerName} numberOfLines={1}>
                         {displayName}
                     </Text>
-                    <Text style={styles.makerCategory} numberOfLines={1}>
-                        Custom Commissions Available
-                    </Text>
+                    {categories.length > 0 ? (
+                        <View style={styles.chipRow}>
+                            {categories.slice(0, 2).map((cat) => (
+                                <View key={cat} style={styles.chip}>
+                                    <Text style={styles.chipText}>{cat}</Text>
+                                </View>
+                            ))}
+                            {categories.length > 2 && (
+                                <View style={styles.chip}>
+                                    <Text style={styles.chipText}>+{categories.length - 2}</Text>
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        <Text style={styles.makerCategory} numberOfLines={1}>
+                            Custom Commissions Available
+                        </Text>
+                    )}
                 </View>
 
                 <View style={styles.footerRow}>
-                    <Text style={styles.actionText}>View Portfolio</Text>
+                    <Text style={styles.actionText}>View Store</Text>
                     <View style={styles.actionIcon}>
                         <ArrowRight size={16} color={theme.colors.primary} />
                     </View>
@@ -82,7 +114,6 @@ export default function MakerCard({ maker }: MakerCardProps) {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: theme.colors.surface,
         borderRadius: theme.borderRadius.lg,
         padding: theme.spacing.lg,
         borderWidth: 1,
@@ -120,17 +151,23 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: theme.spacing.md,
     },
+    avatarRing: {
+        width: 68,
+        height: 68,
+        borderRadius: 34,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        ...theme.shadows.sm,
+    },
     avatarContainer: {
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: theme.colors.backgroundAlt,
+        backgroundColor: theme.colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: theme.colors.surface,
-        ...theme.shadows.sm,
     },
     avatar: {
         width: '100%',
@@ -172,11 +209,31 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.sizes.lg,
         fontWeight: 'bold',
         color: theme.colors.text,
-        marginBottom: 2,
+        marginBottom: 6,
+        fontFamily: theme.typography.fontFamily,
     },
     makerCategory: {
         fontSize: theme.typography.sizes.sm,
         color: theme.colors.textLight,
+        fontFamily: theme.typography.fontFamily,
+    },
+    chipRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 4,
+        marginTop: 2,
+    },
+    chip: {
+        backgroundColor: theme.colors.subtle,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 999,
+    },
+    chipText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
     },
     footerRow: {
         flexDirection: 'row',

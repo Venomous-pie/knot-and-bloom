@@ -106,11 +106,11 @@ export function CheckoutPaymentSection({
                     )}
                     <View style={styles.splitRow}>
                         <Text style={styles.splitLabel}>Due Now ({codDepositPercent}% Deposit):</Text>
-                        <Text style={styles.splitValue}>₱{(grandTotal * (codDepositPercent / 100)).toFixed(2)}</Text>
+                        <Text style={styles.splitValue}>₱{(grandTotal * (codDepositPercent / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     </View>
                     <View style={styles.splitRow}>
                         <Text style={styles.splitLabel}>Due on Delivery ({100 - codDepositPercent}%):</Text>
-                        <Text style={styles.splitValue}>₱{(grandTotal * ((100 - codDepositPercent) / 100)).toFixed(2)}</Text>
+                        <Text style={styles.splitValue}>₱{(grandTotal * ((100 - codDepositPercent) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     </View>
                 </View>
             )}
@@ -121,7 +121,7 @@ export function CheckoutPaymentSection({
                     <Text style={[styles.splitLabel, { marginBottom: 4 }]}>Strict Escrow Protection</Text>
                     <Text style={{ fontSize: 13, color: theme.colors.textSecondary, lineHeight: 18, fontFamily: theme.typography.fontFamily }}>
                         You are paying the full amount of{' '}
-                        <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{grandTotal.toFixed(2)}</Text>.
+                        <Text style={{ fontWeight: '700', color: theme.colors.primary }}>₱{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>.
                         This amount is held securely.{' '}
                         <Text style={{ fontWeight: '700' }}>If the item is damaged or incorrect, you can request a return or refund.</Text>{' '}
                         Funds are only released to the seller after you verify the item.

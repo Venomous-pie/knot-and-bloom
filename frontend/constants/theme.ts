@@ -54,7 +54,6 @@ export const theme = {
     statusColors: {
       PENDING: { fg: "#8D6E63", bg: "#EFEBE9" }, // Soft Brown
       CONFIRMED: { fg: "#5C6BC0", bg: "#E8EAF6" }, // Soft Indigo
-      PROCESSING: { fg: "#5C6BC0", bg: "#E8EAF6" },
       IN_PRODUCTION: { fg: "#7E57C2", bg: "#EDE7F6" }, // Soft Deep Purple
       READY_TO_SHIP: { fg: "#26A69A", bg: "#E0F2F1" }, // Soft Teal
       SHIPPED: { fg: "#7E57C2", bg: "#EDE7F6" },

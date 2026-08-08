@@ -88,7 +88,7 @@ export default function CheckoutSuccessPage() {
                                 />
                                 <View style={styles.productInfo}>
                                     <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-                                    <Text style={styles.productPrice}>₱{Number(product.basePrice).toFixed(2)}</Text>
+                                    <Text style={styles.productPrice}>₱{Number(product.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                                 </View>
                             </Pressable>
                         ))}

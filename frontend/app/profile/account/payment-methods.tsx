@@ -16,7 +16,7 @@ import {
     View,
     useWindowDimensions
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ProfilePageLayout, ProfileCard } from '@/components/profile/ProfilePageLayout';
 import { theme } from '@/constants/theme';
 
 const PAYMENT_TYPE_ICONS: Record<PaymentMethodType, string> = {
@@ -163,19 +163,16 @@ export default function PaymentMethodsPage() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.header}>
-                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>← Back</Text>
-                    </Pressable>
-                    <Text style={styles.title}>Payment Methods</Text>
-                    <Pressable onPress={() => router.push('/secure/payment-methods/add/select' as any)} style={styles.addButton}>
-                        <Plus size={20} color="white" />
-                        <Text style={styles.addButtonText}>Add New</Text>
-                    </Pressable>
-                </View>
-
+        <>
+        <ProfilePageLayout
+            title="Payment Methods"
+            rightAction={
+                <Pressable onPress={() => router.push('/secure/payment-methods/add/select' as any)} style={styles.addButton}>
+                    <Plus size={20} color="white" />
+                    <Text style={styles.addButtonText}>Add New</Text>
+                </Pressable>
+            }
+        >
                 {paymentMethods.length === 0 ? (
                     <View style={styles.emptyState}>
                         <CreditCard style={styles.emptyIcon} size={40} />
@@ -188,11 +185,10 @@ export default function PaymentMethodsPage() {
                 ) : (
                     <View style={styles.list}>
                         {paymentMethods.map((method) => (
-                            <Pressable
-                                key={method.uid}
-                                style={styles.card}
-                                onPress={() => openEditModal(method)}
-                            >
+                            <ProfileCard key={method.uid}>
+                                <Pressable
+                                    onPress={() => openEditModal(method)}
+                                >
                                 <View style={styles.cardLeft}>
                                     <View style={styles.iconWrapper}>
                                         <Text style={styles.cardIcon}>{PAYMENT_TYPE_ICONS[method.type]}</Text>
@@ -223,11 +219,12 @@ export default function PaymentMethodsPage() {
                                         <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
                                     </Pressable>
                                 </View>
-                            </Pressable>
+                                </Pressable>
+                            </ProfileCard>
                         ))}
                     </View>
                 )}
-            </ScrollView>
+        </ProfilePageLayout>
 
             {/* Add/Edit Modal */}
             <Modal visible={showModal} animationType="fade" transparent>
@@ -327,44 +324,15 @@ export default function PaymentMethodsPage() {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    contentContainer: {
-        padding: 20,
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
     },
     addButton: {
         flexDirection: 'row',
@@ -374,13 +342,11 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 12,
         gap: 8,
-        ...theme.shadows.md,
     },
     addButtonText: {
         color: 'white',
         fontWeight: '600',
         fontSize: 14,
-        fontFamily: theme.typography.fontFamily,
     },
     emptyState: {
         alignItems: 'center',

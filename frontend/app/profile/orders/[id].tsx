@@ -24,6 +24,7 @@ import {
   Modal,
   TextInput,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "@/constants/theme";
@@ -87,6 +88,8 @@ import { useSocketContext } from "@/contexts/SocketContext";
 export default function OrderDetailsPage() {
   const { id } = useLocalSearchParams();
   const { user, loading: authLoading } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
   const { socket } = useSocketContext(); // Access socket from context
   const router = useRouter();
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -470,6 +473,19 @@ export default function OrderDetailsPage() {
               </Text>
             </View>
           )}
+          {order.estimatedDeliveryDate && (
+            <View
+              style={[
+                styles.infoBanner,
+                { backgroundColor: "#E0F2FE", borderColor: "#BAE6FD", marginTop: order.status === "CONFIRMED" && order.estimatedCompletionDate ? 10 : 0 },
+              ]}
+            >
+              <Text style={[styles.infoBannerText, { color: "#0369A1" }]}>
+                🚚 Estimated Delivery:{" "}
+                {new Date(order.estimatedDeliveryDate).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
           {order.status === "CANCELLED" && order.rejectionReason && (
             <View
               style={[
@@ -553,11 +569,25 @@ export default function OrderDetailsPage() {
               </Text>
             </View>
             <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Method:</Text>
+              <Text style={styles.infoValue}>
+                {order.shippingMethod || "Standard"}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Tracking #:</Text>
               <Text style={styles.infoValue}>
                 {order.trackingNumber || "Un-tracked"}
               </Text>
             </View>
+            {order.shippedAt && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Shipped On:</Text>
+                <Text style={styles.infoValue}>
+                  {new Date(order.shippedAt).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
             {order.status === "SHIPPED" && (
               <Text style={styles.helpText}>
                 You can use this tracking number on the courier's website to
@@ -627,7 +657,7 @@ export default function OrderDetailsPage() {
                       </Text>
                     </View>
                     <Text style={styles.itemPrice}>
-                      ₱{parseFloat(String(price)).toFixed(2)}{" "}
+                      ₱{parseFloat(String(price)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
                       <Text style={{ color: theme.colors.textLight }}>
                         x {item.quantity}
                       </Text>
@@ -643,8 +673,14 @@ export default function OrderDetailsPage() {
           <Text style={styles.sectionTitle}>Order Summary</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>₱{subtotal.toFixed(2)}</Text>
+            <Text style={styles.summaryValue}>₱{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
           </View>
+          {order.discount && parseFloat(order.discount) > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Discount</Text>
+              <Text style={[styles.summaryValue, { color: '#059669' }]}>-₱{parseFloat(order.discount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+            </View>
+          )}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Shipping Fee</Text>
             <Text
@@ -653,7 +689,7 @@ export default function OrderDetailsPage() {
                 shippingFee === 0 && { color: "#059669", fontWeight: "600" },
               ]}
             >
-              {shippingFee === 0 ? "Free" : `₱${shippingFee.toFixed(2)}`}
+              {shippingFee === 0 ? "Free" : `₱${shippingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </Text>
           </View>
           <View
@@ -685,7 +721,7 @@ export default function OrderDetailsPage() {
                   : styles.summaryValue
               }
             >
-              ₱{totalAmount.toFixed(2)}
+              ₱{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
           </View>
           {order.paymentStatus === "PARTIALLY_PAID" && (
@@ -700,7 +736,7 @@ export default function OrderDetailsPage() {
                   Less: Deposit Paid (20%)
                 </Text>
                 <Text style={[styles.summaryValue, { color: "#dd1537ff" }]}>
-                  -₱{(totalAmount * 0.2).toFixed(2)}
+                  -₱{(totalAmount * 0.2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
               <View
@@ -720,7 +756,7 @@ export default function OrderDetailsPage() {
                 <Text
                   style={[styles.totalValue, { color: theme.colors.primary }]}
                 >
-                  ₱{(totalAmount * 0.8).toFixed(2)}
+                  ₱{(totalAmount * 0.8).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
             </>
@@ -777,26 +813,24 @@ export default function OrderDetailsPage() {
                 {shippingAddress.city}, {shippingAddress.postalCode}
               </Text>
               <Text style={styles.addressText}>{shippingAddress.phone}</Text>
-              {shippingAddress.notes && (
-                <View
+              <View
+                style={{
+                  marginTop: 8,
+                  padding: 8,
+                  backgroundColor: theme.colors.background,
+                  borderRadius: 6,
+                }}
+              >
+                <Text
                   style={{
-                    marginTop: 8,
-                    padding: 8,
-                    backgroundColor: theme.colors.background,
-                    borderRadius: 6,
+                    fontSize: 12,
+                    color: theme.colors.textSecondary,
+                    fontStyle: "italic",
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      color: theme.colors.textSecondary,
-                      fontStyle: "italic",
-                    }}
-                  >
-                    Note: {shippingAddress.notes}
-                  </Text>
-                </View>
-              )}
+                  Note: {(!shippingAddress.notes || shippingAddress.notes === "{}" || String(shippingAddress.notes).trim() === "") ? "No notes" : shippingAddress.notes}
+                </Text>
+              </View>
             </>
           ) : (
             <>
@@ -1095,7 +1129,7 @@ export default function OrderDetailsPage() {
                             {/* <Text style={{fontSize: 10, color: '#999'}}>Sold by: Knot & Bloom</Text> */}
                           </View>
                           <Text style={styles.receiptItemTotal}>
-                            ₱{lineTotal.toFixed(2)}
+                            ₱{lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </Text>
                         </View>
                         <View
@@ -1111,7 +1145,7 @@ export default function OrderDetailsPage() {
                               color: theme.colors.textSecondary,
                             }}
                           >
-                            ₱{parseFloat(String(price)).toFixed(2)} x{" "}
+                            ₱{parseFloat(String(price)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} x{" "}
                             {item.quantity}
                           </Text>
                         </View>
@@ -1130,7 +1164,7 @@ export default function OrderDetailsPage() {
                 <View style={styles.receiptRow}>
                   <Text style={styles.receiptLabel}>Subtotal</Text>
                   <Text style={styles.receiptValue}>
-                    ₱{subtotal.toFixed(2)}
+                    ₱{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
                 <View style={styles.receiptRow}>
@@ -1141,7 +1175,7 @@ export default function OrderDetailsPage() {
                       shippingFee === 0 && { color: "#059669" },
                     ]}
                   >
-                    {shippingFee === 0 ? "Free" : `₱${shippingFee.toFixed(2)}`}
+                    {shippingFee === 0 ? "Free" : `₱${shippingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </Text>
                 </View>
                 {/* Discount placeholder if needed */}
@@ -1171,7 +1205,7 @@ export default function OrderDetailsPage() {
                   <Text
                     style={[styles.receiptValue, { color: theme.colors.text }]}
                   >
-                    ₱{totalAmount.toFixed(2)}
+                    ₱{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </Text>
                 </View>
                 {order.paymentStatus === "PARTIALLY_PAID" && (
@@ -1183,7 +1217,7 @@ export default function OrderDetailsPage() {
                       <Text
                         style={[styles.receiptValue, { color: "#dd1537ff" }]}
                       >
-                        -₱{(totalAmount * 0.2).toFixed(2)}
+                        -₱{(totalAmount * 0.2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </Text>
                     </View>
                     <View
@@ -1220,7 +1254,7 @@ export default function OrderDetailsPage() {
                           },
                         ]}
                       >
-                        ₱{(totalAmount * 0.8).toFixed(2)}
+                        ₱{(totalAmount * 0.8).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </Text>
                     </View>
                   </>
@@ -1463,11 +1497,13 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+    fontFamily: theme.typography.fontFamily,
   },
   summaryValue: {
     fontSize: 14,
     color: theme.colors.text,
     fontWeight: "500",
+    fontFamily: theme.typography.fontFamily,
   },
   totalRow: {
     marginTop: 10,
@@ -1479,11 +1515,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     color: theme.colors.text,
+    fontFamily: theme.typography.fontFamily,
   },
   totalValue: {
     fontSize: 18,
     fontWeight: "bold",
     color: theme.colors.primary,
+    fontFamily: theme.typography.fontFamily,
   },
   addressText: {
     fontSize: 14,
@@ -1498,11 +1536,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     width: 100,
     color: theme.colors.text,
+    fontFamily: theme.typography.fontFamily,
   },
   infoValue: {
     flex: 1,
     color: theme.colors.text,
     fontWeight: "500",
+    fontFamily: theme.typography.fontFamily,
   },
   helpText: {
     fontSize: 12,

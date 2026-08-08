@@ -126,17 +126,17 @@ export function CheckoutSellerGroup({
                     <View style={styles.totalsBreakdown}>
                         <View style={styles.totalsColumn}>
                              <Text style={styles.totalLabel}>Items ({items.length}):</Text>
-                             <Text style={styles.totalValue}>₱{shopItemTotal.toFixed(2)}</Text>
+                             <Text style={styles.totalValue}>₱{shopItemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                         </View>
                         <View style={styles.totalsColumn}>
                              <Text style={styles.totalLabel}>Shipping:</Text>
                              <Text style={styles.totalValue}>
-                                  {choice === 'PICKUP' ? '₱0.00' : (shopShippingFee > 0 ? `₱${shopShippingFee.toFixed(2)}` : 'Free')}
+                                  {choice === 'PICKUP' ? '₱0.00' : (shopShippingFee > 0 ? `₱${shopShippingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Free')}
                              </Text>
                         </View>
                         <View style={styles.totalsColumnMain}>
                              <Text style={styles.mainTotalLabel}>Shop Subtotal:</Text>
-                             <Text style={styles.mainTotalValue}>₱{shopTotal.toFixed(2)}</Text>
+                             <Text style={styles.mainTotalValue}>₱{shopTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                         </View>
                     </View>
                 </View>

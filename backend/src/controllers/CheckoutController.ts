@@ -149,8 +149,8 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
             });
 
             // Create checkout session
-            const platformFee = Number((totalAmount * 0.07).toFixed(2));
-            const totalWithPlatformFee = totalAmount + platformFee;
+            const platformFee = 0; // Buyer platform fee is removed
+            const totalWithPlatformFee = totalAmount; // No extra fees on top for the buyer
 
             const session = await tx.checkoutSession.create({
                 data: {
@@ -279,7 +279,8 @@ const getCheckoutSession = async (req: Request, res: Response): Promise<void> =>
 
         const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
         const subtotal = lockedPrices.reduce((sum, item) => sum + (item.quantity * item.finalPrice), 0);
-        const platformFee = Number((subtotal * 0.07).toFixed(2));
+        const platformFee = 0; 
+        const totalWithPlatformFee = subtotal;
 
         res.status(200).json({
             success: true,
@@ -287,7 +288,7 @@ const getCheckoutSession = async (req: Request, res: Response): Promise<void> =>
                 uid: session.uid,
                 status: session.status,
                 lockedPrices,
-                totalAmount: Number(session.totalAmount),
+                totalAmount: totalWithPlatformFee,
                 subtotal,
                 platformFee,
                 expiresAt: session.expiresAt,
@@ -819,47 +820,107 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                 // Calculate total for this specific order
                 const orderSubtotal = sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0);
 
-                // Buyer's Platform Fee for this specific seller order (7%)
-                const buyerPlatformFee = Number((orderSubtotal * 0.07).toFixed(2));
-
-                const orderedProducts = buildOrderedProducts(sellerItems);
-
-                // Commission Calculation (Seller side: 5%)
-                const seller = await tx.seller.findUnique({ where: { uid: sellerId! } });
-                const commissionRate = seller?.commissionRate ? Number(seller.commissionRate) : 0.05;
-                const sellerPlatformFee = Number((orderSubtotal * commissionRate).toFixed(2)); // The 5% deducted
-                
-                // Platform earns both
-                const totalPlatformFee = buyerPlatformFee + sellerPlatformFee;
-                
-                const sellerEarnings = Number((orderSubtotal - sellerPlatformFee).toFixed(2));
-
-                // Calculate shipping fee server-side
-                const buyerChoice = (choices && choices[sellerId!]) ? choices[sellerId!] : 'DELIVERY';
-
+                // Calculate fees
+                // 1. Shipping
                 const shippingResult = await resolveSellerShipping(
-                    seller as any,
+                    await tx.seller.findUnique({ where: { uid: sellerId! } }) as any,
                     shippingAddress,
-                    buyerChoice,
+                    (choices && choices[sellerId!]) ? choices[sellerId!] : 'DELIVERY',
                     config,
                     orderSubtotal
                 );
 
                 const orderShippingFee = shippingResult.fee;
-                const orderTotalWithShippingAndFees = orderSubtotal + buyerPlatformFee + orderShippingFee;
+
+                // 2. Commission (Seller Platform Fee)
+                // Default to 5% commission if seller metrics aren't loaded or specified
+                const seller = await tx.seller.findUnique({ where: { uid: sellerId! } });
+                const commissionRate = seller?.commissionRate ? Number(seller.commissionRate) : 0.05;
+                const sellerPlatformFee = Number((orderSubtotal * commissionRate).toFixed(2)); // The 5% deducted
+                
+                const totalPlatformFee = sellerPlatformFee; // Platform revenue is entirely from seller commission now
+                
+                const sellerEarnings = Number((orderSubtotal - sellerPlatformFee).toFixed(2));
+
+                // The buyer pays Subtotal + Shipping. Buyer platform fee is removed.
+                const orderTotalWithShippingAndFees = orderSubtotal + orderShippingFee;
+
+                const orderedProducts = buildOrderedProducts(sellerItems);
+
+                // --- Auto Accept Logic ---
+                let finalStatus: OrderStatus = OrderStatus.PENDING;
+                let finalEstimatedCompletionDate: Date | null = null;
+                const autoAcceptEnabled = seller?.autoAcceptOrders ?? true;
+                const maxConcurrent = seller?.maxConcurrentOrders ?? 5;
+                const maxBacklog = seller?.maxProcessingBacklog ?? 14;
+
+                let autoAccepted = false;
+
+                if (autoAcceptEnabled && sellerId) {
+                    const activeOrders = await tx.order.findMany({
+                        where: {
+                            sellerId: sellerId,
+                            status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'READY_TO_SHIP'] }
+                        }
+                    });
+
+                    if (activeOrders.length < maxConcurrent) {
+                        // Find furthest estimatedCompletionDate
+                        let maxDate = new Date();
+                        activeOrders.forEach(o => {
+                            if (o.estimatedCompletionDate && o.estimatedCompletionDate > maxDate) {
+                                maxDate = o.estimatedCompletionDate;
+                            }
+                        });
+
+                        const currentBacklogDays = Math.ceil((maxDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                        
+                        // Parse processing time for new items
+                        const productIds = sellerItems.map(i => i.productId);
+                        const products = await tx.product.findMany({
+                            where: { uid: { in: productIds } },
+                            select: { processingTime: true }
+                        });
+
+                        let newOrderProcessingDays = 0;
+                        products.forEach(p => {
+                            if (!p.processingTime) return;
+                            let days = 0;
+                            const nums = p.processingTime.match(/\d+/g);
+                            if (nums && nums.length > 0) {
+                                days = Math.max(...nums.map(Number));
+                            }
+                            if (p.processingTime.toLowerCase().includes('week')) days *= 7;
+                            else if (p.processingTime.toLowerCase().includes('month')) days *= 30;
+                            
+                            if (days > newOrderProcessingDays) {
+                                newOrderProcessingDays = days;
+                            }
+                        });
+
+                        if (currentBacklogDays + newOrderProcessingDays <= maxBacklog) {
+                            finalStatus = OrderStatus.CONFIRMED;
+                            const completionDate = new Date();
+                            completionDate.setDate(completionDate.getDate() + currentBacklogDays + newOrderProcessingDays);
+                            finalEstimatedCompletionDate = completionDate;
+                            autoAccepted = true;
+                        }
+                    }
+                }
 
                 const newOrder = await tx.order.create({
                     data: {
                         userId: session.userId,
                         sellerId: sellerId, // Assign to seller
                         products: JSON.stringify(orderedProducts),
-                        total: orderTotalWithShippingAndFees, // Total includes shipping and buyer fee
+                        total: orderTotalWithShippingAndFees, // Total includes shipping only
                         subtotal: orderSubtotal, // Product subtotal only
                         shippingFee: orderShippingFee, // Shipping fee
                         platformFee: totalPlatformFee, // What the platform keeps
                         sellerEarnings: sellerEarnings, // What the seller takes home
                         discount: 0,
-                        status: OrderStatus.PENDING,
+                        status: finalStatus,
+                        estimatedCompletionDate: finalEstimatedCompletionDate,
                         paymentMethod: successfulPayment.method,
                         // If COD and amount > 0, it means a deposit was paid -> PARTIALLY_PAID
                         // If COD and amount == 0, it means trust-based -> PENDING (Collect full on delivery)
@@ -883,6 +944,18 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
                         }
                     },
                 });
+
+                if (autoAccepted) {
+                    await tx.orderTimeline.create({
+                        data: {
+                            orderId: newOrder.uid,
+                            status: OrderStatus.CONFIRMED,
+                            title: 'Order Auto-Accepted',
+                            message: `Order automatically accepted. Target completion set to ${finalEstimatedCompletionDate?.toDateString()}.`,
+                            createdBy: null
+                        }
+                    });
+                }
 
                 // Create OrderShipment
                 await tx.orderShipment.create({

@@ -101,6 +101,14 @@ export default function SellerSettingsPage() {
             icon: <ShieldCheck size={22} color={TEAL} />,
             color: TEAL + '20',
             route: '/seller-dashboard/legal'
+        },
+        {
+            id: 'auto-accept',
+            title: 'Auto-Accept Orders',
+            subtitle: 'Smart capacity-based order acceptance.',
+            icon: <Sparkles size={22} color={AMBER} />,
+            color: AMBER + '20',
+            route: '/seller-dashboard/auto-accept'
         }
     ];
 

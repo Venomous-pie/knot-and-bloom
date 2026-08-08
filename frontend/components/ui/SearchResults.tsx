@@ -170,15 +170,15 @@ const SearchBarDropdown = ({ products, onClose, mode = 'list', title }: SearchBa
                                         {Number(item.discountedPrice) ? (
                                             <>
                                                 <Text style={styles.discountedPrice}>
-                                                    ₱{Number(item.discountedPrice).toFixed(2)}
+                                                    ₱{Number(item.discountedPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </Text>
                                                 <Text style={styles.originalPrice}>
-                                                    ₱{Number(item.basePrice).toFixed(2)}
+                                                    ₱{Number(item.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </Text>
                                             </>
                                         ) : (
                                             <Text style={styles.price}>
-                                                ₱{Number(item.basePrice).toFixed(2)}
+                                                ₱{Number(item.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </Text>
                                         )}
                                     </View>

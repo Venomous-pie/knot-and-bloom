@@ -86,6 +86,9 @@ model Seller {
   totalWithdrawn        Decimal             @default(0)
   updatedAt             DateTime            @updatedAt
   vehicleType           VehicleType         @default(NONE)
+  autoAcceptOrders      Boolean             @default(true)
+  maxConcurrentOrders   Int                 @default(5)
+  maxProcessingBacklog  Int                 @default(14)
   orders                Order[]
   orderItems            OrderItem[]
   shipments             OrderShipment[]

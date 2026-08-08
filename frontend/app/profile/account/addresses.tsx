@@ -3,18 +3,8 @@ import { AddressCard } from '@/components/checkout/AddressCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-    useWindowDimensions
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ProfilePageLayout } from '@/components/profile/ProfilePageLayout';
 import { MapPinOff, Plus } from 'lucide-react-native';
 import AddressForm from '@/components/checkout/AddressForm';
 import { AddressMapPicker, MapAddressResult } from '@/components/checkout/AddressMapPicker';
@@ -23,8 +13,6 @@ import { theme } from '@/constants/theme';
 export default function AddressesPage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
-    const { width } = useWindowDimensions();
-    const isDesktop = width >= 1024;
 
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [loading, setLoading] = useState(true);
@@ -166,47 +154,42 @@ export default function AddressesPage() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.header}>
-                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>← Back</Text>
-                    </Pressable>
-                    <Text style={styles.title}>My Addresses</Text>
-                    <Pressable onPress={openAddModal} style={styles.addButton}>
-                        <Plus size={20} color="white" />
-                        <Text style={styles.addButtonText}>Add New</Text>
+        <ProfilePageLayout
+            title="My Addresses"
+            rightAction={
+                <Pressable onPress={openAddModal} style={styles.addButton}>
+                    <Plus size={20} color="white" />
+                    <Text style={styles.addButtonText}>Add New</Text>
+                </Pressable>
+            }
+        >
+            {addresses.length === 0 ? (
+                <View style={styles.emptyState}>
+                    <MapPinOff style={styles.emptyIcon} size={40} />
+                    <Text style={styles.emptyTitle}>No Addresses</Text>
+                    <Text style={styles.emptyText}>Add an address for faster checkout</Text>
+                    <Pressable style={styles.emptyButton} onPress={openAddModal}>
+                        <Text style={styles.emptyButtonText}>Add Address</Text>
                     </Pressable>
                 </View>
-
-                {addresses.length === 0 ? (
-                    <View style={styles.emptyState}>
-                        <MapPinOff style={styles.emptyIcon} size={40} />
-                        <Text style={styles.emptyTitle}>No Addresses</Text>
-                        <Text style={styles.emptyText}>Add an address for faster checkout</Text>
-                        <Pressable style={styles.emptyButton} onPress={openAddModal}>
-                            <Text style={styles.emptyButtonText}>Add Address</Text>
-                        </Pressable>
-                    </View>
-                ) : (
-                    <View style={styles.list}>
-                        {addresses.map((address) => (
-                            <AddressCard
-                                key={address.uid}
-                                address={address}
-                                onEdit={() => openEditModal(address)}
-                                onDelete={() => handleDelete(address.uid)}
-                                onSetDefault={() => handleSetDefault(address.uid)}
-                                showActions={true}
-                            />
-                        ))}
-                    </View>
-                )}
-            </ScrollView>
+            ) : (
+                <View style={styles.list}>
+                    {addresses.map((address) => (
+                        <AddressCard
+                            key={address.uid}
+                            address={address}
+                            onEdit={() => openEditModal(address)}
+                            onDelete={() => handleDelete(address.uid)}
+                            onSetDefault={() => handleSetDefault(address.uid)}
+                            showActions={true}
+                        />
+                    ))}
+                </View>
+            )}
 
             <Modal visible={showModal} animationType="fade" transparent>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, isDesktop && styles.modalContentDesktop, viewMode === 'map' && styles.modalContentMap]}>
+                    <View style={[styles.modalContent, viewMode === 'map' && styles.modalContentMap]}>
                         {viewMode === 'form' ? (
                                 <View style={{ flex: 1, paddingHorizontal: 0 }}>
                                     <AddressForm
@@ -252,44 +235,15 @@ export default function AddressesPage() {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </ProfilePageLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    contentContainer: {
-        padding: 20,
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
     },
     addButton: {
         flexDirection: 'row',

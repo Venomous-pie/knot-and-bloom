@@ -58,9 +58,20 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items,
                             {/* Mobile only details */}
                             {!isDesktop && (
                                 <View style={styles.mobileDetails}>
-                                    <Text style={styles.mobilePrice}>₱{item.unitPrice.toFixed(2)}</Text>
+                                    {item.unitPrice > item.finalPrice ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                            <Text style={[styles.mobilePrice, { textDecorationLine: 'line-through', color: theme.colors.textSecondary, fontSize: 12 }]}>
+                                                ₱{item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </Text>
+                                            <Text style={[styles.mobilePrice, { color: theme.colors.primary }]}>
+                                                ₱{item.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <Text style={styles.mobilePrice}>₱{item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                                    )}
                                     <Text style={styles.mobileQty}>x{item.quantity}</Text>
-                                    <Text style={styles.mobileSubtotal}>₱{(item.finalPrice * item.quantity).toFixed(2)}</Text>
+                                    <Text style={styles.mobileSubtotal}>₱{(item.finalPrice * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                                 </View>
                             )}
                         </View>
@@ -70,13 +81,24 @@ export const CheckoutProductList: React.FC<CheckoutProductListProps> = ({ items,
                     {isDesktop && (
                         <>
                             <View style={styles.column}>
-                                <Text style={styles.colText}>₱{item.unitPrice.toFixed(2)}</Text>
+                                {item.unitPrice > item.finalPrice ? (
+                                    <View style={{ alignItems: 'flex-start' }}>
+                                        <Text style={[styles.colText, { textDecorationLine: 'line-through', color: theme.colors.textSecondary, fontSize: 13, marginBottom: 2 }]}>
+                                            ₱{item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </Text>
+                                        <Text style={[styles.colText, { color: theme.colors.primary, fontWeight: '500' }]}>
+                                            ₱{item.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.colText}>₱{item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                                )}
                             </View>
                             <View style={styles.column}>
                                 <Text style={styles.colText}>{item.quantity}</Text>
                             </View>
                             <View style={[styles.column, { alignItems: 'flex-end' }]}>
-                                <Text style={styles.subtotalText}>₱{(item.finalPrice * item.quantity).toFixed(2)}</Text>
+                                <Text style={styles.subtotalText}>₱{(item.finalPrice * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                             </View>
                         </>
                     )}

@@ -112,7 +112,7 @@ export default function AdminOrders() {
         const customerName = o.customer?.name || 'Unknown';
         const sellerName = o.seller?.storeName || 'Unknown';
         const total = Number(o.total || o.subtotal);
-        const platformFee = Number(o.platformFee || (total * 0.12));
+        const platformFee = Number(o.platformFee || (total * 0.05));
 
         return (
             <View style={s.compactRow} key={o.uid}>
@@ -142,12 +142,12 @@ export default function AdminOrders() {
 
                 {/* Platform Earnings */}
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={[s.compactTitle, { color: GREEN }]}>+₱{platformFee.toFixed(2)}</Text>
+                    <Text style={[s.compactTitle, { color: GREEN }]}>+₱{platformFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 
                 {/* Total */}
                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={s.compactTitle}>₱{total.toFixed(2)}</Text>
+                    <Text style={s.compactTitle}>₱{total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
             </View>
         );
@@ -157,7 +157,7 @@ export default function AdminOrders() {
     const activeOrders = orders.filter(o => o.status === 'PENDING' || o.status === 'CONFIRMED' || o.status === 'IN_PRODUCTION' || o.status === 'READY_TO_SHIP').length;
     const totalEarnings = orders.reduce((sum, o) => {
         if (o.status === 'COMPLETED' || o.status === 'DELIVERED') {
-            return sum + Number(o.platformFee || (Number(o.total || o.subtotal) * 0.12));
+            return sum + Number(o.platformFee || (Number(o.total || o.subtotal) * 0.05));
         }
         return sum;
     }, 0);

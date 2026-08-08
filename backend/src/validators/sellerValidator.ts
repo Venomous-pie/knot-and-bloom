@@ -24,6 +24,9 @@ const sellerBaseSchema = z.object({
     idType: z.string().min(2, "ID Type is required"),
     idNumber: z.string().min(4, "ID Number is too short").max(35, "ID Number is too long"),
     idPhotos: z.array(z.string()).min(1, "At least one ID Photo is required"),
+    autoAcceptOrders: z.boolean().optional(),
+    maxConcurrentOrders: z.number().int().min(1).optional(),
+    maxProcessingBacklog: z.number().int().min(1).optional(),
 });
 
 // Validator for Upgrade (Just Store Info)

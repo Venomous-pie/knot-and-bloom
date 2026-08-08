@@ -101,5 +101,5 @@ export function formatPrice(price: number, currency: string = '₱'): string {
     if (price == null || isNaN(price)) {
         return `${currency}0.00`;
     }
-    return `${currency}${price.toFixed(2)}`;
+    return `${currency}${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

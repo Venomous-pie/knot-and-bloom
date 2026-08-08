@@ -25,9 +25,8 @@ export const getStatusBgColor = (status: string): string =>
 type ValidStatusKey = Exclude<StatusKey, 'DEFAULT'>;
 
 const STATUS_LABELS: Record<ValidStatusKey, string> = {
-    PENDING: 'To Pay',
+    PENDING: 'Pending Approval',
     CONFIRMED: 'Confirmed',
-    PROCESSING: 'Processing',
     IN_PRODUCTION: 'In Production',
     READY_TO_SHIP: 'Ready to Ship',
     SHIPPED: 'Shipped',

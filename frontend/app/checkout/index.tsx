@@ -81,15 +81,7 @@ function CheckoutContent() {
     const isCodAllowed = codInfo?.allowed !== false;
     const codDepositPercent = codInfo?.depositPercent ?? 0;
 
-    // Shipping Fee Logic
-    const shippingFee = React.useMemo(() => {
-        if (!shippingEstimates) return 0;
-        return Object.entries(shippingEstimates).reduce((sum: number, [sellerId, est]: [string, any]) => {
-            // If the user selected PICKUP for this seller, shipping is immediately 0
-            if (choices[Number(sellerId)] === 'PICKUP' || choices[sellerId] === 'PICKUP') return sum;
-            return sum + (est.fee || 0);
-        }, 0);
-    }, [shippingEstimates, choices]);
+    // Shipping Fee Logic moved below itemsBySeller
     
     // Total Amount doesn't dictate free shipping anymore, but we can keep it as false for now
     const hasFreeShipping = false;
@@ -144,6 +136,37 @@ function CheckoutContent() {
             items
         }));
     }, [lockedPrices]);
+
+    // Total Savings
+    const totalSavings = React.useMemo(() => {
+        return lockedPrices.reduce((sum, item) => {
+            const originalPrice = Number(item.unitPrice);
+            const discountedPrice = Number(item.finalPrice);
+            if (originalPrice > discountedPrice) {
+                return sum + ((originalPrice - discountedPrice) * item.quantity);
+            }
+            return sum;
+        }, 0);
+    }, [lockedPrices]);
+
+    // Shipping Breakdown & Fee
+    const shippingBreakdown = React.useMemo(() => {
+        if (!shippingEstimates) return [];
+        return Object.entries(shippingEstimates).map(([sellerId, est]: [string, any]) => {
+            const numId = Number(sellerId);
+            const sellerGroup = itemsBySeller.find(g => Number(g.sellerId) === numId);
+            const isPickup = choices[numId] === 'PICKUP';
+            return {
+                sellerName: sellerGroup?.sellerName || 'Seller',
+                fee: isPickup ? 0 : (est.fee || 0),
+                isPickup
+            };
+        });
+    }, [shippingEstimates, choices, itemsBySeller]);
+
+    const shippingFee = React.useMemo(() => {
+        return shippingBreakdown.reduce((sum, item) => sum + item.fee, 0);
+    }, [shippingBreakdown]);
 
     // UI Mode: 'checkout' | 'address_selection' | 'address_form'
     const [viewMode, setViewMode] = useState<'checkout' | 'address_selection' | 'address_form' | 'map_picker'>('checkout');
@@ -345,7 +368,7 @@ function CheckoutContent() {
     const handlePlaceOrder = async () => {
         if (!selectedAddress) {
             // Automatically open address selection if missing
-            setViewMode('address_selection');
+            openAddressModal();
             return;
         }
 
@@ -429,6 +452,16 @@ function CheckoutContent() {
     const closeModal = () => {
         if (viewMode === 'map_picker') setViewMode('address_form');
         else setViewMode('checkout');
+    };
+
+    const openAddressModal = () => {
+        if (addresses.length === 0) {
+            setEditingAddr(null);
+            setAddrFormMode('create');
+            setViewMode('address_form');
+        } else {
+            setViewMode('address_selection');
+        }
     };
 
     const renderAddressModal = () => {
@@ -515,7 +548,7 @@ function CheckoutContent() {
                                     {!isLocationPickerOpen && (
                                         <View style={styles.modalHeader}>
                                             <Pressable
-                                                onPress={() => setViewMode('address_selection')}
+                                                onPress={openAddressModal}
                                                 style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
                                             >
                                                 <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
@@ -557,7 +590,10 @@ function CheckoutContent() {
                                             } catch (e) { Alert.alert('Error', 'Failed to save address.'); }
                                             finally { setIsSavingAddr(false); }
                                         }}
-                                        onCancel={() => setViewMode('address_selection')}
+                                        onCancel={() => {
+                                            if (addresses.length === 0) setViewMode('checkout');
+                                            else setViewMode('address_selection');
+                                        }}
                                         onOpenMap={() => setViewMode('map_picker')}
                                         showSaveCheckbox
                                         isSaving={isSavingAddr}
@@ -622,7 +658,7 @@ function CheckoutContent() {
                             {/* 1. Address Section */}
                             <CheckoutAddressSection
                                 selectedAddress={selectedAddress}
-                                onChange={() => setViewMode('address_selection')}
+                                onChange={openAddressModal}
                             />
 
                             {/* 2. Sellers and Products */}
@@ -671,6 +707,8 @@ function CheckoutContent() {
                                             subtotal={subtotal}
                                             platformFee={platformFee}
                                             shippingFee={shippingFee}
+                                            shippingBreakdown={shippingBreakdown}
+                                            totalSavings={totalSavings}
                                             hasFreeShipping={hasFreeShipping}
                                             paymentMethod={paymentMethod}
                                             codDepositPercent={codDepositPercent}
@@ -708,6 +746,8 @@ function CheckoutContent() {
                             subtotal={subtotal}
                             platformFee={platformFee}
                             shippingFee={shippingFee}
+                            shippingBreakdown={shippingBreakdown}
+                            totalSavings={totalSavings}
                             hasFreeShipping={hasFreeShipping}
                             paymentMethod={paymentMethod}
                             codDepositPercent={codDepositPercent}

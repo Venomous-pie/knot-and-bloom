@@ -77,8 +77,6 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         backgroundColor: theme.colors.background,
-        maxWidth: 1600,
-        marginHorizontal: 'auto',
         width: '100%',
     },
     menuContainer: {

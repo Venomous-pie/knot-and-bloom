@@ -668,15 +668,15 @@ export default function ProductDetailPage() {
                                 {priceCalc.hasDiscount ? (
                                     <View>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                            <Text style={styles.discountedPrice}>₱{priceCalc.finalPrice.toFixed(2)}</Text>
+                                            <Text style={styles.discountedPrice}>₱{priceCalc.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                                             <View style={styles.discountBadge}>
                                                 <Text style={styles.discountText}>-{priceCalc.discountPercentage}%</Text>
                                             </View>
                                         </View>
-                                        <Text style={styles.originalPrice}>₱{priceCalc.effectivePrice.toFixed(2)}</Text>
+                                        <Text style={styles.originalPrice}>₱{priceCalc.effectivePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                                     </View>
                                 ) : (
-                                    <Text style={styles.price}>₱{priceCalc.finalPrice.toFixed(2)}</Text>
+                                    <Text style={styles.price}>₱{priceCalc.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                                 )}
                             </View>
                         </View>
@@ -934,9 +934,9 @@ export default function ProductDetailPage() {
                                     </Text>
                                     <Text style={styles.shippingInfoPrice}>
                                         {product.shippingFeeOverride != null
-                                            ? `₱${Number(product.shippingFeeOverride).toFixed(2)}`
+                                            ? `₱${Number(product.shippingFeeOverride).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                             : product.seller?.freeShippingEnabled && product.seller?.freeShippingThreshold != null
-                                                ? `Free shipping on orders over ₱${Number(product.seller.freeShippingThreshold).toFixed(2)}`
+                                                ? `Free shipping on orders over ₱${Number(product.seller.freeShippingThreshold).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                 : 'Standard rate — calculated at checkout'}
                                     </Text>
                                 </View>

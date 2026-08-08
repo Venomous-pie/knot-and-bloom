@@ -225,7 +225,7 @@ export default function AdminProducts() {
                     </View>
                     <View style={s.gridInfo}>
                         <Text style={s.gridName} numberOfLines={2}>{item.name}</Text>
-                        <Text style={s.gridPrice}>₱{Number(item.basePrice).toFixed(2)}</Text>
+                        <Text style={s.gridPrice}>₱{Number(item.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                         {item.seller && <Text style={s.sellerText} numberOfLines={1}>by {item.seller.name}</Text>}
                     </View>
                     <View style={s.gridActions}>
@@ -264,7 +264,7 @@ export default function AdminProducts() {
                     <View style={s.compactInfo}>
                         <View style={s.compactColMain}>
                             <Text style={s.compactName} numberOfLines={1}>{item.name}</Text>
-                            <Text style={s.compactPrice}>₱{Number(item.basePrice).toFixed(2)}</Text>
+                            <Text style={s.compactPrice}>₱{Number(item.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                         </View>
                         <View style={s.compactColStatus}>
                             <View style={[s.badge, { backgroundColor: `${statusColor}20`, alignSelf: 'flex-start' }]}>
@@ -324,7 +324,7 @@ export default function AdminProducts() {
                 </View>
                 <View style={s.info}>
                     <Text style={s.name} numberOfLines={1}>{item.name}</Text>
-                    <Text style={s.price}>₱{Number(item.basePrice).toFixed(2)}</Text>
+                    <Text style={s.price}>₱{Number(item.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     {item.seller && (
                         <Text style={s.sellerText}>by {item.seller.name}</Text>
                     )}

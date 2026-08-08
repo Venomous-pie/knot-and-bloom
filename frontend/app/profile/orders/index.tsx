@@ -31,7 +31,7 @@ import {
     ShoppingBag,
     Truck
 } from 'lucide-react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ProfilePageLayout } from '@/components/profile/ProfilePageLayout';
 import { theme } from '@/constants/theme';
 
 /* Product item from JSON */
@@ -436,12 +436,11 @@ export default function OrderHistoryPage() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
-                    <Text style={styles.backButtonText}>← Back</Text>
-                </Pressable>
-                <Text style={styles.title}>My Orders</Text>
+        <ProfilePageLayout
+            title="My Orders"
+            scrollable={false}
+            contentStyle={{ padding: 0 }}
+            rightAction={
                 <Pressable
                     onPress={() => {
                         setLoading(true);
@@ -451,8 +450,8 @@ export default function OrderHistoryPage() {
                 >
                     <RotateCcw size={20} color={theme.colors.text} />
                 </Pressable>
-            </View>
-
+            }
+        >
             {/* Status Filter Tabs */}
             <View style={styles.tabsWrapper}>
                 <ScrollView
@@ -625,39 +624,15 @@ export default function OrderHistoryPage() {
                     </View>
                 )}
             </ScrollView>
-        </SafeAreaView>
+        </ProfilePageLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
     },
     tabsWrapper: {
         width: '100%',

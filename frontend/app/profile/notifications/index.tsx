@@ -7,12 +7,11 @@ import {
     Alert,
     Pressable,
     RefreshControl,
-    ScrollView,
     StyleSheet,
     Text,
     View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ProfilePageLayout } from '@/components/profile/ProfilePageLayout';
 import { theme } from '@/constants/theme';
 
 import {
@@ -190,27 +189,19 @@ export default function NotificationsPage() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
-                    <Text style={styles.backButtonText}>← Back</Text>
-                </Pressable>
-                <Text style={styles.title}>Notifications</Text>
-                {unreadCount > 0 ? (
+        <ProfilePageLayout
+            title="Notifications"
+            rightAction={
+                unreadCount > 0 ? (
                     <Pressable onPress={handleMarkAllAsRead} style={styles.markAllButton}>
                         <Text style={styles.markAllText}>Mark all read</Text>
                     </Pressable>
-                ) : (
-                    <View style={{ width: 80 }} />
-                )}
-            </View>
-
-            <ScrollView
-                contentContainerStyle={styles.contentContainer}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primaryLight]} />
-                }
-            >
+                ) : null
+            }
+            refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primaryLight]} />
+            }
+        >
                 {notifications.length === 0 ? (
                     <View style={styles.emptyState}>
                         <Bell size={48} color="#ddd" />
@@ -323,40 +314,15 @@ export default function NotificationsPage() {
                     <Text style={styles.settingsText}>Notification Settings</Text>
                     <ChevronRight size={20} color="#ccc" />
                 </Pressable>
-            </ScrollView>
-        </SafeAreaView>
+        </ProfilePageLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: 'Quicksand',
     },
     markAllButton: {
         padding: 8,
@@ -365,12 +331,6 @@ const styles = StyleSheet.create({
         color: theme.colors.primary,
         fontSize: 14,
         fontWeight: '500',
-    },
-    contentContainer: {
-        padding: 20,
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
     },
     emptyState: {
         alignItems: 'center',

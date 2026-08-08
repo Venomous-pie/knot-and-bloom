@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
-import { Store, Truck, CreditCard, Shield, FileText } from 'lucide-react-native';
+import { Store, Truck, CreditCard, Shield, FileText, Sparkles } from 'lucide-react-native';
 
 const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -15,6 +15,7 @@ const LINKS = [
     { label: 'Payout Methods', route: '/seller-dashboard/payouts', icon: CreditCard },
     { label: 'Store Policies', route: '/seller-dashboard/policies', icon: Shield },
     { label: 'Tax & Legal', route: '/seller-dashboard/legal', icon: FileText },
+    { label: 'Auto-Accept Orders', route: '/seller-dashboard/auto-accept', icon: Sparkles },
 ];
 
 export default function SettingsSidebar() {

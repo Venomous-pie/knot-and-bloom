@@ -346,7 +346,7 @@ export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }
                             )}
                             <View style={s.itemDetails}>
                                 <Text style={s.productName} numberOfLines={2}>{oi.product.name}</Text>
-                                <Text style={s.qtyText}>Qty: {oi.quantity} x ₱{Number(oi.price).toFixed(2)}</Text>
+                                <Text style={s.qtyText}>Qty: {oi.quantity} x ₱{Number(oi.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                             </View>
                         </View>
                     ))}
@@ -357,33 +357,33 @@ export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }
             <View style={s.summaryBox}>
                 <View style={s.summaryRow}>
                     <Text style={s.summaryLabel}>Subtotal</Text>
-                    <Text style={s.summaryValue}>₱{Number(order.subtotal || order.total).toFixed(2)}</Text>
+                    <Text style={s.summaryValue}>₱{Number(order.subtotal || order.total).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 {!!order.shippingFee && (
                     <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>Shipping Fee</Text>
-                        <Text style={s.summaryValue}>₱{Number(order.shippingFee).toFixed(2)}</Text>
+                        <Text style={s.summaryValue}>₱{Number(order.shippingFee).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     </View>
                 )}
                 <View style={s.summaryRow}>
                     <Text style={[s.summaryLabel, { fontWeight: '700', color: TEXT }]}>Customer Total (Product + Shipping)</Text>
-                    <Text style={[s.summaryValue, { fontWeight: '800' }]}>₱{Number(Number(order.subtotal || order.total) + Number(order.shippingFee || 0)).toFixed(2)}</Text>
+                    <Text style={[s.summaryValue, { fontWeight: '800' }]}>₱{Number(Number(order.subtotal || order.total) + Number(order.shippingFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 <View style={[s.divider, { marginVertical: 12, backgroundColor: BORDER }]} />
                 <View style={s.summaryRow}>
                     <Text style={s.summaryLabel}>Seller Transaction Fee (5%)</Text>
-                    <Text style={[s.summaryValue, { color: RED }]}>-₱{Number(Number(order.subtotal || order.total) - Number(order.sellerEarnings || order.total)).toFixed(2)}</Text>
+                    <Text style={[s.summaryValue, { color: RED }]}>-₱{Number(Number(order.subtotal || order.total) - Number(order.sellerEarnings || order.total)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
                 {!!order.shippingFee && (
                     <View style={s.summaryRow}>
                         <Text style={s.summaryLabel}>Shipping (Paid to you)</Text>
-                        <Text style={[s.summaryValue, { color: GREEN }]}>+₱{Number(order.shippingFee).toFixed(2)}</Text>
+                        <Text style={[s.summaryValue, { color: GREEN }]}>+₱{Number(order.shippingFee).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     </View>
                 )}
                 <View style={[s.divider, { marginVertical: 12, backgroundColor: BORDER }]} />
                 <View style={s.summaryRow}>
                     <Text style={s.earningsLabel}>Your Net Earnings</Text>
-                    <Text style={s.earningsValue}>₱{Number(Number(order.sellerEarnings || order.total) + Number(order.shippingFee || 0)).toFixed(2)}</Text>
+                    <Text style={s.earningsValue}>₱{Number(Number(order.sellerEarnings || order.total) + Number(order.shippingFee || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
             </View>
             </ScrollView>

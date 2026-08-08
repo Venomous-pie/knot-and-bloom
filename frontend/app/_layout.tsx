@@ -19,7 +19,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from "react";
 import { VercelAnalytics } from "@/components/web/VercelAnalytics";
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import '../global.css';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -57,8 +57,9 @@ export default function RootLayout() {
           return Asset.fromModule(image).downloadAsync();
         });
 
-        await Promise.all([...imagePromises]);
-
+        if (Platform.OS !== 'web') {
+          await Promise.all([...imagePromises]);
+        }
       } catch (e) {
         console.warn(e);
       } finally {

@@ -183,7 +183,7 @@ export default function SellerOrders() {
         // Filter
         let filtered = orders.filter(o => {
             if (statusFilter !== 'ALL') {
-                if (statusFilter === 'PROCESSING') {
+                if (statusFilter === 'ACTIVE_PRODUCTION') {
                     if (!['CONFIRMED', 'IN_PRODUCTION', 'READY_TO_SHIP'].includes(o.status)) return false;
                 } else if (statusFilter === 'OVERDUE') {
                     const isCompleted = ['SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED'].includes(o.status);
@@ -579,7 +579,7 @@ export default function SellerOrders() {
 
                                 <View style={s.tabsRow}>
                                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsScroll}>
-                                        {['ALL', 'OVERDUE', 'PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'].map(f => (
+                                        {['ALL', 'OVERDUE', 'PENDING', 'ACTIVE_PRODUCTION', 'SHIPPED', 'COMPLETED', 'CANCELLED'].map(f => (
                                             <TouchableOpacity
                                                 key={f}
                                                 style={[s.tab, statusFilter === f && s.tabActive]}

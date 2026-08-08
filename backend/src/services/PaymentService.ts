@@ -20,7 +20,7 @@ const MIN_PROCESSING_TIME = 500;
 const MAX_PROCESSING_TIME = 2000;
 
 // Simulated failure rate for testing (0-1)
-const SIMULATED_FAILURE_RATE = 0.1;
+const SIMULATED_FAILURE_RATE = 0; // Disabled for testing
 
 /**
  * Mock Payment Gateway Service

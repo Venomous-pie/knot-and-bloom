@@ -29,20 +29,20 @@ export const CartOrderSummary = ({
 
             <View style={styles.row}>
                 <Text style={styles.label}>Subtotal ({itemCount} items)</Text>
-                <Text style={styles.value}>₱{subtotal.toFixed(2)}</Text>
+                <Text style={styles.value}>₱{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
 
             {shippingEstimate !== undefined && (
                 <View style={styles.row}>
                     <Text style={styles.label}>Shipping Estimate</Text>
-                    <Text style={styles.value}>₱{shippingEstimate.toFixed(2)}</Text>
+                    <Text style={styles.value}>₱{shippingEstimate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
             )}
 
             {discount > 0 && (
                 <View style={styles.row}>
                     <Text style={[styles.label, styles.discountText]}>Discount</Text>
-                    <Text style={[styles.value, styles.discountText]}>-₱{discount.toFixed(2)}</Text>
+                    <Text style={[styles.value, styles.discountText]}>-₱{discount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
             )}
 
@@ -62,7 +62,7 @@ export const CartOrderSummary = ({
 
             <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.totalValue}>₱{total.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>₱{total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
 
             <Pressable

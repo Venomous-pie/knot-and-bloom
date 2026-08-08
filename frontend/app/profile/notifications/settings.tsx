@@ -2,18 +2,8 @@ import { notificationAPI, NotificationSettings } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    View
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ProfilePageLayout, ProfileCard } from '@/components/profile/ProfilePageLayout';
 import { theme } from '@/constants/theme';
 import {
     Bell,
@@ -114,17 +104,8 @@ export default function NotificationSettingsPage() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.header}>
-                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>← Back</Text>
-                    </Pressable>
-                    <Text style={styles.title}>Notification Settings</Text>
-                    <View style={{ width: 60 }} />
-                </View>
-
-                <View style={styles.card}>
+        <ProfilePageLayout title="Notification Settings">
+            <ProfileCard>
                     <Text style={styles.cardTitle}>Push Notifications</Text>
                     <Text style={styles.cardDescription}>
                         Choose what notifications you want to receive from Knot & Bloom.
@@ -162,8 +143,8 @@ export default function NotificationSettingsPage() {
                             disabled={saving}
                         />
                     </View>
-                </View>
-
+                </ProfileCard>
+                
                 <View style={styles.infoBox}>
                     <Info size={20} color="#1976D2" style={{ marginRight: 10 }} />
                     <Text style={styles.infoText}>
@@ -178,55 +159,15 @@ export default function NotificationSettingsPage() {
                         <Text style={styles.savingText}>Saving...</Text>
                     </View>
                 )}
-            </ScrollView>
-        </SafeAreaView>
+        </ProfilePageLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    contentContainer: {
-        padding: 20,
-        maxWidth: 600,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-    },
-    card: {
-        backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 20,
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
     },
     cardTitle: {
         fontSize: 16,

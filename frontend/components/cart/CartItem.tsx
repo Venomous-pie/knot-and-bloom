@@ -108,7 +108,7 @@ export const CartItem = ({
                                             }}
                                         >
                                             <Text style={styles.dropdownText}>{v.name}</Text>
-                                            {v.price && <Text style={styles.dropdownPrice}>₱{v.price.toFixed(2)}</Text>}
+                                            {v.price && <Text style={styles.dropdownPrice}>₱{v.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>}
                                         </Pressable>
                                     ))}
                                 </View>
@@ -119,8 +119,8 @@ export const CartItem = ({
 
                 {/* Unit Price: 12.5% */}
                 <View style={styles.priceColumn}>
-                    {hasDiscount && <Text style={styles.originalPrice}>₱{originalPrice.toFixed(2)}</Text>}
-                    <Text style={styles.price}>₱{displayPrice.toFixed(2)}</Text>
+                    {hasDiscount && <Text style={styles.originalPrice}>₱{originalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>}
+                    <Text style={styles.price}>₱{displayPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
 
                 {/* Quantity: 12.5% */}
@@ -148,7 +148,7 @@ export const CartItem = ({
 
                 {/* Total: 12.5% */}
                 <View style={styles.totalColumn}>
-                    <Text style={styles.totalPrice}>₱{totalPrice.toFixed(2)}</Text>
+                    <Text style={styles.totalPrice}>₱{totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
 
                 {/* Actions: 12.5% */}
@@ -201,7 +201,7 @@ export const CartItem = ({
                         </View>
                     )}
                     <View style={styles.mobileFooter}>
-                        <Text style={styles.mobilePrice}>₱{displayPrice.toFixed(2)}</Text>
+                        <Text style={styles.mobilePrice}>₱{displayPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                         <View style={styles.quantityContainer}>
                             <Pressable style={[styles.qtyBtn, item.quantity <= 1 && styles.qtyBtnDisabled]} onPress={() => item.quantity > 1 && onUpdateQuantity(item, item.quantity - 1)} disabled={item.quantity <= 1 || updating}><Text style={styles.qtyText}>−</Text></Pressable>
                             <View style={styles.qtyValueContainer}>{updating ? <ActivityIndicator size="small" color={theme.colors.primary} /> : <Text style={styles.qtyValue}>{item.quantity}</Text>}</View>

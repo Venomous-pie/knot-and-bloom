@@ -8,13 +8,12 @@ import {
     Alert,
     Platform,
     Pressable,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     View
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ProfilePageLayout, ProfileCard } from '@/components/profile/ProfilePageLayout';
 
 export default function PersonalInfoPage() {
     const { user, refreshUser, loading: authLoading } = useAuth();
@@ -73,18 +72,9 @@ export default function PersonalInfoPage() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.header}>
-                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>← Back</Text>
-                    </Pressable>
-                    <Text style={styles.title}>Personal Information</Text>
-                    <View style={{ width: 60 }} />
-                </View>
-
-                {/* Profile Card */}
-                <View style={styles.card}>
+        <ProfilePageLayout title="Personal Information">
+            {/* Profile Card */}
+            <ProfileCard>
                     <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>Your Details</Text>
                         {!isEditing ? (
@@ -169,57 +159,16 @@ export default function PersonalInfoPage() {
                             {loading ? <ActivityIndicator color="white" /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
                         </Pressable>
                     )}
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+            </ProfileCard>
+        </ProfilePageLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    contentContainer: {
-        padding: 20,
-        maxWidth: 800,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
-    },
-    card: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 24,
-        marginBottom: 20,
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
     },
     cardHeader: {
         flexDirection: 'row',

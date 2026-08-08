@@ -1,8 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'maribank' | 'card';
+
+export interface ShippingBreakdownItem {
+    sellerName: string;
+    fee: number;
+    isPickup?: boolean;
+}
 
 interface CheckoutOrderSummaryProps {
     totalAmount: number;
@@ -15,6 +22,8 @@ interface CheckoutOrderSummaryProps {
     isProcessing: boolean;
     onPlaceOrder: () => void;
     isStickyLayout?: boolean;
+    shippingBreakdown?: ShippingBreakdownItem[];
+    totalSavings?: number;
 }
 
 export function CheckoutOrderSummary({
@@ -28,12 +37,15 @@ export function CheckoutOrderSummary({
     isProcessing,
     onPlaceOrder,
     isStickyLayout = false,
+    shippingBreakdown,
+    totalSavings = 0,
 }: CheckoutOrderSummaryProps) {
+    const [isShippingExpanded, setIsShippingExpanded] = useState(false);
     const grandTotal = totalAmount + shippingFee;
 
     const placeOrderLabel = paymentMethod === 'cod'
         ? (codDepositPercent > 0
-            ? `Pay Deposit ₱${(grandTotal * (codDepositPercent / 100)).toFixed(2)}`
+            ? `Pay Deposit ₱${(grandTotal * (codDepositPercent / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             : 'Place Order (Pay on Delivery)')
         : 'Place Order';
 
@@ -44,27 +56,60 @@ export function CheckoutOrderSummary({
             {/* Subtotal */}
             <View style={styles.row}>
                 <Text style={styles.label}>Merchandise Subtotal:</Text>
-                <Text style={styles.value}>₱{(subtotal ?? totalAmount).toFixed(2)}</Text>
+                <Text style={styles.value}>₱{(subtotal ?? totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
 
-            {/* Platform Fee */}
-            {(platformFee ?? 0) > 0 && (
+            {/* Total Savings */}
+            {totalSavings > 0 && (
                 <View style={styles.row}>
-                    <Text style={styles.label}>Platform & Trust Fee:</Text>
-                    <Text style={styles.value}>₱{(platformFee ?? 0).toFixed(2)}</Text>
+                    <Text style={styles.label}>Total Savings:</Text>
+                    <Text style={[styles.value, { color: theme.colors.success }]}>
+                        -₱{totalSavings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
                 </View>
             )}
 
+    {/* Platform fee on the buyer side has been removed. */}
+
             {/* Shipping */}
-            <View style={styles.row}>
-                <Text style={styles.label}>Shipping Total:</Text>
-                {hasFreeShipping ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={[styles.value, { textDecorationLine: 'line-through', color: theme.colors.textSecondary, fontSize: 13 }]}>₱60.00</Text>
-                        <Text style={[styles.value, { color: theme.colors.primary, fontWeight: '600' }]}>Free</Text>
+            <View style={{ marginBottom: 8 }}>
+                <Pressable 
+                    style={[styles.row, { marginBottom: 0 }]} 
+                    onPress={() => setIsShippingExpanded(!isShippingExpanded)}
+                >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Text style={styles.label}>Shipping Total:</Text>
+                        {(shippingBreakdown?.length || 0) > 0 && (
+                            <Ionicons 
+                                name={isShippingExpanded ? 'chevron-up' : 'chevron-down'} 
+                                size={14} 
+                                color={theme.colors.textSecondary} 
+                            />
+                        )}
                     </View>
-                ) : (
-                    <Text style={styles.value}>₱{shippingFee.toFixed(2)}</Text>
+                    {hasFreeShipping ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={[styles.value, { textDecorationLine: 'line-through', color: theme.colors.textSecondary, fontSize: 13 }]}>₱60.00</Text>
+                            <Text style={[styles.value, { color: theme.colors.primary, fontWeight: '600' }]}>Free</Text>
+                        </View>
+                    ) : (
+                        <Text style={styles.value}>₱{shippingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                    )}
+                </Pressable>
+                
+                {isShippingExpanded && (shippingBreakdown?.length || 0) > 0 && (
+                    <View style={styles.breakdownContainer}>
+                        {shippingBreakdown!.map((item, idx) => (
+                            <View key={idx} style={styles.breakdownRow}>
+                                <Text style={styles.breakdownLabel} numberOfLines={1}>
+                                    {item.sellerName} {item.isPickup && '(Pickup)'}
+                                </Text>
+                                <Text style={styles.breakdownValue}>
+                                    {item.fee === 0 ? 'Free' : `₱${item.fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
                 )}
             </View>
 
@@ -73,7 +118,7 @@ export function CheckoutOrderSummary({
                 <Text style={styles.totalLabel}>Total Payment:</Text>
                 <Text style={styles.totalAmount}>
                     <Text style={{ fontWeight: '400' }}>₱</Text>
-                    {grandTotal.toFixed(2)}
+                    {grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
             </View>
 
@@ -176,4 +221,26 @@ const styles = StyleSheet.create({
         fontFamily: theme.typography.fontFamily,
     },
     disabledButton: { opacity: 0.7 },
+    breakdownContainer: {
+        marginTop: 8,
+        paddingLeft: 12,
+        borderLeftWidth: 2,
+        borderLeftColor: theme.colors.border,
+        gap: 6,
+    },
+    breakdownRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 16,
+    },
+    breakdownLabel: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        flex: 1,
+    },
+    breakdownValue: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+    },
 });

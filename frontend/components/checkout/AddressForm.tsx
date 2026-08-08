@@ -14,6 +14,7 @@ import { theme } from '@/constants/theme';
 import { LocationPickerField } from './LocationPickerField';
 import { LocationPickerModal, LocationSelection } from './LocationPickerModal';
 import zipcodes from '@/constants/zipcodes.json';
+import { useDraft } from '@/hooks/useDraft';
 
 interface AddressFormData {
     label?: string;
@@ -91,6 +92,15 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [focusedField, setFocusedField] = useState<string | null>(null);
 
+    const { clearDraft } = useDraft({
+        key: 'address_form_draft',
+        data: form,
+        enabled: mode === 'create', // Only save drafts for new addresses
+        onLoad: (draft) => {
+            setForm(prev => ({ ...prev, ...draft }));
+        },
+    });
+
     // UX: Sync isDefault based on saveForFuture and isFirstAddress
     React.useEffect(() => {
         if (!saveForFuture) {
@@ -154,9 +164,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         // the address won't be saved (handled by parent)
         await onSave({
             ...form,
+            label: form.label || 'Home',
             // @ts-ignore - pass saveForFuture flag for checkout flow
             _saveForFuture: saveForFuture,
         });
+
+        // Clear the draft once successfully saved
+        clearDraft();
     };
 
     const handleChange = (field: keyof AddressFormData, value: string | boolean) => {
@@ -442,11 +456,11 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     )}
                 </View>
                 <Switch
-                    value={form.isDefault}
+                    value={(isFirstAddress && saveForFuture) ? true : form.isDefault}
                     onValueChange={(value) => handleChange('isDefault', value)}
                     disabled={isFirstAddress || !saveForFuture} // Locked if first OR not saving
                     trackColor={{ false: theme.colors.border, true: theme.colors.primaryLight }}
-                    thumbColor={form.isDefault ? theme.colors.primary : theme.colors.surface}
+                    thumbColor={((isFirstAddress && saveForFuture) ? true : form.isDefault) ? theme.colors.primary : theme.colors.surface}
                 />
             </View>
 
@@ -592,9 +606,8 @@ const styles = StyleSheet.create({
     },
     actions: {
         flexDirection: 'row',
-        gap: theme.spacing.md,
+        gap: theme.spacing.sm,
         marginTop: theme.spacing.lg,
-        marginBottom: 40,
     },
     cancelButton: {
         flex: 1,

@@ -14,3 +14,8 @@ export const accountAPI = {
     getDeletionStatus: () =>
         apiClient.get<DeletionStatus>('/account/delete-status'),
 };
+
+export const customerAPI = {
+    updateProfile: (data: { name?: string; phone?: string; address?: string; password?: string }) =>
+        apiClient.put<{ success: boolean; message: string; data: any }>('/users/profile', data),
+};

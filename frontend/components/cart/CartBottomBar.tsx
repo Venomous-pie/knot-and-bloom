@@ -89,7 +89,7 @@ export const CartBottomBar = ({
                     <View style={styles.savingsSection}>
                         <Ionicons name="pricetag" size={14} color={totalSavings > 0 ? '#B36979' : theme.colors.textLight} />
                         <Text style={[styles.savingsText, totalSavings === 0 && styles.savingsDisabled]}>
-                            Saved: ₱{totalSavings.toFixed(2)}
+                            Saved: ₱{totalSavings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                     </View>
                 </View>
@@ -113,7 +113,7 @@ export const CartBottomBar = ({
                     <View style={styles.checkoutSection}>
                         <View style={styles.totalInfo}>
                             <Text style={styles.totalLabel}>Items Total ({selectedCount}{selectedCount === 1 ? ' Item' : ' Items'}):</Text>
-                            <Text style={styles.totalPrice}>₱{subtotal.toFixed(2)}</Text>
+                            <Text style={styles.totalPrice}>₱{subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                         </View>
                         <Pressable
                             style={[styles.checkoutBtn, (selectedCount === 0 || loading) && styles.checkoutBtnDisabled]}

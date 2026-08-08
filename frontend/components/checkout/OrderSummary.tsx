@@ -56,7 +56,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                         </View>
                         <View style={styles.priceContainer}>
                             <Text style={styles.price}>
-                                ₱{item.finalPrice.toFixed(2)}
+                                ₱{item.finalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Text>
                         </View>
                     </View>
@@ -67,13 +67,13 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
             <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Subtotal</Text>
-                <Text style={styles.summaryValue}>₱{totalAmount.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>₱{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
 
             {shippingFee > 0 ? (
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Shipping</Text>
-                    <Text style={styles.summaryValue}>₱{shippingFee.toFixed(2)}</Text>
+                    <Text style={styles.summaryValue}>₱{shippingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
             ) : (
                 <View style={styles.summaryRow}>
@@ -86,7 +86,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <View style={styles.summaryRow}>
                     <Text style={[styles.summaryLabel, { color: theme.colors.secondary }]}>Discount</Text>
                     <Text style={[styles.summaryValue, { color: theme.colors.secondary }]}>
-                        -₱{discountAmount.toFixed(2)}
+                        -₱{discountAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </Text>
                 </View>
             )}
@@ -98,7 +98,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <View style={{ alignItems: 'flex-end' }}>
                     <Text style={styles.totalCurrency}>PHP</Text>
                     <Text style={styles.totalAmount}>
-                        ₱{(totalAmount + shippingFee - discountAmount).toFixed(2)}
+                        ₱{(totalAmount + shippingFee - discountAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </Text>
                 </View>
             </View>

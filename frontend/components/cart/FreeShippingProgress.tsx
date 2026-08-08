@@ -22,7 +22,7 @@ export const FreeShippingProgress = ({ currentTotal, threshold }: FreeShippingPr
                     </Text>
                 ) : (
                     <Text style={styles.text}>
-                        Add <Text style={styles.bold}>₱{remaining.toFixed(2)}</Text> for <Text style={styles.highlight}>Free Shipping</Text> from this shop
+                        Add <Text style={styles.bold}>₱{remaining.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text> for <Text style={styles.highlight}>Free Shipping</Text> from this shop
                     </Text>
                 )}
             </View>

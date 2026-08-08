@@ -237,25 +237,16 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                     </Pressable>
                 )}
 
-                {/* Platform Admin Section */}
-                {user.role === 'ADMIN' && (
-                    <MenuSection title="Platform Admin">
-                        <MenuItem
-                            icon={<Shield size={20} />}
-                            title="Admin Dashboard"
-                            subtitle="Platform overview & stats"
-                            isActive={pathname === '/admin'}
-                            onPress={() => router.push('/admin' as RelativePathString)}
-                        />
-                        <MenuItem
-                            icon={<Users size={20} />}
-                            title="Manage Sellers"
-                            subtitle="Review applications & accounts"
-                            isActive={pathname === '/admin/sellers'}
-                            onPress={() => router.push('/admin/sellers' as RelativePathString)}
-                        />
-                    </MenuSection>
-                )}
+                {/* My Orders Section */}
+                <MenuSection title="My Orders">
+                    <MenuItem
+                        icon={<Package size={20} />}
+                        title="Order History"
+                        subtitle="View all orders"
+                        isActive={pathname === '/profile/orders'}
+                        onPress={() => router.push('/profile/orders' as RelativePathString)}
+                    />
+                </MenuSection>
 
                 {/* Seller Store Section */}
                 {user.sellerProfile?.status === 'ACTIVE' && (
@@ -307,26 +298,6 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
 
                 {/* My Account Section */}
                 <MenuSection title="My Account">
-                    {((user.sellerProfile?.status as string) === 'NONE' ||
-                        !user.sellerProfile?.status ||
-                        (user.sellerProfile?.status as string) === 'REJECTED') && user?.role !== 'ADMIN' && (
-                        <MenuItem
-                            icon={<Store size={20} />}
-                            title="Be a Seller"
-                            subtitle="Start your own store"
-                            isActive={pathname === '/seller/apply'}
-                            onPress={() => router.push('/seller/apply' as RelativePathString)}
-                        />
-                    )}
-                    {((user.sellerProfile?.status as string) === 'PENDING' || (user.sellerProfile?.status as string) === 'REJECTED') && (
-                        <MenuItem
-                            icon={<Store size={20} />}
-                            title="Application Status"
-                            subtitle={user.sellerProfile?.status === 'PENDING' ? "Track your application" : "Update your application"}
-                            isActive={pathname === '/seller/application-status'}
-                            onPress={() => router.push('/seller/application-status' as RelativePathString)}
-                        />
-                    )}
                     <MenuItem
                         icon={<User size={20} />}
                         title="Profile"
@@ -354,6 +325,26 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         isActive={pathname === '/profile/notifications/settings'}
                         onPress={() => router.push('/profile/notifications/settings' as RelativePathString)}
                     />
+                    {((user.sellerProfile?.status as string) === 'NONE' ||
+                        !user.sellerProfile?.status ||
+                        (user.sellerProfile?.status as string) === 'REJECTED') && user?.role !== 'ADMIN' && (
+                        <MenuItem
+                            icon={<Store size={20} />}
+                            title="Be a Seller"
+                            subtitle="Start your own store"
+                            isActive={pathname === '/seller/apply'}
+                            onPress={() => router.push('/seller/apply' as RelativePathString)}
+                        />
+                    )}
+                    {((user.sellerProfile?.status as string) === 'PENDING' || (user.sellerProfile?.status as string) === 'REJECTED') && (
+                        <MenuItem
+                            icon={<Store size={20} />}
+                            title="Application Status"
+                            subtitle={user.sellerProfile?.status === 'PENDING' ? "Track your application" : "Update your application"}
+                            isActive={pathname === '/seller/application-status'}
+                            onPress={() => router.push('/seller/application-status' as RelativePathString)}
+                        />
+                    )}
 {/* Destructive actions hidden temporarily
                     <MenuItem
                         icon={<Trash2 size={20} color={theme.colors.error} />}
@@ -363,17 +354,6 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         danger
                     />
                     */}
-                </MenuSection>
-
-                {/* My Orders Section */}
-                <MenuSection title="My Orders">
-                    <MenuItem
-                        icon={<Package size={20} />}
-                        title="Order History"
-                        subtitle="View all orders"
-                        isActive={pathname === '/profile/orders'}
-                        onPress={() => router.push('/profile/orders' as RelativePathString)}
-                    />
                 </MenuSection>
 
                 {/* Notifications Section */}
@@ -386,6 +366,26 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         onPress={() => router.push('/profile/notifications' as RelativePathString)}
                     />
                 </MenuSection>
+
+                {/* Platform Admin Section */}
+                {user.role === 'ADMIN' && (
+                    <MenuSection title="Platform Admin">
+                        <MenuItem
+                            icon={<Shield size={20} />}
+                            title="Admin Dashboard"
+                            subtitle="Platform overview & stats"
+                            isActive={pathname === '/admin'}
+                            onPress={() => router.push('/admin' as RelativePathString)}
+                        />
+                        <MenuItem
+                            icon={<Users size={20} />}
+                            title="Manage Sellers"
+                            subtitle="Review applications & accounts"
+                            isActive={pathname === '/admin/sellers'}
+                            onPress={() => router.push('/admin/sellers' as RelativePathString)}
+                        />
+                    </MenuSection>
+                )}
 
 
 

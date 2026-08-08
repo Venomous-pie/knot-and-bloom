@@ -3,18 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ProfilePageLayout, ProfileCard } from '@/components/profile/ProfilePageLayout';
 
 const DELETION_REASONS = [
     'Not using the app anymore',
@@ -138,160 +128,117 @@ export default function DeleteAccountPage() {
         : 0;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.header}>
-                    <Pressable onPress={() => router.navigate('/profile' as RelativePathString)} style={styles.backButton}>
-                        <Text style={styles.backButtonText}>← Back</Text>
-                    </Pressable>
-                    <Text style={styles.title}>Account Deletion</Text>
-                    <View style={{ width: 60 }} />
-                </View>
-
-                {deletionStatus.hasPendingDeletion ? (
-                    /* Pending Deletion State */
-                    <View style={styles.pendingCard}>
-                        <View style={styles.warningIcon}>
-                            <Text style={styles.warningIconText}>⚠️</Text>
-                        </View>
-                        <Text style={styles.pendingTitle}>Deletion Scheduled</Text>
-                        <Text style={styles.pendingText}>
-                            Your account is scheduled for permanent deletion on{' '}
-                            <Text style={styles.pendingDate}>
-                                {deletionStatus.deletionScheduledFor
-                                    ? new Date(deletionStatus.deletionScheduledFor).toLocaleDateString('en-US', {
-                                        weekday: 'long',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                    })
-                                    : 'soon'}
-                            </Text>
-                        </Text>
-                        <Text style={styles.pendingDays}>
-                            {daysRemaining > 0 ? `${daysRemaining} days remaining` : 'Deletion imminent'}
-                        </Text>
-
-                        <View style={styles.infoBox}>
-                            <Text style={styles.infoTitle}>What happens when your account is deleted?</Text>
-                            <Text style={styles.infoItem}>• Your profile data will be permanently removed</Text>
-                            <Text style={styles.infoItem}>• Your saved addresses and payment methods will be deleted</Text>
-                            <Text style={styles.infoItem}>• Order history will be anonymized but kept for records</Text>
-                            <Text style={styles.infoItem}>• You won't be able to recover your account</Text>
-                        </View>
-
-                        <Pressable
-                            style={[styles.cancelButton, submitting && styles.disabledButton]}
-                            onPress={handleCancelDeletion}
-                            disabled={submitting}
-                        >
-                            {submitting ? (
-                                <ActivityIndicator color={theme.colors.success} />
-                            ) : (
-                                <Text style={styles.cancelButtonText}>Cancel Deletion Request</Text>
-                            )}
-                        </Pressable>
+        <ProfilePageLayout title="Account Deletion">
+            {deletionStatus.hasPendingDeletion ? (
+                <ProfileCard>
+                    <View style={styles.warningIcon}>
+                        <Text style={styles.warningIconText}>⚠️</Text>
                     </View>
-                ) : (
-                    /* Request Deletion State */
-                    <>
-                        <View style={styles.warningBanner}>
-                            <Text style={styles.warningBannerIcon}>⚠️</Text>
-                            <Text style={styles.warningBannerText}>
-                                Account deletion is permanent and takes effect immediately. This action cannot be undone.
-                            </Text>
-                        </View>
+                    <Text style={styles.pendingTitle}>Deletion Scheduled</Text>
+                    <Text style={styles.pendingText}>
+                        Your account is scheduled for permanent deletion on{' '}
+                        <Text style={styles.pendingDate}>
+                            {deletionStatus.deletionScheduledFor
+                                ? new Date(deletionStatus.deletionScheduledFor).toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                })
+                                : 'soon'}
+                        </Text>
+                    </Text>
+                    <Text style={styles.pendingDays}>
+                        {daysRemaining > 0 ? `${daysRemaining} days remaining` : 'Deletion imminent'}
+                    </Text>
 
-                        <View style={styles.card}>
-                            <Text style={styles.cardTitle}>Delete Account</Text>
-                            <Text style={styles.cardDescription}>
-                                We're sorry to see you go. Before you delete your account, please note:
-                            </Text>
+                    <View style={styles.infoBox}>
+                        <Text style={styles.infoTitle}>What happens when your account is deleted?</Text>
+                        <Text style={styles.infoItem}>• Your profile data will be permanently removed</Text>
+                        <Text style={styles.infoItem}>• Your saved addresses and payment methods will be deleted</Text>
+                        <Text style={styles.infoItem}>• Order history will be anonymized but kept for records</Text>
+                        <Text style={styles.infoItem}>• You won't be able to recover your account</Text>
+                    </View>
 
-                            <View style={styles.infoBox}>
-                                <Text style={styles.infoItem}>• Your personal data will be permanently deleted</Text>
-                                <Text style={styles.infoItem}>• Your order history will be anonymized but kept for store records</Text>
-                                <Text style={styles.infoItem}>• You will lose access to all your purchases and seller data</Text>
-                                <Text style={styles.infoItem}>• This action is immediate and cannot be reversed</Text>
-                            </View>
+                    <Pressable
+                        style={[styles.cancelButton, submitting && styles.disabledButton]}
+                        onPress={handleCancelDeletion}
+                        disabled={submitting}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator color={theme.colors.success} />
+                        ) : (
+                            <Text style={styles.cancelButtonText}>Cancel Deletion Request</Text>
+                        )}
+                    </Pressable>
+                </ProfileCard>
+            ) : (
+                <ProfileCard>
+                    <View style={styles.warningBanner}>
+                        <Text style={styles.warningBannerIcon}>⚠️</Text>
+                        <Text style={styles.warningText}>
+                            Account deletion is permanent and takes effect immediately. This action cannot be undone.
+                        </Text>
+                    </View>
 
-                            <Text style={styles.formLabel}>Why are you leaving? (Optional)</Text>
-                            <View style={styles.reasonButtons}>
-                                {DELETION_REASONS.map((reason) => (
-                                    <Pressable
-                                        key={reason}
-                                        style={[styles.reasonButton, selectedReason === reason && styles.reasonButtonActive]}
-                                        onPress={() => setSelectedReason(selectedReason === reason ? '' : reason)}
-                                    >
-                                        <Text style={[styles.reasonButtonText, selectedReason === reason && styles.reasonButtonTextActive]}>
-                                            {reason}
-                                        </Text>
-                                    </Pressable>
-                                ))}
-                            </View>
+                    <Text style={styles.cardTitle}>Delete Account</Text>
+                    <Text style={styles.cardDescription}>
+                        We're sorry to see you go. Before you delete your account, please note:
+                    </Text>
 
-                            <Text style={styles.formLabel}>Enter your password to confirm *</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={password}
-                                onChangeText={setPassword}
-                                placeholder="Your password"
-                                secureTextEntry
-                            />
+                    <View style={styles.infoBox}>
+                        <Text style={styles.infoItem}>• Your personal data will be permanently deleted</Text>
+                        <Text style={styles.infoItem}>• Your order history will be anonymized but kept for store records</Text>
+                        <Text style={styles.infoItem}>• You will lose access to all your purchases and seller data</Text>
+                        <Text style={styles.infoItem}>• This action is immediate and cannot be reversed</Text>
+                    </View>
 
+                    <Text style={styles.formLabel}>Why are you leaving? (Optional)</Text>
+                    <View style={styles.reasonButtons}>
+                        {DELETION_REASONS.map((reason) => (
                             <Pressable
-                                style={[styles.deleteButton, submitting && styles.disabledButton]}
-                                onPress={handleRequestDeletion}
-                                disabled={submitting}
+                                key={reason}
+                                style={[styles.reasonButton, selectedReason === reason && styles.reasonButtonActive]}
+                                onPress={() => setSelectedReason(selectedReason === reason ? '' : reason)}
                             >
-                                {submitting ? (
-                                    <ActivityIndicator color="white" />
-                                ) : (
-                                    <Text style={styles.deleteButtonText}>Permanently Delete Account</Text>
-                                )}
+                                <Text style={[styles.reasonButtonText, selectedReason === reason && styles.reasonButtonTextActive]}>
+                                    {reason}
+                                </Text>
                             </Pressable>
-                        </View>
-                    </>
-                )}
-            </ScrollView>
-        </SafeAreaView>
+                        ))}
+                    </View>
+
+                    <Text style={styles.formLabel}>Enter your password to confirm *</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="Your password"
+                        secureTextEntry
+                    />
+
+                    <Pressable
+                        style={[styles.deleteButton, submitting && styles.disabledButton]}
+                        onPress={handleRequestDeletion}
+                        disabled={submitting}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <Text style={styles.deleteButtonText}>Permanently Delete Account</Text>
+                        )}
+                    </Pressable>
+                </ProfileCard>
+            )}
+        </ProfilePageLayout>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    contentContainer: {
-        padding: 20,
-        maxWidth: 600,
-        alignSelf: 'center',
-        width: '100%',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    backButton: {
-        padding: 8,
-    },
-    backButtonText: {
-        color: theme.colors.textSecondary,
-        fontSize: 16,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        fontFamily: theme.typography.fontFamily,
     },
     warningBanner: {
         backgroundColor: '#FFF3E0',
@@ -307,20 +254,10 @@ const styles = StyleSheet.create({
         fontSize: 24,
         marginRight: 12,
     },
-    warningBannerText: {
+    warningText: {
         flex: 1,
         fontSize: 14,
         color: '#E65100',
-    },
-    card: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
-        padding: 24,
-        shadowColor: theme.colors.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2,
     },
     cardTitle: {
         fontSize: 18,

@@ -35,6 +35,7 @@ import wishlistRoutes from './routes/wishlistRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
+import realtimeRoutes from './routes/realtimeRoutes.js';
 import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
@@ -153,6 +154,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/realtime', realtimeRoutes);
 
 // Error handling middleware
 app.use(errorHandlingMiddleware);

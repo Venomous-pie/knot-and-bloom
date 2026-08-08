@@ -22,7 +22,10 @@ export default function Footer() {
         {/* TOP SECTION */}
         <View style={[styles.top, isMobile && styles.topMobile]}>
           <View style={styles.brandBlock}>
-            <Text style={styles.mark}>Knot & Bloom</Text>
+            <Text style={styles.mark}>
+              <Text>Knot </Text>
+              <Text style={{ color: S }}>{"& Bloom"}</Text>
+            </Text>
             <Text style={styles.tag}>a knot tied with care, a bloom grown with time</Text>
           </View>
           

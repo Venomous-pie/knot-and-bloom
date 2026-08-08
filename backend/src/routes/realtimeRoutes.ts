@@ -1,6 +1,7 @@
-import { Router, Request, Response } from 'express';
+import { Router, type Request, type Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { authenticate } from '../middleware/auth';
+import { authenticate } from '../middleware/authMiddleware.js';
+import type { AuthPayload } from '../types/authTypes.js';
 
 const router = Router();
 
@@ -11,8 +12,8 @@ const router = Router();
  */
 router.get('/token', authenticate, (req: Request, res: Response) => {
     try {
-        const user = req.user;
-        if (!user || !user.uid) {
+        const user = req.user as AuthPayload;
+        if (!user || !user.id) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
@@ -27,7 +28,7 @@ router.get('/token', authenticate, (req: Request, res: Response) => {
         // 2. id: <integer> (this matches our custom RLS policy in Supabase)
         const payload = {
             role: 'authenticated',
-            id: user.uid
+            id: user.id
         };
 
         // Generate token valid for 1 hour

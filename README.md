@@ -1,102 +1,114 @@
 # Knot & Bloom
+### *a knot tied with care, a bloom grown with time*
 
-> **A B2C2C multi-vendor marketplace exclusively for micro-creators—students, single parents, and local handcrafters in the Philippines.**
-
-Knot & Bloom is built to be a curated sanctuary from mass-produced imports, providing genuine Filipino artisans with professional e-commerce tools without the steep fees or business registration hurdles of enterprise platforms. 
-
-## 📖 Vision & Core Problem
-
-Major e-commerce platforms require business registrations, official documents, and commercial-scale inventory management. Knot & Bloom bridges the gap for **individual or micro-scale operators** by providing:
-- **Low-Friction Onboarding:** No business registration required to start, just a verified identity and genuine handcrafted goods.
-- **Strict Curation:** A rigorous product and seller vetting process to ensure 100% authentic, handcrafted items.
-- **Safe Transactions:** We act as a trusted intermediary, handling secure payments, order tracking, and dispute resolutions.
-- **Protective COD Policies:** A 20% Cash-on-Delivery deposit ensures sellers don't absorb costs for refused deliveries.
-- **Fair & Localized Shipping:** Dynamic shipping calculations supporting free local pickup or localized courier rates.
+> A trusted, curated marketplace for Filipino micro-creators — students, single parents, hobbyists, and local handcrafters.
 
 ---
 
-## 🛠️ Tech Stack
+## What We Do
 
-This repository is a monorepo containing both the frontend mobile/web application and the backend API server.
+Knot & Bloom is a B2C2C e-commerce platform built for an underserved market: individual Filipino artisans who are too small for enterprise marketplaces like Shopee and Lazada, but too serious to keep running a business through Instagram DMs and manual GCash tracking.
 
-**Frontend (`/frontend`)**
-- React Native (Expo) with Expo Router for unified mobile and web
-- Component-driven UI with centralized Design System
-- Context-based State Management
+We provide them with the infrastructure of a professional storefront — product management, secure checkout, order tracking, and dispute resolution — without the business registration requirements or steep fees that shut them out of mainstream platforms.
 
-**Backend (`/backend`)**
-- Node.js (ES Modules) with Express 5.x
-- Prisma ORM 7.x
-- PostgreSQL (hosted on Supabase)
-- Custom JWT Authentication
-- Zod Validation
-- AI Integrations (Hugging Face / Gemini)
+Buyers, in turn, get something the major platforms cannot offer: a fully curated catalog where every product is authentic, every seller is verified, and every transaction is protected.
 
 ---
 
-## 📂 Repository Structure
+## The Problem
 
-- [`/frontend`](./frontend/) - The React Native (Expo) application. See [Frontend README](./frontend/README.md) for details.
-- [`/backend`](./backend/) - The Express API server. See [Backend README](./backend/README.md) for details.
-- [`/docs`](./docs/) - Core product documentation and architectural decisions.
-  - [`VISION.md`](./docs/VISION.md) - The North Star vision for the product.
-  - [`HOW_SHIPPING_WORKS.md`](./docs/HOW_SHIPPING_WORKS.md) - Detailed explanation of dynamic shipping fees and local pickup.
-- [`Knot_and_Bloom_Business_Model.md`](./docs/Knot_and_Bloom_Business_Model.md) - Complete documentation of the platform's revenue model, tech stack choices, and user lifecycles.
+**For sellers**, the current reality is a frustrating middle ground:
 
----
+- Major platforms (Shopee, Lazada) require business documents and commercial-scale setup — a wall, not a door, for a student selling handmade goods between classes.
+- Social media (Facebook, Instagram, TikTok) was never built for commerce. Managing orders through DMs, manually reconciling GCash payments, and absorbing the cost of refused COD deliveries is an unsustainable operational burden for a solo creator.
 
-## 🚀 Quick Start (Local Development)
+**For buyers**, neither option is trustworthy:
 
-### Prerequisites
-- Node.js (v18+)
-- PostgreSQL (Local or Cloud/Supabase)
-- Expo CLI (`npm install -g expo-cli`)
-
-### 1. Backend Setup
-
-```bash
-cd backend
-npm install
-```
-
-Copy the environment template and fill in the required keys (e.g., Supabase/Database URL, JWT Secret, API Keys):
-```bash
-cp .env.example .env
-```
-
-Generate the Prisma client and start the server:
-```bash
-npx prisma generate
-npm run dev
-```
-The backend server will run at `http://localhost:3030`.
-
-### 2. Frontend Setup
-
-In a new terminal window:
-```bash
-cd frontend
-npm install
-```
-
-Start the Expo development server:
-```bash
-npx expo start
-```
-From the Expo CLI, you can press `w` to open the web version, or scan the QR code using the Expo Go app on your mobile device.
+- Major platforms are flooded with factory-made imports posing as handmade.
+- Buying through social media means sending money to a stranger and hoping the item ships.
 
 ---
 
-## 🔐 Architecture Overview
+## Our Solution
 
-### User Roles
-- **USER:** Default customer. Browses products, manages cart, places orders.
-- **SELLER:** A Customer who has completed the seller onboarding flow and KYC. Manages products, views orders, and tracks earnings.
-- **ADMIN:** Platform oversight. Approves new sellers and products, manages global settings.
+| Problem | What Knot & Bloom Does |
+|---|---|
+| Exclusion from big platforms | Seller onboarding for individuals — no business registration required, just verified identity and genuine handcrafted goods |
+| Bogus COD buyers | 20% upfront COD deposit protects sellers from refused deliveries before materials are spent |
+| Operational overload | Unified order management, AI-assisted listings, and automated tracking replace the DM/spreadsheet grind |
+| Inauthentic catalog | Every product goes through a manual admin approval process — only genuine, handcrafted items go live |
+| Unsafe social payments | Secure escrow-backed checkout with order tracking and a structured dispute resolution process |
 
-### Payment & Order Flow
-1. **Initiate:** 15-minute checkout session with price locking.
-2. **Payment:** 
-   - **COD:** 20% deposit upfront via platform gateway, balance on delivery.
-   - **Card/Wallet:** Full payment processed upfront.
-3. **Fulfillment:** Order is split by seller (Multi-seller cart creates separate orders). Platform retains a 2% sustainability fee + flat routing fee.
+---
+
+## Business Model
+
+Revenue comes from three streams:
+
+**1. Transaction Commission (Split Fee)**
+The 12% platform revenue is shared between both sides to keep the burden on creators low:
+- **Seller side:** 5% deducted from the final sale value on completion
+- **Buyer side:** 7% "Platform & Trust Fee" added at checkout
+
+**2. Seller Subscriptions** *(Phase 2)*
+Optional tiers that lower commission rates in exchange for a monthly fee. Deferred until real transaction volume makes the tiers meaningful.
+
+| Tier | Price | Benefit |
+|---|---|---|
+| Free | ₱0 / mo | Baseline commission, basic analytics |
+| Growth | ₱149 / mo | Reduced commission, minor discovery boost |
+| Studio | ₱249 / mo | Lowest commission, full analytics, fastest payout |
+
+**3. Promotion Boosts**
+₱49 for a 3-day homepage/category boost — a low-commitment, impulse-friendly option at launch.
+
+---
+
+## How Payments Work
+
+1. Buyer places an order and pays a **20% deposit** through the platform's payment partner (PayMongo). Funds are held in escrow.
+2. The remaining **80% is paid cash-on-delivery**, directly between buyer and seller — this portion never touches the platform.
+3. On order completion, the **5% seller commission** is deducted from the held deposit, and the remainder is released to the seller.
+
+> The 20% deposit rate is a hard floor — seller commission may never be set higher than the prevailing deposit rate, or there is no held balance to deduct from.
+
+---
+
+## Rollout Strategy
+
+**Phase 1 — Launch (~80 active sellers)**
+- Free tier only. No subscription complexity.
+- ₱49 / 3-day boost as the only paid promotion option.
+- Founder runs all operations (verification, disputes, support) personally.
+- Monthly burn: ~₱1,000–₱3,000 (hosting only). Zero paid marketing.
+
+**Phase 2 — Unlock Growth/Studio tiers**
+- Triggered when: **100+ active sellers AND 2+ average sales/seller/month** (both conditions, not either alone).
+- Introduce tiered subscriptions, revisit promotion packages, evaluate operational help.
+
+---
+
+## Key Risks
+
+| Risk | Note |
+|---|---|
+| Founder as single point of failure | Curation, disputes, and development currently depend on one person |
+| Commission vs. deposit ceiling | Commission rate must stay below 20% or the payout mechanism breaks |
+| Payment partner dependency | PayMongo downtime directly halts transactions — no current fallback |
+| Buyer protection limits | The cash-COD portion (80%) is peer-to-peer; the platform's enforcement there is reputational, not financial — disclosed plainly at checkout |
+
+---
+
+## Guiding Principle
+
+> *Every feature we build must answer one question: "Does this make it meaningfully easier for a Filipino student, single parent, hobbyist, or small hancrafter to sell what they make?" If the answer is no, we don't build it.*
+
+---
+
+## Documentation
+
+- [`docs/Vision.md`](./docs/Vision.md) — North Star vision and the five core problems we solve
+- [`docs/Knot_and_Bloom_Business_Model.md`](./docs/Knot_and_Bloom_Business_Model.md) — Full business model canvas, transaction flow, and risk register
+- [`docs/How_Shipping_Works.md`](./docs/How_Shipping_Works.md) — Dynamic shipping fee calculation and local pickup policy
+- [`frontend/README.md`](./frontend/README.md) — Frontend developer documentation
+- [`backend/README.md`](./backend/README.md) — Backend API reference and architecture

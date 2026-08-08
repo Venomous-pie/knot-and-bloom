@@ -18,8 +18,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from "react";
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { VercelAnalytics } from "@/components/web/VercelAnalytics";
 import { StyleSheet } from "react-native";
 import '../global.css';
 
@@ -28,6 +27,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+const providers = [
+  AuthProvider,
+  SocketProvider,
+  CartProvider,
+  CartAnimationProvider,
+  WishlistProvider,
+  DialogProvider,
+  SellerSettingsProvider,
+];
+
+function ComposedProviders({ children }: { children: React.ReactNode }) {
+  return providers.reduceRight((acc, Provider) => <Provider>{acc}</Provider>, children) as React.ReactElement;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fonts);
@@ -57,34 +70,19 @@ export default function RootLayout() {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded && isReady) {
-      await SplashScreen.hideAsync();
-    }
+    // Intentionally empty. We hide the native splash screen earlier 
+    // to show our CustomSplashScreen. This callback remains if we ever
+    // need to run logic when the root view paints.
   }, [fontsLoaded, isReady]);
 
-  useEffect(() => {
-    // Hide the native splash screen as soon as we render our wrapper
-    // This allows our CustomSplashScreen to be visible immediately.
-    // However, preventAutoHideAsync is active. We should hide it ONLY when we are ready to show *something* 
-    // which is our CustomSplashScreen.
-    if (!fontsLoaded && !isReady) {
-      // Keep native splash? Or hide it and show ours?
-      // If we show ours, we need fonts for "Lovingly".
-      // So we must wait for FONTS to show our Custom Splash if it uses text.
-      // BUT, we want to show *something*. 
-      // Strategy: Wait for fonts (usually fast) -> Hide Native -> Show Custom -> Load Assets -> Show App.
-      // IF fonts take long, user sees Native Splash.
-    }
-  }, []);
-
   if (!fontsLoaded || !isReady) {
-    // If fonts are loaded, we can show our Custom Splash which uses those fonts.
     if (fontsLoaded) {
-      // Hide native splash so ours is visible
+      // 1. Fonts are ready. Hide the native splash screen immediately.
+      // 2. Render our <CustomSplashScreen /> which uses those fonts while we wait for assets.
       SplashScreen.hideAsync();
       return <CustomSplashScreen />;
     }
-    // If fonts NOT loaded, keep Native Splash visible (return null)
+    // If fonts are NOT loaded yet, keep the native splash visible (return null)
     return null;
   }
 
@@ -92,28 +90,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.container} onLayout={onLayoutRootView}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <SocketProvider>
-            <CartProvider>
-              <CartAnimationProvider>
-                <WishlistProvider>
-                  <DialogProvider>
-                    <SellerSettingsProvider>
-                      <NavBar />
-                      <Analytics />
-                      <SpeedInsights />
-                      <CartAnimationOverlay />
-                      <OnboardingManager />
-                      <AuthToast />
-                      <GlobalToast />
-                      <GlobalAIChat />
-                    </SellerSettingsProvider>
-                  </DialogProvider>
-                </WishlistProvider>
-              </CartAnimationProvider>
-            </CartProvider>
-          </SocketProvider>
-        </AuthProvider>
+        <ComposedProviders>
+          <NavBar />
+          <VercelAnalytics />
+          <CartAnimationOverlay />
+          <OnboardingManager />
+          <AuthToast />
+          <GlobalToast />
+          <GlobalAIChat />
+        </ComposedProviders>
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import * as ImagePicker from 'expo-image-picker';
 import { uploadToImageKit } from '@/lib/imagekit';
 import ImageCropperModal from '@/components/seller/ImageCropperModal';
+import StorefrontSkeleton from '@/components/seller/StorefrontSkeleton';
 import { apiClient, sellerOrdersAPI, reviewsAPI } from "@/services/api";
 import Animated, { LinearTransition, useSharedValue, useAnimatedScrollHandler, useAnimatedStyle, withTiming, withSpring, interpolate, Extrapolation, ZoomIn } from "react-native-reanimated";
 import GlobalHeaderUI from "@/components/layout/GlobalHeaderUI";
@@ -33,15 +34,23 @@ interface SellerProfileData {
     uid: number;
     name: string;
     slug: string;
+    email?: string | null;
+    phone?: string | null;
     description?: string | null;
     logo?: string | null;
     banner?: string | null;
     products: Product[];
     createdAt?: string;
     location?: string | null;
+    businessAddress?: string | null;
     totalSales?: number;
     rating?: number;
     pinnedProductIds?: number[];
+    productCategories?: string[];
+    salesChannels?: string[];
+    isHandmade?: boolean;
+    hasPriorExperience?: boolean;
+    portfolioLink?: string | null;
 }
 
 
@@ -233,9 +242,7 @@ export default function SellerProfile() {
 
     if (loading) {
         return (
-            <View style={styles.centered}>
-                <ActivityIndicator size="large" color="#B36979" />
-            </View>
+            <StorefrontSkeleton />
         );
     }
 
@@ -467,6 +474,8 @@ export default function SellerProfile() {
 
     const renderAboutSection = () => (
         <View style={[styles.aboutContainer, isDesktop && styles.aboutContainerDesktop]}>
+
+            {/* Story / Description */}
             <View style={styles.aboutCard}>
                 <View style={styles.aboutHeaderRow}>
                     <Text style={styles.aboutTitle}>About the Artisan</Text>
@@ -474,9 +483,7 @@ export default function SellerProfile() {
                         <Pressable onPress={async () => {
                             if (isEditingAbout) {
                                 try {
-                                    // Save logic using apiClient
                                     await apiClient.put(`/sellers/${seller.uid}`, { description: aboutText });
-
                                     setSeller({ ...seller, description: aboutText });
                                 } catch (err) {
                                     console.error(err);
@@ -499,34 +506,106 @@ export default function SellerProfile() {
                         placeholder="Tell your story..."
                     />
                 ) : (
-                    <Text style={styles.aboutText}>{seller.description || "No description available."}</Text>
+                    <Text style={styles.aboutText}>{seller.description || 'This artisan hasn\'t written a bio yet.'}</Text>
+                )}
+            </View>
+
+            {/* Maker Details */}
+            <View style={styles.aboutCard}>
+                <Text style={styles.aboutTitle}>Maker Details</Text>
+
+                {seller.createdAt && (
+                    <View style={styles.policyItem}>
+                        <Calendar size={18} color={theme.colors.textSecondary} />
+                        <View style={styles.policyTextContainer}>
+                            <Text style={styles.policyTitle}>Member since</Text>
+                            <Text style={styles.policyDesc}>
+                                {new Date(seller.createdAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long' })}
+                            </Text>
+                        </View>
+                    </View>
                 )}
 
-                <View style={styles.divider} />
+                {(seller.businessAddress || seller.location) && (
+                    <View style={styles.policyItem}>
+                        <MapPin size={18} color={theme.colors.textSecondary} />
+                        <View style={styles.policyTextContainer}>
+                            <Text style={styles.policyTitle}>Location</Text>
+                            <Text style={styles.policyDesc}>{seller.businessAddress || seller.location}</Text>
+                        </View>
+                    </View>
+                )}
 
-                <Text style={styles.aboutTitle}>Store Policies</Text>
+                {seller.phone && (
+                    <View style={styles.policyItem}>
+                        <MessageCircle size={18} color={theme.colors.textSecondary} />
+                        <View style={styles.policyTextContainer}>
+                            <Text style={styles.policyTitle}>Contact</Text>
+                            <Text style={styles.policyDesc}>{seller.phone}</Text>
+                        </View>
+                    </View>
+                )}
+
+                {seller.portfolioLink && (
+                    <View style={styles.policyItem}>
+                        <TrendingUp size={18} color={theme.colors.textSecondary} />
+                        <View style={styles.policyTextContainer}>
+                            <Text style={styles.policyTitle}>Portfolio</Text>
+                            <Text style={[styles.policyDesc, { color: theme.colors.primary }]}>{seller.portfolioLink}</Text>
+                        </View>
+                    </View>
+                )}
+
+                {seller.hasPriorExperience && (
+                    <View style={styles.policyItem}>
+                        <CheckCircle size={18} color={theme.colors.success || '#22c55e'} />
+                        <View style={styles.policyTextContainer}>
+                            <Text style={styles.policyTitle}>Experienced Seller</Text>
+                            <Text style={styles.policyDesc}>This maker has prior selling experience.</Text>
+                        </View>
+                    </View>
+                )}
+            </View>
+
+            {/* Categories */}
+            {seller.productCategories && seller.productCategories.length > 0 && (
+                <View style={styles.aboutCard}>
+                    <Text style={styles.aboutTitle}>Craft Categories</Text>
+                    <View style={styles.tagsRow}>
+                        {seller.productCategories.map((cat) => (
+                            <View key={cat} style={styles.tagChip}>
+                                <Text style={styles.tagChipText}>{cat}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            )}
+
+            {/* Platform Trust */}
+            <View style={styles.aboutCard}>
+                <Text style={styles.aboutTitle}>Platform Guarantees</Text>
 
                 <View style={styles.policyItem}>
-                    <Truck size={20} color={theme.colors.textSecondary} />
+                    <ShieldCheck size={18} color={theme.colors.textSecondary} />
                     <View style={styles.policyTextContainer}>
-                        <Text style={styles.policyTitle}>Shipping</Text>
-                        <Text style={styles.policyDesc}>Ships within 1-3 business days. Free shipping on orders over $50.</Text>
+                        <Text style={styles.policyTitle}>Verified Artisan</Text>
+                        <Text style={styles.policyDesc}>Identity verified by Knot & Bloom. All listings are reviewed before going live.</Text>
                     </View>
                 </View>
 
                 <View style={styles.policyItem}>
-                    <RefreshCw size={20} color={theme.colors.textSecondary} />
+                    <Truck size={18} color={theme.colors.textSecondary} />
                     <View style={styles.policyTextContainer}>
-                        <Text style={styles.policyTitle}>Returns</Text>
-                        <Text style={styles.policyDesc}>Accepted within 14 days of delivery. Buyer pays return shipping.</Text>
+                        <Text style={styles.policyTitle}>COD Deposit Protection</Text>
+                        <Text style={styles.policyDesc}>A 20% deposit is collected upfront on COD orders, protecting this seller from refused deliveries.</Text>
                     </View>
                 </View>
 
                 <View style={styles.policyItem}>
-                    <ShieldCheck size={20} color={theme.colors.textSecondary} />
+                    <RefreshCw size={18} color={theme.colors.textSecondary} />
                     <View style={styles.policyTextContainer}>
-                        <Text style={styles.policyTitle}>Handcrafted Guarantee</Text>
-                        <Text style={styles.policyDesc}>All items are handmade with care and attention to detail.</Text>
+                        <Text style={styles.policyTitle}>Dispute Resolution</Text>
+                        <Text style={styles.policyDesc}>All orders are backed by Knot & Bloom's dispute resolution process.</Text>
                     </View>
                 </View>
             </View>
@@ -1138,6 +1217,7 @@ const styles = StyleSheet.create({
     // About Section
     aboutContainer: {
         paddingHorizontal: 16,
+        gap: 16,
     },
     aboutContainerDesktop: {
         maxWidth: 1024,
@@ -1153,6 +1233,25 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 2,
+    },
+    tagsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    tagChip: {
+        backgroundColor: theme.colors.subtle,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    tagChipText: {
+        fontSize: 13,
+        color: theme.colors.textSecondary,
+        fontFamily: 'Quicksand',
     },
     aboutTitle: {
         fontSize: 18,

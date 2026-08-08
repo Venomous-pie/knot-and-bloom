@@ -22,9 +22,12 @@ export default function CustomOrderBanner() {
       {/* Right Column: Editorial Text Block */}
       <View style={[styles.textSection, isMobile ? styles.textMobile : styles.textDesktop]}>
         <View style={styles.textContent}>
-          <Text style={styles.title}>WANT SOMETHING MADE JUST FOR YOU?</Text>
+          <Text style={styles.title}>
+            <Text>KNOT </Text>
+            <Text style={{ color: theme.colors.surface }}>{"& BLOOM"}</Text>
+          </Text>
           <Text style={styles.subtitle}>
-            Work directly with our student makers to bring your unique ideas to life. From custom plushies to personalized floral arrangements.
+            Every piece here is made by a verified Filipino artisan — a student, a single parent, or a hobbyist turning their craft into a livelihood. Shop handmade. Make it matter.
           </Text>
           
           <Pressable 

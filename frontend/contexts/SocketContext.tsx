@@ -1,153 +1,179 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
 import { createClient, RealtimeChannel } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
+import api from '@/services/client';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error("🚨 CRITICAL: Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Realtime features will silently fail.");
+    console.error('🚨 CRITICAL: Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY. Realtime will not work.');
 }
 
-// Create a singleton client for the frontend
+// Singleton Supabase client for Realtime
 const supabase = createClient(
-    SUPABASE_URL || 'https://aws-1-ap-south-1.pooler.supabase.com', 
-    SUPABASE_ANON_KEY || 'dummy_key'
+    SUPABASE_URL ?? '',
+    SUPABASE_ANON_KEY ?? '',
+    {
+        realtime: {
+            params: { eventsPerSecond: 10 },
+        },
+    }
 );
 
-// A wrapper to mimic socket.io's .on and .off methods for seamless migration
-export interface MockSocket {
-    on: (event: string, callback: (data: any) => void) => void;
-    off: (event: string, callback?: (data: any) => void) => void;
-    emit: (event: string, data?: any) => void;
-    disconnect: () => void;
-    connected: boolean;
-}
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface SocketContextType {
-    socket: MockSocket | null;
+/** The event names broadcast from Postgres triggers */
+export type RealtimeEventName =
+    | 'notification_created'
+    | 'notification_updated'
+    | 'order_timeline_created';
+
+export type RealtimeEventCallback = (payload: any) => void;
+
+/** Topic names that match the RLS policies on realtime.messages */
+export type RealtimeTopic = `user:${number}:notifications` | `user:${number}:orders`;
+
+interface RealtimeContextType {
     isConnected: boolean;
-    joinRoom: (room: string) => void;
-    leaveRoom: (room: string) => void;
+    /** Subscribe to a typed broadcast event. Returns an unsubscribe function. */
+    on: (event: RealtimeEventName, callback: RealtimeEventCallback) => () => void;
 }
 
-const SocketContext = createContext<SocketContextType>({
-    socket: null,
+// ─── Context ──────────────────────────────────────────────────────────────────
+
+const RealtimeContext = createContext<RealtimeContextType>({
     isConnected: false,
-    joinRoom: () => { },
-    leaveRoom: () => { },
+    on: () => () => { },
 });
 
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export function SocketProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth(); // Removed token dependency to avoid dropping rooms on silent refresh
-    const channelsRef = useRef<Map<string, RealtimeChannel>>(new Map());
-    const eventListenersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
+    const { user, token: expressToken } = useAuth();
+    const channelsRef = useRef<RealtimeChannel[]>([]);
+    const listenersRef = useRef<Map<RealtimeEventName, Set<RealtimeEventCallback>>>(new Map());
     const [isConnected, setIsConnected] = useState(false);
+    const supabaseTokenRef = useRef<string | null>(null);
 
-    // Mock socket object that mimics socket.io behavior
-    // Note: socketRef.current is never reassigned to ensure closures like disconnect() remain valid.
-    const socketRef = useRef<MockSocket>({
-        connected: false,
-        on: (event, callback) => {
-            if (!eventListenersRef.current.has(event)) {
-                eventListenersRef.current.set(event, new Set());
-            }
-            eventListenersRef.current.get(event)?.add(callback);
-        },
-        off: (event, callback) => {
-            if (callback) {
-                eventListenersRef.current.get(event)?.delete(callback);
-            } else {
-                eventListenersRef.current.delete(event);
-            }
-        },
-        emit: (event, data) => {
-            console.warn(`[Supabase Mock Socket] emit called for ${event}. Broadcast requires channel context. Silently ignoring.`);
-        },
-        disconnect: () => {
-            channelsRef.current.forEach(channel => supabase.removeChannel(channel));
-            channelsRef.current.clear();
-            eventListenersRef.current.clear();
-            socketRef.current.connected = false;
+    /** Dispatch a received broadcast payload to all listeners for that event */
+    const dispatch = useCallback((event: RealtimeEventName, payload: any) => {
+        listenersRef.current.get(event)?.forEach(cb => cb(payload));
+    }, []);
+
+    /** Fetch a short-lived Supabase JWT from our backend */
+    const fetchSupabaseToken = useCallback(async (): Promise<string | null> => {
+        try {
+            const response = await api.get<{ token: string }>('/realtime/token');
+            return response.data.token;
+        } catch (err) {
+            console.error('[Realtime] Failed to fetch Supabase token:', err);
+            return null;
         }
-    });
+    }, []);
 
-    const joinRoom = useCallback((roomName: string) => {
-        if (channelsRef.current.has(roomName)) return;
+    /** Subscribe to a single private channel and wire up broadcast listeners */
+    const subscribeChannel = useCallback((topic: RealtimeTopic): RealtimeChannel => {
+        const channel = supabase.channel(topic, { config: { private: true } });
 
-        const channel = supabase.channel(roomName)
-            .on('broadcast', { event: '*' }, (payload) => {
-                const event = payload.event;
-                const listeners = eventListenersRef.current.get(event);
-                if (listeners) {
-                    listeners.forEach(cb => cb(payload.payload));
-                }
-            })
-            .subscribe((status, err) => {
-                if (status === 'SUBSCRIBED') {
-                    setIsConnected(true);
-                    socketRef.current.connected = true;
-                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.error(`[SocketContext] Failed to subscribe to ${roomName}:`, status, err);
-                    channelsRef.current.delete(roomName); // Remove so it can be retried
-                    
-                    if (channelsRef.current.size === 0) {
-                        setIsConnected(false);
-                        socketRef.current.connected = false;
-                    }
-                } else if (status === 'CLOSED') {
-                    channelsRef.current.delete(roomName);
-                    if (channelsRef.current.size === 0) {
-                        setIsConnected(false);
-                        socketRef.current.connected = false;
-                    }
-                }
+        // Wire all broadcast events through the dispatcher
+        const events: RealtimeEventName[] = [
+            'notification_created',
+            'notification_updated',
+            'order_timeline_created',
+        ];
+
+        events.forEach(event => {
+            channel.on('broadcast', { event }, (payload) => {
+                dispatch(event, payload.payload ?? payload);
             });
+        });
 
-        // Set synchronously to prevent rapid join/leave race conditions from spawning duplicate channels
-        channelsRef.current.set(roomName, channel);
-    }, []);
-
-    const leaveRoom = useCallback((roomName: string) => {
-        const channel = channelsRef.current.get(roomName);
-        if (channel) {
-            supabase.removeChannel(channel);
-            channelsRef.current.delete(roomName);
-            
-            // Re-evaluate global connection state
-            if (channelsRef.current.size === 0) {
-                setIsConnected(false);
-                socketRef.current.connected = false;
+        channel.subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+                setIsConnected(true);
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.error(`[Realtime] ${topic} subscription failed:`, status, err);
             }
-        }
+        });
+
+        return channel;
+    }, [dispatch]);
+
+    /** Tear down all active channels */
+    const teardown = useCallback(() => {
+        channelsRef.current.forEach(ch => supabase.removeChannel(ch));
+        channelsRef.current = [];
+        setIsConnected(false);
     }, []);
 
+    /** Main effect: authenticate and subscribe whenever the user logs in/out */
     useEffect(() => {
-        // Only connect if user is authenticated
-        if (!user || !user.uid) {
-            socketRef.current.disconnect();
-            setIsConnected(false);
+        if (!user?.uid || !expressToken) {
+            // User logged out — remove all subscriptions
+            teardown();
+            supabase.realtime.setAuth(null);
+            supabaseTokenRef.current = null;
             return;
         }
 
-        // Auto-join user's personal room on login
-        const personalRoom = `user_${user.uid}`;
-        joinRoom(personalRoom);
+        let cancelled = false;
+
+        async function connect() {
+            const supabaseToken = await fetchSupabaseToken();
+            if (cancelled || !supabaseToken) return;
+
+            supabaseTokenRef.current = supabaseToken;
+
+            // Authenticate the Supabase Realtime connection with our custom JWT
+            await supabase.realtime.setAuth(supabaseToken);
+
+            // Subscribe to the two user-scoped private channels
+            const notificationsChannel = subscribeChannel(`user:${user!.uid}:notifications`);
+            const ordersChannel = subscribeChannel(`user:${user!.uid}:orders`);
+
+            channelsRef.current = [notificationsChannel, ordersChannel];
+        }
+
+        connect();
 
         return () => {
-            // We specifically only leave the personal room on cleanup, rather than calling disconnect(),
-            // to ensure other active rooms (e.g. chat) aren't dropped if this effect re-runs.
-            leaveRoom(personalRoom);
+            cancelled = true;
+            teardown();
         };
-    }, [user?.uid, joinRoom, leaveRoom]);
+    }, [user?.uid, expressToken, fetchSupabaseToken, subscribeChannel, teardown]);
+
+    /** Public subscribe API — returns an unsubscribe cleanup fn */
+    const on = useCallback((event: RealtimeEventName, callback: RealtimeEventCallback): (() => void) => {
+        if (!listenersRef.current.has(event)) {
+            listenersRef.current.set(event, new Set());
+        }
+        listenersRef.current.get(event)!.add(callback);
+
+        return () => {
+            listenersRef.current.get(event)?.delete(callback);
+        };
+    }, []);
 
     return (
-        <SocketContext.Provider value={{ socket: socketRef.current, isConnected, joinRoom, leaveRoom }}>
+        <RealtimeContext.Provider value={{ isConnected, on }}>
             {children}
-        </SocketContext.Provider>
+        </RealtimeContext.Provider>
     );
 }
 
+// ─── Hooks ────────────────────────────────────────────────────────────────────
+
+/** Access realtime connection state and subscribe to events */
+export function useRealtime() {
+    return useContext(RealtimeContext);
+}
+
+/**
+ * @deprecated Use useRealtime() instead.
+ * Kept for backward compatibility — returns a minimal socket-like shim.
+ */
 export function useSocketContext() {
-    return useContext(SocketContext);
+    const { isConnected, on } = useRealtime();
+    return { isConnected, on, socket: null };
 }

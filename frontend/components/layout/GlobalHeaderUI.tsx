@@ -13,7 +13,7 @@ import { NavLinks } from "@/components/layout/NavLinks";
 import { MobileNavbar } from "@/components/layout/MobileNavbar";
 import { Product } from "@/types/products";
 import { Link, RelativePathString, router, usePathname } from "expo-router";
-import { ChevronLeft, Handbag, Heart, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell, X } from "lucide-react-native";
+import { ChevronLeft, Handbag, Heart, Search, UserRound, LayoutDashboard, Store, User, Package, LogOut, Bell, X, Shield } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import SearchBarDropdown from "../ui/SearchResults";
@@ -477,13 +477,13 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
                     {(user) ? (
                         <DropdownMenu
                             items={[
-                                ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString, icon: <LayoutDashboard size={16} color={theme.colors.textSecondary} /> }] : []),
+                                ...(user.role === 'ADMIN' ? [{ title: 'Admin Dashboard', href: '/admin' as RelativePathString, icon: <Shield size={16} color={theme.colors.textSecondary} /> }] : []),
                                 ...(user.role === 'ADMIN' || (user.sellerProfile?.uid && user.sellerProfile?.status === 'ACTIVE') ? [{ title: 'Seller Dashboard', href: '/seller-dashboard' as RelativePathString, icon: <LayoutDashboard size={16} color={theme.colors.textSecondary} /> }] : []),
                                 ...(!user.sellerProfile?.uid ? [{ title: 'Become a Seller', href: '/seller/apply' as RelativePathString, icon: <Store size={16} color={theme.colors.textSecondary} /> }] : []),
                                 { title: 'View Profile', href: '/profile' as RelativePathString, icon: <User size={16} color={theme.colors.textSecondary} /> },
                                 { title: 'My Orders', href: '/profile/orders' as RelativePathString, icon: <Package size={16} color={theme.colors.textSecondary} /> },
                                 { type: 'separator' },
-                                { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color={theme.colors.textSecondary} /> },
+                                { title: 'Log Out', onPress: handleLogout, icon: <LogOut size={16} color={theme.colors.error || '#ef4444'} />, destructive: true },
                             ]}
                             style={({ hovered }) => [styles.iconButton, hovered && styles.iconHovered]}
                             isOpen={activeMenu === 'profile'}

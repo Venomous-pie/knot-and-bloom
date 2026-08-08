@@ -500,17 +500,6 @@ export default function SellerOrders() {
                         <Text style={s.dateTxt}>View, manage, and fulfill your customer orders.</Text>
                         <Text style={s.pageSubtitle}>{orders.length} total orders</Text>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <Button
-                            title="Manage Products"
-                            variant="outline"
-                            onPress={() => router.push('/seller-dashboard/products' as any)}
-                            icon={<ChevronRight size={16} color={P} />}
-                            iconPosition="right"
-                            style={{ borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, height: 'auto', backgroundColor: CARD, borderColor: BORDER }}
-                            textStyle={{ color: TEXT, fontSize: 13 }}
-                        />
-                    </View>
                 </View>
             </View>
 

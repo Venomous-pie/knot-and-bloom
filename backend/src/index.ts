@@ -34,6 +34,7 @@ import earningsRoutes from './routes/earningsRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import webhookRoutes from './routes/webhookRoutes.js';
 import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
@@ -42,7 +43,7 @@ import { createServer } from 'http';
 import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
 import { sanitizeInput } from './middleware/sanitize.js';
 import { cronService } from './services/cronService.js';
-import { PrismaRateLimitStore } from './middleware/rateLimitStore.js';
+import { UpstashRateLimitStore } from './middleware/upstashRateLimitStore.js';
 import { requestLogger } from './middleware/requestLogger.js';
 
 const app = express();
@@ -109,10 +110,14 @@ const globalLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'Too many requests, please try again later.' },
-    store: new PrismaRateLimitStore(),
+    store: new UpstashRateLimitStore('global:'),
 });
 app.use(globalLimiter);
 
+// ── Webhooks (must be registered before express.json to preserve raw body bytes) ──
+app.use('/api/webhooks', webhookRoutes);
+
+// ── Global Body Parsers ──
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(sanitizeInput); // Strip HTML/script tags from all user input

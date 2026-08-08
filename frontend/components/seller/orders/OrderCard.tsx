@@ -4,6 +4,7 @@ import { Clock, AlertTriangle, Lock, Package, CheckSquare, Square, X, MapPin, Cr
 import type { Order } from '@/types/order';
 import ImageUploader from '../ImageUploader';
 import { orderAPI } from '@/services/api';
+import Button from '@/components/ui/Button';
 
 const P = '#B36979', P_LIGHT = '#FDEEF1', BG = '#F4F4F8', CARD = '#FFFFFF';
 const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5', GREEN = '#10B981', RED = '#EF4444', AMBER = '#F59E0B';
@@ -134,31 +135,48 @@ export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }
             case 'PENDING':
                 return (
                     <View style={s.actionRow}>
-                        <TouchableOpacity disabled={submitting} style={[s.btn, s.rejectBtn, { flex: 1, opacity: submitting ? 0.7 : 1 }]} onPress={() => onOpenModal(order, 'reject')}>
-                            <Text style={s.rejectBtnText}>Decline</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { flex: 1, opacity: submitting ? 0.7 : 1 }]} onPress={() => onOpenModal(order, 'accept')}>
-                            <Text style={s.primaryBtnText}>Accept Order</Text>
-                        </TouchableOpacity>
+                        <Button 
+                            title="Decline" 
+                            variant="outline" 
+                            disabled={submitting} 
+                            onPress={() => onOpenModal(order, 'reject')} 
+                            style={{ flex: 1, borderColor: RED }}
+                            textStyle={{ color: RED }}
+                        />
+                        <Button 
+                            title="Accept Order" 
+                            disabled={submitting} 
+                            onPress={() => onOpenModal(order, 'accept')} 
+                            style={{ flex: 1 }}
+                        />
                     </View>
                 );
             case 'CONFIRMED':
                 return (
-                    <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { opacity: submitting ? 0.7 : 1 }]} onPress={() => handleQuickAction('IN_PRODUCTION', order)}>
-                        {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.primaryBtnText}>Start Production</Text>}
-                    </TouchableOpacity>
+                    <Button 
+                        title="Start Production" 
+                        loading={submitting} 
+                        onPress={() => handleQuickAction('IN_PRODUCTION', order)} 
+                        fullWidth 
+                    />
                 );
             case 'IN_PRODUCTION':
                 return (
-                    <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { opacity: submitting ? 0.7 : 1 }]} onPress={() => handleQuickAction('READY_TO_SHIP', order)}>
-                        {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.primaryBtnText}>Mark Ready to Ship</Text>}
-                    </TouchableOpacity>
+                    <Button 
+                        title="Mark Ready to Ship" 
+                        loading={submitting} 
+                        onPress={() => handleQuickAction('READY_TO_SHIP', order)} 
+                        fullWidth 
+                    />
                 );
             case 'READY_TO_SHIP':
                 return (
-                    <TouchableOpacity disabled={submitting} style={[s.btn, s.primaryBtn, { opacity: submitting ? 0.7 : 1 }]} onPress={() => onOpenModal(order, 'ship')}>
-                        <Text style={s.primaryBtnText}>Ship Order</Text>
-                    </TouchableOpacity>
+                    <Button 
+                        title="Ship Order" 
+                        disabled={submitting} 
+                        onPress={() => onOpenModal(order, 'ship')} 
+                        fullWidth 
+                    />
                 );
             default: return null;
         }
@@ -306,17 +324,12 @@ export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }
                             compact={true}
                         />
                         {progressImages.length > 0 && (
-                            <TouchableOpacity 
-                                style={[s.saveImageBtn, savingImages && { opacity: 0.7 }]} 
+                            <Button 
+                                title="Save Images" 
+                                loading={savingImages} 
                                 onPress={handleSaveProgressImages}
-                                disabled={savingImages}
-                            >
-                                {savingImages ? (
-                                    <ActivityIndicator size="small" color="#FFF" />
-                                ) : (
-                                    <Text style={s.saveImageBtnText}>Save Images</Text>
-                                )}
-                            </TouchableOpacity>
+                                style={{ marginTop: 12 }} 
+                            />
                         )}
                     </View>
                 )}
@@ -428,8 +441,6 @@ const s = StyleSheet.create({
     noteCard: { backgroundColor: CARD, borderRadius: 12, padding: 16, marginTop: 12, borderWidth: 1, borderColor: BORDER },
     noteText: { fontFamily: 'Quicksand', fontSize: 13, color: TEXT, lineHeight: 20, fontStyle: 'italic', marginTop: 8 },
     progressCard: { backgroundColor: CARD, borderRadius: 12, padding: 16, marginVertical: 12, borderWidth: 1, borderColor: BORDER },
-    saveImageBtn: { backgroundColor: P, paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginTop: 12 },
-    saveImageBtnText: { color: '#FFF', fontFamily: 'Quicksand', fontWeight: '700', fontSize: 14 },
     shippingMethodTag: { marginTop: 12, backgroundColor: BG, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
     shippingMethodText: { color: P, fontSize: 10, fontWeight: '800', fontFamily: 'Quicksand', textTransform: 'uppercase', letterSpacing: 0.5 },
     paymentDetailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
@@ -455,9 +466,4 @@ const s = StyleSheet.create({
     
     actionsContainer: { paddingTop: 20, paddingHorizontal: 24, paddingBottom: 24, borderTopWidth: 1, borderTopColor: BORDER, backgroundColor: CARD },
     actionRow: { flexDirection: 'row', gap: 16 },
-    btn: { flex: 1, paddingHorizontal: 24, paddingVertical: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
-    primaryBtn: { backgroundColor: P },
-    primaryBtnText: { color: 'white', fontWeight: '800', fontSize: 15, fontFamily: 'Quicksand' },
-    rejectBtn: { backgroundColor: CARD, borderWidth: 1, borderColor: RED, shadowOpacity: 0.05 },
-    rejectBtnText: { color: RED, fontWeight: '800', fontSize: 15, fontFamily: 'Quicksand' },
 });

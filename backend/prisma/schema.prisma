@@ -63,6 +63,7 @@ model Seller {
   idPhotos              String[]            @default([])
   idType                String?
   isHandmade            Boolean             @default(false)
+  kycFlagged            Boolean             @default(false)
   legalName             String?
   meetUpPoint           String?
   monthlyOrders         String?

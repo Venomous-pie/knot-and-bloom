@@ -153,7 +153,7 @@ export default function ProductCard({
                 fadeAnim.setValue(0);
                 Animated.timing(fadeAnim, {
                     toValue: 1,
-                    duration: 600,
+                    duration: 800,
                     useNativeDriver: true
                 }).start();
             }, 3500); // cycle every 3.5s automatically

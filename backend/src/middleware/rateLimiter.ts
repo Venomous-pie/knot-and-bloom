@@ -1,5 +1,5 @@
 import rateLimit from 'express-rate-limit';
-import { PrismaRateLimitStore } from './rateLimitStore.js';
+import { UpstashRateLimitStore } from './upstashRateLimitStore.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -13,7 +13,7 @@ export const authRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    store: new PrismaRateLimitStore(),
+    store: new UpstashRateLimitStore('auth:'),
 });
 
 // Registration endpoint: very strict — 10 per 15 minutes per IP in production, 50 in dev
@@ -26,5 +26,5 @@ export const registrationRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    store: new PrismaRateLimitStore(),
+    store: new UpstashRateLimitStore('reg:'),
 });

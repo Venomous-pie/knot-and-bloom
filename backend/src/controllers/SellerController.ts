@@ -813,7 +813,7 @@ export const sellerController = {
                 ...(updatedCustomer.sellerProfile?.status && { sellerStatus: updatedCustomer.sellerProfile.status as any }),
             };
 
-            const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
+            const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '15m' });
 
             res.json({
                 success: true,

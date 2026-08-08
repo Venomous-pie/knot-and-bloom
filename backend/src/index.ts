@@ -54,13 +54,7 @@ app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 3030;
 
-// ── Security Middlewares ──
-app.use(helmet()); // Sets security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
-app.use(requestLogger); // Structured JSON request logging for observability
-
-// CORS must be registered BEFORE the rate limiter so that rate-limited (429)
-// responses still include Access-Control-Allow-Origin headers. Without this,
-// the browser misreports rate-limit errors as CORS errors.
+// CORS origins must be defined early for Helmet CSP and CORS middleware
 const defaultOrigins = [
     'http://localhost:8081', // Expo Web
     'http://localhost:19000', // Expo
@@ -72,6 +66,36 @@ const defaultOrigins = [
 const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',')
     : defaultOrigins;
+
+// ── Security Middlewares ──
+app.use(helmet({
+    // Content-Security-Policy: restrict sources to same origin + trusted CDNs only.
+    // This is a defence-in-depth layer on top of XSS sanitisation.
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            imgSrc: ["'self'", 'data:', 'https://ik.imagekit.io', 'https://*.supabase.co'],
+            connectSrc: ["'self'", ...allowedOrigins],
+            frameSrc: ["'none'"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
+        },
+    },
+    // Never send Referer header — prevents backend URL leaking to third-party resources
+    referrerPolicy: { policy: 'no-referrer' },
+    // HSTS: force HTTPS for 1 year, include subdomains (only active in production over HTTPS)
+    hsts: process.env.NODE_ENV === 'production'
+        ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+        : false,
+}));
+app.use(requestLogger); // Structured JSON request logging for observability
+
+// CORS must be registered BEFORE the rate limiter so that rate-limited (429)
+// responses still include Access-Control-Allow-Origin headers. Without this,
+// the browser misreports rate-limit errors as CORS errors.
 
 app.use(cors({
     origin: allowedOrigins,

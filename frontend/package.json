@@ -10,7 +10,8 @@
     "web": "cross-env NODE_OPTIONS=--max-old-space-size=8192 expo start --web",
     "lint": "expo lint",
     "test": "jest",
-    "build:web": "expo export --platform web"
+    "build:web": "expo export --platform web",
+    "build:staging": "node scripts/use-env.js staging && cross-env NODE_ENV=production expo export --platform web"
   },
   "dependencies": {
     "@expo/vector-icons": "15.0.3",

@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
+import { loadEnv } from '../config/env.js';
+loadEnv();
 
 class SupabaseService {
     private static instance: SupabaseService;

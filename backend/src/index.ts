@@ -1,5 +1,5 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import { loadEnv } from './config/env.js';
+loadEnv();
 
 import dns from 'dns';
 // Force Node.js to prefer IPv4 for DNS resolution.

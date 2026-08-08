@@ -1,4 +1,4 @@
-import { cartAPI, productAPI, sellerAPI } from "@/services/api";
+import { cartAPI, productAPI, sellerAPI, reviewsAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useCartAnimation } from "@/contexts/CartAnimationContext";
@@ -12,6 +12,7 @@ import { getCachedProduct, cacheProduct } from "@/utils/productCache";
 import {
     ActivityIndicator,
     Alert,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -31,32 +32,13 @@ import Footer from "@/components/home/Footer";
 import ProductPageSkeleton from "@/components/product/ProductPageSkeleton";
 import ProductCardSkeleton from "@/components/product/ProductCardSkeleton";
 
-const MOCK_REVIEWS = [
-    {
-        id: "1",
-        userName: "Sarah M.",
-        rating: 5,
-        date: "2 days ago",
-        text: "Absolutely love this! The quality is amazing and it looks exactly like the pictures. Will definitely buy again.",
-        helpful: 12
-    },
-    {
-        id: "2",
-        userName: "Jessica K.",
-        rating: 4,
-        date: "1 week ago",
-        text: "Very cute and fits well. The material is slightly thinner than I expected, but still great for the price.",
-        helpful: 5
-    },
-    {
-        id: "3",
-        userName: "Amanda T.",
-        rating: 5,
-        date: "2 weeks ago",
-        text: "Perfect! Fast shipping and excellent packaging. Highly recommended shop.",
-        helpful: 8
-    }
-];
+interface Review {
+    uid: number;
+    rating: number;
+    comment?: string;
+    createdAt: string;
+    user: { name: string; avatar?: string | null };
+}
 
 export default function ProductDetailPage() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -77,6 +59,11 @@ export default function ProductDetailPage() {
     const [showAllRecommendations, setShowAllRecommendations] = useState(false);
     const [makers, setMakers] = useState<User[]>([]);
     const [isBuying, setIsBuying] = useState(false);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [reviewsTotal, setReviewsTotal] = useState(0);
+    const [loadingReviews, setLoadingReviews] = useState(true);
+    const [showAllReviews, setShowAllReviews] = useState(false);
+    const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
     const allImages = React.useMemo(() => {
         if (!product) return [];
@@ -171,6 +158,24 @@ export default function ProductDetailPage() {
         };
 
         fetchRecommendations();
+    }, [product?.uid]);
+
+    // --- Reviews Fetch ---
+    useEffect(() => {
+        if (!product) return;
+        const fetchReviews = async () => {
+            try {
+                setLoadingReviews(true);
+                const res = await reviewsAPI.getReviewsByProduct(product.uid, 1, 10);
+                setReviews(res.data.data ?? []);
+                setReviewsTotal(res.data.meta?.totalCount ?? 0);
+            } catch (e) {
+                console.warn('Could not load reviews', e);
+            } finally {
+                setLoadingReviews(false);
+            }
+        };
+        fetchReviews();
     }, [product?.uid]);
 
     // --- Meet the Maker Fetch ---
@@ -309,17 +314,19 @@ export default function ProductDetailPage() {
         ? product.variants.find(v => v.name === selectedVariant)
         : null;
     const totalStock = product ? product.variants.reduce((sum, v) => sum + v.stock, 0) : 0;
-    const maxStock = selectedVariantObj ? selectedVariantObj.stock : totalStock;
+    const rawMaxStock = selectedVariantObj ? selectedVariantObj.stock : totalStock;
+    const minQty = product?.minOrderQty ?? 1;
+    const maxStock = product?.maxOrderQty ? Math.min(rawMaxStock, product.maxOrderQty) : rawMaxStock;
     const isInStock = totalStock > 0;
 
-    // Ensure quantity doesn't exceed new max stock when variant changes
+    // Ensure quantity stays within [minQty, maxStock] when variant changes
     useEffect(() => {
         if (maxStock > 0 && quantity > maxStock) {
             setQuantity(maxStock);
-        } else if (maxStock > 0 && quantity < 1) {
-            setQuantity(1);
+        } else if (quantity < minQty) {
+            setQuantity(minQty);
         }
-    }, [maxStock]);
+    }, [maxStock, minQty]);
 
     if (loading) {
         return <ProductPageSkeleton />;
@@ -351,10 +358,14 @@ export default function ProductDetailPage() {
         <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Store / Seller Info</Text>
             <View style={styles.sellerInfoContent}>
-                <View style={styles.sellerAvatar}>
-                    <Text style={styles.sellerAvatarText}>
-                        {(product.seller?.name || 'Knot & Bloom')[0]}
-                    </Text>
+                <View style={[styles.sellerAvatar, { overflow: 'hidden' }]}>
+                    {product.seller?.logo ? (
+                        <Image source={{ uri: product.seller.logo }} style={{ width: '100%', height: '100%' }} />
+                    ) : (
+                        <Text style={styles.sellerAvatarText}>
+                            {(product.seller?.name || 'Knot & Bloom')[0]}
+                        </Text>
+                    )}
                 </View>
                 <View style={styles.sellerDetails}>
                     <Text style={styles.sellerName}>{product.seller?.name || 'Knot & Bloom'}</Text>
@@ -435,42 +446,88 @@ export default function ProductDetailPage() {
         );
     };
 
-    const renderReviews = () => (
-        <View style={styles.sectionContainer}>
-            <View style={[styles.sectionHeaderRow, { marginBottom: 16 }]}>
-                <Text style={styles.sectionTitle}>Customer Reviews ({MOCK_REVIEWS.length})</Text>
-                <Pressable>
-                    <Text style={styles.viewAllText}>View All &gt;</Text>
-                </Pressable>
-            </View>
+    const formatReviewDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+        return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short' });
+    };
 
-            {MOCK_REVIEWS.map((review, index) => (
-                <View key={review.id} style={[styles.reviewCard, index === MOCK_REVIEWS.length - 1 && { borderBottomWidth: 0 }]}>
-                    <View style={styles.reviewHeader}>
-                        <View style={styles.reviewerAvatar}>
-                            <Text style={styles.reviewerAvatarText}>{review.userName[0]}</Text>
-                        </View>
-                        <View style={styles.reviewerInfo}>
-                            <Text style={styles.reviewerName}>{review.userName}</Text>
-                            <View style={styles.starsRow}>
-                                {[1, 2, 3, 4, 5].map((i) => (
-                                    <Ionicons key={i} name={i <= review.rating ? "star" : "star-outline"} size={12} color={theme.colors.starGold} />
-                                ))}
-                            </View>
-                        </View>
-                        <Text style={styles.reviewDate}>{review.date}</Text>
-                    </View>
-                    <Text style={styles.reviewText}>{review.text}</Text>
-                    <View style={styles.reviewFooter}>
-                        <Pressable style={styles.helpfulButton}>
-                            <Ionicons name="thumbs-up-outline" size={14} color={theme.colors.textSecondary} />
-                            <Text style={styles.helpfulText}>Helpful ({review.helpful})</Text>
+    const renderReviews = () => {
+        const visibleReviews = showAllReviews ? reviews : reviews.slice(0, 3);
+        return (
+            <View style={styles.sectionContainer}>
+                <View style={[styles.sectionHeaderRow, { marginBottom: 16 }]}>
+                    <Text style={styles.sectionTitle}>
+                        Customer Reviews ({reviewsTotal > 0 ? reviewsTotal : product.reviewCount || 0})
+                    </Text>
+                    {reviews.length > 3 && !showAllReviews && (
+                        <Pressable onPress={() => setShowAllReviews(true)}>
+                            <Text style={styles.viewAllText}>View All &gt;</Text>
                         </Pressable>
-                    </View>
+                    )}
                 </View>
-            ))}
-        </View>
-    );
+
+                {loadingReviews && (
+                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                    </View>
+                )}
+
+                {!loadingReviews && reviews.length === 0 && (
+                    <View style={{ paddingVertical: 24, alignItems: 'center', gap: 8 }}>
+                        <Ionicons name="chatbubble-outline" size={32} color={theme.colors.textLight} />
+                        <Text style={{ fontSize: 14, color: theme.colors.textSecondary, fontFamily: theme.typography.fontFamily }}>
+                            No reviews yet. Be the first to review!
+                        </Text>
+                    </View>
+                )}
+
+                {!loadingReviews && visibleReviews.map((review, index) => (
+                    <View key={review.uid} style={[styles.reviewCard, index === visibleReviews.length - 1 && !showAllReviews && { borderBottomWidth: 0 }]}>
+                        <View style={styles.reviewHeader}>
+                            <View style={[styles.reviewerAvatar, { overflow: 'hidden' }]}>
+                                {review.user.avatar ? (
+                                    <Image source={{ uri: review.user.avatar }} style={{ width: '100%', height: '100%' }} />
+                                ) : (
+                                    <Text style={styles.reviewerAvatarText}>{(review.user.name || '?')[0]}</Text>
+                                )}
+                            </View>
+                            <View style={styles.reviewerInfo}>
+                                <Text style={styles.reviewerName}>{review.user.name}</Text>
+                                <View style={styles.starsRow}>
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <Ionicons key={i} name={i <= review.rating ? 'star' : 'star-outline'} size={12} color={theme.colors.starGold} />
+                                    ))}
+                                </View>
+                            </View>
+                            <Text style={styles.reviewDate}>{formatReviewDate(review.createdAt)}</Text>
+                        </View>
+                        {review.comment ? (
+                            <Text style={styles.reviewText}>{review.comment}</Text>
+                        ) : (
+                            <Text style={[styles.reviewText, { fontStyle: 'italic', color: theme.colors.textLight }]}>No written review.</Text>
+                        )}
+                    </View>
+                ))}
+
+                {!loadingReviews && showAllReviews && reviews.length > 0 && (
+                    <Pressable
+                        style={{ alignItems: 'center', paddingVertical: 12 }}
+                        onPress={() => setShowAllReviews(false)}
+                    >
+                        <Text style={styles.viewAllText}>Show Less</Text>
+                    </Pressable>
+                )}
+            </View>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -501,21 +558,64 @@ export default function ProductDetailPage() {
                         </View>
 
                         {/* Thumbnail Strip */}
-                        {allImages.length > 1 && (
+                        {(allImages.length > 1 || product.videoUrl) && (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbnailStrip}>
                                 {allImages.map((img, idx) => {
-                                    const isActive = displayImage === img;
+                                    const isActive = !showVideoPlayer && displayImage === img;
                                     return (
                                         <Pressable
                                             key={idx}
                                             style={[styles.thumbnailBox, isActive && styles.thumbnailBoxActive]}
-                                            onPress={() => setSelectedImage(img)}
+                                            onPress={() => { setSelectedImage(img); setShowVideoPlayer(false); }}
                                         >
                                             <Image source={{ uri: img }} style={styles.thumbnailImage} contentFit="cover" />
                                         </Pressable>
                                     );
                                 })}
+                                {!!product.videoUrl && (
+                                    <Pressable
+                                        style={[styles.thumbnailBox, showVideoPlayer && styles.thumbnailBoxActive, { backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center', gap: 2 }]}
+                                        onPress={() => setShowVideoPlayer(true)}
+                                    >
+                                        <Ionicons name="play-circle" size={28} color="white" />
+                                        <Text style={{ color: 'white', fontSize: 9, fontWeight: '600' }}>VIDEO</Text>
+                                    </Pressable>
+                                )}
                             </ScrollView>
+                        )}
+
+                        {/* Video Player */}
+                        {showVideoPlayer && product.videoUrl && (
+                            <View style={styles.videoContainer}>
+                                <Pressable
+                                    style={styles.videoCloseBtn}
+                                    onPress={() => setShowVideoPlayer(false)}
+                                >
+                                    <Ionicons name="close-circle" size={28} color="white" />
+                                </Pressable>
+                                {/* Embed as iframe on web, link on native */}
+                                {Platform.OS === 'web' ? (
+                                    <iframe
+                                        src={product.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                                        style={{ width: '100%', height: '100%', border: 'none' }}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                ) : (
+                                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                                        <Ionicons name="play-circle-outline" size={64} color={theme.colors.textLight} />
+                                        <Text style={{ color: theme.colors.textSecondary, fontSize: 14, textAlign: 'center' }}>
+                                            Tap below to watch the product video
+                                        </Text>
+                                        <Pressable
+                                            style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}
+                                            onPress={() => { /* Linking.openURL(product.videoUrl!) */ }}
+                                        >
+                                            <Text style={{ color: 'white', fontWeight: '600' }}>Open Video</Text>
+                                        </Pressable>
+                                    </View>
+                                )}
+                            </View>
                         )}
 
                         {/* Store / Seller Info */}
@@ -531,6 +631,17 @@ export default function ProductDetailPage() {
                         {/* Core Details: Name, Rating, Price */}
                         <View style={styles.sectionContainer}>
                             <Text style={styles.productName}>{product.name}</Text>
+
+                            {product.sku && (
+                                <Pressable style={styles.skuContainer} onPress={() => handleCopySKU(product.sku)}>
+                                    <Text style={styles.skuText}>SKU: {product.sku}</Text>
+                                    <Ionicons
+                                        name={skuCopied ? 'checkmark-circle' : 'copy-outline'}
+                                        size={13}
+                                        color={skuCopied ? theme.colors.primary : theme.colors.textLight}
+                                    />
+                                </Pressable>
+                            )}
 
                             <View style={[styles.ratingSummary, { marginTop: 4, marginBottom: 12 }]}>
                                 <View style={styles.starsRow}>
@@ -621,12 +732,12 @@ export default function ProductDetailPage() {
                                         styles.qtyButton,
                                         hovered && styles.qtyButtonHover,
                                         pressed && styles.qtyButtonPressed,
-                                        quantity <= 1 && styles.qtyButtonDisabled
+                                        quantity <= minQty && styles.qtyButtonDisabled
                                     ]}
-                                    onPress={() => setQuantity(q => Math.max(1, q - 1))}
-                                    disabled={quantity <= 1}
+                                    onPress={() => setQuantity(q => Math.max(minQty, q - 1))}
+                                    disabled={quantity <= minQty}
                                 >
-                                    <Ionicons name="remove" size={20} color={quantity <= 1 ? theme.colors.textLight : theme.colors.text} />
+                                    <Ionicons name="remove" size={20} color={quantity <= minQty ? theme.colors.textLight : theme.colors.text} />
                                 </Pressable>
                                 <Text style={styles.qtyText}>{quantity}</Text>
                                 <Pressable
@@ -641,7 +752,19 @@ export default function ProductDetailPage() {
                                 >
                                     <Ionicons name="add" size={20} color={quantity >= maxStock ? theme.colors.textLight : theme.colors.text} />
                                 </Pressable>
-                                <Text style={styles.stockText}>{maxStock} pieces available</Text>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.stockText}>{rawMaxStock} in stock</Text>
+                                    {minQty > 1 && (
+                                        <Text style={[styles.stockText, { color: theme.colors.primary, fontSize: 11 }]}>
+                                            Min. order: {minQty}
+                                        </Text>
+                                    )}
+                                    {product.maxOrderQty && (
+                                        <Text style={[styles.stockText, { fontSize: 11 }]}>
+                                            Max. order: {product.maxOrderQty}
+                                        </Text>
+                                    )}
+                                </View>
                             </View>
                         </View>
 
@@ -766,11 +889,18 @@ export default function ProductDetailPage() {
                                         </View>
                                     )}
                                     {!!product.isCustomOrderAllowed && (
-                                        <View style={styles.highlightRow}>
-                                            <Ionicons name="color-wand-outline" size={18} color={theme.colors.textSecondary} />
-                                            <Text style={styles.highlightText}>
-                                                <Text style={{ fontWeight: '600' }}>Customization:</Text> Available upon request
-                                            </Text>
+                                        <View style={[styles.highlightRow, { alignItems: 'flex-start' }]}>
+                                            <Ionicons name="color-wand-outline" size={18} color={theme.colors.textSecondary} style={{ marginTop: 1 }} />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.highlightText}>
+                                                    <Text style={{ fontWeight: '600' }}>Customization:</Text> Available upon request
+                                                </Text>
+                                                {!!product.customOrderInstructions && (
+                                                    <Text style={[styles.highlightText, { marginTop: 2, color: theme.colors.textLight }]}>
+                                                        {product.customOrderInstructions}
+                                                    </Text>
+                                                )}
+                                            </View>
                                         </View>
                                     )}
                                     {product.tags && product.tags.length > 0 && (
@@ -805,9 +935,9 @@ export default function ProductDetailPage() {
                                     <Text style={styles.shippingInfoPrice}>
                                         {product.shippingFeeOverride != null
                                             ? `₱${Number(product.shippingFeeOverride).toFixed(2)}`
-                                            : ((product.seller as any)?.freeShippingEnabled
-                                                ? `Standard Rate (Free over ₱${(product.seller as any).freeShippingThreshold})`
-                                                : 'Standard Rate applies')}
+                                            : product.seller?.freeShippingEnabled && product.seller?.freeShippingThreshold != null
+                                                ? `Free shipping on orders over ₱${Number(product.seller.freeShippingThreshold).toFixed(2)}`
+                                                : 'Standard rate — calculated at checkout'}
                                     </Text>
                                 </View>
                             </View>
@@ -817,7 +947,10 @@ export default function ProductDetailPage() {
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.shippingInfoTitle}>Local Pickup Available</Text>
                                         <Text style={styles.shippingInfoDesc}>
-                                            {product.localPickupInstructions || ((product.seller as any)?.meetUpPoint ? `Available for pickup at: ${(product.seller as any).meetUpPoint}` : 'Available for local pickup at the seller\'s location.')}
+                                            {product.localPickupInstructions
+                                                || (product.seller?.meetUpPoint
+                                                    ? `Available for pickup at: ${product.seller.meetUpPoint}`
+                                                    : 'Available for local pickup at the seller\'s location.')}
                                         </Text>
                                     </View>
                                 </View>
@@ -926,9 +1059,7 @@ export default function ProductDetailPage() {
                         <View style={styles.recommendationsHeader}>
                             <View style={styles.recommendationsTitleRow}>
                                 <Text style={styles.recommendationsTitle}>Meet the Maker</Text>
-                                <Text style={styles.recommendationsSubtitle}>
-                                    {product.categories?.[0] ? `More from ${product.categories[0]}` : 'More picks for you'}
-                                </Text>
+                                <Text style={styles.recommendationsSubtitle}>Discover the people behind the products</Text>
                             </View>
                             <Link href="/makers" asChild>
                                 <Pressable style={styles.seeAllButton}>
@@ -937,19 +1068,13 @@ export default function ProductDetailPage() {
                             </Link>
                         </View>
 
-                        <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.recommendationsContent}
-                            style={styles.recommendationsScroll}
-                        >
+                        <View style={styles.recommendationsGridContent}>
                             {makers.slice(0, 5).map((maker) => (
                                 <View key={maker.uid} style={styles.recommendationCardContainer}>
                                     <MakerCard maker={maker} />
                                 </View>
                             ))}
-                            <View />
-                        </ScrollView>
+                        </View>
                     </View>
                 )}
 
@@ -1054,7 +1179,7 @@ const styles = StyleSheet.create({
         flexGrow: 0,
     },
     recommendationCardContainer: {
-        width: 220, // slightly wider for maker cards
+        width: 211.2, // exact width to fit 5 cards in 1200px max-width container
     },
     breadcrumbContainer: {
         paddingHorizontal: 16,
@@ -1571,5 +1696,20 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: theme.colors.primaryDark,
         fontWeight: '500',
+    },
+    videoContainer: {
+        width: '100%',
+        aspectRatio: 16 / 9,
+        backgroundColor: '#000',
+        marginTop: 12,
+        borderRadius: 8,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    videoCloseBtn: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        zIndex: 10,
     },
 });

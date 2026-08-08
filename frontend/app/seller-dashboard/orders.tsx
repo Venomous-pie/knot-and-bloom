@@ -15,6 +15,7 @@ import RejectOrderModal, { RejectFormData } from '@/components/seller/orders/Rej
 import BulkActionBar from '@/components/seller/orders/BulkActionBar';
 import Tooltip from '@/components/ui/Tooltip';
 import StatCard from '@/components/ui/StatCard';
+import Button from '@/components/ui/Button';
 import { toastEvents } from "@/utils/toastEvents";
 
 const P = '#B36979';
@@ -500,10 +501,15 @@ export default function SellerOrders() {
                         <Text style={s.pageSubtitle}>{orders.length} total orders</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <TouchableOpacity onPress={() => router.push('/seller-dashboard/products' as any)} style={s.navBtn}>
-                            <Text style={s.navBtnText}>Manage Products</Text>
-                            <ChevronRight size={16} color={P} />
-                        </TouchableOpacity>
+                        <Button
+                            title="Manage Products"
+                            variant="outline"
+                            onPress={() => router.push('/seller-dashboard/products' as any)}
+                            icon={<ChevronRight size={16} color={P} />}
+                            iconPosition="right"
+                            style={{ borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, height: 'auto', backgroundColor: CARD, borderColor: BORDER }}
+                            textStyle={{ color: TEXT, fontSize: 13 }}
+                        />
                     </View>
                 </View>
             </View>
@@ -596,10 +602,15 @@ export default function SellerOrders() {
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
-                                    <TouchableOpacity onPress={fetchOrders} style={[s.navBtn, { backgroundColor: BG }]}>
-                                        {loading && orders.length > 0 ? <ActivityIndicator size="small" color={P} /> : <RefreshCw size={16} color={P} />}
-                                        <Text style={[s.navBtnText, { color: P }]}>Refresh</Text>
-                                    </TouchableOpacity>
+                                    <Button
+                                        title="Refresh"
+                                        variant="outline"
+                                        onPress={fetchOrders}
+                                        icon={<RefreshCw size={16} color={P} />}
+                                        loading={loading && orders.length > 0}
+                                        style={{ borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, height: 'auto', backgroundColor: BG, borderColor: BORDER }}
+                                        textStyle={{ color: P, fontSize: 13 }}
+                                    />
                                 </View>
                             </View>
 

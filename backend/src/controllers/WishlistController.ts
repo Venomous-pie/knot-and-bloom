@@ -4,15 +4,10 @@ import prisma from '../utils/prismaUtils.js';
 export const WishlistController = {
     getWishlist: async (req: Request, res: Response) => {
         try {
-            const userId = parseInt(req.params.userId as string);
-
-            if (isNaN(userId)) {
-                return res.status(400).json({ error: 'Invalid user ID' });
-            }
-
-            // Verify the request comes from the owner
-            if (req.user && (req.user as any).id !== userId) {
-                return res.status(403).json({ error: 'Forbidden' });
+            const userId = req.user?.id;
+            
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized' });
             }
 
             let wishlist = await prisma.wishlist.findUnique({
@@ -54,15 +49,14 @@ export const WishlistController = {
 
     toggleWishlistItem: async (req: Request, res: Response) => {
         try {
-            const userId = parseInt(req.params.userId as string);
+            const userId = req.user?.id;
             const { productId } = req.body;
 
-            if (isNaN(userId) || typeof productId !== 'number') {
-                return res.status(400).json({ error: 'Invalid user ID or product ID' });
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized' });
             }
-
-            if (req.user && (req.user as any).id !== userId) {
-                return res.status(403).json({ error: 'Forbidden' });
+            if (typeof productId !== 'number') {
+                return res.status(400).json({ error: 'Invalid product ID' });
             }
 
             // Ensure wishlist exists

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, useWindowDimensions, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, Animated, Image } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { ShoppingBag, Star, ShieldCheck, Heart, Users } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HERO_IMAGES } from '@/assets/hero-images';
+import Button from '@/components/ui/Button';
 
 export default function HeroSection() {
     const { width } = useWindowDimensions();
@@ -90,27 +91,17 @@ export default function HeroSection() {
                     </Animated.View>
                     
                     <Animated.View style={[styles.actions, isMobile && styles.actionsMobile, { opacity: fadeAnim4 }]}>
-                        <Pressable 
-                            style={({ pressed, hovered }: any) => [
-                                styles.primaryBtn,
-                                hovered && { backgroundColor: theme.colors.primaryDark, transform: [{ translateY: -2 }] },
-                                pressed && { transform: [{ scale: 0.98 }] }
-                            ]}
+                        <Button 
+                            title="SHOP NOW"
+                            variant="primary"
+                            icon={<ShoppingBag size={18} color="white" />}
                             onPress={() => router.push('/products/all-products' as any)}
-                        >
-                            <ShoppingBag size={18} color="white" />
-                            <Text style={styles.primaryBtnText}>SHOP NOW</Text>
-                        </Pressable>
-                        <Pressable 
-                            style={({ pressed, hovered }: any) => [
-                                styles.outlineBtn,
-                                hovered && { backgroundColor: theme.colors.primaryLight, transform: [{ translateY: -2 }] },
-                                pressed && { transform: [{ scale: 0.98 }] }
-                            ]}
+                        />
+                        <Button 
+                            title="CUSTOM ORDER"
+                            variant="outline"
                             onPress={() => router.push('/makers' as any)}
-                        >
-                            <Text style={styles.outlineBtnText}>CUSTOM ORDER</Text>
-                        </Pressable>
+                        />
                     </Animated.View>
 
                     {/* Trust badges */}
@@ -235,45 +226,6 @@ const styles = StyleSheet.create({
         flexDirection: 'column',
         width: '100%',
         alignItems: 'center',
-    },
-    primaryBtn: {
-        backgroundColor: theme.colors.primary,
-        paddingHorizontal: 28,
-        paddingVertical: 16,
-        borderRadius: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 3,
-    },
-    primaryBtnText: {
-        color: 'white',
-        fontWeight: '700',
-        fontSize: 15,
-        fontFamily: 'Quicksand',
-        letterSpacing: 0.5,
-    },
-    outlineBtn: {
-        backgroundColor: 'transparent',
-        borderWidth: 1.5,
-        borderColor: theme.colors.primary,
-        paddingHorizontal: 28,
-        paddingVertical: 16,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    outlineBtnText: {
-        color: theme.colors.primary,
-        fontWeight: '700',
-        fontSize: 15,
-        fontFamily: 'Quicksand',
-        letterSpacing: 0.5,
     },
     trustStrip: {
         flexDirection: 'row',

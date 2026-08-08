@@ -587,8 +587,10 @@ export const getProductById = async (productId: string) => {
                 uid: true, 
                 name: true, 
                 slug: true, 
+                logo: true,
                 status: true,
                 freeShippingEnabled: true,
+                freeShippingThreshold: true,
                 meetUpPoint: true,
                 selfDeliveryEnabled: true
             } }

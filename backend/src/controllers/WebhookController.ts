@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import crypto from 'crypto';
 import prisma from '../utils/prismaUtils.js';
+import { PaymentStatus } from '../../generated/prisma/index.js';
+import { createOrdersFromSession } from './CheckoutController.js';
 
 export const webhookController = {
     async handleDiditWebhook(req: Request, res: Response) {
@@ -26,7 +28,6 @@ export const webhookController = {
         }
 
         // 4. Verify HMAC-SHA256 signature
-        // We expect req.body to be a raw Buffer (configured via express.raw in routes)
         if (!Buffer.isBuffer(req.body)) {
             console.error('Webhook payload is not a Buffer. Ensure express.raw() is used.');
             return res.status(500).json({ error: 'Internal server error' });
@@ -38,14 +39,12 @@ export const webhookController = {
             .update(rawBody)
             .digest('hex');
 
-        // Use constant-time comparison to prevent timing attacks
         try {
             if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
                 console.error('Webhook signature verification failed.');
                 return res.status(401).json({ error: 'Invalid signature' });
             }
         } catch (error) {
-            // This catches cases where the lengths of the buffers differ
             console.error('Webhook signature length mismatch.', error);
             return res.status(401).json({ error: 'Invalid signature length' });
         }
@@ -53,7 +52,7 @@ export const webhookController = {
         // 5. Respond 2xx ASAP, process asynchronously
         res.status(200).send('OK');
 
-        // 6. Process the webhook
+        // 6. Process the webhook payload
         try {
             const payload = JSON.parse(rawBody);
             const { status, vendor_data, webhook_type, decision } = payload;
@@ -63,7 +62,6 @@ export const webhookController = {
                 return;
             }
             
-            // Map vendor_data to Seller UID
             const sellerUid = parseInt(vendor_data, 10);
             if (isNaN(sellerUid)) {
                 console.log(`Didit Webhook ignored: vendor_data (${vendor_data}) is not a valid Seller UID.`);
@@ -78,18 +76,15 @@ export const webhookController = {
                             data: { status: 'ACTIVE', kycFlagged: false, rejectionReason: null }
                         });
                         break;
-                    case 'Declined':
-                        // Extract warnings from decision if available
+                    case 'Declined': {
                         let rejectionReason = 'Identity verification declined.';
-                        if (decision) {
-                            rejectionReason = JSON.stringify(decision); // Can be refined later based on decision object schema
-                        }
-                        
+                        if (decision) rejectionReason = JSON.stringify(decision);
                         await prisma.seller.update({
                             where: { uid: sellerUid },
                             data: { status: 'REJECTED', rejectionReason }
                         });
                         break;
+                    }
                     case 'In Review':
                         await prisma.seller.update({
                             where: { uid: sellerUid },
@@ -99,7 +94,6 @@ export const webhookController = {
                     case 'In Progress':
                     case 'Resubmitted':
                     case 'Not Started':
-                        // Just ensure it stays pending
                         await prisma.seller.update({
                             where: { uid: sellerUid },
                             data: { status: 'PENDING' }
@@ -108,19 +102,117 @@ export const webhookController = {
                     case 'Abandoned':
                     case 'Expired':
                     case 'KYC Expired':
-                        console.log(`Didit session ${status} for seller ${sellerUid}. Session expired/abandoned.`);
-                        // Optional: we could mark it REJECTED or add a specific note.
+                        console.log(`Didit session ${status} for seller ${sellerUid}.`);
                         break;
                     default:
                         console.log(`Unknown Didit status: ${status}`);
-                        break;
                 }
             } else {
                 console.log(`Didit Webhook ignored: unhandled webhook_type (${webhook_type}).`);
             }
         } catch (error) {
             console.error('Error processing Didit webhook payload:', error);
-            // Since we already responded 200, we just log this. 
+        }
+    },
+
+    async handlePaymongoWebhook(req: Request, res: Response): Promise<void> {
+        try {
+            const payload = req.body;
+
+            if (!payload || !payload.data) {
+                res.status(400).send('Invalid payload');
+                return;
+            }
+
+            const eventType = payload.data.attributes?.type;
+
+            if (eventType === 'checkout_session.payment.paid' || eventType === 'checkout.session.completed') {
+                const checkoutSessionData = payload.data.attributes.data;
+                const gatewayRef = checkoutSessionData.id; // cs_xxxx
+
+                // Find the payment record linked to this PayMongo checkout session
+                const payment = await prisma.payment.findFirst({
+                    where: { gatewayRef },
+                    include: { checkoutSession: true },
+                });
+
+                if (!payment) {
+                    console.log(`[Webhook] Payment not found for gatewayRef: ${gatewayRef}`);
+                    res.status(404).send('Payment not found');
+                    return;
+                }
+
+                if (payment.status === PaymentStatus.SUCCEEDED) {
+                    console.log(`[Webhook] Payment already succeeded: ${payment.uid}`);
+                    res.status(200).send('Already processed');
+                    return;
+                }
+
+                // Get PayMongo gateway fee (in centavos, convert to PHP)
+                const paymentsFromGateway = checkoutSessionData.attributes?.payments || [];
+                let totalFeeCentavos = 0;
+                if (paymentsFromGateway.length > 0) {
+                    totalFeeCentavos = paymentsFromGateway[0].attributes?.fee || 0;
+                }
+                const gatewayFeePhp = totalFeeCentavos / 100;
+
+                // ── IDEMPOTENT PAYMENT CONFIRMATION ─────────────────────────
+                // Re-read inside a transaction to guard against concurrent webhook retries.
+                const alreadyProcessed = await prisma.$transaction(async (tx) => {
+                    const lockedPayment = await tx.payment.findUnique({ where: { uid: payment.uid } });
+                    if (lockedPayment?.status === PaymentStatus.SUCCEEDED) return true;
+                    await tx.payment.update({
+                        where: { uid: payment.uid },
+                        data: { status: PaymentStatus.SUCCEEDED },
+                    });
+                    return false;
+                });
+
+                if (alreadyProcessed) {
+                    console.log(`[Webhook] Payment ${payment.uid} already processed (concurrent webhook). Skipping.`);
+                    res.status(200).send('Already processed');
+                    return;
+                }
+
+                // ── CREATE ORDERS ────────────────────────────────────────────
+                // Now that payment is confirmed, create orders using the shipping snapshot
+                // that was saved to the session before the PayMongo redirect.
+                console.log(`[Webhook] Payment ${payment.uid} confirmed. Creating orders for session ${payment.checkoutSessionId}...`);
+
+                const paymentWithSucceeded = { ...payment, status: PaymentStatus.SUCCEEDED };
+                const createdOrderIds = await createOrdersFromSession(payment.checkoutSessionId, paymentWithSucceeded as any);
+                console.log(`[Webhook] Orders created: ${createdOrderIds.join(', ')}`);
+
+                // ── DISTRIBUTE GATEWAY FEE PROPORTIONALLY ACROSS ORDERS ──────
+                // Deduct the PayMongo processing fee from seller earnings.
+                if (gatewayFeePhp > 0 && createdOrderIds.length > 0) {
+                    const orders = await prisma.order.findMany({ where: { uid: { in: createdOrderIds } } });
+                    const totalAmount = orders.reduce((sum, order) => sum + Number(order.total), 0);
+
+                    for (const order of orders) {
+                        const orderShare = totalAmount > 0 ? Number(order.total) / totalAmount : 1 / orders.length;
+                        const orderGatewayFee = gatewayFeePhp * orderShare;
+
+                        await prisma.order.update({
+                            where: { uid: order.uid },
+                            data: {
+                                sellerEarnings: Math.max(0, Number(order.sellerEarnings) - orderGatewayFee),
+                                platformFee: Number(order.platformFee) + orderGatewayFee,
+                            },
+                        });
+                    }
+                }
+
+                console.log(`[Webhook] Successfully processed payment ${payment.uid} → ${createdOrderIds.length} order(s).`);
+                res.status(200).send('Success');
+            } else {
+                res.status(200).send('Ignored');
+            }
+        } catch (error) {
+            console.error('[Webhook] Error processing PayMongo webhook:', error);
+            res.status(500).send('Internal Server Error');
         }
     }
 };
+
+

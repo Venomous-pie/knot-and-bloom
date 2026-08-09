@@ -206,6 +206,8 @@ model Order {
   estimatedDeliveryDate   DateTime?
   extensionCount          Int             @default(0)
   paymentMethod           String?
+  gatewayMethod           String?
+  gatewayRef              String?
   paymentStatus           PaymentStatus   @default(PENDING)
   platformFee             Decimal         @default(0)
   proofPhotos             String?
@@ -229,18 +231,19 @@ model Order {
 }
 
 model CheckoutSession {
-  uid            Int            @id @default(autoincrement())
-  cartSnapshot   String
-  lockedPrices   String
-  totalAmount    Decimal
-  status         CheckoutStatus @default(INITIATED)
-  expiresAt      DateTime
-  idempotencyKey String         @unique
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  userId         Int
-  user           User           @relation(fields: [userId], references: [uid])
-  payments       Payment[]
+  uid               Int            @id @default(autoincrement())
+  cartSnapshot      String
+  lockedPrices      String
+  totalAmount       Decimal
+  status            CheckoutStatus @default(INITIATED)
+  expiresAt         DateTime
+  idempotencyKey    String         @unique
+  shippingSnapshot  String?        // JSON: { shippingAddress, choices } — stored before PayMongo redirect
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  userId            Int
+  user              User           @relation(fields: [userId], references: [uid])
+  payments          Payment[]
 }
 
 model Payment {
@@ -249,6 +252,7 @@ model Payment {
   checkoutSessionId Int
   amount            Decimal
   method            String
+  gatewayMethod     String?
   status            PaymentStatus   @default(PENDING)
   gatewayRef        String?
   idempotencyKey    String          @unique

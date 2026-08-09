@@ -452,58 +452,55 @@ See [`.env.example`](.env.example) for the full structure. Key sections:
 | ImageKit | `IMAGEKIT_PRIVATE_KEY` |
 | AI | `GEMINI_API_KEY` |
 | SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` |
+| Payment Gateway | `PAYMONGO_SECRET_KEY`, `PAYMONGO_PUBLIC_KEY` |
+| Rate Limiting | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` |
+| Webhooks | `DIDIT_WEBHOOK_SECRET` |
 
 ---
 
-## Security
+## Seeded Accounts
 
-- **Password Hashing**: bcrypt (10 rounds)
-- **JWT**: Short-lived access tokens (7d) + rotating refresh tokens stored in DB
-- **OAuth**: One-time auth code exchange (no JWT in URL)
-- **Rate Limiting**: Global 100 req/min; dedicated 10 req/min for AI endpoints; strict per-IP login limiter
-- **Input Sanitisation**: XSS stripping on all request body fields
-- **SQL Injection**: Prevented by Prisma ORM
-- **Security Headers**: Helmet (HSTS, X-Frame-Options, X-Content-Type-Options, etc.)
+These accounts are created by the seed scripts and can be used during local development and testing. All accounts use the password **`Password123!`**.
 
----
+> Run `npx tsx src/scripts/seedAdmin.ts` and `npx tsx src/scripts/seedMainStore.ts` to populate the database.
 
-## Error Classes
+### 👑 Admin
 
-| Class | HTTP | Code |
-|-------|------|------|
-| `ValidationError` | 400 | `VALIDATION_ERROR` |
-| `BadRequestError` | 400 | `BAD_REQUEST` |
-| `InsufficientStockError` | 400 | `INSUFFICIENT_STOCK` |
-| `AuthenticationError` | 401 | `AUTHENTICATION_ERROR` |
-| `ForbiddenError` | 403 | `FORBIDDEN` |
-| `NotFoundError` | 404 | `NOT_FOUND` |
-| `DuplicateUserError` | 409 | `DUPLICATE_CUSTOMER` |
-| `DuplicateProductError` | 409 | `DUPLICATE_PRODUCT` |
-| `ConflictError` | 409 | `CONFLICT` |
-
-All routes use try-catch redirected to Express `errorHandlingMiddleware`.
+| Name | Email | Role | Notes |
+|------|-------|------|-------|
+| Knot & Bloom Admin | `admin@knotandbloom.com` | `ADMIN` | Owns the Knot & Bloom Official Store |
 
 ---
 
-## Key Features
+### 🛍️ Sellers
 
-### Multi-Vendor Order Splitting
-Checkout automatically splits a cart into separate orders per seller when items from multiple sellers are present.
+| Name | Email | Store | Location | Commission |
+|------|-------|-------|----------|------------|
+| Maria Santos | `maria.santos@knotbloom-seed.com` | Ami ni Maria | Antipolo City, Rizal | 12% |
+| Diane Reyes | `diane.reyes@knotbloom-seed.com` | The Crobag Studio | Mandaluyong City, Metro Manila | 12% |
+| Lena Cruz | `lena.cruz@knotbloom-seed.com` | Lena's Blooms | Los Baños, Laguna | 12% |
+| Luisa Mina | `luisa.mina@knotbloom-seed.com` | Lumina Beads | Pasig City, Metro Manila | 12% |
+| Leo Tolentino | `leo.tolentino@knotbloom-seed.com` | Pintura at Likha | Quezon City, Metro Manila | 12% |
 
-### Product Approval Workflow
-Sellers create products with status `PENDING`. Admin reviews and sets `ACTIVE` or `REJECTED`. Only `ACTIVE` products appear publicly.
+**Store highlights:**
+- **Ami ni Maria** — Amigurumi plushies and crochet keychains (Free shipping: No)
+- **The Crobag Studio** — Handmade crochet bags (Free shipping above ₱800)
+- **Lena's Blooms** — Fuzzy wire bouquets and flower arrangements (Free shipping: No)
+- **Lumina Beads** — Beaded jewelry and hair ties (Free shipping above ₱1,000)
+- **Pintura at Likha** — Canvas paintings and resin door decor (Self-delivery enabled)
 
-### Dynamic Shipping Fees
-Shipping fees are calculated based on fuel price, distance (coordinates), vehicle type, labor allowance, and floor fees — all configurable via `PlatformConfig` without redeployment.
+---
 
-### AI-Assisted Product Listing
-Sellers can generate product descriptions, SKUs, and option values using Google Gemini directly from the product creation form.
+### 👤 Buyers (Dummy — for seeded reviews only)
 
-### Refresh Token Rotation
-Every token refresh issues a new refresh token and invalidates the old one, preventing token replay attacks.
+| Name | Email | Role |
+|------|-------|------|
+| Juan Dela Cruz | `buyer0@knotbloom-seed.com` | `USER` |
+| Maria Clara | `buyer1@knotbloom-seed.com` | `USER` |
+| Andres Bonifacio | `buyer2@knotbloom-seed.com` | `USER` |
+| Jose Rizal | `buyer3@knotbloom-seed.com` | `USER` |
 
-### Soft Deletes
-Products and accounts are never permanently deleted immediately — `deletedAt` timestamp or 7-day grace period is used.
+> These buyer accounts exist solely to back the seeded product reviews. They are not intended for full checkout testing.
 
 ---
 

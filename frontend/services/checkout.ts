@@ -61,6 +61,7 @@ export interface ValidateCheckoutResponse {
 export interface PaymentResponse {
     success: boolean;
     paymentId?: number;
+    checkoutUrl?: string;
     gatewayRef?: string;
     message: string;
     error?: string;
@@ -88,10 +89,13 @@ export const checkoutAPI = {
     validate: (sessionId: number) =>
         apiClient.post<ValidateCheckoutResponse>(`/checkout/${sessionId}/validate`),
 
-    pay: (sessionId: number, paymentMethod: string, idempotencyKey: string) =>
+    pay: (sessionId: number, paymentMethod: string, idempotencyKey: string, shippingInfo?: any, choices?: Record<string, string>, paymentType?: string) =>
         apiClient.post<PaymentResponse>(`/checkout/${sessionId}/pay`, {
             paymentMethod,
             idempotencyKey,
+            shippingAddress: shippingInfo,
+            choices,
+            paymentType,
         }),
 
     complete: (sessionId: number, paymentId: number, idempotencyKey: string, shippingInfo?: any, choices?: Record<string, string>) =>

@@ -5,6 +5,7 @@ import type { Order } from '@/types/order';
 import ImageUploader from '../ImageUploader';
 import { orderAPI } from '@/services/api';
 import Button from '@/components/ui/Button';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 const P = '#B36979', P_LIGHT = '#FDEEF1', BG = '#F4F4F8', CARD = '#FFFFFF';
 const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5', GREEN = '#10B981', RED = '#EF4444', AMBER = '#F59E0B';
@@ -40,14 +41,7 @@ const getOrderProcessingDays = (order: Order): number => {
     return maxDays;
 };
 
-const getStatusColor = (status: string) => {
-    const map: Record<string, string> = {
-        PENDING: AMBER, CONFIRMED: BLUE, IN_PRODUCTION: INDIGO,
-        READY_TO_SHIP: PINK, SHIPPED: TEAL, DELIVERED: GREEN,
-        COMPLETED: GREEN, CANCELLED: RED, DISPUTED: RED,
-    };
-    return map[status] || SUB;
-};
+
 
 const isLate = (order: Order) => {
     if (['SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'REFUNDED'].includes(order.status)) return false;
@@ -63,7 +57,6 @@ interface Props {
 
 export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }: Props) {
     const late = isLate(order);
-    const statusColor = getStatusColor(order.status);
     const [submitting, setSubmitting] = React.useState(false);
     
     // Progress Images State
@@ -229,11 +222,7 @@ export default function OrderCard({ order, onOpenModal, onQuickAction, onClose }
                                 </View>
                             </View>
                         </View>
-                        <View style={[s.statusBadge, { backgroundColor: statusColor + '20', marginTop: 0 }]}>
-                            <Text style={[s.statusText, { color: statusColor }]}>
-                                {order.status.replace(/_/g, ' ')}
-                            </Text>
-                        </View>
+                        <StatusBadge status={order.status} style={{ marginTop: 0 }} />
                     </View>
 
                 <View style={s.infoGrid}>

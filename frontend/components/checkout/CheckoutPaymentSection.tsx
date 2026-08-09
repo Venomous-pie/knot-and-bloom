@@ -4,10 +4,13 @@ import { Check, Banknote } from 'lucide-react-native';
 import { theme } from '@/constants/theme';
 
 export type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'maribank';
+export type DepositPaymentMethod = 'gcash' | 'paymaya' | 'maribank' | 'card';
 
 interface CheckoutPaymentSectionProps {
     paymentMethod: PaymentMethod;
     onSelect: (method: PaymentMethod) => void;
+    depositPaymentMethod?: DepositPaymentMethod;
+    onDepositSelect?: (method: DepositPaymentMethod) => void;
     isCodAllowed: boolean;
     codDepositPercent: number;
     codReason?: string | null;
@@ -18,6 +21,8 @@ interface CheckoutPaymentSectionProps {
 export function CheckoutPaymentSection({
     paymentMethod,
     onSelect,
+    depositPaymentMethod = 'gcash',
+    onDepositSelect,
     isCodAllowed,
     codDepositPercent,
     codReason,
@@ -98,19 +103,42 @@ export function CheckoutPaymentSection({
 
             {/* COD Deposit Warning */}
             {paymentMethod === 'cod' && codDepositPercent > 0 && (
-                <View style={styles.splitContainer}>
+                <View style={[styles.splitContainer, { padding: 16 }]}>
                     {codReason && (
-                        <Text style={{ fontSize: 12, color: '#F59E0B', marginBottom: 8, fontWeight: '600' }}>
+                        <Text style={{ fontSize: 13, color: '#D97706', marginBottom: 12, fontWeight: '600' }}>
                             ⚠️ {codReason}
                         </Text>
                     )}
                     <View style={styles.splitRow}>
                         <Text style={styles.splitLabel}>Due Now ({codDepositPercent}% Deposit):</Text>
-                        <Text style={styles.splitValue}>₱{(grandTotal * (codDepositPercent / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                        <Text style={styles.splitValue}>₱{(totalAmount * (codDepositPercent / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     </View>
                     <View style={styles.splitRow}>
                         <Text style={styles.splitLabel}>Due on Delivery ({100 - codDepositPercent}%):</Text>
-                        <Text style={styles.splitValue}>₱{(grandTotal * ((100 - codDepositPercent) / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                        <Text style={styles.splitValue}>₱{((totalAmount * ((100 - codDepositPercent) / 100)) + shippingFee).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                    </View>
+
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.text, marginTop: 16, marginBottom: 8 }}>
+                        Pay deposit via:
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                        {(['gcash', 'paymaya', 'maribank'] as const).map(method => (
+                            <Pressable 
+                                key={method}
+                                style={[
+                                    styles.depositChip, 
+                                    depositPaymentMethod === method && styles.depositChipSelected
+                                ]}
+                                onPress={() => onDepositSelect?.(method)}
+                            >
+                                <Text style={[
+                                    styles.depositChipText, 
+                                    depositPaymentMethod === method && styles.depositChipTextSelected
+                                ]}>
+                                    {method === 'gcash' ? 'GCash' : method === 'paymaya' ? 'Maya' : 'MariBank'}
+                                </Text>
+                            </Pressable>
+                        ))}
                     </View>
                 </View>
             )}
@@ -135,55 +163,76 @@ export function CheckoutPaymentSection({
 const styles = StyleSheet.create({
     paymentMethods: {
         flexDirection: 'column',
-        gap: 8,
+        gap: 12,
     },
     chip: {
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 8,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: theme.roundness.md,
         backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
     },
     chipSelected: {
         borderColor: theme.colors.primary,
-        backgroundColor: theme.colors.primaryLight + '10',
+        backgroundColor: `${theme.colors.primary}08`,
     },
     chipText: {
-        color: theme.colors.text,
+        fontSize: 15,
         fontWeight: '500',
+        color: theme.colors.text,
         fontFamily: theme.typography.fontFamily,
-        fontSize: 14,
     },
     chipTextSelected: {
         color: theme.colors.primary,
         fontWeight: '600',
     },
+    depositChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.surface,
+    },
+    depositChipSelected: {
+        borderColor: theme.colors.primary,
+        backgroundColor: `${theme.colors.primary}10`,
+    },
+    depositChipText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: theme.colors.textSecondary,
+    },
+    depositChipTextSelected: {
+        color: theme.colors.primary,
+        fontWeight: '600',
+    },
     splitContainer: {
-        width: '100%',
-        marginTop: 12,
-        padding: 12,
-        backgroundColor: theme.colors.primaryLight + '20',
-        borderRadius: 8,
+        marginTop: 4,
+        padding: 16,
+        backgroundColor: '#FFFBEB',
+        borderRadius: theme.roundness.md,
+        borderWidth: 1,
+        borderColor: '#FEF3C7',
     },
     splitRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 4,
+        alignItems: 'center',
+        paddingVertical: 4,
     },
     splitLabel: {
         fontSize: 14,
-        color: theme.colors.text,
-        fontWeight: '500',
+        color: theme.colors.textSecondary,
         fontFamily: theme.typography.fontFamily,
     },
     splitValue: {
         fontSize: 14,
-        color: theme.colors.primary,
-        fontWeight: '700',
+        fontWeight: '600',
+        color: theme.colors.text,
         fontFamily: theme.typography.fontFamily,
     },
 });

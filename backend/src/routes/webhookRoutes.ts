@@ -9,4 +9,7 @@ const router = Router();
 // This route must be mounted BEFORE the global express.json() middleware in index.ts.
 router.post('/didit', express.raw({ type: 'application/json' }), webhookController.handleDiditWebhook);
 
+// PayMongo webhook (we'll just use express.json() here since we aren't doing strict HMAC verification yet)
+router.post('/paymongo', express.json(), webhookController.handlePaymongoWebhook);
+
 export default router;

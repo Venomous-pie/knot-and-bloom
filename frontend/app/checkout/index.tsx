@@ -252,6 +252,7 @@ function CheckoutContent() {
 
     // Payment method
     const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'maribank'>('cod');
+    const [depositPaymentMethod, setDepositPaymentMethod] = useState<'gcash' | 'paymaya' | 'maribank' | 'card'>('gcash');
     const [sellerNotes, setSellerNotes] = useState<Record<number, string>>({});
 
     // Session Expiration State
@@ -413,15 +414,27 @@ function CheckoutContent() {
             // Map frontend payment method to backend expected values
             let backendPaymentMethod = 'MOCK_WALLET'; // Default fallback
             if (paymentMethod === 'cod') backendPaymentMethod = 'COD';
-            else if (paymentMethod === 'maribank') backendPaymentMethod = 'MOCK_BANK';
-            else if (paymentMethod === 'gcash' || paymentMethod === 'paymaya') backendPaymentMethod = 'MOCK_WALLET';
+            else if (paymentMethod === 'maribank') backendPaymentMethod = 'MARIBANK';
+            else if (paymentMethod === 'gcash') backendPaymentMethod = 'GCASH';
+            else if (paymentMethod === 'paymaya') backendPaymentMethod = 'PAYMAYA';
 
-            const result = await processPayment(backendPaymentMethod);
+            let paymentType = 'FULL';
+            if (paymentMethod === 'cod' && codDepositPercent > 0) {
+                paymentType = 'COD_DEPOSIT';
+                backendPaymentMethod = depositPaymentMethod.toUpperCase();
+            }
+
+            const result = await processPayment(backendPaymentMethod, shippingData, paymentType);
             if (result) {
-                // If payment successful (returns paymentId), complete the order
-                const success = await completeCheckout(result, shippingData);
-                if (success) {
-                    router.replace('/checkout/success' as any);
+                if (result.checkoutUrl) {
+                    // Redirect to PayMongo hosted checkout page
+                    window.location.href = result.checkoutUrl;
+                } else {
+                    // Synchronous payment (like COD), complete immediately
+                    const success = await completeCheckout(result.paymentId, shippingData);
+                    if (success) {
+                        router.replace('/checkout/success' as any);
+                    }
                 }
             }
         }
@@ -694,6 +707,8 @@ function CheckoutContent() {
                                         <CheckoutPaymentSection
                                             paymentMethod={paymentMethod}
                                             onSelect={setPaymentMethod}
+                                            depositPaymentMethod={depositPaymentMethod}
+                                            onDepositSelect={setDepositPaymentMethod}
                                             isCodAllowed={isCodAllowed}
                                             codDepositPercent={codDepositPercent}
                                             codReason={codInfo?.reason}
@@ -734,6 +749,8 @@ function CheckoutContent() {
                             <CheckoutPaymentSection
                                 paymentMethod={paymentMethod}
                                 onSelect={setPaymentMethod}
+                                depositPaymentMethod={depositPaymentMethod}
+                                onDepositSelect={setDepositPaymentMethod}
                                 isCodAllowed={isCodAllowed}
                                 codDepositPercent={codDepositPercent}
                                 codReason={codInfo?.reason}

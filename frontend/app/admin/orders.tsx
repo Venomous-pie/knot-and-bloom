@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Animated, RefreshControl, StyleSheet, Text, View, Platform, TouchableOpacity, ScrollView, TextInput } from "react-native";
 import { Search, Filter, ShoppingBag, CheckCircle, Clock, AlertTriangle, Truck, Package, XCircle, DollarSign, Users } from 'lucide-react-native';
 import StatCard from "@/components/ui/StatCard";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -20,20 +21,7 @@ const TEAL = '#14B8A6';
 const BLUE = '#3B82F6';
 const PINK = '#EC4899';
 
-const getStatusColor = (status: string) => {
-    switch (status) {
-        case 'PENDING': return AMBER;
-        case 'CONFIRMED': return BLUE;
-        case 'IN_PRODUCTION': return INDIGO;
-        case 'READY_TO_SHIP': return PINK;
-        case 'SHIPPED': return GREEN;
-        case 'DELIVERED': return TEAL;
-        case 'COMPLETED': return GREEN;
-        case 'CANCELLED': return RED;
-        case 'DISPUTED': return RED;
-        default: return SUB;
-    }
-};
+
 
 const getStatusIcon = (status: string) => {
     switch (status) {
@@ -134,10 +122,7 @@ export default function AdminOrders() {
 
                 {/* Status */}
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <View style={[s.compactBadge, { backgroundColor: getStatusColor(o.status) + '15' }]}>
-                        {getStatusIcon(o.status)}
-                        <Text style={[s.compactBadgeText, { color: getStatusColor(o.status) }]}>{o.status.replace(/_/g, ' ')}</Text>
-                    </View>
+                    <StatusBadge status={o.status} />
                 </View>
 
                 {/* Platform Earnings */}

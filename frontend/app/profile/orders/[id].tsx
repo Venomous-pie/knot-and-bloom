@@ -2,9 +2,10 @@ import { orderAPI } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getStatusColor,
-  getStatusBgColor,
   getStatusLabel,
+  getStatusBgColor,
 } from "@/utils/orderStatus";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   RelativePathString,
   useLocalSearchParams,
@@ -305,21 +306,7 @@ export default function OrderDetailsPage() {
           <Text style={styles.title}>
             Order #{order.referenceNumber || order.uid}
           </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              { backgroundColor: getStatusBgColor(order.status) },
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusText,
-                { color: getStatusColor(order.status) },
-              ]}
-            >
-              {order.status.replace(/_/g, " ")}
-            </Text>
-          </View>
+          <StatusBadge status={order.status} />
         </View>
         <Text style={styles.date}>
           Placed on {new Date(order.uploaded).toLocaleDateString()} at{" "}

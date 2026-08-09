@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import fetch from 'node-fetch';
 
 export interface PaymentRequest {
     amount: number;
@@ -6,97 +7,140 @@ export interface PaymentRequest {
     idempotencyKey: string;
     userId: number;
     metadata?: Record<string, any>;
+    lineItems?: { name: string; amount: number; quantity: number }[];
 }
 
 export interface PaymentResult {
     success: boolean;
     gatewayRef?: string;
+    checkoutUrl?: string; // New field for PayMongo Checkout URL
     errorMessage?: string;
     errorCode?: string;
 }
 
-// Simulated payment processing delay range (ms)
-const MIN_PROCESSING_TIME = 500;
-const MAX_PROCESSING_TIME = 2000;
-
-// Simulated failure rate for testing (0-1)
-const SIMULATED_FAILURE_RATE = 0; // Disabled for testing
-
-/**
- * Mock Payment Gateway Service
- * Simulates payment processing with configurable delays and failure rates.
- * Replace with real payment gateway (Stripe, PayPal, etc.) for production.
- */
 export const PaymentService = {
-    /**
-     * Process a payment through the mock gateway
-     * @param request Payment request details
-     * @param timeoutMs Maximum time to wait for response (default 30 seconds)
-     */
     processPayment: async (request: PaymentRequest, timeoutMs: number = 30000): Promise<PaymentResult> => {
-        const startTime = Date.now();
-
-        // Create a promise that rejects after timeout
-        const timeoutPromise = new Promise<PaymentResult>((_, reject) => {
-            setTimeout(() => {
-                reject(new Error('Payment gateway timeout'));
-            }, timeoutMs);
-        });
-
-        // Create the actual payment processing promise
-        const paymentPromise = new Promise<PaymentResult>(async (resolve) => {
-            // Simulate network delay
-            const processingTime = Math.random() * (MAX_PROCESSING_TIME - MIN_PROCESSING_TIME) + MIN_PROCESSING_TIME;
-            await new Promise(r => setTimeout(r, processingTime));
-
-            // COD always succeeds (payment collected on delivery)
+        try {
+            // COD always succeeds immediately locally (payment collected on delivery)
             if (request.method.toUpperCase() === 'COD') {
-                resolve({
+                return {
                     success: true,
                     gatewayRef: `COD_${uuidv4().substring(0, 8).toUpperCase()}`,
-                });
-                return;
+                };
             }
 
-            // Simulate random failures for card/wallet methods (for testing)
-            if (Math.random() < SIMULATED_FAILURE_RATE) {
-                const failureTypes = request.method.toUpperCase().includes('WALLET')
-                    ? [
-                        { errorMessage: 'Wallet balance insufficient', errorCode: 'INSUFFICIENT_BALANCE' },
-                        { errorMessage: 'Wallet account locked', errorCode: 'ACCOUNT_LOCKED' },
-                    ]
-                    : [
-                        { errorMessage: 'Card declined', errorCode: 'CARD_DECLINED' },
-                        { errorMessage: 'Insufficient funds', errorCode: 'INSUFFICIENT_FUNDS' },
-                        { errorMessage: 'Card expired', errorCode: 'CARD_EXPIRED' },
-                        { errorMessage: 'Invalid card number', errorCode: 'INVALID_CARD' },
-                    ];
-                const failure = failureTypes[Math.floor(Math.random() * failureTypes.length)];
-                resolve({
+            // PAYMONGO INTEGRATION
+            const secretKey = process.env.PAYMONGO_SECRET_KEY;
+            if (!secretKey) {
+                console.error('[PaymentService] PAYMONGO_SECRET_KEY is missing in .env');
+                return {
                     success: false,
-                    ...failure,
-                });
-                return;
+                    errorMessage: 'Payment gateway configuration error',
+                    errorCode: 'CONFIG_ERROR',
+                };
             }
 
-            // Success - generate a mock gateway reference
-            const gatewayRef = `MOCK_${uuidv4().substring(0, 8).toUpperCase()}`;
+            // Map internal method to PayMongo payment_method_types
+            const methodMap: Record<string, string[]> = {
+                'GCASH': ['gcash'],
+                'PAYMAYA': ['paymaya'],
+                'MARIBANK': ['qrph'],
+                'CARD': ['card']
+            };
+            
+            const paymentMethodTypes = methodMap[request.method.toUpperCase()] || ['gcash', 'paymaya', 'card', 'qrph'];
 
-            resolve({
+            const amountInCentavos = Math.round(request.amount * 100);
+
+            // Map line items to PayMongo format, converting amounts to centavos
+            const paymongoLineItems = request.lineItems && request.lineItems.length > 0 
+                ? request.lineItems.map(item => ({
+                    currency: 'PHP',
+                    amount: Math.round(item.amount * 100),
+                    name: item.name,
+                    quantity: item.quantity
+                }))
+                : [
+                    {
+                        currency: 'PHP',
+                        amount: amountInCentavos,
+                        name: 'Knot & Bloom Order',
+                        quantity: 1
+                    }
+                ];
+
+            // Determine redirect URLs
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
+            const sessionId = request.metadata?.sessionId;
+            const successUrl = `${frontendUrl}/checkout/pending?session_id=${sessionId}`;
+            const cancelUrl = `${frontendUrl}/checkout`;
+
+            const paymongoPayload = {
+                data: {
+                    attributes: {
+                        line_items: paymongoLineItems,
+                        payment_method_types: paymentMethodTypes,
+                        success_url: successUrl,
+                        cancel_url: cancelUrl,
+                        reference_number: request.idempotencyKey,
+                        metadata: {
+                            userId: request.userId.toString(),
+                            ...request.metadata
+                        }
+                    }
+                }
+            };
+
+            const encodedKey = Buffer.from(`${secretKey}:`).toString('base64');
+
+            // Use AbortController for timeout
+            const controller = new AbortController();
+            const timeout = setTimeout(() => {
+                controller.abort();
+            }, timeoutMs);
+
+            const response = await fetch('https://api.paymongo.com/v1/checkout_sessions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Basic ${encodedKey}`
+                },
+                body: JSON.stringify(paymongoPayload),
+                signal: controller.signal as any
+            });
+
+            clearTimeout(timeout);
+
+            const responseData: any = await response.json();
+
+            if (!response.ok) {
+                console.error('[PaymentService] PayMongo Error:', responseData);
+                const firstError = responseData.errors?.[0];
+                return {
+                    success: false,
+                    errorMessage: firstError?.detail || 'Payment gateway error',
+                    errorCode: firstError?.code || 'GATEWAY_ERROR'
+                };
+            }
+
+            const checkoutUrl = responseData.data.attributes.checkout_url;
+            const gatewayRef = responseData.data.id; // The checkout session ID
+
+            return {
                 success: true,
                 gatewayRef,
-            });
-        });
+                checkoutUrl
+            };
 
-        try {
-            // Race between payment processing and timeout
-            const result = await Promise.race([paymentPromise, timeoutPromise]);
-
-            const elapsed = Date.now() - startTime;
-
-            return result;
-        } catch (error) {
+        } catch (error: any) {
             console.error('[PaymentService] Payment failed:', error);
+            if (error.name === 'AbortError') {
+                return {
+                    success: false,
+                    errorMessage: 'Payment gateway timeout',
+                    errorCode: 'TIMEOUT',
+                };
+            }
             return {
                 success: false,
                 errorMessage: error instanceof Error ? error.message : 'Unknown payment error',
@@ -105,42 +149,26 @@ export const PaymentService = {
         }
     },
 
-    /**
-     * Poll payment status (for async payment flows)
-     * In a real implementation, this would query the payment gateway
-     */
     getPaymentStatus: async (gatewayRef: string): Promise<'pending' | 'succeeded' | 'failed'> => {
-        // Mock implementation - in real scenario, query the gateway
-        // For now, assume all completed payments succeeded
-        return 'succeeded';
+        // We will implement this if needed, or rely on webhooks
+        return 'pending'; 
     },
 
-    /**
-     * Refund a payment
-     */
     refundPayment: async (gatewayRef: string, amount: number): Promise<PaymentResult> => {
-        // Simulate refund processing
-        await new Promise(r => setTimeout(r, 500));
-
         return {
-            success: true,
-            gatewayRef: `REFUND_${gatewayRef}`,
+            success: false,
+            errorMessage: 'Refunds not automatically implemented yet',
+            errorCode: 'NOT_IMPLEMENTED',
         };
     },
 
-    /**
-     * Validate payment method (basic validation)
-     */
     validatePaymentMethod: (method: string): boolean => {
-        const validMethods = ['MOCK_CARD', 'MOCK_WALLET', 'COD'];
+        const validMethods = ['CARD', 'GCASH', 'PAYMAYA', 'MARIBANK', 'COD'];
         return validMethods.includes(method.toUpperCase());
     },
 
-    /**
-     * Get available payment methods
-     */
     getAvailableMethods: (): string[] => {
-        return ['MOCK_CARD', 'MOCK_WALLET', 'COD'];
+        return ['CARD', 'GCASH', 'PAYMAYA', 'MARIBANK', 'COD'];
     },
 };
 

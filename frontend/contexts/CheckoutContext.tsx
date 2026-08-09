@@ -55,8 +55,8 @@ interface CheckoutContextType extends CheckoutState {
     initiateCheckout: (selectedItemIds: number[]) => Promise<boolean>;
     setShippingInfo: (info: ShippingInfo) => void;
     validateAndProceedToPayment: () => Promise<boolean>;
-    processPayment: (paymentMethod: string) => Promise<number | null>;
-    completeCheckout: (paymentIdOverride?: number, shippingInfoOverride?: ShippingInfo) => Promise<boolean>;
+    processPayment: (paymentMethod: string, shippingInfoOverride?: any, paymentType?: string) => Promise<{ paymentId: number, checkoutUrl?: string } | null>;
+    completeCheckout: (paymentId: number, shippingInfoOverride?: any) => Promise<boolean>;
     cancelCheckout: () => Promise<void>;
     setStep: (step: CheckoutStep) => void;
     clearError: () => void;
@@ -283,7 +283,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [state.sessionId]);
 
-    const processPayment = useCallback(async (paymentMethod: string): Promise<number | null> => {
+    const processPayment = useCallback(async (paymentMethod: string, shippingInfoOverride?: any, paymentType?: string): Promise<{ paymentId: number, checkoutUrl?: string } | null> => {
         if (!state.sessionId) {
             setState(prev => ({ ...prev, error: 'No active checkout session' }));
             return null;
@@ -298,10 +298,18 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                 error: null,
             }));
 
+            const stringifiedChoices: Record<string, string> = {};
+            for (const [k, v] of Object.entries(state.choices)) {
+                stringifiedChoices[k.toString()] = v;
+            }
+
             const response = await checkoutAPI.pay(
                 state.sessionId,
                 paymentMethod,
-                paymentIdempotencyKey || generateIdempotencyKey()
+                paymentIdempotencyKey || generateIdempotencyKey(),
+                shippingInfoOverride ?? state.shippingInfo,
+                stringifiedChoices,
+                paymentType
             );
             const data = response.data;
 
@@ -312,7 +320,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                     isProcessing: false,
                     statusMessage: null,
                 }));
-                return data.paymentId;
+                return { paymentId: data.paymentId, checkoutUrl: data.checkoutUrl };
             } else {
                 throw new Error(data.message || 'Payment failed');
             }

@@ -45,7 +45,7 @@ export function CheckoutOrderSummary({
 
     const placeOrderLabel = paymentMethod === 'cod'
         ? (codDepositPercent > 0
-            ? `Pay Deposit ₱${(grandTotal * (codDepositPercent / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            ? `Pay Deposit ₱${(totalAmount * (codDepositPercent / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             : 'Place Order (Pay on Delivery)')
         : 'Place Order';
 

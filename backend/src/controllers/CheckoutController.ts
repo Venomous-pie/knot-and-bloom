@@ -189,19 +189,16 @@ const initiateCheckout = async (req: Request, res: Response): Promise<void> => {
         const codAllowedByProducts = productsWithCodDisabled.length === 0;
         const codDisabledProductNames = productsWithCodDisabled.map(p => p.name);
 
-        // 2. Check customer's cancellation count
-        const customer = await prisma.user.findUnique({
-            where: { uid: Number(userId) },
-            select: { codCancellationCount: true }
-        });
-        const isRepeatOffender = (customer?.codCancellationCount ?? 0) >= 2;
-        const codDepositPercent = isRepeatOffender ? 20 : 0;
+        // 2. COD Universal Escrow Deposit
+        // All COD orders require a 20% upfront digital deposit to ensure platform commitment
+        const codDepositPercent = 20;
 
         const codInfo = {
             allowed: codAllowedByProducts,
             depositPercent: codDepositPercent,
-            disabledBy: codAllowedByProducts ? null : codDisabledProductNames,
-            reason: !codAllowedByProducts ? 'Some products do not allow COD' : (isRepeatOffender ? 'A 20% deposit is required due to previous cancellations.' : null)
+            reason: !codAllowedByProducts
+                ? `Cash on delivery is disabled for the following products: ${codDisabledProductNames.join(', ')}`
+                : `A ${codDepositPercent}% deposit is required for all Cash on Delivery orders to reserve your items.`,
         };
 
         res.status(201).json({
@@ -457,7 +454,7 @@ const validateCheckout = async (req: Request, res: Response): Promise<void> => {
 const processPayment = async (req: Request, res: Response): Promise<void> => {
     try {
         const { sessionId } = req.params;
-        const { paymentMethod, idempotencyKey } = req.body;
+        const { paymentMethod, idempotencyKey, shippingAddress, choices, paymentType } = req.body;
 
         if (!paymentMethod || !idempotencyKey) {
             res.status(400).json({
@@ -521,11 +518,17 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
         });
 
         if (existingPayment) {
-            // Return existing payment result (idempotent)
+            // Idempotent return — also re-surface the checkoutUrl for PROCESSING payments
+            // so the frontend can still redirect the user if they somehow re-submitted.
+            const isPaymongoAsync = existingPayment.status === PaymentStatus.PROCESSING && !!existingPayment.gatewayRef;
             res.status(200).json({
-                success: existingPayment.status === PaymentStatus.SUCCEEDED,
+                success: existingPayment.status === PaymentStatus.SUCCEEDED || isPaymongoAsync,
                 paymentId: existingPayment.uid,
                 status: existingPayment.status,
+                // For async PayMongo sessions, reconstruct the checkout URL so the frontend can redirect
+                checkoutUrl: isPaymongoAsync
+                    ? `https://checkout.paymongo.com/checkout_sessions/${existingPayment.gatewayRef}`
+                    : undefined,
                 message: 'Existing payment returned (idempotent response).',
                 isExisting: true,
             });
@@ -538,38 +541,33 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
             data: { status: CheckoutStatus.PROCESSING_PAYMENT },
         });
 
-        // Fetch customer to check COD eligibility
-        const customer = await prisma.user.findUnique({
-            where: { uid: session.userId },
-            select: { codCancellationCount: true }
-        });
-
-        // COD Logic: Standard vs Restricted
-        // Standard: 0% Deposit
-        // Restricted (Repeat Offender): 20% Deposit
+        // Determine charge amount and actual method to save
         let chargeAmount = Number(session.totalAmount);
-        let requiresDeposit = false;
+        let actualPaymentMethodToSave = paymentMethod.toUpperCase();
+        let gatewayMethodToUse = paymentMethod.toUpperCase();
 
-        if (paymentMethod === 'COD') {
-            const isRepeatOffender = (customer?.codCancellationCount || 0) >= 2;
-
-            if (isRepeatOffender) {
-                // Require 20% deposit for risky users
-                chargeAmount = chargeAmount * 0.20;
-                requiresDeposit = true;
-            } else {
-                // Standard COD = No upfront charge
-                chargeAmount = 0;
-            }
+        if (paymentType === 'COD_DEPOSIT') {
+            // It's a COD transaction requiring a deposit
+            actualPaymentMethodToSave = 'COD';
+            gatewayMethodToUse = paymentMethod.toUpperCase(); // e.g. GCASH, PAYMAYA
+            chargeAmount = chargeAmount * 0.20;
+        } else if (paymentMethod.toUpperCase() === 'COD') {
+            // Standard COD without a deposit is no longer allowed.
+            res.status(400).json({
+                success: false,
+                error: 'DEPOSIT_REQUIRED',
+                message: 'A 20% deposit is required for all Cash on Delivery orders.'
+            });
+            return;
         }
-
 
         // Create payment record
         const payment = await prisma.payment.create({
             data: {
                 checkoutSessionId: session.uid,
                 amount: chargeAmount,
-                method: paymentMethod.toUpperCase(),
+                method: actualPaymentMethodToSave,
+                gatewayMethod: gatewayMethodToUse,
                 status: PaymentStatus.PROCESSING,
                 idempotencyKey,
             },
@@ -577,28 +575,71 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
 
         AuditService.logPayment('PAYMENT_INITIATED', payment.uid, session.userId, {
             amount: chargeAmount,
-            method: paymentMethod,
+            method: actualPaymentMethodToSave,
+            gatewayMethod: gatewayMethodToUse,
         });
+
+        let lineItems: { name: string; amount: number; quantity: number }[] | undefined;
+        try {
+            const lockedPrices = JSON.parse(session.lockedPrices);
+            
+            if (paymentType === 'COD_DEPOSIT') {
+                lineItems = [
+                    {
+                        name: 'Knot & Bloom Order (20% COD Deposit)',
+                        amount: chargeAmount,
+                        quantity: 1
+                    }
+                ];
+            } else {
+                lineItems = lockedPrices.map((item: any) => ({
+                    name: item.productName + (item.variantName ? ` - ${item.variantName}` : ''),
+                    amount: Number(item.finalPrice),
+                    quantity: Number(item.quantity)
+                }));
+            }
+        } catch (e) {
+            console.error('Failed to parse lockedPrices for lineItems', e);
+        }
 
         // Process payment through gateway
         const paymentResult = await PaymentService.processPayment({
             amount: chargeAmount,
-            method: paymentMethod,
+            method: gatewayMethodToUse,
             idempotencyKey,
             userId: session.userId,
+            metadata: { sessionId: String(session.uid) },
+            ...(lineItems && { lineItems }),
         }, PAYMENT_TIMEOUT_MS);
 
         if (paymentResult.success) {
+            const isAsyncPayment = !!paymentResult.checkoutUrl;
+
+            if (isAsyncPayment) {
+                // ── PayMongo async flow ────────────────────────────────────
+                // Save shipping info to the session BEFORE redirecting the user
+                // so the webhook has everything it needs to create orders later.
+                if (shippingAddress) {
+                    await prisma.checkoutSession.update({
+                        where: { uid: session.uid },
+                        data: {
+                            shippingSnapshot: JSON.stringify({ shippingAddress, choices: choices || {} }),
+                            status: CheckoutStatus.AWAITING_PAYMENT,
+                        },
+                    });
+                }
+            }
+            
             // Update payment record
             await prisma.payment.update({
                 where: { uid: payment.uid },
                 data: {
-                    status: PaymentStatus.SUCCEEDED,
+                    status: isAsyncPayment ? PaymentStatus.PROCESSING : PaymentStatus.SUCCEEDED,
                     gatewayRef: paymentResult.gatewayRef ?? null,
                 },
             });
 
-            AuditService.logPayment('PAYMENT_SUCCEEDED', payment.uid, session.userId, {
+            AuditService.logPayment(isAsyncPayment ? 'PAYMENT_PENDING_GATEWAY' : 'PAYMENT_SUCCEEDED', payment.uid, session.userId, {
                 gatewayRef: paymentResult.gatewayRef,
             });
 
@@ -606,7 +647,8 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
                 success: true,
                 paymentId: payment.uid,
                 gatewayRef: paymentResult.gatewayRef,
-                message: 'Payment processed successfully.',
+                checkoutUrl: paymentResult.checkoutUrl,
+                message: isAsyncPayment ? 'Redirecting to payment gateway...' : 'Payment processed successfully.',
             });
         } else {
             // Update payment record
@@ -644,6 +686,235 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
         });
     }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED ORDER CREATION HELPER
+// Called by completeCheckout (COD) and WebhookController (PayMongo confirmation)
+// ─────────────────────────────────────────────────────────────────────────────
+export async function createOrdersFromSession(
+    sessionId: number,
+    payment: { uid: number; method: string; amount: number | any; status: string; idempotencyKey: string; gatewayMethod?: string | null; gatewayRef?: string | null; }
+): Promise<number[]> {
+    const session = await prisma.checkoutSession.findUnique({
+        where: { uid: sessionId },
+    });
+
+    if (!session) throw new Error(`Session ${sessionId} not found`);
+
+    // Resolve shipping data — for COD it comes from completeCheckout body,
+    // for PayMongo it was saved to shippingSnapshot before the redirect.
+    let shippingAddress: any = null;
+    let choices: Record<string, string> = {};
+
+    if (session.shippingSnapshot) {
+        const snap = JSON.parse(session.shippingSnapshot);
+        shippingAddress = snap.shippingAddress;
+        choices = snap.choices || {};
+    }
+
+    const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
+    const itemsBySeller = groupItemsBySeller(lockedPrices);
+    const idempotencyKey = session.idempotencyKey;
+
+    const createdOrderIds = await prisma.$transaction(async (tx) => {
+        const orderIds: number[] = [];
+        let orderIndex = 0;
+
+        // Decrement stock & increment soldCount
+        for (const item of lockedPrices) {
+            try {
+                await tx.product.update({
+                    where: { uid: item.productId },
+                    data: { soldCount: { increment: item.quantity } },
+                });
+            } catch (error) {
+                console.error(`Failed to update soldCount for product ${item.productId}`, error);
+            }
+
+            if (item.variantId) {
+                const result = await tx.productVariant.updateMany({
+                    where: {
+                        uid: item.variantId,
+                        stock: { gte: item.quantity },
+                        reservedStock: { gte: item.quantity },
+                    },
+                    data: {
+                        stock: { decrement: item.quantity },
+                        reservedStock: { decrement: item.quantity },
+                        soldCount: { increment: item.quantity },
+                    },
+                });
+                if (result.count === 0) {
+                    throw new Error(`Insufficient stock for ${item.productName} (${item.variantName})`);
+                }
+            }
+        }
+
+        const config = await getShippingConfig();
+
+        for (const [sellerId, sellerItems] of itemsBySeller) {
+            orderIndex++;
+
+            const orderSubtotal = sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0);
+
+            const seller = await tx.seller.findUnique({ where: { uid: sellerId! } });
+
+            const shippingResult = await resolveSellerShipping(
+                seller as any,
+                shippingAddress,
+                ((choices && choices[sellerId!]) ? choices[sellerId!] : 'DELIVERY') as 'PICKUP' | 'DELIVERY',
+                config,
+                orderSubtotal
+            );
+
+            const orderShippingFee = shippingResult.fee;
+            const commissionRate = seller?.commissionRate ? Number(seller.commissionRate) : 0.05;
+            const sellerPlatformFee = Number((orderSubtotal * commissionRate).toFixed(2));
+            const totalPlatformFee = sellerPlatformFee;
+            const sellerEarnings = Number((orderSubtotal - sellerPlatformFee).toFixed(2));
+            const orderTotalWithShippingAndFees = orderSubtotal + orderShippingFee;
+            const orderedProducts = buildOrderedProducts(sellerItems);
+
+            // Auto-accept logic
+            let finalStatus: OrderStatus = OrderStatus.PENDING;
+            let finalEstimatedCompletionDate: Date | null = null;
+            let autoAccepted = false;
+            const autoAcceptEnabled = seller?.autoAcceptOrders ?? true;
+            const maxConcurrent = seller?.maxConcurrentOrders ?? 5;
+            const maxBacklog = seller?.maxProcessingBacklog ?? 14;
+
+            if (autoAcceptEnabled && sellerId) {
+                const activeOrders = await tx.order.findMany({
+                    where: { sellerId, status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'READY_TO_SHIP'] } }
+                });
+                if (activeOrders.length < maxConcurrent) {
+                    let maxDate = new Date();
+                    activeOrders.forEach(o => {
+                        if (o.estimatedCompletionDate && o.estimatedCompletionDate > maxDate) maxDate = o.estimatedCompletionDate;
+                    });
+                    const currentBacklogDays = Math.ceil((maxDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    const productIds = sellerItems.map(i => i.productId);
+                    const products = await tx.product.findMany({ where: { uid: { in: productIds } }, select: { processingTime: true } });
+                    let newOrderProcessingDays = 0;
+                    products.forEach(p => {
+                        if (!p.processingTime) return;
+                        let days = 0;
+                        const nums = p.processingTime.match(/\d+/g);
+                        if (nums && nums.length > 0) days = Math.max(...nums.map(Number));
+                        if (p.processingTime.toLowerCase().includes('week')) days *= 7;
+                        else if (p.processingTime.toLowerCase().includes('month')) days *= 30;
+                        if (days > newOrderProcessingDays) newOrderProcessingDays = days;
+                    });
+                    if (currentBacklogDays + newOrderProcessingDays <= maxBacklog) {
+                        finalStatus = OrderStatus.CONFIRMED;
+                        const completionDate = new Date();
+                        completionDate.setDate(completionDate.getDate() + currentBacklogDays + newOrderProcessingDays);
+                        finalEstimatedCompletionDate = completionDate;
+                        autoAccepted = true;
+                    }
+                }
+            }
+
+            const orderIdempotencyKey = `${idempotencyKey}-${orderIndex}`;
+
+            // Idempotency guard
+            const existingOrder = await tx.order.findUnique({ where: { idempotencyKey: orderIdempotencyKey } });
+            if (existingOrder) {
+                orderIds.push(existingOrder.uid);
+                continue;
+            }
+
+            const isCOD = payment.method === 'COD';
+            const paymentStatusForOrder = isCOD
+                ? (Number(payment.amount) > 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PENDING)
+                : PaymentStatus.SUCCEEDED;
+
+            const newOrder = await tx.order.create({
+                data: {
+                    userId: session.userId,
+                    sellerId,
+                    products: JSON.stringify(orderedProducts),
+                    total: orderTotalWithShippingAndFees,
+                    subtotal: orderSubtotal,
+                    shippingFee: orderShippingFee,
+                    platformFee: totalPlatformFee,
+                    sellerEarnings,
+                    discount: 0,
+                    status: finalStatus,
+                    estimatedCompletionDate: finalEstimatedCompletionDate,
+                    paymentMethod: payment.method,
+                    gatewayMethod: payment.gatewayMethod || null,
+                    gatewayRef: payment.gatewayRef || null,
+                    paymentStatus: paymentStatusForOrder,
+                    idempotencyKey: orderIdempotencyKey,
+                    referenceNumber: generateOrderReference(),
+                    shippingAddressSnapshot: shippingAddress ? JSON.stringify(shippingAddress) : null,
+                    items: {
+                        create: sellerItems.map(item => ({
+                            productId: item.productId,
+                            sellerId: item.sellerId,
+                            quantity: item.quantity,
+                            price: item.finalPrice,
+                            status: 'paid',
+                            trackingNumber: null,
+                            shippingProvider: null
+                        }))
+                    }
+                },
+            });
+
+            if (autoAccepted) {
+                await tx.orderTimeline.create({
+                    data: {
+                        orderId: newOrder.uid,
+                        status: OrderStatus.CONFIRMED,
+                        title: 'Order Auto-Accepted',
+                        message: `Order automatically accepted. Target completion set to ${finalEstimatedCompletionDate?.toDateString()}.`,
+                        createdBy: null
+                    }
+                });
+            }
+
+            await tx.orderShipment.create({
+                data: {
+                    orderId: newOrder.uid,
+                    sellerId: sellerId!,
+                    fulfillmentType: shippingResult.resolvedType,
+                    zoneTier: shippingResult.zoneTier,
+                    shippingFee: shippingResult.fee,
+                    computedFuelCost: shippingResult.fuelCost,
+                    meetUpSnapshot: shippingResult.meetUpSnapshot
+                }
+            });
+
+            if (sellerId) {
+                await tx.seller.update({
+                    where: { uid: sellerId },
+                    data: { pendingBalance: { increment: sellerEarnings } }
+                });
+            }
+
+            orderIds.push(newOrder.uid);
+        }
+
+        return orderIds;
+    });
+
+    // Mark session completed
+    await prisma.checkoutSession.update({
+        where: { uid: session.uid },
+        data: { status: CheckoutStatus.COMPLETED },
+    });
+
+    // Clear purchased cart items
+    await prisma.cartItem.deleteMany({
+        where: { uid: { in: lockedPrices.map(item => item.itemUid) } },
+    });
+
+    return createdOrderIds;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const estimateShipping = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -705,37 +976,27 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
             where: { uid: Number(sessionId) },
             include: {
                 payments: {
-                    where: { status: PaymentStatus.SUCCEEDED },
+                    // Accept both SUCCEEDED (COD) and PROCESSING (in case of COD deposit)
+                    where: { status: { in: [PaymentStatus.SUCCEEDED, PaymentStatus.PROCESSING] } },
                     take: 1,
                 },
             },
         });
 
         if (!session) {
-            res.status(404).json({
-                success: false,
-                error: 'SESSION_NOT_FOUND',
-                message: 'Checkout session not found.',
-            });
+            res.status(404).json({ success: false, error: 'SESSION_NOT_FOUND', message: 'Checkout session not found.' });
             return;
         }
 
-        // Security: Verify session belongs to the requesting user
         if (session.userId !== req.user?.id) {
             res.status(403).json({ success: false, error: 'FORBIDDEN', message: 'Access denied.' });
             return;
         }
 
         if (session.status === CheckoutStatus.COMPLETED) {
-            // Find existing orders (Partial match for split orders)
-            // Note: This relies on the convention of appending -index to idempotency key
             const existingOrders = await prisma.order.findMany({
-                where: {
-                    userId: session.userId,
-                    idempotencyKey: { startsWith: session.idempotencyKey },
-                },
+                where: { userId: session.userId, idempotencyKey: { startsWith: session.idempotencyKey } },
             });
-
             res.status(200).json({
                 success: true,
                 orderIds: existingOrders.map(o => o.uid),
@@ -745,305 +1006,72 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Verify payment success
+        // Resolve payment
         let successfulPayment = session.payments[0];
-
         if (!successfulPayment && paymentId) {
-            const payment = await prisma.payment.findUnique({
-                where: { uid: Number(paymentId) },
-            });
-
-            // For COD, we might accept PROCESSING if we treat the initial step as valid. 
-            // But ideally, payment would have been updated to SUCCEEDED after processPayment returns.
+            const payment = await prisma.payment.findUnique({ where: { uid: Number(paymentId) } });
             if (payment && (payment.status === PaymentStatus.SUCCEEDED || payment.status === PaymentStatus.PROCESSING)) {
                 successfulPayment = payment;
             }
         }
 
         if (!successfulPayment) {
-            res.status(400).json({
-                success: false,
-                error: 'PAYMENT_NOT_FOUND',
-                message: 'No successful payment found for this checkout.',
-            });
+            res.status(400).json({ success: false, error: 'PAYMENT_NOT_FOUND', message: 'No valid payment found for this checkout.' });
             return;
         }
 
-        const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
+        // ── PayMongo async payments must NOT go through completeCheckout ──
+        // Their orders are created by the webhook after payment confirmation.
+        if (successfulPayment.method !== 'MOCK_WALLET') {
+            res.status(400).json({ success: false, error: 'INVALID_PAYMENT', message: 'Async payments cannot be completed manually.' });
+            return;
+        }
 
-        // Group items by seller
+        // Save shipping info to shippingSnapshot if provided (for COD retry safety)
+        if (shippingAddress && !session.shippingSnapshot) {
+            await prisma.checkoutSession.update({
+                where: { uid: session.uid },
+                data: { shippingSnapshot: JSON.stringify({ shippingAddress, choices: choices || {} }) },
+            });
+        }
+
+        // Override shippingSnapshot with the request body data for this COD call
+        const shippingSnapshotOverride = shippingAddress
+            ? JSON.stringify({ shippingAddress, choices: choices || {} })
+            : session.shippingSnapshot;
+
+        // Temporarily patch session for createOrdersFromSession to use request body address
+        if (shippingSnapshotOverride) {
+            await prisma.checkoutSession.update({
+                where: { uid: session.uid },
+                data: { shippingSnapshot: shippingSnapshotOverride },
+            });
+        }
+
+        const createdOrderIds = await createOrdersFromSession(session.uid, successfulPayment);
+
+        const lockedPrices: LockedPriceItem[] = JSON.parse(session.lockedPrices);
         const itemsBySeller = groupItemsBySeller(lockedPrices);
 
-        // Atomic transaction: update stock and create orders
-        const createdOrderIds = await prisma.$transaction(async (tx) => {
-            const orderIds: number[] = [];
-            let orderIndex = 0;
-
-            // Update stock (Inventory management remains global per item)
-            for (const item of lockedPrices) {
-                // Increment Product soldCount
-                try {
-                    await tx.product.update({
-                        where: { uid: item.productId },
-                        data: { soldCount: { increment: item.quantity } },
-                    });
-                } catch (error) {
-                    console.error(`Failed to update soldCount for product ${item.productId}`, error);
-                }
-
-                if (item.variantId) {
-                    const result = await tx.productVariant.updateMany({
-                        where: {
-                            uid: item.variantId,
-                            stock: { gte: item.quantity },
-                            reservedStock: { gte: item.quantity },
-                        },
-                        data: {
-                            stock: { decrement: item.quantity },
-                            reservedStock: { decrement: item.quantity },
-                            soldCount: { increment: item.quantity },
-                        },
-                    });
-
-                    if (result.count === 0) {
-                        throw new Error(`Insufficient stock for ${item.productName} (${item.variantName})`);
-                    }
-                }
-            }
-
-            const config = await getShippingConfig();
-
-            // Create an Order for each seller group
-            for (const [sellerId, sellerItems] of itemsBySeller) {
-                orderIndex++;
-
-                // Calculate total for this specific order
-                const orderSubtotal = sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0);
-
-                // Calculate fees
-                // 1. Shipping
-                const shippingResult = await resolveSellerShipping(
-                    await tx.seller.findUnique({ where: { uid: sellerId! } }) as any,
-                    shippingAddress,
-                    (choices && choices[sellerId!]) ? choices[sellerId!] : 'DELIVERY',
-                    config,
-                    orderSubtotal
-                );
-
-                const orderShippingFee = shippingResult.fee;
-
-                // 2. Commission (Seller Platform Fee)
-                // Default to 5% commission if seller metrics aren't loaded or specified
-                const seller = await tx.seller.findUnique({ where: { uid: sellerId! } });
-                const commissionRate = seller?.commissionRate ? Number(seller.commissionRate) : 0.05;
-                const sellerPlatformFee = Number((orderSubtotal * commissionRate).toFixed(2)); // The 5% deducted
-                
-                const totalPlatformFee = sellerPlatformFee; // Platform revenue is entirely from seller commission now
-                
-                const sellerEarnings = Number((orderSubtotal - sellerPlatformFee).toFixed(2));
-
-                // The buyer pays Subtotal + Shipping. Buyer platform fee is removed.
-                const orderTotalWithShippingAndFees = orderSubtotal + orderShippingFee;
-
-                const orderedProducts = buildOrderedProducts(sellerItems);
-
-                // --- Auto Accept Logic ---
-                let finalStatus: OrderStatus = OrderStatus.PENDING;
-                let finalEstimatedCompletionDate: Date | null = null;
-                const autoAcceptEnabled = seller?.autoAcceptOrders ?? true;
-                const maxConcurrent = seller?.maxConcurrentOrders ?? 5;
-                const maxBacklog = seller?.maxProcessingBacklog ?? 14;
-
-                let autoAccepted = false;
-
-                if (autoAcceptEnabled && sellerId) {
-                    const activeOrders = await tx.order.findMany({
-                        where: {
-                            sellerId: sellerId,
-                            status: { in: ['CONFIRMED', 'IN_PRODUCTION', 'READY_TO_SHIP'] }
-                        }
-                    });
-
-                    if (activeOrders.length < maxConcurrent) {
-                        // Find furthest estimatedCompletionDate
-                        let maxDate = new Date();
-                        activeOrders.forEach(o => {
-                            if (o.estimatedCompletionDate && o.estimatedCompletionDate > maxDate) {
-                                maxDate = o.estimatedCompletionDate;
-                            }
-                        });
-
-                        const currentBacklogDays = Math.ceil((maxDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                        
-                        // Parse processing time for new items
-                        const productIds = sellerItems.map(i => i.productId);
-                        const products = await tx.product.findMany({
-                            where: { uid: { in: productIds } },
-                            select: { processingTime: true }
-                        });
-
-                        let newOrderProcessingDays = 0;
-                        products.forEach(p => {
-                            if (!p.processingTime) return;
-                            let days = 0;
-                            const nums = p.processingTime.match(/\d+/g);
-                            if (nums && nums.length > 0) {
-                                days = Math.max(...nums.map(Number));
-                            }
-                            if (p.processingTime.toLowerCase().includes('week')) days *= 7;
-                            else if (p.processingTime.toLowerCase().includes('month')) days *= 30;
-                            
-                            if (days > newOrderProcessingDays) {
-                                newOrderProcessingDays = days;
-                            }
-                        });
-
-                        if (currentBacklogDays + newOrderProcessingDays <= maxBacklog) {
-                            finalStatus = OrderStatus.CONFIRMED;
-                            const completionDate = new Date();
-                            completionDate.setDate(completionDate.getDate() + currentBacklogDays + newOrderProcessingDays);
-                            finalEstimatedCompletionDate = completionDate;
-                            autoAccepted = true;
-                        }
-                    }
-                }
-
-                const newOrder = await tx.order.create({
-                    data: {
-                        userId: session.userId,
-                        sellerId: sellerId, // Assign to seller
-                        products: JSON.stringify(orderedProducts),
-                        total: orderTotalWithShippingAndFees, // Total includes shipping only
-                        subtotal: orderSubtotal, // Product subtotal only
-                        shippingFee: orderShippingFee, // Shipping fee
-                        platformFee: totalPlatformFee, // What the platform keeps
-                        sellerEarnings: sellerEarnings, // What the seller takes home
-                        discount: 0,
-                        status: finalStatus,
-                        estimatedCompletionDate: finalEstimatedCompletionDate,
-                        paymentMethod: successfulPayment.method,
-                        // If COD and amount > 0, it means a deposit was paid -> PARTIALLY_PAID
-                        // If COD and amount == 0, it means trust-based -> PENDING (Collect full on delivery)
-                        paymentStatus: successfulPayment.method === 'COD'
-                            ? (Number(successfulPayment.amount) > 0 ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PENDING)
-                            : PaymentStatus.SUCCEEDED,
-                        // Append index to idempotency key to satisfy unique constraint: "key-1", "key-2"
-                        idempotencyKey: `${idempotencyKey || session.idempotencyKey}-${orderIndex}`,
-                        referenceNumber: generateOrderReference(),
-                        shippingAddressSnapshot: shippingAddress ? JSON.stringify(shippingAddress) : null,
-                        items: {
-                            create: sellerItems.map(item => ({
-                                productId: item.productId,
-                                sellerId: item.sellerId,
-                                quantity: item.quantity,
-                                price: item.finalPrice,
-                                status: 'paid',
-                                trackingNumber: null,
-                                shippingProvider: null
-                            }))
-                        }
-                    },
-                });
-
-                if (autoAccepted) {
-                    await tx.orderTimeline.create({
-                        data: {
-                            orderId: newOrder.uid,
-                            status: OrderStatus.CONFIRMED,
-                            title: 'Order Auto-Accepted',
-                            message: `Order automatically accepted. Target completion set to ${finalEstimatedCompletionDate?.toDateString()}.`,
-                            createdBy: null
-                        }
-                    });
-                }
-
-                // Create OrderShipment
-                await tx.orderShipment.create({
-                    data: {
-                        orderId: newOrder.uid,
-                        sellerId: sellerId!,
-                        fulfillmentType: shippingResult.resolvedType,
-                        zoneTier: shippingResult.zoneTier,
-                        shippingFee: shippingResult.fee,
-                        computedFuelCost: shippingResult.fuelCost,
-                        meetUpSnapshot: shippingResult.meetUpSnapshot
-                    }
-                });
-
-                // Update Seller Pending Balance
-                if (sellerId) {
-                    await tx.seller.update({
-                        where: { uid: sellerId },
-                        data: {
-                            pendingBalance: { increment: sellerEarnings }
-                        }
-                    });
-                }
-
-                orderIds.push(newOrder.uid);
-
-                // Note: We do NOT link payment to individual orders via payment.orderId 
-                // because one payment covers multiple orders. 
-                // The link is preserved via CheckoutSession.
-            }
-
-            return orderIds;
-        });
-
-        // Update session status
-        await prisma.checkoutSession.update({
-            where: { uid: session.uid },
-            data: { status: CheckoutStatus.COMPLETED },
-        });
-
-        // Clear purchased items from cart
-        await prisma.cartItem.deleteMany({
-            where: {
-                uid: { in: lockedPrices.map(item => item.itemUid) },
-            },
-        });
-
-        // Log audit (Summarized)
         AuditService.logCheckout('CHECKOUT_COMPLETED', session.uid, session.userId, {
             orderIds: createdOrderIds,
             orderCount: createdOrderIds.length
         });
 
-        // ------------------------------------------------------------------
-        // Real-time Updates
-        // ------------------------------------------------------------------
-
-        // 1. Inventory Updates (Trigger refetch for anyone viewing these products)
+        // Real-time: inventory + cart sync + seller notifications
         const uniqueProductIds = [...new Set(lockedPrices.map(item => item.productId))];
-        uniqueProductIds.forEach(pid => {
-            supabaseService.emit('product:updated', { productId: pid });
-        });
-
-        // 2. Cart Sync (Clear cart for this user on other devices)
-        supabaseService.emitToRoom(`user_${session.userId}`, 'cart:updated', {
-            userId: session.userId,
-            cart: { items: [] }
-        });
-
-        // 3. Vendor Notifications (Alert sellers of new orders)
-        // We grouped itemsBySeller earlier.
+        uniqueProductIds.forEach(pid => supabaseService.emit('product:updated', { productId: pid }));
+        supabaseService.emitToRoom(`user_${session.userId}`, 'cart:updated', { userId: session.userId, cart: { items: [] } });
         for (const [sellerId, sellerItems] of itemsBySeller) {
             if (sellerId) {
                 supabaseService.emitToRoom(`seller_${sellerId}`, 'vendor:notification', {
                     type: 'NEW_ORDER',
                     message: `You have a new order with ${sellerItems.length} items.`,
-                    data: {
-                        sellerId,
-                        itemCount: sellerItems.length,
-                        totalAmount: sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0)
-                    }
+                    data: { sellerId, itemCount: sellerItems.length, totalAmount: sellerItems.reduce((sum, item) => sum + (Number(item.finalPrice) * item.quantity), 0) }
                 });
             }
         }
 
-        // ------------------------------------------------------------------
-
-        // Send notifications
         notifications.send({
             type: 'email',
             to: (await prisma.user.findUnique({ where: { uid: session.userId } }))?.email || '',
@@ -1051,11 +1079,7 @@ const completeCheckout = async (req: Request, res: Response): Promise<void> => {
             body: `Your order(s) [${createdOrderIds.join(', ')}] have been placed successfully.`
         }).catch(err => console.error('Failed to send order notification', err));
 
-        res.status(201).json({
-            success: true,
-            orderIds: createdOrderIds,
-            message: 'Orders placed successfully!',
-        });
+        res.status(201).json({ success: true, orderIds: createdOrderIds, message: 'Orders placed successfully!' });
 
     } catch (error) {
         console.error('Error completing checkout:', error);

@@ -9,6 +9,7 @@ import { uploadToImageKit } from '@/lib/imagekit';
 
 import type { Order } from '@/types/order';
 import OrderCard from '@/components/seller/orders/OrderCard';
+import StatusBadge from '@/components/ui/StatusBadge';
 import ShipOrderModal, { ShipFormData } from '@/components/seller/orders/ShipOrderModal';
 import AcceptOrderModal, { AcceptFormData } from '@/components/seller/orders/AcceptOrderModal';
 import RejectOrderModal, { RejectFormData } from '@/components/seller/orders/RejectOrderModal';
@@ -36,20 +37,7 @@ const PINK = '#EC4899';
 const LATE_THRESHOLD_DAYS = 3;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-const getStatusColor = (status: string) => {
-    switch (status) {
-        case 'PENDING': return AMBER;
-        case 'CONFIRMED': return '#0EA5E9'; // Sky blue to contrast with indigo
-        case 'IN_PRODUCTION': return INDIGO;
-        case 'READY_TO_SHIP': return PINK;
-        case 'SHIPPED': return GREEN;
-        case 'DELIVERED': return TEAL;
-        case 'COMPLETED': return GREEN;
-        case 'CANCELLED': return RED;
-        case 'DISPUTED': return RED;
-        default: return SUB;
-    }
-};
+
 
 const getOrderProcessingDays = (order: Order): number => {
     let maxDays = LATE_THRESHOLD_DAYS;
@@ -459,11 +447,7 @@ export default function SellerOrders() {
 
                 <View style={s.colId}>
                     <Text style={s.rowId}>#{o.referenceNumber || o.uid}</Text>
-                    <View style={[s.statusPill, { backgroundColor: getStatusColor(o.status) + '20' }]}>
-                        <Text style={[s.statusPillTxt, { color: getStatusColor(o.status) }]}>
-                            {o.status.replace(/_/g, ' ')}
-                        </Text>
-                    </View>
+                    <StatusBadge status={o.status} />
                 </View>
 
                 <View style={s.colMain}>

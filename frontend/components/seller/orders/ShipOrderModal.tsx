@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import type { Order } from '@/types/order';
+import Button from '@/components/ui/Button';
 
 const P = '#B36979', P_LIGHT = '#FDEEF1', BG = '#F4F4F8', CARD = '#FFFFFF';
 const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5', RED = '#EF4444';
@@ -192,12 +193,18 @@ export default function ShipOrderModal({ visible, order, submitting, onClose, on
                         <TextInput style={s.input} placeholder="Any notes for the customer?" placeholderTextColor="#AAA" value={message} onChangeText={setMessage} />
 
                         <View style={s.modalButtons}>
-                            <TouchableOpacity style={s.cancelBtn} onPress={handleClose}>
-                                <Text style={s.btnText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[s.confirmBtn, submitting && { opacity: 0.7 }]} onPress={handleSubmit} disabled={submitting}>
-                                <Text style={s.confirmBtnText}>{submitting ? 'Processing...' : 'Confirm Shipping'}</Text>
-                            </TouchableOpacity>
+                            <Button 
+                                title="Cancel" 
+                                variant="outline" 
+                                onPress={handleClose} 
+                                style={{ borderWidth: 0 }}
+                                textStyle={{ color: SUB }}
+                            />
+                            <Button 
+                                title={submitting ? 'Processing...' : 'Confirm Shipping'} 
+                                loading={submitting} 
+                                onPress={handleSubmit} 
+                            />
                         </View>
                     </ScrollView>
                 </View>
@@ -235,8 +242,4 @@ const s = StyleSheet.create({
     infoBox: { padding: 12, borderRadius: 12, backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', marginTop: 4, marginBottom: 8 },
     infoText: { fontSize: 13, color: '#1E40AF', fontFamily: 'Quicksand' },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 32 },
-    cancelBtn: { padding: 14, borderRadius: 12, justifyContent: 'center' },
-    confirmBtn: { backgroundColor: P, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16, justifyContent: 'center' },
-    btnText: { color: SUB, fontWeight: '700', fontFamily: 'Quicksand' },
-    confirmBtnText: { color: 'white', fontWeight: '700', fontSize: 15, fontFamily: 'Quicksand' },
 });

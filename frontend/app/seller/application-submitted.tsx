@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { theme } from "@/constants/theme";
 import { CheckCircle, Clock, ArrowRight } from "lucide-react-native";
+import Button from '@/components/ui/Button';
 
 // A small SVG noise texture converted to a Data URI
 const NOISE_TEXTURE = `data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E`;
@@ -103,26 +104,22 @@ export default function ApplicationSubmittedPage() {
                             <View style={styles.divider} />
 
                             <View style={styles.buttonContainer}>
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.primaryBtn,
-                                        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-                                    ]}
+                                <Button
+                                    title="View Application Status"
+                                    variant="primary"
                                     onPress={() => router.push("/seller/application-status" as RelativePathString)}
-                                >
-                                    <Text style={styles.primaryBtnText}>View Application Status</Text>
-                                    <ArrowRight size={18} color="white" />
-                                </Pressable>
+                                    icon={<ArrowRight size={18} color="white" />}
+                                    iconPosition="right"
+                                    style={{ height: 'auto', paddingVertical: 14 }}
+                                />
 
-                                <Pressable
-                                    style={({ pressed }) => [
-                                        styles.outlineBtn,
-                                        pressed && { backgroundColor: theme.colors.background }
-                                    ]}
+                                <Button
+                                    title="Return to Profile"
+                                    variant="outline"
                                     onPress={() => router.push("/profile" as RelativePathString)}
-                                >
-                                    <Text style={styles.outlineBtnText}>Return to Profile</Text>
-                                </Pressable>
+                                    style={{ height: 'auto', paddingVertical: 14, borderColor: theme.colors.border }}
+                                    textStyle={{ color: theme.colors.textSecondary, fontWeight: '600', fontSize: 15 }}
+                                />
                             </View>
                         </View>
 

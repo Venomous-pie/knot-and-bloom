@@ -25,7 +25,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from '@/constants/theme';
 import Animated, { FadeIn, SlideInRight } from 'react-native-reanimated';
 import ImageUploader from '@/components/seller/ImageUploader';
-import Button from '@/components/ui/Button';
 
 export default function SellerApplyPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
@@ -68,17 +67,17 @@ export default function SellerApplyPage() {
 
     // ID format rules per type
     const ID_FORMATS: Record<string, { placeholder: string; maxLength: number; hint: string; regex: RegExp; keyboardType: any; autoCapitalize: any }> = {
-        "National ID": { placeholder: "e.g. 1234567891015678", maxLength: 19, hint: "16 digits", regex: /^\d{16}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "Driver's License": { placeholder: "e.g. A0123456789", maxLength: 13, hint: "1 letter followed by 8 digits", regex: /^[A-Z]\d{8}$/, keyboardType: 'default', autoCapitalize: 'characters' },
-        "Passport": { placeholder: "e.g. P1234567A", maxLength: 9, hint: "9 characters (letter + 7 digits + letter)", regex: /^[A-Z]\d{7}[A-Z]$/, keyboardType: 'default', autoCapitalize: 'characters' },
-        "Postal ID": { placeholder: "e.g. 123456789012", maxLength: 15, hint: "12 digits", regex: /^\d{12}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "SSS": { placeholder: "e.g. 1234567890", maxLength: 15, hint: "10 digits", regex: /^\d{10}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "PhilHealth": { placeholder: "e.g. 123456789012", maxLength: 16, hint: "12 digits", regex: /^\d{12}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "TIN": { placeholder: "e.g. 123456789000", maxLength: 15, hint: "9 to 12 digits", regex: /^\d{9,12}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "GSIS": { placeholder: "e.g. 12345678901", maxLength: 15, hint: "11 digits", regex: /^\d{11}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "Voter's ID": { placeholder: "e.g. 1234567890123", maxLength: 20, hint: "Voter ID number as printed on card", regex: /^[A-Z0-9]{6,20}$/, keyboardType: 'default', autoCapitalize: 'characters' },
-        "PRC ID": { placeholder: "e.g. 1234567", maxLength: 10, hint: "7 digits", regex: /^\d{7}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
-        "School ID": { placeholder: "Your school ID number", maxLength: 20, hint: "As printed on your school ID", regex: /^[A-Z0-9]{4,20}$/i, keyboardType: 'default', autoCapitalize: 'characters' },
+        "National ID": { placeholder: "1234-5678-9101-5678", maxLength: 19, hint: "16 digits (XXXX-XXXX-XXXX-XXXX)", regex: /^\d{4}-\d{4}-\d{4}-\d{4}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "Driver's License": { placeholder: "A01-23-456789", maxLength: 13, hint: "Format: X##-##-######", regex: /^[A-Z]\d{2}-\d{2}-\d{6}$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Passport": { placeholder: "P1234567A", maxLength: 9, hint: "9 characters (letter + 7 digits + letter)", regex: /^[A-Z]\d{7}[A-Z]$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "Postal ID": { placeholder: "123456789012", maxLength: 12, hint: "12 digits", regex: /^\d{12}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "SSS": { placeholder: "12-3456789-0", maxLength: 13, hint: "Format: ##-#######-#", regex: /^\d{2}-\d{7}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "PhilHealth": { placeholder: "12-345678901-2", maxLength: 14, hint: "Format: ##-#########-#", regex: /^\d{2}-\d{9}-\d$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "TIN": { placeholder: "123-456-789-000", maxLength: 15, hint: "Format: ###-###-###-###", regex: /^\d{3}-\d{3}-\d{3}-\d{3}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "GSIS": { placeholder: "12345678901", maxLength: 11, hint: "11 digits", regex: /^\d{11}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "Voter's ID": { placeholder: "1234567890123", maxLength: 17, hint: "Voter ID number as printed on card", regex: /^[A-Z0-9-]{6,17}$/, keyboardType: 'default', autoCapitalize: 'characters' },
+        "PRC ID": { placeholder: "1234567", maxLength: 7, hint: "7 digits", regex: /^\d{7}$/, keyboardType: 'numeric', autoCapitalize: 'none' },
+        "School ID": { placeholder: "Your school ID number", maxLength: 20, hint: "As printed on your school ID", regex: /^[A-Z0-9-]{4,20}$/i, keyboardType: 'default', autoCapitalize: 'characters' },
         "Other": { placeholder: "Your ID number", maxLength: 30, hint: "Enter your ID number as printed", regex: /^.{4,30}$/, keyboardType: 'default', autoCapitalize: 'none' },
     };
 
@@ -231,7 +230,7 @@ export default function SellerApplyPage() {
         }
         if (!idNumber.trim()) {
             newErrors.idNumber = "ID Number is required.";
-        } else if (currentIdFormat && !currentIdFormat.regex.test(idNumber.replace(/[-\s]/g, ''))) {
+        } else if (currentIdFormat && !currentIdFormat.regex.test(idNumber.trim())) {
             newErrors.idNumber = `Invalid format. Expected: ${currentIdFormat.hint}.`;
         }
         if (idPhotos.length === 0) {
@@ -257,9 +256,13 @@ export default function SellerApplyPage() {
         portfolioLink.trim().length >= 3 &&
         phoneNumber.trim() !== '' && !/[a-zA-Z]/.test(phoneNumber.trim()) && phoneNumber.trim().replace(/[^0-9]/g, '').length >= 10 &&
         email.trim() !== '' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
-        idType !== '' && (currentIdFormat ? currentIdFormat.regex.test(idNumber.replace(/[-\s]/g, '')) : idNumber.trim() !== '') && idPhotos.length > 0;
+        idType !== '' && (currentIdFormat ? currentIdFormat.regex.test(idNumber.trim()) : idNumber.trim() !== '') && idPhotos.length > 0;
+
+    const isNextDisabled = (currentStep === 1 && !isStep1Valid) || (currentStep === 2 && !isStep2Valid);
 
     const handleNext = () => {
+        if (isNextDisabled) return;
+
         let isValid = false;
         if (currentStep === 1) isValid = validateStep1();
         if (currentStep === 2) isValid = validateStep2();
@@ -987,14 +990,18 @@ export default function SellerApplyPage() {
                                                 ? "Your application is pending review. We'll notify you once approved."
                                                 : "You're already a seller! Head to your dashboard to manage your shop."}
                                         </Text>
-                                        <Button
-                                            title={user?.sellerProfile?.status === "PENDING" ? "View Application Status" : "Go to Seller Dashboard →"}
+                                        <Pressable
+                                            style={styles.submitButton}
                                             onPress={() => router.push(
                                                 user?.sellerProfile?.status === "PENDING"
                                                     ? "/seller/application-status" as RelativePathString
                                                     : "/seller-dashboard" as RelativePathString
                                             )}
-                                        />
+                                        >
+                                            <Text style={styles.submitButtonText}>
+                                                {user?.sellerProfile?.status === "PENDING" ? "View Application Status" : "Go to Seller Dashboard →"}
+                                            </Text>
+                                        </Pressable>
                                     </View>
                                 ) : (
                                     <View>
@@ -1004,42 +1011,51 @@ export default function SellerApplyPage() {
 
                                         {/* Navigation Buttons */}
                                         <View style={styles.navigationButtons}>
-                                            <Button
-                                                title="Exit"
-                                                variant="outline"
+                                            <TouchableOpacity
+                                                style={styles.backButton}
                                                 onPress={() => router.replace("/" as RelativePathString)}
                                                 disabled={loading}
-                                                style={{ flex: 1, height: 'auto', paddingVertical: 16, backgroundColor: theme.colors.subtle, borderWidth: 0 }}
-                                                textStyle={{ color: theme.colors.textSecondary }}
-                                            />
+                                            >
+                                                <Text style={styles.backButtonText}>Exit</Text>
+                                            </TouchableOpacity>
 
                                             {currentStep > 1 && (
-                                                <Button
-                                                    title="Back"
-                                                    variant="outline"
+                                                <TouchableOpacity
+                                                    style={styles.backButton}
                                                     onPress={handleBack}
                                                     disabled={loading}
-                                                    style={{ flex: 1, height: 'auto', paddingVertical: 16, backgroundColor: theme.colors.subtle, borderWidth: 0 }}
-                                                    textStyle={{ color: theme.colors.textSecondary }}
-                                                />
+                                                >
+                                                    <Text style={styles.backButtonText}>Back</Text>
+                                                </TouchableOpacity>
                                             )}
 
                                             {currentStep < totalSteps ? (
-                                                <Button
-                                                    title="Next Step →"
-                                                    variant="primary"
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.nextButton,
+                                                        currentStep === 1 && styles.fullWidthButton,
+                                                        isNextDisabled && styles.nextButtonDisabled
+                                                    ]}
                                                     onPress={handleNext}
-                                                    style={{ flex: currentStep === 1 ? 1 : 2, height: 'auto', paddingVertical: 16 }}
-                                                />
+                                                    disabled={isNextDisabled}
+                                                >
+                                                    <Text style={styles.nextButtonText}>Next Step →</Text>
+                                                </TouchableOpacity>
                                             ) : (
-                                                <Button
-                                                    title="Submit Application"
-                                                    variant="primary"
+                                                <TouchableOpacity
+                                                    style={[
+                                                        styles.submitButton,
+                                                        (loading || !termsAccepted) && styles.submitButtonDisabled
+                                                    ]}
                                                     onPress={handleSubmit}
-                                                    disabled={loading}
-                                                    loading={loading}
-                                                    style={{ flex: 2, height: 'auto', paddingVertical: 16 }}
-                                                />
+                                                    disabled={loading || !termsAccepted}
+                                                >
+                                                    {loading ? (
+                                                        <ActivityIndicator color="white" />
+                                                    ) : (
+                                                        <Text style={styles.submitButtonText}>Submit Application</Text>
+                                                    )}
+                                                </TouchableOpacity>
                                             )}
                                         </View>
                                     </View>

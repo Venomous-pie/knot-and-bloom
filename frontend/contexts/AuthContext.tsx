@@ -11,14 +11,6 @@ function extractAuthUser(payload: any) {
     return payload.customer ?? payload.data;
 }
 
-const getSafeRedirectUrl = (url: string | undefined): RelativePathString => {
-    // Only allow relative paths (starts with single slash, not double slash like //evil.com)
-    if (url && url.startsWith('/') && !url.startsWith('//')) {
-        return url as RelativePathString;
-    }
-    return '/';
-};
-
 const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
@@ -105,8 +97,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (user.passwordResetRequired) {
             router.replace('/auth/reset-password' as RelativePathString);
+        } else if (returnTo) {
+            router.replace(returnTo as RelativePathString);
         } else {
-            router.replace(getSafeRedirectUrl(returnTo));
+            router.replace('/');
         }
     };
 
@@ -183,8 +177,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (user.passwordResetRequired) {
             router.replace('/auth/reset-password' as RelativePathString);
+        } else if (returnTo) {
+            router.replace(returnTo as RelativePathString);
         } else {
-            router.replace(getSafeRedirectUrl(returnTo));
+            router.replace('/');
         }
     };
 
@@ -209,7 +205,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setToken(newToken);
                 
                 if (returnTo) {
-                    router.replace(getSafeRedirectUrl(returnTo));
+                    router.replace(returnTo as RelativePathString);
                 } else {
                     router.replace('/');
                 }

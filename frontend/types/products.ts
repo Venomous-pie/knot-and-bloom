@@ -55,8 +55,6 @@ interface Product {
         logo?: string | null;
         freeShippingEnabled?: boolean;
         freeShippingThreshold?: number | null;
-        meetUpPoint?: string | null;
-        selfDeliveryEnabled?: boolean;
     } | null;
 }
 

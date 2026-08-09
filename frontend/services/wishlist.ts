@@ -1,11 +1,11 @@
 import { apiClient } from './client';
 
 export const wishlistAPI = {
-    getWishlist: (customerId?: number) => {
-        return apiClient.get(`/wishlist`);
+    getWishlist: (customerId: number) => {
+        return apiClient.get(`/wishlist/${customerId}`);
     },
 
-    toggleWishlistItem: (customerId: number | undefined, productId: number) => {
-        return apiClient.post(`/wishlist/toggle`, { productId });
+    toggleWishlistItem: (customerId: number, productId: number) => {
+        return apiClient.post(`/wishlist/${customerId}/toggle`, { productId });
     }
 };

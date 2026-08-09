@@ -91,7 +91,7 @@ const userRegisterController = async (input: unknown) => {
             ...(sellerId ? { sellerId } : {})
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '15m' });
+        const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
         const refreshToken = await RefreshTokenService.generate({
             userId: user.uid,
             ...(user.email && { email: user.email }),
@@ -175,7 +175,7 @@ const userLoginController = async (input: unknown) => {
             ...(user.passwordResetRequired && { passwordResetRequired: user.passwordResetRequired })
         };
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '15m' }); // Short-lived; refresh token handles long sessions
+        const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' }); // 7d expiry for better UX
         const refreshToken = await RefreshTokenService.generate({
             userId: user.uid,
             ...(user.email && { email: user.email }),
@@ -344,7 +344,7 @@ const googleLoginController = async (input: unknown) => {
             ...(user.sellerProfile?.status && { sellerStatus: user.sellerProfile.status as any }),
         };
 
-        const token = jwt.sign(jwtPayload, process.env.JWT_SECRET!, { expiresIn: '15m' });
+        const token = jwt.sign(jwtPayload, process.env.JWT_SECRET!, { expiresIn: '7d' });
         const refreshToken = await RefreshTokenService.generate({
             userId: user.uid,
             ...(user.email && { email: user.email }),

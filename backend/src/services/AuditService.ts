@@ -12,20 +12,15 @@ export const AuditService = {
             ...entry,
         };
 
-        const isDev = process.env.NODE_ENV !== 'production';
+        // Log to console with structured format
+        console.log(`[AUDIT] ${timestamp} | ${entry.action} | ${entry.entityType}:${entry.entityId} | user:${entry.userId}`);
 
-        if (isDev) {
-            // Pretty colored log for development
-            console.log(`\x1b[36m[AUDIT]\x1b[0m \x1b[90m${timestamp}\x1b[0m | \x1b[32m${entry.action}\x1b[0m | \x1b[35m${entry.entityType}:${entry.entityId}\x1b[0m | \x1b[34muser:${entry.userId}\x1b[0m`);
-            if (entry.data) {
-                console.log(`  \x1b[90m└─ DATA:\x1b[0m`, entry.data);
-            }
-            if (entry.errorMessage) {
-                console.error(`  \x1b[31m└─ ERROR:\x1b[0m`, entry.errorMessage);
-            }
-        } else {
-            // Structured JSON for production
-            console.log(JSON.stringify(logData));
+        if (entry.data) {
+            console.log(`[AUDIT DATA]`, JSON.stringify(entry.data, null, 2));
+        }
+
+        if (entry.errorMessage) {
+            console.error(`[AUDIT ERROR]`, entry.errorMessage);
         }
     },
 

@@ -33,15 +33,13 @@
     npx prisma migrate dev
     npm run dev
     ```
-3.  **Frontend Setup**:
+2.  **Frontend Setup**:
     ```bash
     # New Terminal
-    cd frontend
     npm install
-    cp .env.example .env # Configure frontend EXPO_PUBLIC_* variables
-    npm run web          # Or npm start for mobile development
+    npx expo start
     ```
-4.  **Seed Data**:
+3.  **Seed Data**:
     - Currently manual via `npx prisma studio` or via `scripts/seed.ts` (if available).
 
 ### Running Tests

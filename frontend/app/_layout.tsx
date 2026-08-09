@@ -18,8 +18,6 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from "react";
-import { Analytics } from "@vercel/analytics/react"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import { StyleSheet } from "react-native";
 import '../global.css';
 
@@ -100,8 +98,6 @@ export default function RootLayout() {
                   <DialogProvider>
                     <SellerSettingsProvider>
                       <NavBar />
-                      <Analytics />
-                      <SpeedInsights />
                       <CartAnimationOverlay />
                       <OnboardingManager />
                       <AuthToast />

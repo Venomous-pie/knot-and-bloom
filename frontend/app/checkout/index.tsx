@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Truck } from 'lucide-react-native';
 
 import { CheckoutProvider, useCheckout } from '@/contexts/CheckoutContext';
+import { createPaymentMethod, attachPaymentIntent } from '@/services/paymongoClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { addressAPI } from '@/services/api';
 import AddressSelector from '@/components/checkout/AddressSelector';
@@ -32,6 +33,7 @@ import { CheckoutSessionExpiredDialog } from '@/components/checkout/CheckoutSess
 import { CheckoutPaymentSection } from '@/components/checkout/CheckoutPaymentSection';
 import { CheckoutOrderSummary } from '@/components/checkout/CheckoutOrderSummary';
 import { CheckoutSkeleton } from '@/components/checkout/CheckoutSkeleton';
+import { CheckoutQrDisplay } from '@/components/checkout/CheckoutQrDisplay';
 import { TrustBadge } from '@/components/checkout/TrustBadge';
 import { OrderProcessingOverlay } from '@/components/checkout/OrderProcessingOverlay';
 
@@ -75,6 +77,7 @@ function CheckoutContent() {
         codInfo, // NEW
         expiresAt,
         cancelCheckout,
+        sessionId,
     } = useCheckout();
 
     // COD Eligibility & Deposit
@@ -168,13 +171,16 @@ function CheckoutContent() {
         return shippingBreakdown.reduce((sum, item) => sum + item.fee, 0);
     }, [shippingBreakdown]);
 
-    // UI Mode: 'checkout' | 'address_selection' | 'address_form'
-    const [viewMode, setViewMode] = useState<'checkout' | 'address_selection' | 'address_form' | 'map_picker'>('checkout');
+    // UI Mode: 'checkout' | 'address_selection' | 'address_form' | 'map_picker' | 'qr_display'
+    const [viewMode, setViewMode] = useState<'checkout' | 'address_selection' | 'address_form' | 'map_picker' | 'qr_display'>('checkout');
     // Address Form Mode
     const [addrFormMode, setAddrFormMode] = useState<'create' | 'edit'>('create');
     const [editingAddr, setEditingAddr] = useState<Address | null>(null);
     const [isSavingAddr, setIsSavingAddr] = useState(false);
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+    const [qrData, setQrData] = useState<{imageUrl: string, expiresAt: string} | null>(null);
+    const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    const [placingOrderMessage, setPlacingOrderMessage] = useState('');
 
     // Modal animation
     const modalVisible = viewMode !== 'checkout';
@@ -251,8 +257,8 @@ function CheckoutContent() {
     }, [modalVisible]);
 
     // Payment method
-    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'maribank'>('cod');
-    const [depositPaymentMethod, setDepositPaymentMethod] = useState<'gcash' | 'paymaya' | 'maribank' | 'card'>('gcash');
+    const [paymentMethod, setPaymentMethod] = useState<'cod' | 'gcash' | 'paymaya' | 'maribank' | 'qrph'>('cod');
+    const [depositPaymentMethod, setDepositPaymentMethod] = useState<'gcash' | 'paymaya' | 'maribank' | 'qrph' | 'card'>('gcash');
     const [sellerNotes, setSellerNotes] = useState<Record<number, string>>({});
 
     // Session Expiration State
@@ -265,6 +271,13 @@ function CheckoutContent() {
     useEffect(() => {
         fetchAddresses();
     }, []);
+
+    // Prevent COD from being selected if disabled
+    useEffect(() => {
+        if (codInfo && !codInfo.allowed && paymentMethod === 'cod') {
+            setPaymentMethod('gcash');
+        }
+    }, [codInfo, paymentMethod]);
 
     // --------------------------------------------------------------------------
     // Checkout Initialization
@@ -386,37 +399,23 @@ function CheckoutContent() {
         };
         setShippingInfo(shippingData);
 
-        // 2. Process Payment
-        // This will internally trigger 'validateAndProceedToPayment' equivalent if needed,
-        // OR we might need to manually call setStep('payment') then process.
-        // But since we are condensing steps, we might need to check context API.
-        // Context separates 'validate' and 'pay'.
-        // Step 1: Validate (lock inventory/prices again?). 
-        // If context requires us to be in 'payment' step to pay, we assume 'shipping' is done.
+        setIsPlacingOrder(true);
+        setPlacingOrderMessage('Validating stock availability...');
 
-        // HACK: Use 'processPayment' directly if context allows, or manually cycle steps.
-        // Assuming context flow: initiate -> (step: shipping) -> validate -> (step: payment) -> pay -> complete.
+        try {
+            const valid = await validateAndProceedToPayment(); // Moves to 'payment' step
+            if (!valid) {
+                setIsPlacingOrder(false);
+                return;
+            }
 
-        // Let's rely on `processPayment` handling usage or we call the chain.
-        // Since we are single-page, we effectively "validate" just before paying.
-        // BUT `_CheckoutContext` might check `step`.
-
-        // For this refactor, let's assume we can interact with API directly or helper.
-        // `processPayment` in context usually expects `step === 'payment'`.
-        // So we might need to force step updates behind the scenes.
-
-        // Direct Flow:
-        // 1. Update State to 'payment' (Trigger validation?)
-        // Actually, `useCheckout` exposes `validateAndProceedToPayment`.
-
-        const valid = await validateAndProceedToPayment(); // Moves to 'payment' step
-        if (valid) {
             // Map frontend payment method to backend expected values
             let backendPaymentMethod = 'MOCK_WALLET'; // Default fallback
             if (paymentMethod === 'cod') backendPaymentMethod = 'COD';
             else if (paymentMethod === 'maribank') backendPaymentMethod = 'MARIBANK';
             else if (paymentMethod === 'gcash') backendPaymentMethod = 'GCASH';
             else if (paymentMethod === 'paymaya') backendPaymentMethod = 'PAYMAYA';
+            else if (paymentMethod === 'qrph') backendPaymentMethod = 'QRPH';
 
             let paymentType = 'FULL';
             if (paymentMethod === 'cod' && codDepositPercent > 0) {
@@ -424,19 +423,83 @@ function CheckoutContent() {
                 backendPaymentMethod = depositPaymentMethod.toUpperCase();
             }
 
+            setPlacingOrderMessage('Processing payment...');
             const result = await processPayment(backendPaymentMethod, shippingData, paymentType);
             if (result) {
-                if (result.checkoutUrl) {
-                    // Redirect to PayMongo hosted checkout page
-                    window.location.href = result.checkoutUrl;
+                if (result.clientKey) {
+                    try {
+                        const paymongoMethodMap: Record<string, 'gcash'|'paymaya'|'qrph'> = {
+                            'GCASH': 'gcash',
+                            'PAYMAYA': 'paymaya',
+                            'MARIBANK': 'qrph',
+                            'QRPH': 'qrph'
+                        };
+                        const walletType = paymongoMethodMap[backendPaymentMethod];
+                        
+                        if (!walletType) {
+                            Alert.alert('Error', 'Unsupported payment method type');
+                            return;
+                        }
+
+                        if (!result.paymentIntentId || !result.clientKey) {
+                            throw new Error('Missing payment intent details from server');
+                        }
+
+                        setPlacingOrderMessage('Connecting to PayMongo...');
+
+                        // Use our client to create payment method and attach
+                        let billing;
+                        if (walletType === 'qrph') {
+                            billing = {
+                                name: selectedAddress.fullName || user?.email?.split('@')[0] || 'Guest',
+                                email: user?.email || 'guest@example.com',
+                                phone: selectedAddress.phone || '09000000000',
+                                address: {
+                                    line1: selectedAddress.streetAddress || 'N/A',
+                                    city: selectedAddress.city || 'N/A',
+                                    state: selectedAddress.province || selectedAddress.stateProvince || 'N/A',
+                                    postal_code: selectedAddress.postalCode || '0000',
+                                    country: selectedAddress.country || 'PH'
+                                }
+                            };
+                        }
+
+                        const pmId = await createPaymentMethod(walletType, billing);
+                        const returnUrl = `${window.location.origin}/checkout/pending?session_id=${sessionId}`;
+                        const nextAction = await attachPaymentIntent(result.paymentIntentId, pmId, result.clientKey, returnUrl);
+                        
+                        if (nextAction?.type === 'redirect' && nextAction.redirect?.url) {
+                            window.location.href = nextAction.redirect.url;
+                        } else if (nextAction?.type === 'consume_qr' && nextAction.consume_qr?.image_url) {
+                            setQrData({
+                                imageUrl: nextAction.consume_qr.image_url,
+                                expiresAt: nextAction.consume_qr.expires_at
+                            });
+                            setViewMode('qr_display');
+                            setIsPlacingOrder(false);
+                        } else {
+                            window.location.href = returnUrl;
+                        }
+                    } catch (e: any) {
+                        setIsPlacingOrder(false);
+                        Alert.alert('Payment Error', e.message);
+                    }
                 } else {
                     // Synchronous payment (like COD), complete immediately
+                    setPlacingOrderMessage('Creating order...');
                     const success = await completeCheckout(result.paymentId, shippingData);
                     if (success) {
                         router.replace('/checkout/success' as any);
+                    } else {
+                        setIsPlacingOrder(false);
                     }
                 }
+            } else {
+                setIsPlacingOrder(false);
             }
+        } catch (e: any) {
+            setIsPlacingOrder(false);
+            Alert.alert('Checkout Error', e.message);
         }
     };
 
@@ -464,6 +527,13 @@ function CheckoutContent() {
     // Address Selection Modal
     const closeModal = () => {
         if (viewMode === 'map_picker') setViewMode('address_form');
+        else if (viewMode === 'qr_display') {
+            // Keep on qr_display, or confirm exit
+            Alert.alert('Cancel Payment?', 'Are you sure you want to cancel the payment?', [
+                { text: 'No' },
+                { text: 'Yes', onPress: () => setViewMode('checkout') }
+            ]);
+        }
         else setViewMode('checkout');
     };
 
@@ -656,11 +726,23 @@ function CheckoutContent() {
                 onDismiss={handleExpirationDismiss}
             />
 
+            <CheckoutQrDisplay
+                visible={viewMode === 'qr_display'}
+                imageUrl={qrData?.imageUrl || null}
+                expiresAt={qrData?.expiresAt || null}
+                sessionId={sessionId}
+                onClose={() => setViewMode('checkout')}
+                onGenerateNew={() => {
+                    setViewMode('checkout');
+                    handlePlaceOrder();
+                }}
+            />
+
             {renderAddressModal()}
 
             <View style={styles.contentContainer}>
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-                    {lockedPrices.length === 0 ? (
+                    {(lockedPrices.length === 0 || !!items) ? (
                         <CheckoutSkeleton />
                     ) : (
                         <View style={isDesktop ? styles.mainLayoutDesktop : styles.mainLayout}>
@@ -777,14 +859,17 @@ function CheckoutContent() {
             </View>
 
             {/* Error Banner */}
-            {checkoutError && (
+            {checkoutError && !isPlacingOrder && (
                 <View style={styles.errorToast}>
                     <Text style={styles.errorText}>{checkoutError}</Text>
                 </View>
             )}
 
             {/* Beautiful Loading Overlay for placing order */}
-            <OrderProcessingOverlay visible={isProcessing && lockedPrices.length > 0} message={statusMessage} />
+            <OrderProcessingOverlay 
+                visible={isPlacingOrder || (isProcessing && lockedPrices.length > 0)} 
+                message={placingOrderMessage || statusMessage} 
+            />
         </View>
     );
 }

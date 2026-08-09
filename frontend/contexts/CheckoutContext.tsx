@@ -55,7 +55,7 @@ interface CheckoutContextType extends CheckoutState {
     initiateCheckout: (selectedItemIds: number[]) => Promise<boolean>;
     setShippingInfo: (info: ShippingInfo) => void;
     validateAndProceedToPayment: () => Promise<boolean>;
-    processPayment: (paymentMethod: string, shippingInfoOverride?: any, paymentType?: string) => Promise<{ paymentId: number, checkoutUrl?: string } | null>;
+    processPayment: (paymentMethod: string, shippingInfoOverride?: any, paymentType?: string) => Promise<{ paymentId: number, checkoutUrl?: string, paymentIntentId?: string, clientKey?: string } | null>;
     completeCheckout: (paymentId: number, shippingInfoOverride?: any) => Promise<boolean>;
     cancelCheckout: () => Promise<void>;
     setStep: (step: CheckoutStep) => void;
@@ -283,7 +283,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
     }, [state.sessionId]);
 
-    const processPayment = useCallback(async (paymentMethod: string, shippingInfoOverride?: any, paymentType?: string): Promise<{ paymentId: number, checkoutUrl?: string } | null> => {
+    const processPayment = useCallback(async (paymentMethod: string, shippingInfoOverride?: any, paymentType?: string): Promise<{ paymentId: number, checkoutUrl?: string, paymentIntentId?: string, clientKey?: string } | null> => {
         if (!state.sessionId) {
             setState(prev => ({ ...prev, error: 'No active checkout session' }));
             return null;
@@ -320,7 +320,7 @@ export const CheckoutProvider: React.FC<{ children: ReactNode }> = ({ children }
                     isProcessing: false,
                     statusMessage: null,
                 }));
-                return { paymentId: data.paymentId, checkoutUrl: data.checkoutUrl };
+                return { paymentId: data.paymentId, checkoutUrl: data.checkoutUrl, paymentIntentId: data.paymentIntentId, clientKey: data.clientKey };
             } else {
                 throw new Error(data.message || 'Payment failed');
             }

@@ -29,7 +29,11 @@ export const ProfilePageLayout: React.FC<ProfilePageLayoutProps> = ({
         if (onBack) {
             onBack();
         } else {
-            router.navigate('/profile' as RelativePathString);
+            if (router.canGoBack()) {
+                router.back();
+            } else {
+                router.navigate('/profile' as RelativePathString);
+            }
         }
     };
 

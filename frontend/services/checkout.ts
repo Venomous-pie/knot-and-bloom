@@ -62,6 +62,8 @@ export interface PaymentResponse {
     success: boolean;
     paymentId?: number;
     checkoutUrl?: string;
+    paymentIntentId?: string;
+    clientKey?: string;
     gatewayRef?: string;
     message: string;
     error?: string;
@@ -83,8 +85,8 @@ export const checkoutAPI = {
             idempotencyKey,
         }),
 
-    getSession: (sessionId: number) =>
-        apiClient.get<CheckoutSessionResponse>(`/checkout/${sessionId}`),
+    getSession: (sessionId: number, skipSync?: boolean) =>
+        apiClient.get<CheckoutSessionResponse>(`/checkout/${sessionId}${skipSync ? '?skipSync=true' : ''}`),
 
     validate: (sessionId: number) =>
         apiClient.post<ValidateCheckoutResponse>(`/checkout/${sessionId}/validate`),

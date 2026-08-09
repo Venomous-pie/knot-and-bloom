@@ -42,6 +42,7 @@ interface AddressFormProps {
     isFirstAddress?: boolean;
     renderHeader?: () => React.ReactNode;
     onLocationPickerChange?: (open: boolean) => void;
+    mapUpdatedTimestamp?: number;
 }
 
 const LABEL_OPTIONS = ['Home', 'Work', 'Gift', 'Other'];
@@ -67,6 +68,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     isFirstAddress = false,
     renderHeader,
     onLocationPickerChange,
+    mapUpdatedTimestamp = 0,
 }) => {
     const [form, setForm] = useState<AddressFormData>({
         label: initialData.label || '',
@@ -91,13 +93,23 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     const [saveForFuture, setSaveForFuture] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [focusedField, setFocusedField] = useState<string | null>(null);
+    const [highlightedFields, setHighlightedFields] = useState<Record<string, boolean>>({});
 
     const { clearDraft } = useDraft({
         key: 'address_form_draft',
         data: form,
         enabled: mode === 'create', // Only save drafts for new addresses
         onLoad: (draft) => {
-            setForm(prev => ({ ...prev, ...draft }));
+            // Only load draft for fields that haven't been explicitly set by map/initialData
+            setForm(prev => {
+                const merged = { ...draft };
+                Object.keys(prev).forEach(key => {
+                    const k = key as keyof AddressFormData;
+                    // If prev has a truthy value, keep it (prioritize map data over draft)
+                    if (prev[k]) merged[k] = prev[k] as any;
+                });
+                return merged;
+            });
         },
     });
 
@@ -203,7 +215,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         closeLocationPicker();
     };
 
-    // Update form when initialData changes (e.g. from Map selection)
+    // Update form when initialData changes
     React.useEffect(() => {
         if (initialData) {
             setForm(prev => ({
@@ -213,6 +225,24 @@ export const AddressForm: React.FC<AddressFormProps> = ({
             }));
         }
     }, [initialData, isFirstAddress, saveForFuture]);
+
+    // Handle map update highlighting
+    React.useEffect(() => {
+        if (mapUpdatedTimestamp > 0) {
+            const newHighlights: Record<string, boolean> = {};
+            ['region', 'province', 'city', 'barangay', 'streetAddress', 'postalCode'].forEach(key => {
+                if (form[key as keyof AddressFormData]) {
+                    newHighlights[key] = true;
+                }
+            });
+            // Also highlight the picker field specifically
+            newHighlights['locationPicker'] = true;
+            
+            setHighlightedFields(newHighlights);
+            const timer = setTimeout(() => setHighlightedFields({}), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [mapUpdatedTimestamp]);
 
     if (showLocationPicker) {
         return (
@@ -274,12 +304,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     style={[
                         styles.input,
                         focusedField === 'fullName' && styles.inputFocused,
+                        highlightedFields.fullName && styles.inputHighlighted,
                         errors.fullName && styles.inputError
                     ]}
                     value={form.fullName}
                     onChangeText={(text) => handleChange('fullName', text)}
                     placeholder="e.g. Juan Dela Cruz"
-                    placeholderTextColor={theme.colors.textLight}
+                    placeholderTextColor="rgba(0,0,0,0.35)"
                     autoComplete="name"
                     onFocus={() => setFocusedField('fullName')}
                     onBlur={() => setFocusedField(null)}
@@ -294,12 +325,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     style={[
                         styles.input,
                         focusedField === 'phone' && styles.inputFocused,
+                        highlightedFields.phone && styles.inputHighlighted,
                         errors.phone && styles.inputError
                     ]}
                     value={form.phone}
                     onChangeText={(text) => handleChange('phone', text.replace(/[^0-9+]/g, ''))}
                     placeholder="e.g. 09171234567"
-                    placeholderTextColor={theme.colors.textLight}
+                    placeholderTextColor="rgba(0,0,0,0.35)"
                     keyboardType="phone-pad"
                     autoComplete="tel"
                     onFocus={() => setFocusedField('phone')}
@@ -323,21 +355,21 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                         <View style={[styles.formGroup, styles.flex1]}>
                             <Text style={styles.formLabel}>Region</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, highlightedFields.region && styles.inputHighlighted]}
                                 value={form.region}
                                 onChangeText={(text) => handleChange('region', text)}
                                 placeholder="Region"
-                                placeholderTextColor={theme.colors.textLight}
+                                placeholderTextColor="rgba(0,0,0,0.35)"
                             />
                         </View>
                         <View style={[styles.formGroup, styles.flex1]}>
                             <Text style={styles.formLabel}>Province</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, highlightedFields.province && styles.inputHighlighted]}
                                 value={form.province}
                                 onChangeText={(text) => handleChange('province', text)}
                                 placeholder="Province"
-                                placeholderTextColor={theme.colors.textLight}
+                                placeholderTextColor="rgba(0,0,0,0.35)"
                             />
                         </View>
                     </View>
@@ -346,21 +378,21 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                         <View style={[styles.formGroup, styles.flex1]}>
                             <Text style={styles.formLabel}>City/Municipality</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, highlightedFields.city && styles.inputHighlighted]}
                                 value={form.city}
                                 onChangeText={(text) => handleChange('city', text)}
                                 placeholder="City"
-                                placeholderTextColor={theme.colors.textLight}
+                                placeholderTextColor="rgba(0,0,0,0.35)"
                             />
                         </View>
                         <View style={[styles.formGroup, styles.flex1]}>
                             <Text style={styles.formLabel}>Barangay</Text>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, highlightedFields.barangay && styles.inputHighlighted]}
                                 value={form.barangay}
                                 onChangeText={(text) => handleChange('barangay', text)}
                                 placeholder="Barangay"
-                                placeholderTextColor={theme.colors.textLight}
+                                placeholderTextColor="rgba(0,0,0,0.35)"
                             />
                         </View>
                     </View>
@@ -374,6 +406,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     barangay={form.barangay}
                     onPress={openLocationPicker}
                     error={errors.region || errors.city}
+                    isHighlighted={highlightedFields.locationPicker}
                 />
             )}
 
@@ -384,12 +417,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     style={[
                         styles.input,
                         focusedField === 'streetAddress' && styles.inputFocused,
+                        highlightedFields.streetAddress && styles.inputHighlighted,
                         errors.streetAddress && styles.inputError
                     ]}
                     value={form.streetAddress}
                     onChangeText={(text) => handleChange('streetAddress', text)}
                     placeholder="e.g. 123 Main Street, Barangay Sample"
-                    placeholderTextColor={theme.colors.textLight}
+                    placeholderTextColor="rgba(0,0,0,0.35)"
                     multiline
                     numberOfLines={2}
                     onFocus={() => setFocusedField('streetAddress')}
@@ -404,12 +438,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                 <TextInput
                     style={[
                         styles.input,
-                        focusedField === 'aptSuite' && styles.inputFocused
+                        focusedField === 'aptSuite' && styles.inputFocused,
+                        highlightedFields.aptSuite && styles.inputHighlighted
                     ]}
                     value={form.aptSuite}
                     onChangeText={(text) => handleChange('aptSuite', text)}
                     placeholder="e.g. Unit 4B"
-                    placeholderTextColor={theme.colors.textLight}
+                    placeholderTextColor="rgba(0,0,0,0.35)"
                     onFocus={() => setFocusedField('aptSuite')}
                     onBlur={() => setFocusedField(null)}
                 />
@@ -423,12 +458,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                         style={[
                             styles.input,
                             focusedField === 'postalCode' && styles.inputFocused,
+                            highlightedFields.postalCode && styles.inputHighlighted,
                             errors.postalCode && styles.inputError
                         ]}
                         value={form.postalCode}
                         onChangeText={(text) => handleChange('postalCode', text.replace(/[^0-9]/g, ''))}
                         placeholder="e.g. 1000"
-                        placeholderTextColor={theme.colors.textLight}
+                        placeholderTextColor="rgba(0,0,0,0.35)"
                         keyboardType="number-pad"
                         onFocus={() => setFocusedField('postalCode')}
                         onBlur={() => setFocusedField(null)}
@@ -570,6 +606,10 @@ const styles = StyleSheet.create({
     inputFocused: {
         borderColor: '#B36979',
         backgroundColor: 'white',
+    },
+    inputHighlighted: {
+        backgroundColor: 'rgba(179, 105, 121, 0.1)',
+        borderColor: '#B36979',
     },
     inputError: {
         borderColor: theme.colors.error,

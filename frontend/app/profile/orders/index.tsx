@@ -41,6 +41,7 @@ interface ProductItem {
     price: number;
     image?: string;
     variant?: string;
+    seller?: { name: string } | null;
 }
 
 const parseProducts = (data: any): ProductItem[] => {
@@ -55,7 +56,8 @@ const parseProducts = (data: any): ProductItem[] => {
                     quantity: item.quantity || 1,
                     price: item.unitPrice || item.finalPrice || item.price || productData.discountedPrice || productData.basePrice || 0,
                     image: productData.image || item.image || null,
-                    variant: item.variant || null
+                    variant: item.variant || null,
+                    seller: productData.seller || null
                 };
             });
         }
@@ -547,6 +549,11 @@ export default function OrderHistoryPage() {
                                     <View style={styles.productRow}>
                                         {renderProductThumbnails(products)}
                                         <View style={styles.productInfo}>
+                                            {products.length > 0 && products[0].seller?.name && (
+                                                <Text style={{ fontSize: 13, color: theme.colors.primary, marginBottom: 2, fontWeight: '600' }}>
+                                                    {products[0].seller.name}
+                                                </Text>
+                                            )}
                                             <Text style={styles.productText} numberOfLines={2}>
                                                 {products.length > 0 ? (
                                                     <>
@@ -909,7 +916,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     payAction: {
-        backgroundColor: theme.colors.text,
+        backgroundColor: theme.colors.primary,
     },
     payActionText: {
         color: 'white',

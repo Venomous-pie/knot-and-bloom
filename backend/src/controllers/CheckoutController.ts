@@ -259,6 +259,42 @@ const getCheckoutSession = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
+        // Active Payment Sync (Fallback for delayed/failed webhooks)
+        const skipSync = req.query.skipSync === 'true';
+        const processingPayment = session.payments.find(p => p.status === PaymentStatus.PROCESSING && p.gatewayRef?.startsWith('pi_'));
+        
+        if (!skipSync && processingPayment && session.status !== CheckoutStatus.COMPLETED) {
+            const apiStatus = await PaymentService.getPaymentStatus(processingPayment.gatewayRef!);
+            
+            if (apiStatus === 'succeeded') {
+                const alreadyProcessed = await prisma.$transaction(async (tx) => {
+                    const lockedPayment = await tx.payment.findUnique({ where: { uid: processingPayment.uid } });
+                    if (lockedPayment?.status === PaymentStatus.SUCCEEDED) return true;
+                    await tx.payment.update({
+                        where: { uid: processingPayment.uid },
+                        data: { status: PaymentStatus.SUCCEEDED },
+                    });
+                    return false;
+                });
+
+                if (!alreadyProcessed) {
+                    console.log(`[Polling] Payment ${processingPayment.uid} manually confirmed. Creating orders...`);
+                    const paymentWithSucceeded = { ...processingPayment, status: PaymentStatus.SUCCEEDED };
+                    await createOrdersFromSession(session.uid, paymentWithSucceeded as any);
+                    
+                    // Re-fetch the session after orders are created
+                    const updatedSession = await prisma.checkoutSession.findUnique({
+                        where: { uid: Number(sessionId) },
+                        include: { payments: true },
+                    });
+                    if (updatedSession) {
+                        res.status(200).json({ success: true, session: updatedSession });
+                        return;
+                    }
+                }
+            }
+        }
+
         // Check if session has expired
         if (session.expiresAt < new Date() && session.status !== CheckoutStatus.COMPLETED) {
             await prisma.checkoutSession.update({
@@ -545,20 +581,53 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
         let chargeAmount = Number(session.totalAmount);
         let actualPaymentMethodToSave = paymentMethod.toUpperCase();
         let gatewayMethodToUse = paymentMethod.toUpperCase();
+        let totalShippingFee = 0;
+
+        // Calculate shipping fee if we have address and choices
+        if (shippingAddress && choices) {
+            try {
+                const lockedPricesData = JSON.parse(session.lockedPrices);
+                const sellerIds = [...new Set(lockedPricesData.map((i: any) => i.sellerId).filter((id: any) => id !== null))];
+                const sellers = await prisma.seller.findMany({
+                    where: { uid: { in: sellerIds as number[] } }
+                });
+                const config = await getShippingConfig();
+                
+                for (const seller of sellers) {
+                    const sellerItems = lockedPricesData.filter((i: any) => i.sellerId === seller.uid);
+                    const sellerSubtotal = sellerItems.reduce((sum: number, item: any) => sum + (item.quantity * item.finalPrice), 0);
+                    const choice = choices[seller.uid] || 'DELIVERY';
+                    const result = await resolveSellerShipping(
+                        seller as any,
+                        shippingAddress,
+                        choice,
+                        config,
+                        sellerSubtotal
+                    );
+                    totalShippingFee += result.fee;
+                }
+            } catch (e) {
+                console.error('Failed to calculate shipping fee in processPayment', e);
+            }
+        }
 
         if (paymentType === 'COD_DEPOSIT') {
-            // It's a COD transaction requiring a deposit
+            // It's a COD transaction requiring a deposit (shipping paid on delivery)
             actualPaymentMethodToSave = 'COD';
             gatewayMethodToUse = paymentMethod.toUpperCase(); // e.g. GCASH, PAYMAYA
             chargeAmount = chargeAmount * 0.20;
-        } else if (paymentMethod.toUpperCase() === 'COD') {
-            // Standard COD without a deposit is no longer allowed.
-            res.status(400).json({
-                success: false,
-                error: 'DEPOSIT_REQUIRED',
-                message: 'A 20% deposit is required for all Cash on Delivery orders.'
-            });
-            return;
+        } else {
+            // Include shipping fee in full payments
+            chargeAmount = chargeAmount + totalShippingFee;
+            if (paymentMethod.toUpperCase() === 'COD') {
+                // Standard COD without a deposit is no longer allowed.
+                res.status(400).json({
+                    success: false,
+                    error: 'DEPOSIT_REQUIRED',
+                    message: 'A 20% deposit is required for all Cash on Delivery orders.'
+                });
+                return;
+            }
         }
 
         // Create payment record
@@ -597,23 +666,30 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
                     amount: Number(item.finalPrice),
                     quantity: Number(item.quantity)
                 }));
+                
+                if (totalShippingFee > 0) {
+                    lineItems?.push({
+                        name: 'Shipping Fee',
+                        amount: totalShippingFee,
+                        quantity: 1
+                    });
+                }
             }
         } catch (e) {
             console.error('Failed to parse lockedPrices for lineItems', e);
         }
 
         // Process payment through gateway
-        const paymentResult = await PaymentService.processPayment({
+        const paymentResult = await PaymentService.createPaymentIntent({
             amount: chargeAmount,
             method: gatewayMethodToUse,
             idempotencyKey,
             userId: session.userId,
             metadata: { sessionId: String(session.uid) },
-            ...(lineItems && { lineItems }),
         }, PAYMENT_TIMEOUT_MS);
 
         if (paymentResult.success) {
-            const isAsyncPayment = !!paymentResult.checkoutUrl;
+            const isAsyncPayment = !!paymentResult.clientKey;
 
             if (isAsyncPayment) {
                 // ── PayMongo async flow ────────────────────────────────────
@@ -647,8 +723,9 @@ const processPayment = async (req: Request, res: Response): Promise<void> => {
                 success: true,
                 paymentId: payment.uid,
                 gatewayRef: paymentResult.gatewayRef,
-                checkoutUrl: paymentResult.checkoutUrl,
-                message: isAsyncPayment ? 'Redirecting to payment gateway...' : 'Payment processed successfully.',
+                paymentIntentId: paymentResult.paymentIntentId,
+                clientKey: paymentResult.clientKey,
+                message: isAsyncPayment ? 'Payment intent created. Client must attach payment method.' : 'Payment processed successfully.',
             });
         } else {
             // Update payment record
@@ -716,6 +793,8 @@ export async function createOrdersFromSession(
     const itemsBySeller = groupItemsBySeller(lockedPrices);
     const idempotencyKey = session.idempotencyKey;
 
+    const config = await getShippingConfig();
+
     const createdOrderIds = await prisma.$transaction(async (tx) => {
         const orderIds: number[] = [];
         let orderIndex = 0;
@@ -749,8 +828,6 @@ export async function createOrdersFromSession(
                 }
             }
         }
-
-        const config = await getShippingConfig();
 
         for (const [sellerId, sellerItems] of itemsBySeller) {
             orderIndex++;
@@ -898,6 +975,9 @@ export async function createOrdersFromSession(
         }
 
         return orderIds;
+    }, {
+        maxWait: 5000,
+        timeout: 20000 // Increase transaction timeout to 20 seconds
     });
 
     // Mark session completed

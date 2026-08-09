@@ -53,19 +53,28 @@ export function CheckoutOrderSummary({
         <View style={[styles.container, isStickyLayout && styles.stickyContainer]}>
             <Text style={styles.title}>Order Summary</Text>
             
-            {/* Subtotal */}
-            <View style={styles.row}>
-                <Text style={styles.label}>Merchandise Subtotal:</Text>
-                <Text style={styles.value}>₱{(subtotal ?? totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-            </View>
-
-            {/* Total Savings */}
-            {totalSavings > 0 && (
+            {/* Subtotal & Savings Logic */}
+            {totalSavings > 0 ? (
+                <>
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Original Subtotal:</Text>
+                        <Text style={styles.value}>₱{((subtotal ?? totalAmount) + totalSavings).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                    </View>
+                    <View style={[styles.row, { paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: theme.colors.border }]}>
+                        <Text style={styles.label}>Total Savings:</Text>
+                        <Text style={[styles.value, { color: theme.colors.success }]}>
+                            -₱{totalSavings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                    </View>
+                    <View style={[styles.row, { marginTop: 8 }]}>
+                        <Text style={styles.label}>Merchandise Subtotal:</Text>
+                        <Text style={styles.value}>₱{(subtotal ?? totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                    </View>
+                </>
+            ) : (
                 <View style={styles.row}>
-                    <Text style={styles.label}>Total Savings:</Text>
-                    <Text style={[styles.value, { color: theme.colors.success }]}>
-                        -₱{totalSavings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </Text>
+                    <Text style={styles.label}>Merchandise Subtotal:</Text>
+                    <Text style={styles.value}>₱{(subtotal ?? totalAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 </View>
             )}
 
@@ -113,14 +122,37 @@ export function CheckoutOrderSummary({
                 )}
             </View>
 
-            {/* Total */}
-            <View style={[styles.row, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Total Payment:</Text>
-                <Text style={styles.totalAmount}>
-                    <Text style={{ fontWeight: '400' }}>₱</Text>
-                    {grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Text>
-            </View>
+            {paymentMethod === 'cod' && codDepositPercent > 0 ? (
+                <>
+                    <View style={styles.row}>
+                        <Text style={[styles.label, { fontWeight: '600', color: theme.colors.text }]}>Total Order Amount:</Text>
+                        <Text style={[styles.value, { fontWeight: '600' }]}>
+                            ₱{grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                    </View>
+                    <View style={[styles.row, styles.totalRow, { marginBottom: 4, paddingBottom: 0 }]}>
+                        <Text style={[styles.totalLabel, { color: theme.colors.primary }]}>To Pay Now:</Text>
+                        <Text style={[styles.totalAmount, { color: theme.colors.primary }]}>
+                            <Text style={{ fontWeight: '400', fontFamily: theme.typography.fontFamily }}>₱</Text>
+                            {(totalAmount * (codDepositPercent / 100)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                    </View>
+                    <View style={[styles.row, { marginBottom: 16, marginTop: 4 }]}>
+                        <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontFamily: theme.typography.fontFamily }}>Due on Delivery:</Text>
+                        <Text style={{ fontSize: 13, color: theme.colors.textSecondary, fontFamily: theme.typography.fontFamily, fontWeight: '500' }}>
+                            ₱{((totalAmount * ((100 - codDepositPercent) / 100)) + shippingFee).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                    </View>
+                </>
+            ) : (
+                <View style={[styles.row, styles.totalRow]}>
+                    <Text style={styles.totalLabel}>Total Payment:</Text>
+                    <Text style={styles.totalAmount}>
+                        <Text style={{ fontWeight: '400', fontFamily: theme.typography.fontFamily }}>₱</Text>
+                        {grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
+                </View>
+            )}
 
             {/* Action Button */}
             <View style={styles.actionRow}>

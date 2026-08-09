@@ -121,9 +121,9 @@ export default function SellerApplyPage() {
     };
 
     const { clearDraft } = useDraft({
-        key: 'seller_application_draft',
+        key: user ? `seller_application_draft_${user.uid}` : 'seller_application_draft',
         data: draftData,
-        enabled: true,
+        enabled: !!user,
         onLoad: (draft: any) => {
             if (draft.currentStep) setCurrentStep(draft.currentStep);
             if (draft.shopName) setShopName(draft.shopName);

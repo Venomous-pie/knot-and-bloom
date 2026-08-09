@@ -11,10 +11,11 @@ interface LocationPickerFieldProps {
     onPress: () => void;
     error?: string;
     isFocused?: boolean;
+    isHighlighted?: boolean;
 }
 
 export const LocationPickerField: React.FC<LocationPickerFieldProps> = ({
-    region, province, city, barangay, onPress, error, isFocused
+    region, province, city, barangay, onPress, error, isFocused, isHighlighted
 }) => {
     const hasSelection = region || province || city || barangay;
 
@@ -33,6 +34,7 @@ export const LocationPickerField: React.FC<LocationPickerFieldProps> = ({
                 style={[
                     styles.field,
                     isFocused && styles.fieldFocused,
+                    isHighlighted && styles.fieldHighlighted,
                     error && styles.fieldError
                 ]}
                 onPress={onPress}
@@ -75,6 +77,10 @@ const styles = StyleSheet.create({
     fieldFocused: {
         borderColor: '#B36979',
         backgroundColor: 'white',
+    },
+    fieldHighlighted: {
+        backgroundColor: 'rgba(179, 105, 121, 0.1)',
+        borderColor: '#B36979',
     },
     fieldError: {
         borderColor: theme.colors.error,

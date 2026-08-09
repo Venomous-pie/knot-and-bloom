@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import crypto from 'crypto';
 import prisma from '../utils/prismaUtils.js';
-import { PaymentStatus } from '../../generated/prisma/index.js';
+import { PaymentStatus, CheckoutStatus } from '../../generated/prisma/index.js';
 import { createOrdersFromSession } from './CheckoutController.js';
 
 export const webhookController = {
@@ -126,11 +126,11 @@ export const webhookController = {
 
             const eventType = payload.data.attributes?.type;
 
-            if (eventType === 'checkout_session.payment.paid' || eventType === 'checkout.session.completed') {
-                const checkoutSessionData = payload.data.attributes.data;
-                const gatewayRef = checkoutSessionData.id; // cs_xxxx
+            if (eventType === 'payment.paid') {
+                const paymentData = payload.data.attributes.data.attributes;
+                const gatewayRef = paymentData.payment_intent_id; // pi_xxxx
 
-                // Find the payment record linked to this PayMongo checkout session
+                // Find the payment record linked to this PayMongo Payment Intent
                 const payment = await prisma.payment.findFirst({
                     where: { gatewayRef },
                     include: { checkoutSession: true },
@@ -149,11 +149,7 @@ export const webhookController = {
                 }
 
                 // Get PayMongo gateway fee (in centavos, convert to PHP)
-                const paymentsFromGateway = checkoutSessionData.attributes?.payments || [];
-                let totalFeeCentavos = 0;
-                if (paymentsFromGateway.length > 0) {
-                    totalFeeCentavos = paymentsFromGateway[0].attributes?.fee || 0;
-                }
+                const totalFeeCentavos = paymentData.fee || 0;
                 const gatewayFeePhp = totalFeeCentavos / 100;
 
                 // ── IDEMPOTENT PAYMENT CONFIRMATION ─────────────────────────
@@ -204,6 +200,32 @@ export const webhookController = {
                 }
 
                 console.log(`[Webhook] Successfully processed payment ${payment.uid} → ${createdOrderIds.length} order(s).`);
+                res.status(200).send('Success');
+            } else if (eventType === 'payment.failed' || eventType === 'qrph.expired') {
+                const paymentData = payload.data.attributes.data.attributes;
+                const gatewayRef = paymentData.payment_intent_id; // pi_xxxx
+                
+                const payment = await prisma.payment.findFirst({
+                    where: { gatewayRef },
+                    include: { checkoutSession: true },
+                });
+
+                if (payment && payment.status !== PaymentStatus.SUCCEEDED) {
+                    await prisma.$transaction(async (tx) => {
+                        await tx.payment.update({
+                            where: { uid: payment.uid },
+                            data: { 
+                                status: PaymentStatus.FAILED,
+                                errorMessage: eventType === 'qrph.expired' ? 'QR Code expired' : 'Payment failed at gateway'
+                            },
+                        });
+                        await tx.checkoutSession.update({
+                            where: { uid: payment.checkoutSessionId },
+                            data: { status: CheckoutStatus.AWAITING_PAYMENT },
+                        });
+                    });
+                    console.log(`[Webhook] Payment ${payment.uid} marked as failed (${eventType}).`);
+                }
                 res.status(200).send('Success');
             } else {
                 res.status(200).send('Ignored');

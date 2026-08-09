@@ -7,19 +7,19 @@ export interface PaymentRequest {
     idempotencyKey: string;
     userId: number;
     metadata?: Record<string, any>;
-    lineItems?: { name: string; amount: number; quantity: number }[];
 }
 
 export interface PaymentResult {
     success: boolean;
     gatewayRef?: string;
-    checkoutUrl?: string; // New field for PayMongo Checkout URL
+    paymentIntentId?: string;
+    clientKey?: string;
     errorMessage?: string;
     errorCode?: string;
 }
 
 export const PaymentService = {
-    processPayment: async (request: PaymentRequest, timeoutMs: number = 30000): Promise<PaymentResult> => {
+    createPaymentIntent: async (request: PaymentRequest, timeoutMs: number = 30000): Promise<PaymentResult> => {
         try {
             // COD always succeeds immediately locally (payment collected on delivery)
             if (request.method.toUpperCase() === 'COD') {
@@ -40,49 +40,29 @@ export const PaymentService = {
                 };
             }
 
-            // Map internal method to PayMongo payment_method_types
+            // Only e-wallets supported via custom checkout for now
             const methodMap: Record<string, string[]> = {
                 'GCASH': ['gcash'],
                 'PAYMAYA': ['paymaya'],
-                'MARIBANK': ['qrph'],
-                'CARD': ['card']
+                'MARIBANK': ['qrph'], // Maribank will map to QRPh for now
+                'QRPH': ['qrph']
             };
             
-            const paymentMethodTypes = methodMap[request.method.toUpperCase()] || ['gcash', 'paymaya', 'card', 'qrph'];
+            const paymentMethodAllowed = methodMap[request.method.toUpperCase()] || ['gcash', 'paymaya', 'qrph'];
 
             const amountInCentavos = Math.round(request.amount * 100);
-
-            // Map line items to PayMongo format, converting amounts to centavos
-            const paymongoLineItems = request.lineItems && request.lineItems.length > 0 
-                ? request.lineItems.map(item => ({
-                    currency: 'PHP',
-                    amount: Math.round(item.amount * 100),
-                    name: item.name,
-                    quantity: item.quantity
-                }))
-                : [
-                    {
-                        currency: 'PHP',
-                        amount: amountInCentavos,
-                        name: 'Knot & Bloom Order',
-                        quantity: 1
-                    }
-                ];
-
-            // Determine redirect URLs
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081';
-            const sessionId = request.metadata?.sessionId;
-            const successUrl = `${frontendUrl}/checkout/pending?session_id=${sessionId}`;
-            const cancelUrl = `${frontendUrl}/checkout`;
 
             const paymongoPayload = {
                 data: {
                     attributes: {
-                        line_items: paymongoLineItems,
-                        payment_method_types: paymentMethodTypes,
-                        success_url: successUrl,
-                        cancel_url: cancelUrl,
-                        reference_number: request.idempotencyKey,
+                        amount: amountInCentavos,
+                        payment_method_allowed: paymentMethodAllowed,
+                        payment_method_options: {
+                            card: { request_three_d_secure: 'any' }
+                        },
+                        currency: 'PHP',
+                        statement_descriptor: 'Knot & Bloom',
+                        description: `Order for User ${request.userId}`,
                         metadata: {
                             userId: request.userId.toString(),
                             ...request.metadata
@@ -99,7 +79,7 @@ export const PaymentService = {
                 controller.abort();
             }, timeoutMs);
 
-            const response = await fetch('https://api.paymongo.com/v1/checkout_sessions', {
+            const response = await fetch('https://api.paymongo.com/v1/payment_intents', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -123,13 +103,14 @@ export const PaymentService = {
                 };
             }
 
-            const checkoutUrl = responseData.data.attributes.checkout_url;
-            const gatewayRef = responseData.data.id; // The checkout session ID
+            const paymentIntentId = responseData.data.id;
+            const clientKey = responseData.data.attributes.client_key;
 
             return {
                 success: true,
-                gatewayRef,
-                checkoutUrl
+                gatewayRef: paymentIntentId,
+                paymentIntentId,
+                clientKey
             };
 
         } catch (error: any) {
@@ -150,8 +131,29 @@ export const PaymentService = {
     },
 
     getPaymentStatus: async (gatewayRef: string): Promise<'pending' | 'succeeded' | 'failed'> => {
-        // We will implement this if needed, or rely on webhooks
-        return 'pending'; 
+        try {
+            const secretKey = process.env.PAYMONGO_SECRET_KEY;
+            if (!secretKey) return 'pending';
+            
+            const encodedKey = Buffer.from(`${secretKey}:`).toString('base64');
+            const response = await fetch(`https://api.paymongo.com/v1/payment_intents/${gatewayRef}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Basic ${encodedKey}`
+                }
+            });
+            if (!response.ok) return 'pending';
+            
+            const data: any = await response.json();
+            const status = data.data?.attributes?.status;
+            
+            if (status === 'succeeded') return 'succeeded';
+            if (status === 'failed' || status === 'cancelled') return 'failed';
+            return 'pending';
+        } catch (error) {
+            console.error('[PaymentService] Error checking payment status:', error);
+            return 'pending';
+        }
     },
 
     refundPayment: async (gatewayRef: string, amount: number): Promise<PaymentResult> => {
@@ -163,12 +165,12 @@ export const PaymentService = {
     },
 
     validatePaymentMethod: (method: string): boolean => {
-        const validMethods = ['CARD', 'GCASH', 'PAYMAYA', 'MARIBANK', 'COD'];
+        const validMethods = ['GCASH', 'PAYMAYA', 'MARIBANK', 'QRPH', 'COD'];
         return validMethods.includes(method.toUpperCase());
     },
 
     getAvailableMethods: (): string[] => {
-        return ['CARD', 'GCASH', 'PAYMAYA', 'MARIBANK', 'COD'];
+        return ['GCASH', 'PAYMAYA', 'MARIBANK', 'QRPH', 'COD'];
     },
 };
 

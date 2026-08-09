@@ -24,6 +24,7 @@ export default function AddressesPage() {
     // Draft/Editing state
     const [editingAddress, setEditingAddress] = useState<Partial<Address> | null>(null);
     const [saving, setSaving] = useState(false);
+    const [mapUpdatedTimestamp, setMapUpdatedTimestamp] = useState(0);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -90,7 +91,7 @@ export default function AddressesPage() {
 
             await fetchAddresses();
             setShowModal(false);
-            Alert.alert('Success', editingAddress?.uid ? 'Address updated' : 'Address added');
+            // Alert.alert('Success', editingAddress?.uid ? 'Address updated' : 'Address added');
         } catch (error: any) {
             console.error('Error saving address:', error);
             Alert.alert('Error', error.response?.data?.error || 'Failed to save address');
@@ -142,6 +143,7 @@ export default function AddressesPage() {
             postalCode: data.zipCode,
             country: data.country || 'Philippines',
         }));
+        setMapUpdatedTimestamp(Date.now());
         setViewMode('form');
     };
 
@@ -189,42 +191,47 @@ export default function AddressesPage() {
 
             <Modal visible={showModal} animationType="fade" transparent>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, viewMode === 'map' && styles.modalContentMap]}>
+                    <View style={[
+                        styles.modalContent, 
+                        viewMode === 'map' && styles.modalContentMap,
+                        Platform.OS === 'web' && viewMode === 'form' && { maxWidth: 700, alignSelf: 'center' }
+                    ]}>
                         {viewMode === 'form' ? (
-                                <View style={{ flex: 1, paddingHorizontal: 0 }}>
-                                    <AddressForm
-                                        renderHeader={() => (
-                                            <View style={styles.modalHeader}>
-                                                <Text style={styles.modalTitle}>
-                                                    {editingAddress?.uid ? 'Edit Address' : 'Add Address'}
-                                                </Text>
-                                                <Pressable onPress={() => setShowModal(false)}>
-                                                    <Text style={styles.modalClose}>✕</Text>
-                                                </Pressable>
-                                            </View>
-                                        )}
-                                        mode={editingAddress?.uid ? 'edit' : 'create'}
-                                        initialData={{
-                                            label: editingAddress?.label || undefined,
-                                            fullName: editingAddress?.fullName || '',
-                                            phone: editingAddress?.phone || '',
-                                            streetAddress: editingAddress?.streetAddress || '',
-                                            aptSuite: editingAddress?.aptSuite || undefined,
-                                            region: editingAddress?.region || undefined,
-                                            province: editingAddress?.province || editingAddress?.stateProvince || undefined,
-                                            city: editingAddress?.city || '',
-                                            barangay: editingAddress?.barangay || undefined,
-                                            postalCode: editingAddress?.postalCode || '',
-                                            country: editingAddress?.country || 'Philippines',
-                                            isDefault: editingAddress?.isDefault ?? false,
-                                        }}
-                                        onSave={handleSave}
-                                        onCancel={() => setShowModal(false)}
-                                        onOpenMap={() => setViewMode('map')}
-                                        isSaving={saving}
-                                        showSaveCheckbox={false}
-                                    />
-                                </View>
+                            <View style={{ flex: 1, paddingHorizontal: 0 }}>
+                                <AddressForm
+                                    renderHeader={() => (
+                                        <View style={styles.modalHeader}>
+                                            <Text style={styles.modalTitle}>
+                                                {editingAddress?.uid ? 'Edit Address' : 'Add Address'}
+                                            </Text>
+                                            <Pressable onPress={() => setShowModal(false)}>
+                                                <Text style={styles.modalClose}>✕</Text>
+                                            </Pressable>
+                                        </View>
+                                    )}
+                                    mode={editingAddress?.uid ? 'edit' : 'create'}
+                                    initialData={{
+                                        label: editingAddress?.label || undefined,
+                                        fullName: editingAddress?.fullName || '',
+                                        phone: editingAddress?.phone || '',
+                                        streetAddress: editingAddress?.streetAddress || '',
+                                        aptSuite: editingAddress?.aptSuite || undefined,
+                                        region: editingAddress?.region || undefined,
+                                        province: editingAddress?.province || editingAddress?.stateProvince || undefined,
+                                        city: editingAddress?.city || '',
+                                        barangay: editingAddress?.barangay || undefined,
+                                        postalCode: editingAddress?.postalCode || '',
+                                        country: editingAddress?.country || 'Philippines',
+                                        isDefault: editingAddress?.isDefault ?? false,
+                                    }}
+                                    onSave={handleSave}
+                                    onCancel={() => setShowModal(false)}
+                                    onOpenMap={() => setViewMode('map')}
+                                    isSaving={saving}
+                                    showSaveCheckbox={false}
+                                    mapUpdatedTimestamp={mapUpdatedTimestamp}
+                                />
+                            </View>
                         ) : (
                             /* Map View */
                             <AddressMapPicker

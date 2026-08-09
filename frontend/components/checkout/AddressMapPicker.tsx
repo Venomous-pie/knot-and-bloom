@@ -68,6 +68,9 @@ function buildLeafletHTML(initLat: number, initLng: number, zoom: number): strin
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
   #map { width: 100%; height: 100%; }
+  .leaflet-interactive, .leaflet-container { 
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="black" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3" fill="white"></circle></svg>') 12 24, crosshair !important; 
+  }
   .custom-pin { display: flex; flex-direction: column; align-items: center; }
   .pin-bubble {
     width: 36px; height: 36px;
@@ -93,7 +96,8 @@ function buildLeafletHTML(initLat: number, initLng: number, zoom: number): strin
 <body>
 <div id="map"></div>
 <script>
-  var map = L.map('map', { zoomControl: true }).setView([${initLat}, ${initLng}], ${zoom});
+  var map = L.map('map', { zoomControl: false }).setView([${initLat}, ${initLng}], ${zoom});
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -168,6 +172,9 @@ export const AddressMapPicker: React.FC<AddressMapPickerProps> = ({
     const [geocoding, setGeocoding] = useState(false);
     const [geocodeError, setGeocodeError] = useState(false);
     const [locating, setLocating] = useState(false);
+    const [highlightAddress, setHighlightAddress] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Stable geocode function (doesn't re-create on render)
     const geocodeCoords = useCallback(async (lat: number, lng: number) => {
@@ -181,6 +188,10 @@ export const AddressMapPicker: React.FC<AddressMapPickerProps> = ({
             const data = await res.json();
             if (data?.address) {
                 setAddressPreview(parseNominatimPH(data, lat, lng));
+                setHighlightAddress(true);
+                setShowConfirmModal(true);
+                if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+                highlightTimeoutRef.current = setTimeout(() => setHighlightAddress(false), 2000);
             } else {
                 setGeocodeError(true);
             }
@@ -276,6 +287,40 @@ export const AddressMapPicker: React.FC<AddressMapPickerProps> = ({
                     onLoad={handleIframeLoad}
                 />
 
+                {/* Address Preview Overlay (Top Left) */}
+                {pin && (
+                    <View style={[
+                        styles.addressPreviewOverlay,
+                        highlightAddress && styles.addressPreviewHighlight
+                    ]}>
+                        <Text style={styles.addressLabel}>Selected address</Text>
+                        
+                        {geocoding ? (
+                            <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <ActivityIndicator size="small" color={theme.colors.primary} />
+                                <Text style={styles.addressCity}>Finding address…</Text>
+                            </View>
+                        ) : geocodeError ? (
+                            <View style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <AlertCircle size={16} color={theme.colors.error} />
+                                <Text style={[styles.addressCity, { color: theme.colors.error }]}>Couldn't find address here.</Text>
+                            </View>
+                        ) : addressPreview ? (
+                            <>
+                                <Text style={styles.addressStreet} numberOfLines={1}>
+                                    {addressPreview.street || 'Unknown street'}
+                                    {addressPreview.barangay ? `, ${addressPreview.barangay}` : ''}
+                                </Text>
+                                <Text style={styles.addressCity} numberOfLines={1}>
+                                    {[addressPreview.city, addressPreview.province, addressPreview.zipCode]
+                                        .filter(Boolean)
+                                        .join(', ')}
+                                </Text>
+                            </>
+                        ) : null}
+                    </View>
+                )}
+
                 {/* Locating overlay */}
                 {locating && (
                     <View style={styles.locatingOverlay}>
@@ -299,54 +344,48 @@ export const AddressMapPicker: React.FC<AddressMapPickerProps> = ({
                     {locating ? (
                         <ActivityIndicator size="small" color={theme.colors.primary} />
                     ) : (
-                        <Navigation size={20} color={theme.colors.primary} />
+                        <Navigation size={24} color={theme.colors.primary} />
                     )}
                 </Pressable>
-            </View>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-                {!pin ? (
-                    <View style={styles.emptyPin}>
-                        <MapPin size={16} color={theme.colors.textLight} />
-                        <Text style={styles.emptyPinText}>Click the map to place your pin</Text>
+                {/* Confirmation Modal */}
+                {showConfirmModal && addressPreview && (
+                    <View style={styles.confirmModalOverlay}>
+                        <View style={styles.confirmModalCard}>
+                            <View style={styles.confirmModalHeader}>
+                                <MapPin size={24} color={theme.colors.primary} />
+                                <Text style={styles.confirmModalTitle}>Location Found</Text>
+                            </View>
+                            <View style={styles.confirmModalBody}>
+                                <Text style={styles.confirmModalStreet}>
+                                    {addressPreview.street || 'Unknown street'}
+                                    {addressPreview.barangay ? `, ${addressPreview.barangay}` : ''}
+                                </Text>
+                                <Text style={styles.confirmModalCity}>
+                                    {[addressPreview.city, addressPreview.province, addressPreview.zipCode]
+                                        .filter(Boolean)
+                                        .join(', ')}
+                                </Text>
+                            </View>
+                            <View style={styles.confirmModalActions}>
+                                <Pressable
+                                    style={styles.confirmModalSecondaryBtn}
+                                    onPress={() => setShowConfirmModal(false)}
+                                >
+                                    <Text style={styles.confirmModalSecondaryText}>Adjust Pin</Text>
+                                </Pressable>
+                                <Pressable
+                                    style={styles.confirmModalPrimaryBtn}
+                                    onPress={handleConfirm}
+                                >
+                                    <Check size={18} color="#fff" />
+                                    <Text style={styles.confirmModalPrimaryText}>Use This Address</Text>
+                                </Pressable>
+                            </View>
+                        </View>
                     </View>
-                ) : geocoding ? (
-                    <View style={styles.geocodingRow}>
-                        <ActivityIndicator size="small" color={theme.colors.primary} />
-                        <Text style={styles.geocodingText}>Finding address…</Text>
-                    </View>
-                ) : geocodeError ? (
-                    <View style={styles.geocodingRow}>
-                        <AlertCircle size={16} color={theme.colors.error} />
-                        <Text style={[styles.geocodingText, { color: theme.colors.error }]}>
-                            Couldn't find an address here. Try another spot.
-                        </Text>
-                    </View>
-                ) : addressPreview ? (
-                    <View style={styles.addressPreview}>
-                        <Text style={styles.addressLabel}>Selected address</Text>
-                        <Text style={styles.addressStreet} numberOfLines={1}>
-                            {addressPreview.street || 'Unknown street'}
-                            {addressPreview.barangay ? `, ${addressPreview.barangay}` : ''}
-                        </Text>
-                        <Text style={styles.addressCity} numberOfLines={1}>
-                            {[addressPreview.city, addressPreview.province, addressPreview.zipCode]
-                                .filter(Boolean)
-                                .join(', ')}
-                        </Text>
-                    </View>
-                ) : null}
-
-                <Pressable
-                    style={[styles.confirmBtn, (!pin || geocoding || geocodeError) && styles.confirmBtnDisabled]}
-                    onPress={handleConfirm}
-                    disabled={!pin || geocoding || geocodeError}
-                >
-                    <Check size={18} color="#fff" />
-                    <Text style={styles.confirmText}>Use This Location</Text>
-                </Pressable>
-            </View>
+                )}
+        </View>
         </View>
     );
 };
@@ -433,11 +472,11 @@ const styles = StyleSheet.create({
     },
     myLocationBtn: {
         position: 'absolute',
-        bottom: 16,
+        top: 16,
         right: 16,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         backgroundColor: theme.colors.surface,
         justifyContent: 'center',
         alignItems: 'center',
@@ -475,8 +514,24 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
         fontFamily: theme.typography.fontFamily,
     },
-    addressPreview: {
-        gap: 2,
+    addressPreviewOverlay: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        backgroundColor: theme.colors.surface,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        maxWidth: '75%',
+        zIndex: 10,
+        borderWidth: 2,
+        borderColor: 'transparent',
+        ...theme.shadows.md,
+        // Web-only shadow
+        ...({ boxShadow: '0 2px 10px rgba(0,0,0,0.12)' } as any),
+    },
+    addressPreviewHighlight: {
+        borderColor: theme.colors.primary,
     },
     addressLabel: {
         fontSize: 11,
@@ -485,13 +540,14 @@ const styles = StyleSheet.create({
         fontFamily: theme.typography.fontFamily,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        marginBottom: 2,
+        marginBottom: 4,
     },
     addressStreet: {
         fontSize: 15,
-        fontWeight: '600',
+        fontWeight: '700',
         color: theme.colors.text,
         fontFamily: theme.typography.fontFamily,
+        marginBottom: 2,
     },
     addressCity: {
         fontSize: 13,
@@ -514,6 +570,87 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 15,
         fontWeight: '700',
+        fontFamily: theme.typography.fontFamily,
+    },
+    confirmModalOverlay: {
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 20,
+    },
+    confirmModalCard: {
+        backgroundColor: theme.colors.surface,
+        borderRadius: 20,
+        width: '85%',
+        maxWidth: 400,
+        padding: 24,
+        ...theme.shadows.lg,
+        ...({ boxShadow: '0 8px 30px rgba(0,0,0,0.2)' } as any),
+    },
+    confirmModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 16,
+    },
+    confirmModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+    },
+    confirmModalBody: {
+        backgroundColor: theme.colors.subtle,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+    },
+    confirmModalStreet: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+        marginBottom: 4,
+    },
+    confirmModalCity: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+    },
+    confirmModalActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    confirmModalSecondaryBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: theme.colors.subtle,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    confirmModalSecondaryText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+    },
+    confirmModalPrimaryBtn: {
+        flex: 1.5,
+        flexDirection: 'row',
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: 12,
+        backgroundColor: theme.colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    confirmModalPrimaryText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#fff',
         fontFamily: theme.typography.fontFamily,
     },
 });

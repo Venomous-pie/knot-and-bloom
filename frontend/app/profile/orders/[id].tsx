@@ -295,7 +295,13 @@ export default function OrderDetailsPage() {
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
           <Pressable
-            onPress={() => router.navigate("/profile" as RelativePathString)}
+            onPress={() => {
+                if (router.canGoBack()) {
+                    router.back();
+                } else {
+                    router.navigate("/profile/orders" as RelativePathString);
+                }
+            }}
             style={styles.backButton}
           >
             <Text style={styles.backButtonText}>← Back to Orders</Text>
@@ -630,6 +636,13 @@ export default function OrderDetailsPage() {
                   )}
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName}>{item.product.name}</Text>
+                    
+                    {item.product.seller?.name && (
+                      <Text style={[styles.variantText, { marginBottom: 4, color: theme.colors.primary }]}>
+                        Shop: {item.product.seller.name}
+                      </Text>
+                    )}
+
                     <View style={styles.itemMeta}>
                       {item.variant && (
                         <Text style={styles.variantText}>

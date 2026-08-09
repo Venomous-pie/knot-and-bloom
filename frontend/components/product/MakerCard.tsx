@@ -114,7 +114,6 @@ export default function MakerCard({ maker }: MakerCardProps) {
 
 const styles = StyleSheet.create({
     card: {
-        height: 280, // Fixed height to prevent unbalanced display when content varies
         borderRadius: theme.borderRadius.lg,
         padding: theme.spacing.lg,
         borderWidth: 1,

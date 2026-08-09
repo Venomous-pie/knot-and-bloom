@@ -47,7 +47,6 @@ interface Seller {
     slug: string;
     status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'REJECTED' | 'APPROVED';
     createdAt: string;
-    kycFlagged?: boolean;
     // Identity
     idType?: string;
     idNumber?: string;
@@ -245,15 +244,8 @@ export default function AdminSellers() {
                                 <Text style={s.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
                             </View>
                         )}
-                        <View style={{ flexDirection: 'row', gap: 6 }}>
-                            {item.kycFlagged && (
-                                <View style={[s.badge, { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1 }]}>
-                                    <Text style={[s.badgeText, { color: '#dc2626' }]}>⚠️ Flagged</Text>
-                                </View>
-                            )}
-                            <View style={[s.badge, { backgroundColor: `${statusColor}20` }]}>
-                                <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
-                            </View>
+                        <View style={[s.badge, { backgroundColor: `${statusColor}20` }]}>
+                            <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
                         </View>
                     </View>
                     <View style={s.gridInfo}>
@@ -308,15 +300,8 @@ export default function AdminSellers() {
                             <Text style={s.compactEmail} numberOfLines={1}>{item.email}</Text>
                         </View>
                         <View style={s.compactColStatus}>
-                            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                                {item.kycFlagged && (
-                                    <View style={[s.badge, { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, alignSelf: 'flex-start' }]}>
-                                        <Text style={[s.badgeText, { color: '#dc2626' }]}>⚠️ Flagged</Text>
-                                    </View>
-                                )}
-                                <View style={[s.badge, { backgroundColor: `${statusColor}20`, alignSelf: 'flex-start' }]}>
-                                    <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
-                                </View>
+                            <View style={[s.badge, { backgroundColor: `${statusColor}20`, alignSelf: 'flex-start' }]}>
+                                <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
                             </View>
                         </View>
                         <View style={s.compactColDate}>
@@ -366,15 +351,8 @@ export default function AdminSellers() {
                     <View style={s.detailsContainer}>
                         <View style={s.nameRow}>
                             <Text style={s.name}>{item.name}</Text>
-                            <View style={{ flexDirection: 'row', gap: 6 }}>
-                                {item.kycFlagged && (
-                                    <View style={[s.badge, { backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1 }]}>
-                                        <Text style={[s.badgeText, { color: '#dc2626' }]}>⚠️ Flagged</Text>
-                                    </View>
-                                )}
-                                <View style={[s.badge, { backgroundColor: `${statusColor}20` }]}>
-                                    <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
-                                </View>
+                            <View style={[s.badge, { backgroundColor: `${statusColor}20` }]}>
+                                <Text style={[s.badgeText, { color: statusColor }]}>{getStatusLabel(item.status)}</Text>
                             </View>
                         </View>
                         <Text style={s.email}>{item.email}</Text>

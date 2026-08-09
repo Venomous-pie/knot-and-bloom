@@ -1,5 +1,5 @@
-import { loadEnv } from './config/env.js';
-loadEnv();
+import dotenv from 'dotenv';
+dotenv.config();
 
 import dns from 'dns';
 // Force Node.js to prefer IPv4 for DNS resolution.
@@ -34,8 +34,6 @@ import earningsRoutes from './routes/earningsRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
-import webhookRoutes from './routes/webhookRoutes.js';
-import realtimeRoutes from './routes/realtimeRoutes.js';
 import prisma from './utils/prismaUtils.js';
 import passport from './config/passport.js';
 
@@ -44,7 +42,7 @@ import { createServer } from 'http';
 import { errorHandlingMiddleware } from './middleware/errorHandlingMiddleware.js';
 import { sanitizeInput } from './middleware/sanitize.js';
 import { cronService } from './services/cronService.js';
-import { UpstashRateLimitStore } from './middleware/upstashRateLimitStore.js';
+import { PrismaRateLimitStore } from './middleware/rateLimitStore.js';
 import { requestLogger } from './middleware/requestLogger.js';
 
 const app = express();
@@ -56,7 +54,13 @@ app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 3030;
 
-// CORS origins must be defined early for Helmet CSP and CORS middleware
+// ── Security Middlewares ──
+app.use(helmet()); // Sets security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
+app.use(requestLogger); // Structured JSON request logging for observability
+
+// CORS must be registered BEFORE the rate limiter so that rate-limited (429)
+// responses still include Access-Control-Allow-Origin headers. Without this,
+// the browser misreports rate-limit errors as CORS errors.
 const defaultOrigins = [
     'http://localhost:8081', // Expo Web
     'http://localhost:19000', // Expo
@@ -68,36 +72,6 @@ const defaultOrigins = [
 const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',')
     : defaultOrigins;
-
-// ── Security Middlewares ──
-app.use(helmet({
-    // Content-Security-Policy: restrict sources to same origin + trusted CDNs only.
-    // This is a defence-in-depth layer on top of XSS sanitisation.
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-            imgSrc: ["'self'", 'data:', 'https://ik.imagekit.io', 'https://*.supabase.co'],
-            connectSrc: ["'self'", ...allowedOrigins],
-            frameSrc: ["'none'"],
-            objectSrc: ["'none'"],
-            upgradeInsecureRequests: [],
-        },
-    },
-    // Never send Referer header — prevents backend URL leaking to third-party resources
-    referrerPolicy: { policy: 'no-referrer' },
-    // HSTS: force HTTPS for 1 year, include subdomains (only active in production over HTTPS)
-    hsts: process.env.NODE_ENV === 'production'
-        ? { maxAge: 31536000, includeSubDomains: true, preload: true }
-        : false,
-}));
-app.use(requestLogger); // Structured JSON request logging for observability
-
-// CORS must be registered BEFORE the rate limiter so that rate-limited (429)
-// responses still include Access-Control-Allow-Origin headers. Without this,
-// the browser misreports rate-limit errors as CORS errors.
 
 app.use(cors({
     origin: allowedOrigins,
@@ -111,14 +85,10 @@ const globalLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'Too many requests, please try again later.' },
-    store: new UpstashRateLimitStore('global:'),
+    store: new PrismaRateLimitStore(),
 });
 app.use(globalLimiter);
 
-// ── Webhooks (must be registered before express.json to preserve raw body bytes) ──
-app.use('/api/webhooks', webhookRoutes);
-
-// ── Global Body Parsers ──
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(sanitizeInput); // Strip HTML/script tags from all user input
@@ -154,7 +124,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/auth', authRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/realtime', realtimeRoutes);
 
 // Error handling middleware
 app.use(errorHandlingMiddleware);

@@ -42,7 +42,6 @@ interface SellerProfile {
     businessType?: string | null;
     idType?: string | null;
     idNumber?: string | null;
-    kycFlagged?: boolean;
     hasSeenWelcomeModal: boolean;
     rating?: number | null;
     totalSales?: number;

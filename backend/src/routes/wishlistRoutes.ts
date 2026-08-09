@@ -8,9 +8,9 @@ const router = express.Router();
 router.use(authenticate);
 
 // Get wishlist for a customer
-router.get('/', WishlistController.getWishlist);
+router.get('/:userId', WishlistController.getWishlist);
 
 // Toggle a product in the wishlist (add/remove)
-router.post('/toggle', WishlistController.toggleWishlistItem);
+router.post('/:userId/toggle', WishlistController.toggleWishlistItem);
 
 export default router;

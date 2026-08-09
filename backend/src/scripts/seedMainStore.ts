@@ -13,8 +13,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { loadEnv } from '../config/env.js';
-loadEnv();
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';

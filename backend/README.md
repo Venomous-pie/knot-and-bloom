@@ -1,60 +1,58 @@
-# Backend Documentation — Knot & Bloom API
+# Backend Documentation - Knot & Bloom E-commerce API
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | Node.js (ES Modules) |
-| Framework | Express 5.x |
-| ORM | Prisma 7.x |
-| Database | PostgreSQL (hosted on Supabase) |
-| Auth | Custom JWT (jsonwebtoken) + Refresh Token rotation |
-| OAuth | Google OAuth 2.0 via Passport.js |
-| Validation | Zod 4.x |
-| AI Services | Google Gemini (@google/generative-ai) |
-| Email | Nodemailer (Gmail SMTP) |
-| Image Uploads | ImageKit (client-side upload, server-signed auth) |
-| Security | Helmet, express-rate-limit, XSS sanitization |
-| Testing | Jest 30.x |
+- **Runtime**: Node.js (ES Modules)
+- **Framework**: Express 5.x
+- **ORM**: Prisma 7.x
+- **Database**: PostgreSQL (hosted on Supabase)
+- **Auth**: Custom JWT (jsonwebtoken)
+- **Validation**: Zod
+- **AI Services**: Hugging Face Inference API
+- **Testing**: Jest
 
 ---
 
-## Getting Started
+## 🚀 Getting Started (Onboarding)
+
+Welcome to the backend! Follow these steps to get your local environment running:
 
 ### 1. Prerequisites
-- **Node.js**: v18 or newer
-- **PostgreSQL**: Connects to the shared Supabase instance (no local DB needed)
+- **Node.js**: v18 or newer recommended
+- **PostgreSQL**: You will connect to the hosted Supabase instance (details below)
 
 ### 2. Installation
+Clone the repository and install dependencies:
 ```bash
 cd knot-and-bloom/backend
 npm install
 ```
 
 ### 3. Environment Setup
+Copy the example environment file:
 ```bash
 cp .env.example .env
 ```
-Open `.env` and fill in the required keys. Ask your team lead for:
-- `DATABASE_URL`, `DIRECT_URL` — Supabase connection strings
-- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — Supabase project keys
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — Google OAuth credentials
-- `IMAGEKIT_PRIVATE_KEY` — ImageKit private key
-- `GEMINI_API_KEY` — Google AI Studio key
-- `SMTP_PASS` — Gmail app password for email OTPs
+Open `.env` and fill in the required keys. 
+- **Database/Supabase**: Ask your team lead for the shared Supabase URL and Keys (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
+- **Google OAuth**: Ask for the client ID and secret for Google login.
+- **ImageKit**: Ask for the ImageKit private key for image uploads.
+- **AI Services**: Ask for the Gemini API key.
 
-### 4. Generate Prisma Client
+### 4. Database Setup
+Once your `.env` is ready, generate the Prisma client:
 ```bash
 npx prisma generate
 ```
 
-> Migrations are handled by the team lead. If you need to run them locally: `npx prisma migrate dev`
+*(Note: Migrations are typically handled by the team lead, but if you need to run them locally against your own DB: `npx prisma migrate dev`)*
 
-### 5. Start the Dev Server
+### 5. Running Locally
+Start the development server with hot-reload:
 ```bash
 npm run dev
 ```
-Server starts at **`http://localhost:3030`** with hot-reload via `nodemon` + `tsx`.
+The server should now be running at `http://localhost:3030`.
 
 ---
 
@@ -63,15 +61,13 @@ Server starts at **`http://localhost:3030`** with hot-reload via `nodemon` + `ts
 ```
 backend/
 ├── src/
-│   ├── controllers/       # Business logic (17 controllers)
-│   ├── routes/            # API route definitions (19 route files)
-│   ├── services/          # Shared services (AI, payments, cron, OTP, etc.)
-│   ├── middleware/        # Auth, rate limiting, sanitization, logging
+│   ├── controllers/       # Business logic (6 controllers)
+│   ├── routes/            # API route definitions
+│   ├── services/          # Shared business services
+│   ├── middleware/        # Auth, validation middleware
 │   ├── validators/        # Zod schemas
-│   ├── utils/             # Helper functions (Prisma client, platform config, etc.)
+│   ├── utils/             # Helper functions
 │   ├── types/             # TypeScript types
-│   ├── config/            # Passport.js config
-│   ├── error/             # Custom error classes
 │   └── index.ts           # Server entry point
 ├── prisma/
 │   ├── schema.prisma      # Database schema
@@ -81,302 +77,134 @@ backend/
 
 **Pattern**: MVC (Model-View-Controller)
 
+- **Models**: Prisma schema → Auto-generated client
+- **Controllers**: Business logic
+- **Routes**: API endpoints
+
 ---
 
 ## Authentication
 
-### JWT Flow (Credentials)
-1. `POST /api/users/register` or `POST /api/users/login`
-2. Returns `{ token, refreshToken, data: user }`
-3. Send JWT in `Authorization: Bearer <token>` header on protected routes
-4. Use `POST /api/auth/refresh` to rotate tokens before expiry
+### JWT Flow
 
-### Google OAuth Flow
-1. `GET /auth/google` — Redirects to Google
-2. `GET /auth/google/callback` — Google redirects back; server generates a one-time `code` and redirects frontend to `/auth/success?code=<code>`
-3. `POST /auth/exchange-code` — Frontend exchanges the code for `{ token, refreshToken }` (code is single-use, 60s TTL)
+1. **Login**: `POST /api/customers/login`
+   - Input: `{ email, password }`
+   - Output: `{ token, customer }`
+2. **Protected Routes**: Send JWT in `Authorization: Bearer <token>` header
 
-### Refresh Token Rotation
-- Access token: 7-day JWT
-- Refresh token: stored in DB, rotated on every use
-- `POST /auth/refresh` — returns new access + refresh token pair
-- `POST /auth/logout` — revokes the refresh token
+3. **Middleware**: `authMiddleware.ts` decodes JWT → `req.user`
 
 ### User Roles
 
-| Role | Description |
-|------|-------------|
-| `USER` | Default customer |
-| `SELLER` | Approved seller with storefront |
-| `ADMIN` | Platform administrator |
+- `USER` (default Customer)
+- `SELLER` (requires approval)
+- `ADMIN` (system administrator)
 
 ---
 
 ## API Endpoints
 
-### Auth (`/auth` and `/api/auth`)
+### 1. Products (`/api/products`)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/auth/google` | Public | Redirect to Google OAuth |
-| `GET` | `/auth/google/callback` | Public | Google OAuth callback |
-| `POST` | `/auth/exchange-code` | Public | Exchange one-time code for JWT |
-| `POST` | `/auth/send-otp` | Public | Send email OTP for registration |
-| `POST` | `/auth/refresh` | Public | Rotate access + refresh tokens |
-| `POST` | `/auth/logout` | Public | Revoke refresh token |
+| Method   | Endpoint           | Auth     | Description                      |
+| -------- | ------------------ | -------- | -------------------------------- |
+| `POST`   | `/`                | Required | Create product                   |
+| `GET`    | `/`                | Public   | List active products             |
+| `GET`    | `/search?term=...` | Public   | Search products                  |
+| `GET`    | `/:id`             | Public   | Get product details              |
+| `PUT`    | `/:id`             | Required | Update product                   |
+| `DELETE` | `/:id`             | Required | Soft delete product              |
+| `GET`    | `/admin`           | Admin    | List all products (inc. PENDING) |
+| `PATCH`  | `/:id/status`      | Admin    | Approve/reject product           |
 
----
+**Key Features:**
 
-### Users (`/api/users`)
+- AI-generated descriptions (Hugging Face)
+- Auto-generated SKUs
+- Variant support (size, color)
+- Multi-category support
+- Seller assignment
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/register` | Public | Register new user |
-| `POST` | `/login` | Public | Login with credentials |
-| `POST` | `/login/google` | Public | Login via Google ID token |
-| `GET` | `/profile` | Required | Get own profile |
-| `PUT` | `/profile` | Required | Update own profile |
+### 2. Customers (`/api/customers`)
 
----
+| Method | Endpoint          | Auth     | Description       |
+| ------ | ----------------- | -------- | ----------------- |
+| `POST` | `/register`       | Public   | Register new user |
+| `POST` | `/login`          | Public   | Login             |
+| `GET`  | `/profile`        | Required | Get own profile   |
+| `PUT`  | `/profile`        | Required | Update profile    |
+| `POST` | `/reset-password` | Required | Reset password    |
 
-### Products (`/api/products`)
+### 3. Cart (`/api/cart`)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/get-product` | Public | List active products (paginated, filterable) |
-| `GET` | `/search-product` | Public | Search products by term |
-| `GET` | `/category-counts` | Public | Get product counts per category |
-| `GET` | `/recommendations` | Optional | Personalized recommendations |
-| `GET` | `/:id/similar` | Public | Similar products |
-| `GET` | `/:id` | Public | Get product details |
-| `POST` | `/post-product` | Required | Create product |
-| `PUT` | `/:id` | Required | Update product |
-| `DELETE` | `/:id` | Required | Soft delete product |
-| `GET` | `/admin` | Admin | List all products (incl. PENDING) |
-| `PATCH` | `/admin/:id/status` | Admin | Approve/reject product |
-| `POST` | `/generate-description` | Required | AI-generate product description |
-| `POST` | `/generate-sku` | Required | AI-generate product SKU |
-| `POST` | `/generate-variant-sku` | Required | AI-generate variant SKU |
-| `POST` | `/generate-option-values` | Required | AI-suggest option values |
+| Method   | Endpoint     | Auth     | Description     |
+| -------- | ------------ | -------- | --------------- |
+| `GET`    | `/`          | Required | Get cart        |
+| `POST`   | `/items`     | Required | Add item        |
+| `PUT`    | `/items/:id` | Required | Update quantity |
+| `DELETE` | `/items/:id` | Required | Remove item     |
 
----
+### 4. Orders (`/api/orders`)
 
-### Sellers (`/api/sellers`)
+| Method | Endpoint    | Auth         | Description        |
+| ------ | ----------- | ------------ | ------------------ |
+| `GET`  | `/`         | Required     | List user's orders |
+| `GET`  | `/:id`      | Required     | Get order details  |
+| `POST` | `/:id/ship` | Seller/Admin | Mark as shipped    |
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/active` | Public | List all active sellers |
-| `GET` | `/:slug` | Public | Get seller public profile |
-| `POST` | `/` | Required | Register as a new seller |
-| `POST` | `/onboard` | Required | Upgrade existing user to seller |
-| `DELETE` | `/me/application` | Required | Cancel pending seller application |
-| `GET` | `/` | Admin | List all sellers |
-| `PUT` | `/:id` | Seller/Admin | Update seller profile |
-| `GET` | `/me/dashboard-stats` | Seller/Admin | Seller dashboard statistics |
-| `GET` | `/me/sidebar-stats` | Seller/Admin | Sidebar stat counts |
-| `GET` | `/admin/sidebar-stats` | Admin | Admin sidebar stats |
-| `GET` | `/me/products` | Required | Get own products |
-| `PATCH` | `/me/welcome-seen` | Required | Mark welcome modal as seen |
-| `GET` | `/:id/orders` | Seller/Admin | List seller orders |
-| `PATCH` | `/me/shipping-settings` | Seller/Admin | Update shipping configuration |
-| `GET` | `/me/shipping-preview` | Seller/Admin | Preview shipping fee calculation |
+### 5. Checkout (`/api/checkout`)
 
----
-
-### Cart (`/api/cart`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/:userId` | Required | Get cart contents |
-| `POST` | `/add` | Required | Add item to cart |
-| `PATCH` | `/item/:itemId` | Required | Update item quantity |
-| `DELETE` | `/item/:itemId` | Required | Remove item from cart |
-| `POST` | `/checkout` | Required | Legacy cart checkout |
-
----
-
-### Checkout (`/api/checkout`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/initiate` | Required | Start a new checkout session |
-| `GET` | `/:sessionId` | Required | Get session details |
-| `POST` | `/:sessionId/validate` | Required | Validate cart before payment |
-| `POST` | `/:sessionId/estimate-shipping` | Required | Estimate shipping cost |
-| `POST` | `/:sessionId/pay` | Required | Process payment (20% deposit) |
-| `POST` | `/:sessionId/complete` | Required | Finalize and create order |
-| `DELETE` | `/:sessionId` | Required | Cancel checkout session |
-| `GET` | `/methods/available` | Required | Available payment methods |
+| Method | Endpoint   | Auth     | Description                    |
+| ------ | ---------- | -------- | ------------------------------ |
+| `POST` | `/session` | Required | Create checkout session        |
+| `POST` | `/confirm` | Required | Confirm payment & create order |
 
 **Checkout Flow:**
-1. `POST /initiate` — validates cart, creates session
-2. `POST /:sessionId/estimate-shipping` — calculates shipping based on seller location and distance
-3. `POST /:sessionId/validate` — final pre-payment check
-4. `POST /:sessionId/pay` — processes 20% deposit (via payment method)
-5. `POST /:sessionId/complete` — creates order, clears cart, notifies parties
 
----
+1. Create session (validates cart, calculates total)
+2. User enters shipping/payment info
+3. Confirm payment (mocked GCash integration)
+4. Order created, cart cleared
 
-### Orders (`/api/orders`)
+### 6. Sellers (`/api/sellers`)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/` | Required | List user orders |
-| `GET` | `/:id` | Required | Get order details |
-| `PUT` | `/:id/status` | Required | Update order status |
-| `PUT` | `/items/:itemId/status` | Seller/Admin | Update individual order item status |
-| `POST` | `/:id/extend-guarantee` | Required | Extend buyer guarantee period |
-| `POST` | `/:id/dispute` | Required | Raise a dispute |
-| `POST` | `/:id/dispute-message` | Required | Add evidence to a dispute |
+| Method  | Endpoint        | Auth     | Description            |
+| ------- | --------------- | -------- | ---------------------- |
+| `POST`  | `/register`     | Required | Apply to become seller |
+| `GET`   | `/profile`      | Seller   | Get seller profile     |
+| `GET`   | `/:id/products` | Public   | List seller's products |
+| `GET`   | `/:id/orders`   | Seller   | List seller's orders   |
+| `PATCH` | `/:id/status`   | Admin    | Approve/reject seller  |
 
----
+### 7. Addresses (`/api/addresses`)
 
-### Addresses (`/api/addresses`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/me` | Required | List saved addresses |
-| `POST` | `/me` | Required | Create address |
-| `PUT` | `/me/:id` | Required | Update address |
-| `DELETE` | `/me/:id` | Required | Delete address |
-| `PATCH` | `/me/:id/default` | Required | Set default address |
-
----
-
-### Notifications (`/api/notifications`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/` | Required | Get notifications (filterable) |
-| `GET` | `/settings` | Required | Get notification preferences |
-| `PUT` | `/settings` | Required | Update notification preferences |
-| `PATCH` | `/:id/read` | Required | Mark notification as read |
-| `PATCH` | `/read-all` | Required | Mark all as read |
-| `DELETE` | `/:id` | Required | Delete notification |
-
----
-
-### Payment Methods (`/api/payment-methods`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/me` | Required | List payment methods |
-| `POST` | `/me` | Required | Add payment method |
-| `PUT` | `/me/:id` | Required | Update payment method |
-| `DELETE` | `/me/:id` | Required | Delete payment method |
-| `PATCH` | `/me/:id/default` | Required | Set default payment method |
-
----
-
-### Earnings (`/api/earnings`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/seller` | Required | Get seller earnings |
-| `POST` | `/withdraw` | Required | Request withdrawal |
-| `GET` | `/admin/stats` | Admin | Platform-wide earnings stats |
-| `POST` | `/admin/withdraw/:id/process` | Admin | Process a withdrawal request |
-
----
-
-### Wishlist (`/api/wishlist`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/:userId` | Required | Get wishlist |
-| `POST` | `/:userId/toggle` | Required | Add/remove product from wishlist |
-
----
-
-### Reviews (`/api/reviews`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/seller/:slug` | Public | Get reviews for a seller |
-| `GET` | `/product/:id` | Public | Get reviews for a product |
-
----
-
-### Chat (`/api/chat`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/send` | Required | Send a chat message |
-| `POST` | `/ai` | Optional | Send message to AI assistant (Gemini) |
-
----
-
-### ImageKit (`/api/imagekit`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/auth` | Required | Generate client-side upload auth params |
-
----
-
-### Locations (`/api/locations`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/regions` | Public | All PH regions |
-| `GET` | `/provinces/:regCode` | Public | Provinces for a region |
-| `GET` | `/cities/:provCode` | Public | Cities/municipalities for a province |
-| `GET` | `/barangays/:citymunCode` | Public | Barangays for a city |
-
----
-
-### Account (`/api/account`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/delete-request` | Required | Request account deletion (7-day grace) |
-| `DELETE` | `/delete-request` | Required | Cancel deletion request |
-| `GET` | `/delete-status` | Required | Get deletion request status |
-| `POST` | `/process-deletions` | Admin | Trigger scheduled deletions (cron) |
-
----
-
-### Admin (`/api/admin`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/platform-config` | Admin | Get all platform config values |
-| `PATCH` | `/platform-config` | Admin | Update platform config values |
-| `GET` | `/dashboard-stats` | Admin | Revenue, seller and product counts |
-| `GET` | `/orders` | Admin | All platform orders (paginated) |
-| `POST` | `/orders/:id/resolve-dispute` | Admin | Resolve a disputed order |
+| Method   | Endpoint | Auth     | Description          |
+| -------- | -------- | -------- | -------------------- |
+| `GET`    | `/`      | Required | List saved addresses |
+| `POST`   | `/`      | Required | Create address       |
+| `PUT`    | `/:id`   | Required | Update address       |
+| `DELETE` | `/:id`   | Required | Delete address       |
 
 ---
 
 ## Services
 
-| Service | Purpose |
-|---------|---------|
-| `GenerateService` | AI-powered product description, SKU, and option value generation via Google Gemini |
-| `PaymentService` | Payment processing logic (20% deposit model) |
-| `AuditService` | Structured audit logging for auth, account, and product events |
-| `NotificationService` | In-app notification dispatch |
-| `OtpService` | Email OTP generation and verification via Nodemailer |
-| `RefreshTokenService` | Refresh token issuance, validation, rotation, and revocation |
-| `SellerService` | Seller onboarding helpers |
-| `SupabaseService` | Supabase admin client wrapper |
-| `LoginRateLimiter` | Per-IP login attempt tracking with automatic lockout |
-| `cronService` | Scheduled jobs (order status transitions, account deletions, etc.) |
-| `fuelService` | Dynamic fuel-cost-based shipping fee calculation |
-| `kycService` | KYC document verification helpers |
+### GenerateService
 
----
+- **AI Description**: Generates product descriptions via Hugging Face
+- **SKU Generation**: Auto-generates unique SKUs
 
-## Middleware
+### PaymentService
 
-| Middleware | Purpose |
-|-----------|---------|
-| `authMiddleware` | `authenticate` (JWT decode to req.user), `authorize` (role check), `optionalAuthenticate` |
-| `rateLimiter` | Global: 100 req/min per IP via `PrismaRateLimitStore` |
-| `sanitize` | Strips HTML/XSS from all incoming request body fields |
-| `requestLogger` | Structured JSON request logging |
-| `errorHandlingMiddleware` | Centralised Express error handler |
-| `helmet` | Sets HTTP security headers |
+- **Mock GCash**: Simulates payment processing
+
+### AuditService
+
+- **Logging**: Tracks product/order changes
+
+### NotificationService
+
+- **Placeholder**: Prepared for email/SMS integration
 
 ---
 
@@ -385,125 +213,116 @@ backend/
 ### Key Models
 
 **Product**
+
 - Pricing: `basePrice`, `discountedPrice`
-- Status: `PENDING` to `ACTIVE` (requires admin approval)
-- Soft delete via `deletedAt` timestamp
-- Variant and multi-category support
+- Status workflow: `PENDING` → `ACTIVE`
+- Seller assignment
+- Variant support
 
 **Customer**
-- Roles: `USER`, `SELLER`, `ADMIN`
-- 1-to-1 Cart, multiple Orders, saved Addresses
-- Account deletion with 7-day grace period
+
+- Role: `USER`, `SELLER`, `ADMIN`
+- 1-to-1 Cart
+- Multiple Orders
+- Saved Addresses
 
 **Order**
-- Multi-vendor: split by seller at checkout
-- Status: `PENDING` to `PROCESSING` to `SHIPPED` to `DELIVERED`
-- Dispute system with evidence submission
-- Buyer guarantee extension
+
+- Multi-vendor support (split by seller)
+- Status: `PENDING` → `PROCESSING` → `SHIPPED` → `DELIVERED`
+- Tracking number
+- OrderItems with seller assignment
 
 **Seller**
-- Status: `PENDING` to `ACTIVE`
-- Linked 1-to-1 with Customer
-- Configurable shipping settings (free pickup vs. variable delivery)
-- Earnings and withdrawal tracking
 
-**PlatformConfig**
-- Key-value store for runtime-adjustable platform settings (fuel price, labor allowance, floor fees, etc.)
+- Status: `PENDING` → `ACTIVE`
+- Linked to Customer
+- Products and Orders
 
 ---
 
 ## Running the Backend
 
 ### Development
+
 ```bash
 npm install
-npx prisma generate   # Generate Prisma client
-npm run dev           # Hot-reload dev server on port 3030
+npx prisma generate  # Generate Prisma client
+npm run dev          # Start with hot reload (port 3030)
 ```
 
 ### Database Migrations
+
 ```bash
 npx prisma migrate dev --name migration_name
 npx prisma studio     # Visual database browser
 ```
 
 ### Testing
+
 ```bash
-npm test              # Run all tests
-npm run test:watch    # Watch mode
-npm run test:coverage # Coverage report
+npm test
 ```
 
 ---
 
 ## Environment Variables
 
-See [`.env.example`](.env.example) for the full structure. Key sections:
+See `.env.example` for the full structure. Key sections include:
 
-| Section | Variables |
-|---------|-----------|
-| Server | `PORT`, `NODE_ENV` |
-| Database | `DATABASE_URL` (transaction pooler), `DIRECT_URL` (session pooler for migrations) |
-| Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
-| Authentication | `JWT_SECRET` (min 32 chars), `JWT_EXPIRES_IN` |
-| Google OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` |
-| CORS | `CORS_ORIGINS` (comma-separated allowed origins) |
-| Frontend | `FRONTEND_URL` (used for OAuth redirect) |
-| ImageKit | `IMAGEKIT_PRIVATE_KEY` |
-| AI | `GEMINI_API_KEY` |
-| SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` |
+- **SERVER**: `PORT`, `NODE_ENV`
+- **DATABASE**: `DATABASE_URL` (pooler), `DIRECT_URL` (migrations)
+- **SUPABASE**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- **AUTHENTICATION**: `JWT_SECRET`, `JWT_EXPIRES_IN`
+- **GOOGLE OAUTH**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`
+- **CORS**: `CORS_ORIGINS` (allowed frontend URLs)
+- **IMAGEKIT**: `IMAGEKIT_PRIVATE_KEY`
+- **AI / ML SERVICES**: `GEMINI_API_KEY`
 
 ---
 
 ## Security
 
 - **Password Hashing**: bcrypt (10 rounds)
-- **JWT**: Short-lived access tokens (7d) + rotating refresh tokens stored in DB
-- **OAuth**: One-time auth code exchange (no JWT in URL)
-- **Rate Limiting**: Global 100 req/min; dedicated 10 req/min for AI endpoints; strict per-IP login limiter
-- **Input Sanitisation**: XSS stripping on all request body fields
+- **JWT Validation**: All protected routes verify token
+- **Role-Based Access**: Admin/Seller checks in controllers
+- **Input Validation**: Zod schemas
 - **SQL Injection**: Prevented by Prisma ORM
-- **Security Headers**: Helmet (HSTS, X-Frame-Options, X-Content-Type-Options, etc.)
-
----
-
-## Error Classes
-
-| Class | HTTP | Code |
-|-------|------|------|
-| `ValidationError` | 400 | `VALIDATION_ERROR` |
-| `BadRequestError` | 400 | `BAD_REQUEST` |
-| `InsufficientStockError` | 400 | `INSUFFICIENT_STOCK` |
-| `AuthenticationError` | 401 | `AUTHENTICATION_ERROR` |
-| `ForbiddenError` | 403 | `FORBIDDEN` |
-| `NotFoundError` | 404 | `NOT_FOUND` |
-| `DuplicateUserError` | 409 | `DUPLICATE_CUSTOMER` |
-| `DuplicateProductError` | 409 | `DUPLICATE_PRODUCT` |
-| `ConflictError` | 409 | `CONFLICT` |
-
-All routes use try-catch redirected to Express `errorHandlingMiddleware`.
 
 ---
 
 ## Key Features
 
 ### Multi-Vendor Order Splitting
-Checkout automatically splits a cart into separate orders per seller when items from multiple sellers are present.
+
+Checkout automatically splits orders by seller when cart contains items from multiple sellers.
 
 ### Product Approval Workflow
-Sellers create products with status `PENDING`. Admin reviews and sets `ACTIVE` or `REJECTED`. Only `ACTIVE` products appear publicly.
 
-### Dynamic Shipping Fees
-Shipping fees are calculated based on fuel price, distance (coordinates), vehicle type, labor allowance, and floor fees — all configurable via `PlatformConfig` without redeployment.
+- Sellers create products → `status: PENDING`
+- Admin reviews → approves/rejects
+- Only `ACTIVE` products appear publicly
 
-### AI-Assisted Product Listing
-Sellers can generate product descriptions, SKUs, and option values using Google Gemini directly from the product creation form.
+### Seller Auto-Creation for Admins
 
-### Refresh Token Rotation
-Every token refresh issues a new refresh token and invalidates the old one, preventing token replay attacks.
+When Admin creates a product, a Seller profile is automatically created.
 
 ### Soft Deletes
-Products and accounts are never permanently deleted immediately — `deletedAt` timestamp or 7-day grace period is used.
+
+Products are not permanently deleted - `deletedAt` timestamp used instead.
+
+---
+
+## Error Handling
+
+Custom error classes:
+
+- `NotFoundError` (404)
+- `ValidationError` (400)
+- `DuplicateProductError` (409)
+- `UnauthorizedError` (401)
+
+All routes use try-catch → Express error middleware
 
 ---
 
@@ -511,15 +330,16 @@ Products and accounts are never permanently deleted immediately — `deletedAt` 
 
 ### Prisma Error: P1001 (Can't reach database server)
 
-**Problem:**
-When running `npx prisma db pull`, `npx prisma migrate dev`, or starting the server you get:
+**Problem:** 
+When running `npx prisma db pull`, `npx prisma migrate dev`, or starting the server, you receive an error like:
 `Error: P1001: Can't reach database server at 'aws-X-ap-south-X.pooler.supabase.com:5432'`
 
-This is common on Philippine consumer ISPs (Globe, PLDT). The cause is either:
-1. The ISP blocks outbound ports `5432` / `6543`.
-2. Broken DNS64/NAT64 resolves the Supabase pooler to an IPv6 address that the ISP black-holes.
+This usually happens on consumer ISPs (especially Globe Broadband or PLDT in the Philippines). The underlying issue is that the Prisma Rust Query Engine hangs because:
+1. The ISP is aggressively blocking outbound database ports (like `5432` or `6543`).
+2. The ISP uses a broken DNS64/NAT64 setup. The engine resolves the Supabase pooler to an IPv6 address, but the ISP's IPv6 routing blackholes the traffic, causing the connection attempt to time out.
 
-**Solution** (network-level — cannot be fixed in code):
-1. **Recommended**: Use [Cloudflare WARP (1.1.1.1)](https://1.1.1.1/) to bypass ISP restrictions.
-2. Switch to a mobile hotspot (Smart/Dito tend to work).
-3. Confirm **Network Restrictions** are disabled in Supabase Dashboard: Database > Settings > Network restrictions.
+**Solution:**
+Because this is a network-level restriction enforced by the ISP and Prisma's native engine behavior, it cannot be fixed via code.
+1. **Option A (Recommended):** Use a free VPN like [Cloudflare WARP (1.1.1.1)](https://1.1.1.1/) to encrypt your DNS and traffic, bypassing the ISP's restrictions. 
+2. **Option B:** Switch to a different network, such as a mobile hotspot (e.g., Smart/Dito).
+3. Confirm in your Supabase Dashboard that **Network Restrictions** are disabled (Database → Settings → Network restrictions).

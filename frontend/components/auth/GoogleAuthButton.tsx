@@ -6,7 +6,6 @@ import { Svg, Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '@/services/api';
-import Button from '@/components/ui/Button';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -95,17 +94,40 @@ export default function GoogleAuthButton({ text = "Continue with Google", style,
     };
 
     return (
-        <Button
-            title={text}
-            icon={loading ? undefined : <GoogleIcon />}
-            loading={loading}
+        <TouchableOpacity
+            style={[styles.socialButton, style]}
             onPress={handleGoogleLogin}
-            style={[{ backgroundColor: '#fff', borderColor: '#eee', shadowOpacity: 0.05, elevation: 2 }, style]}
-            textStyle={[{ color: '#1a1a1a' }, textStyle]}
-            variant="outline"
-        />
+            disabled={loading}
+        >
+            {loading ? <ActivityIndicator color="#333" /> : <GoogleIcon />}
+            <Text style={[styles.socialButtonText, textStyle]}>
+                {text}
+            </Text>
+        </TouchableOpacity>
     );
 }
 
 const styles = StyleSheet.create({
+    socialButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: "#eee",
+        gap: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    socialButtonText: {
+        fontFamily: "Inter",
+        fontSize: 16,
+        fontWeight: "600",
+        color: "#1a1a1a",
+    },
 });

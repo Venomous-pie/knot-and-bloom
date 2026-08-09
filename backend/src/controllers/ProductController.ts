@@ -232,7 +232,7 @@ export const postProduct = async (input: unknown, user?: AuthPayload) => {
             trackCustomTaxonomy(parsedInput.tags, parsedInput.categories).catch(console.error);
 
             // Invalidate product caches
-            await cache.deletePattern('product:');
+            cache.deletePattern('product:');
             return product;
 
         } catch (error: any) {
@@ -270,7 +270,7 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
     const { category, searchTerm, newArrival = false, limit = 30, offset = 0, sort, minPrice, maxPrice, categories, tags } = parsedInput;
 
     const cacheKey = `product:list:${JSON.stringify(parsedInput)}`;
-    const cachedResult = await cache.get<GetProductsResult>(cacheKey);
+    const cachedResult = cache.get<GetProductsResult>(cacheKey);
     if (cachedResult) return cachedResult;
 
     const whereClause: any = {};
@@ -383,13 +383,13 @@ export const getProducts = async (options: unknown): Promise<GetProductsResult> 
         },
     };
 
-    await cache.set(cacheKey, result, 60); // Cache for 60 seconds
+    cache.set(cacheKey, result, 60); // Cache for 60 seconds
     return result;
 };
 
 export const getCategoryCounts = async () => {
     const cacheKey = `product:categories`;
-    const cached = await cache.get<Record<string, number>>(cacheKey);
+    const cached = cache.get<Record<string, number>>(cacheKey);
     if (cached) return cached;
     const baseFilter: any = {
         deletedAt: null,
@@ -422,7 +422,7 @@ export const getCategoryCounts = async () => {
         }
     });
 
-    await cache.set(cacheKey, counts, 120); // Cache for 2 minutes
+    cache.set(cacheKey, counts, 120); // Cache for 2 minutes
     return counts;
 };
 
@@ -497,13 +497,13 @@ export const updateProductStatus = async (productId: string, status: string, rej
         }
     });
 
-    await cache.deletePattern('product:');
+    cache.deletePattern('product:');
     return updated;
 };
 
 export const searchProducts = async (searchTerm: string, limit = 20) => {
     const cacheKey = `product:search:${searchTerm}:${limit}`;
-    const cached = await cache.get<any[]>(cacheKey);
+    const cached = cache.get<any[]>(cacheKey);
     if (cached) return cached;
 
     // Only show ACTIVE products - PENDING/SUSPENDED/null are hidden from public
@@ -534,7 +534,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
                 seller: { select: { name: true, slug: true, logo: true } }
             }
         });
-        await cache.set(cacheKey, products, 60);
+        cache.set(cacheKey, products, 60);
         return products;
     }
 
@@ -561,7 +561,7 @@ export const searchProducts = async (searchTerm: string, limit = 20) => {
         }
     });
 
-    await cache.set(cacheKey, products, 60);
+    cache.set(cacheKey, products, 60);
     return products;
 };
 
@@ -576,7 +576,7 @@ export const getProductById = async (productId: string) => {
     }
 
     const cacheKey = `product:detail:${parsedId}`;
-    const cached = await cache.get<any>(cacheKey);
+    const cached = cache.get<any>(cacheKey);
     if (cached) return cached;
 
     const product = await prisma.product.findUnique({
@@ -587,10 +587,8 @@ export const getProductById = async (productId: string) => {
                 uid: true, 
                 name: true, 
                 slug: true, 
-                logo: true,
                 status: true,
                 freeShippingEnabled: true,
-                freeShippingThreshold: true,
                 meetUpPoint: true,
                 selfDeliveryEnabled: true
             } }
@@ -601,7 +599,7 @@ export const getProductById = async (productId: string) => {
         throw new ErrorHandler.NotFoundError('Product', productId);
     }
 
-    await cache.set(cacheKey, product, 30);
+    cache.set(cacheKey, product, 30);
     return product;
 };
 
@@ -843,7 +841,7 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
 
     // Emit Realtime Update
     supabaseService.emit('product:updated', { productId: parsedId, version: result.version });
-    await cache.deletePattern('product:');
+    cache.deletePattern('product:');
 
     return result;
 };
@@ -882,7 +880,7 @@ export const deleteProduct = async (productId: string, user?: AuthPayload) => {
         });
     });
 
-    await cache.deletePattern('product:');
+    cache.deletePattern('product:');
     return result;
 }; 
 import { SearchDataSchema, calculateRelevanceScore, calculateSimilarityScore } from '../utils/recommendationEngine.js';

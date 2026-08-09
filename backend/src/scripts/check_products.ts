@@ -1,5 +1,5 @@
-import { loadEnv } from '../config/env.js';
-loadEnv();
+import dotenv from 'dotenv';
+dotenv.config();
 
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';

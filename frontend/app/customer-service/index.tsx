@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Image,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Phone, MapPin, MessageCircle, ChevronDown, ChevronUp, Send } from 'lucide-react-native';
 import { Stack, useRouter } from 'expo-router';
-import Button from '@/components/ui/Button';
 
 export default function CustomerServicePage() {
     const router = useRouter();
@@ -78,12 +77,10 @@ export default function CustomerServicePage() {
                                 />
                             </View>
 
-                            <Button 
-                                title="Send Message" 
-                                icon={<Send size={20} color="white" />} 
-                                fullWidth 
-                                style={{ marginTop: 10 }} 
-                            />
+                            <TouchableOpacity style={styles.submitButton}>
+                                <Send size={20} color="white" />
+                                <Text style={styles.submitButtonText}>Send Message</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -231,6 +228,21 @@ const styles = StyleSheet.create({
         padding: 16,
         fontSize: 16,
         color: '#333',
+    },
+    submitButton: {
+        backgroundColor: '#B36979',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: 12,
+        gap: 10,
+        marginTop: 10,
+    },
+    submitButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
     contactItem: {
         flexDirection: 'row',

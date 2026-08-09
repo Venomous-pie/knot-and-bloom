@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import type { Order } from '@/types/order';
-import Button from '@/components/ui/Button';
 
 const P = '#B36979', BG = '#F4F4F8', CARD = '#FFFFFF';
 const TEXT = '#1A1A2E', SUB = '#6B7280', BORDER = '#F0F0F5';
@@ -91,18 +90,16 @@ export default function AcceptOrderModal({ visible, order, submitting, onClose, 
                     />
 
                     <View style={s.modalButtons}>
-                        <Button 
-                            title="Cancel" 
-                            variant="outline" 
-                            onPress={onClose} 
-                            style={{ borderWidth: 0 }}
-                            textStyle={{ color: SUB }}
-                        />
-                        <Button 
-                            title="Confirm & Accept" 
-                            loading={submitting} 
-                            onPress={() => onSubmit({ estimatedCompletionDate: estimatedDate, message })} 
-                        />
+                        <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+                            <Text style={s.btnText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[s.confirmBtn, submitting && { opacity: 0.7 }]}
+                            onPress={() => onSubmit({ estimatedCompletionDate: estimatedDate, message })}
+                            disabled={submitting}
+                        >
+                            <Text style={s.confirmBtnText}>Confirm & Accept</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -118,4 +115,8 @@ const s = StyleSheet.create({
     label: { fontSize: 14, fontWeight: '600', color: TEXT, fontFamily: 'Quicksand', marginBottom: 8 },
     input: { borderWidth: 2, borderColor: BORDER, borderRadius: 12, padding: 14, fontSize: 15, backgroundColor: BG, color: TEXT, fontFamily: 'Quicksand', marginBottom: 24, outlineStyle: 'none' as any },
     modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 32 },
+    cancelBtn: { padding: 14, borderRadius: 12, justifyContent: 'center' },
+    confirmBtn: { backgroundColor: P, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16, justifyContent: 'center' },
+    btnText: { color: SUB, fontWeight: '700', fontFamily: 'Quicksand' },
+    confirmBtnText: { color: 'white', fontWeight: '700', fontSize: 15, fontFamily: 'Quicksand' },
 });

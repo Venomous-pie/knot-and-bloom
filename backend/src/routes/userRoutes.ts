@@ -3,7 +3,7 @@ import userController from '../controllers/CustomerController.js';
 import { DuplicateUserError, ValidationError, AuthenticationError, NotFoundError } from '../error/errorHandler.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 
-import { authRateLimiter, registrationRateLimiter } from '../middleware/rateLimiter.js';
+import { authRateLimiter } from '../middleware/rateLimiter.js';
 import { loginRateLimiter } from '../services/LoginRateLimiter.js';
 import { AuditService } from '../services/AuditService.js';
 
@@ -52,7 +52,7 @@ router.put('/profile', authenticate, async (req, res) => {
     }
 });
 
-router.post('/register', registrationRateLimiter, async (req, res) => {
+router.post('/register', authRateLimiter, async (req, res) => {
     try {
         const result = await userController.userRegisterController(req.body);
 

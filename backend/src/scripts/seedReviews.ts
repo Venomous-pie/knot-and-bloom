@@ -1,5 +1,4 @@
-import { loadEnv } from '../config/env.js';
-loadEnv();
+import 'dotenv/config';
 import prisma from '../utils/prismaUtils.js';
 
 async function seedReviews() {

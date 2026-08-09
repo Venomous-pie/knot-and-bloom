@@ -6,7 +6,6 @@ import {
 import { theme } from '@/constants/theme';
 import { sellerAPI } from '@/services/api';
 import MakerCard from '@/components/product/MakerCard';
-import MakerCardSkeleton from '@/components/product/MakerCardSkeleton';
 import MakerSpotlightCard from '@/components/product/MakerSpotlightCard';
 import {
     Palette, SearchX, Sparkles, User as UserIcon,
@@ -72,42 +71,9 @@ export default function MakersDirectory() {
 
 
                 {loading ? (
-                    <View style={styles.body}>
-                        {/* ── HERO (Static while loading) ── */}
-                        <LinearGradient
-                            colors={['#EFD9DE', '#FCFAF9']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.hero}
-                        >
-                            <View style={styles.heroLeft}>
-                                <View style={styles.heroBadge}>
-                                    <Palette size={14} color={theme.colors.primary} />
-                                    <Text style={styles.heroBadgeText}>For Buyers</Text>
-                                </View>
-                                <Text style={styles.heroTitle}>Commission a Maker</Text>
-                                <Text style={styles.heroSubtitle}>
-                                    Browse our curated community of Filipino micro-creators.
-                                    Find your perfect Maker and request a bespoke piece — made just for you.
-                                </Text>
-                            </View>
-                            <View style={styles.heroAccent}>
-                                <View style={[styles.heroOrb, { top: -20, right: -20, opacity: 0.25, width: 100, height: 100 }]} />
-                                <View style={[styles.heroOrb, { bottom: 10, right: 30, opacity: 0.15, width: 60, height: 60 }]} />
-                                <Scissors size={64} color={theme.colors.primary} style={{ opacity: 0.18 } as any} />
-                            </View>
-                        </LinearGradient>
-
-                        <View style={styles.regularSection}>
-                            <Text style={styles.sectionLabel}>LOADING MAKERS...</Text>
-                            <View style={styles.grid}>
-                                {[1, 2, 3, 4, 5, 6].map((key) => (
-                                    <View key={key} style={{ width: itemWidth }}>
-                                        <MakerCardSkeleton />
-                                    </View>
-                                ))}
-                            </View>
-                        </View>
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                        <Text style={styles.loadingText}>Finding available makers…</Text>
                     </View>
                 ) : (
                     <View style={styles.body}>

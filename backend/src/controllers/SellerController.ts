@@ -38,14 +38,11 @@ export const sellerController = {
 
             let initialStatus: SellerStatus = SellerStatus.PENDING;
             let initialRole = Role.USER;
-            let kycFlagged = false;
-            
             if (data.idType && data.idNumber && data.idPhotos && data.idPhotos.length > 0) {
-                const kycResult = await kycService.verifyIdentity(data.idType, data.idNumber, data.idPhotos);
-                if (kycResult.verified) {
+                const isVerified = await kycService.verifyIdentity(data.idType, data.idNumber, data.idPhotos);
+                if (isVerified) {
                     initialStatus = SellerStatus.ACTIVE;
                     initialRole = Role.SELLER;
-                    kycFlagged = kycResult.flagged ?? false;
                 }
             }
 
@@ -70,7 +67,7 @@ export const sellerController = {
                         description: data.description ?? null,
                         logo: data.logo ?? null,
                         banner: data.banner ?? null,
-
+                        
                         productCategories: Array.isArray(data.productCategories) ? data.productCategories : (data.productCategories ? [data.productCategories] : []),
                         isHandmade: data.isHandmade ?? false,
                         hasPriorExperience: data.hasPriorExperience ?? false,
@@ -83,7 +80,6 @@ export const sellerController = {
                         idType: data.idType ?? null,
                         idNumber: data.idNumber ?? null,
                         idPhotos: data.idPhotos ?? [],
-                        kycFlagged: kycFlagged,
                         status: initialStatus
                     }
                 });
@@ -134,16 +130,11 @@ export const sellerController = {
             const userId = user.id;
 
             let initialStatus: SellerStatus = SellerStatus.PENDING;
-            let kycFlagged = false;
-            
             if (data.idType && data.idNumber && data.idPhotos && data.idPhotos.length > 0) {
-                const kycResult = await kycService.verifyIdentity(data.idType, data.idNumber, data.idPhotos);
-                if (!kycResult.verified) {
-                    return res.status(400).json({ error: "Identity verification failed. Please check your ID details." });
+                const isVerified = await kycService.verifyIdentity(data.idType, data.idNumber, data.idPhotos);
+                if (isVerified) {
+                    initialStatus = SellerStatus.ACTIVE;
                 }
-                
-                initialStatus = SellerStatus.ACTIVE;
-                kycFlagged = kycResult.flagged ?? false;
             }
 
             // Check if already has seller profile
@@ -173,8 +164,8 @@ export const sellerController = {
                             logo: data.logo ?? null,
                             banner: data.banner ?? null,
                             phone: req.body.contactNumber ?? data.phone ?? null,
-
-
+                            
+                            
                             productCategories: Array.isArray(data.productCategories) ? data.productCategories : (data.productCategories ? [data.productCategories] : []),
                             isHandmade: data.isHandmade ?? false,
                             hasPriorExperience: data.hasPriorExperience ?? false,
@@ -187,7 +178,6 @@ export const sellerController = {
                             idType: data.idType ?? null,
                             idNumber: data.idNumber ?? null,
                             idPhotos: data.idPhotos ?? [],
-                            kycFlagged: kycFlagged,
                             status: initialStatus,
                             rejectionReason: null, // Clear previous rejection reason
                             termsAccepted: data.termsAccepted ?? false,
@@ -231,8 +221,8 @@ export const sellerController = {
                     banner: data.banner ?? null,
                     // Map contactNumber (frontend) to phone (schema)
                     phone: req.body.contactNumber ?? data.phone ?? null,
-
-
+                    
+                    
                     productCategories: Array.isArray(data.productCategories) ? data.productCategories : (data.productCategories ? [data.productCategories] : []),
                     isHandmade: data.isHandmade ?? false,
                     hasPriorExperience: data.hasPriorExperience ?? false,
@@ -245,7 +235,6 @@ export const sellerController = {
                     idType: data.idType ?? null,
                     idNumber: data.idNumber ?? null,
                     idPhotos: data.idPhotos ?? [],
-                    kycFlagged: kycFlagged,
                     status: initialStatus,
                     termsAccepted: data.termsAccepted ?? false,
                     termsAcceptedAt: data.termsAccepted ? new Date() : null
@@ -677,77 +666,77 @@ export const sellerController = {
                 let lowStockCount = 0;
                 let pendingCount = 0;
 
-                allProducts.forEach((p: any) => {
-                    let score = 0;
-                    const hasVariants = p.variants && p.variants.length > 0;
+            allProducts.forEach((p: any) => {
+                let score = 0;
+                const hasVariants = p.variants && p.variants.length > 0;
+                
+                // Media (25 pts): main image +10, variant images +5, video +10
+                const hasMainImage = !!p.image;
+                const hasVariantImages = hasVariants && p.variants.some((v: any) => v.images && v.images.length > 0);
+                const hasVideo = !!((p as any).videoUrl && (p as any).videoUrl.trim().length > 0);
+                
+                if (hasMainImage) score += 10;
+                if (hasVariantImages) score += 5;
+                if (hasVideo) score += 10;
 
-                    // Media (25 pts): main image +10, variant images +5, video +10
-                    const hasMainImage = !!p.image;
-                    const hasVariantImages = hasVariants && p.variants.some((v: any) => v.images && v.images.length > 0);
-                    const hasVideo = !!((p as any).videoUrl && (p as any).videoUrl.trim().length > 0);
+                // Title & SEO (25 pts): name >= 30 chars +10, has tags +8, 3+ tags +7
+                const nameLength = p.name ? p.name.length : 0;
+                const hasLongName = nameLength >= 30;
+                const hasTags = (p as any).tags && (p as any).tags.length > 0;
+                const hasMultipleTags = (p as any).tags && (p as any).tags.length >= 3;
+                
+                if (hasLongName) score += 10;
+                if (hasTags) score += 8;
+                if (hasMultipleTags) score += 7;
 
-                    if (hasMainImage) score += 10;
-                    if (hasVariantImages) score += 5;
-                    if (hasVideo) score += 10;
+                // Description & Details (20 pts): >= 100 chars +10, has materials +5, care instructions +5
+                const descLength = p.description ? p.description.length : 0;
+                const hasGoodDesc = descLength >= 100;
+                const hasMaterials = (p as any).materials && (p as any).materials.trim().length > 0;
+                const hasCareInstructions = !!((p as any).careInstructions && (p as any).careInstructions.trim().length > 0);
+                
+                if (hasGoodDesc) score += 10;
+                if (hasMaterials) score += 5;
+                if (hasCareInstructions) score += 5;
 
-                    // Title & SEO (25 pts): name >= 30 chars +10, has tags +8, 3+ tags +7
-                    const nameLength = p.name ? p.name.length : 0;
-                    const hasLongName = nameLength >= 30;
-                    const hasTags = (p as any).tags && (p as any).tags.length > 0;
-                    const hasMultipleTags = (p as any).tags && (p as any).tags.length >= 3;
-
-                    if (hasLongName) score += 10;
-                    if (hasTags) score += 8;
-                    if (hasMultipleTags) score += 7;
-
-                    // Description & Details (20 pts): >= 100 chars +10, has materials +5, care instructions +5
-                    const descLength = p.description ? p.description.length : 0;
-                    const hasGoodDesc = descLength >= 100;
-                    const hasMaterials = (p as any).materials && (p as any).materials.trim().length > 0;
-                    const hasCareInstructions = !!((p as any).careInstructions && (p as any).careInstructions.trim().length > 0);
-
-                    if (hasGoodDesc) score += 10;
-                    if (hasMaterials) score += 5;
-                    if (hasCareInstructions) score += 5;
-
-                    // Fulfillment & Inventory (20 pts): processing time +5, has stock +10, no low-stock variants +5
-                    const hasProcessingTime = !!((p as any).processingTime && (p as any).processingTime.trim().length > 0);
-                    const hasStock = hasVariants && p.variants.some((v: any) => Number(v.stock || 0) > 0);
-                    const hasLowStock = hasVariants && p.variants.some((v: any) => {
-                        const s = Number(v.stock || 0);
-                        return s > 0 && s <= 5;
-                    });
-
-                    if (hasProcessingTime) score += 5;
-                    if (hasStock) score += 10;
-                    if (hasStock && !hasLowStock) score += 5;
-
-                    // Pricing (10 pts): price set +5, active discount +5
-                    const hasDiscount = p.discountPercentage && Number(p.discountPercentage) > 0;
-                    const hasPrice = p.basePrice && Number(p.basePrice) > 0;
-
-                    if (hasPrice) score += 5;
-                    if (hasDiscount) score += 5;
-
-                    totalOptScore += score;
-
-                    // Low Stock Calculation
-                    if (hasVariants && p.variants.some((v: any) => v.stock <= 5)) {
-                        lowStockCount++;
-                    }
-
-                    // Pending Count
-                    if (p.status === 'PENDING') pendingCount++;
+                // Fulfillment & Inventory (20 pts): processing time +5, has stock +10, no low-stock variants +5
+                const hasProcessingTime = !!((p as any).processingTime && (p as any).processingTime.trim().length > 0);
+                const hasStock = hasVariants && p.variants.some((v: any) => Number(v.stock || 0) > 0);
+                const hasLowStock = hasVariants && p.variants.some((v: any) => {
+                    const s = Number(v.stock || 0);
+                    return s > 0 && s <= 5;
                 });
+                
+                if (hasProcessingTime) score += 5;
+                if (hasStock) score += 10;
+                if (hasStock && !hasLowStock) score += 5;
 
-                const avgOptimizationScore = allProducts.length > 0 ? Math.round(totalOptScore / allProducts.length) : 0;
+                // Pricing (10 pts): price set +5, active discount +5
+                const hasDiscount = p.discountPercentage && Number(p.discountPercentage) > 0;
+                const hasPrice = p.basePrice && Number(p.basePrice) > 0;
+                
+                if (hasPrice) score += 5;
+                if (hasDiscount) score += 5;
 
-                stats = {
-                    totalProducts: allProducts.length,
-                    avgOptimizationScore,
-                    lowStockCount,
-                    pendingCount
-                };
+                totalOptScore += score;
+
+                // Low Stock Calculation
+                if (hasVariants && p.variants.some((v: any) => v.stock <= 5)) {
+                    lowStockCount++;
+                }
+
+                // Pending Count
+                if (p.status === 'PENDING') pendingCount++;
+            });
+
+            const avgOptimizationScore = allProducts.length > 0 ? Math.round(totalOptScore / allProducts.length) : 0;
+
+            stats = {
+                totalProducts: allProducts.length,
+                avgOptimizationScore,
+                lowStockCount,
+                pendingCount
+            };
             }
 
             res.json({
@@ -824,7 +813,7 @@ export const sellerController = {
                 ...(updatedCustomer.sellerProfile?.status && { sellerStatus: updatedCustomer.sellerProfile.status as any }),
             };
 
-            const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '15m' });
+            const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '7d' });
 
             res.json({
                 success: true,
@@ -901,7 +890,7 @@ export const sellerController = {
             // HARDCODED: Asia/Manila (UTC+8) is the single source of truth for Knot & Bloom date logic.
             // This ensures midnight resets and SLA calculations are consistent for Filipino sellers regardless of server UTC time.
             const now = new Date();
-
+            
             const getStartOfDayPHT = (dateObj: Date, offsetDays = 0) => {
                 const phtTime = new Date(dateObj.getTime() + (8 * 3600000));
                 phtTime.setUTCDate(phtTime.getUTCDate() + offsetDays);
@@ -910,19 +899,19 @@ export const sellerController = {
             };
 
             const startOfDay = getStartOfDayPHT(now);
-
+            
             const phtNow = new Date(now.getTime() + (8 * 3600000));
             const startOfMonthPHT = new Date(Date.UTC(phtNow.getUTCFullYear(), phtNow.getUTCMonth(), 1));
             const startOfMonth = new Date(startOfMonthPHT.getTime() - (8 * 3600000));
-
+            
             const startOfLastMonthPHT = new Date(Date.UTC(phtNow.getUTCFullYear(), phtNow.getUTCMonth() - 1, 1));
             const startOfLastMonth = new Date(startOfLastMonthPHT.getTime() - (8 * 3600000));
-
+            
             const endOfLastMonthPHT = new Date(Date.UTC(phtNow.getUTCFullYear(), phtNow.getUTCMonth(), 0, 23, 59, 59, 999));
             const endOfLastMonth = new Date(endOfLastMonthPHT.getTime() - (8 * 3600000));
-
+            
             const sevenDaysAgo = getStartOfDayPHT(now, -6);
-
+            
             const SLA_24H = new Date(now.getTime() - (24 * 3600000));
             const SLA_48H = new Date(now.getTime() - (48 * 3600000));
 
@@ -968,7 +957,7 @@ export const sellerController = {
                 else if (o.uploaded < SLA_24H) pendingAmber++;
                 else pendingNeutral++;
             });
-
+            
             let pendingSeverity = 'NEUTRAL';
             if (pendingRed > 0) pendingSeverity = 'RED';
             else if (pendingAmber > 0) pendingSeverity = 'AMBER';
@@ -1026,7 +1015,7 @@ export const sellerController = {
                     where: { uid: { in: sortedProductIds } },
                     select: { uid: true, name: true, image: true }
                 });
-
+                
                 topProductsData = sortedProductIds.map(pid => {
                     const prod = products.find(p => p.uid === pid);
                     return {
@@ -1239,4 +1228,4 @@ export const sellerController = {
         }
     }
 };
-
+ 

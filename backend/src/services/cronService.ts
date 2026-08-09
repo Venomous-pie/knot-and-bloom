@@ -18,7 +18,7 @@ class CronService {
 
         // Run every 5 minutes
         cron.schedule('*/5 * * * *', () => {
-            console.log('\x1b[35m[CRON]\x1b[0m \x1b[90mRunning Expired Checkout Session Cleanup...\x1b[0m');
+            console.log('Running Expired Checkout Session Cleanup...');
             this.processExpiredCheckoutSessions();
         });
 

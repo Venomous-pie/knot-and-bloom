@@ -36,6 +36,7 @@ model User {
   reviews               Review[]
   sellerProfile         Seller?
   wishlist              Wishlist?
+  following             UserFollow[]
 }
 
 model Seller {
@@ -96,8 +97,27 @@ model Seller {
   reviews               Review[]
   user                  User                @relation(fields: [userId], references: [uid], onDelete: Cascade)
   withdrawalRequests    WithdrawalRequest[]
+  
+  // Computed Metrics
+  trustScore            Int                 @default(100)
+  responseRate          Decimal             @default(100)
+  responseTimeHours     Decimal             @default(1)
+  lastActiveAt          DateTime            @default(now())
+  
+  followers             UserFollow[]
 
   @@index([userId, hasSeenWelcomeModal])
+}
+
+model UserFollow {
+  userId    Int
+  sellerId  Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  seller    Seller   @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
+
+  @@id([userId, sellerId])
 }
 
 model Product {
@@ -145,6 +165,10 @@ model Product {
   variants                ProductVariant[]
   reviews                 Review[]
   wishlistItems           WishlistItem[]
+
+  @@index([status, deletedAt])
+  @@index([uploaded])
+  @@index([sellerId])
 }
 
 model ProductVariant {

@@ -5,6 +5,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 interface WishlistContextType {
     wishlistCount: number;
     wishlistedProductIds: Set<number>;
+    wishlistProducts: any[];
     refreshWishlist: () => Promise<void>;
     toggleWishlist: (productId: number) => Promise<boolean>;
 }
@@ -22,6 +23,7 @@ export const useWishlist = () => {
 export const WishlistProvider = ({ children }: { children: React.ReactNode }) => {
     const { user } = useAuth();
     const [wishlistedProductIds, setWishlistedProductIds] = useState<Set<number>>(new Set());
+    const [wishlistProducts, setWishlistProducts] = useState<any[]>([]);
     
     // Derive wishlistCount directly from the Set to eliminate split-state race conditions
     const wishlistCount = wishlistedProductIds.size;
@@ -44,15 +46,21 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
             if (fetchId !== currentFetchIdRef.current) return;
 
             if (response.data?.wishlist?.items && Array.isArray(response.data.wishlist.items)) {
-                const ids = new Set<number>(response.data.wishlist.items.map((item: { productId: number }) => item.productId));
+                const items = response.data.wishlist.items;
+                const ids = new Set<number>(items.map((item: { productId: number }) => item.productId));
+                const products = items.map((item: any) => item.product).filter(Boolean);
+                
                 setWishlistedProductIds(ids);
+                setWishlistProducts(products);
             } else {
                 setWishlistedProductIds(new Set());
+                setWishlistProducts([]);
             }
         } catch (error) {
             if (fetchId !== currentFetchIdRef.current) return;
             console.error("Failed to refresh wishlist", error);
             setWishlistedProductIds(new Set());
+            setWishlistProducts([]);
         }
     }, [user?.uid]);
 
@@ -115,9 +123,10 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
     const contextValue = useMemo(() => ({
         wishlistCount,
         wishlistedProductIds,
+        wishlistProducts,
         refreshWishlist,
         toggleWishlist,
-    }), [wishlistCount, wishlistedProductIds, refreshWishlist, toggleWishlist]);
+    }), [wishlistCount, wishlistedProductIds, wishlistProducts, refreshWishlist, toggleWishlist]);
 
     return (
         <WishlistContext.Provider value={contextValue}>

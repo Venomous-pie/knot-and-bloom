@@ -2,7 +2,7 @@ export const createPaymentMethod = async (
     type: 'gcash' | 'paymaya' | 'qrph', 
     billing?: { name: string; email: string; phone: string; address: any }
 ) => {
-    const publicKey = process.env.EXPO_PUBLIC_PAYMONGO_PUBLIC_KEY;
+    const publicKey = process.env.EXPO_PUBLIC_PAYMONGO_PUBLIC_KEY?.trim();
     if (!publicKey) throw new Error("PayMongo public key is missing");
 
     const encodedKey = btoa(`${publicKey}:`);
@@ -16,7 +16,16 @@ export const createPaymentMethod = async (
     };
 
     if (billing) {
-        payload.data.attributes.billing = billing;
+        const sanitizedEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(billing.email?.trim() || '') 
+            ? billing.email.trim() 
+            : 'guest@example.com';
+
+        payload.data.attributes.billing = {
+            ...billing,
+            name: billing.name?.trim() || 'Guest',
+            email: sanitizedEmail,
+            phone: billing.phone?.trim() || '09000000000'
+        };
     }
 
     const response = await fetch('https://api.paymongo.com/v1/payment_methods', {
@@ -38,7 +47,7 @@ export const createPaymentMethod = async (
 };
 
 export const attachPaymentIntent = async (paymentIntentId: string, paymentMethodId: string, clientKey: string, returnUrl: string) => {
-    const publicKey = process.env.EXPO_PUBLIC_PAYMONGO_PUBLIC_KEY;
+    const publicKey = process.env.EXPO_PUBLIC_PAYMONGO_PUBLIC_KEY?.trim();
     if (!publicKey) throw new Error("PayMongo public key is missing");
 
     const encodedKey = btoa(`${publicKey}:`);

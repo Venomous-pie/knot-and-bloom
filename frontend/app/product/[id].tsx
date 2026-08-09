@@ -17,6 +17,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     View,
     useWindowDimensions
 } from "react-native";
@@ -64,6 +65,11 @@ export default function ProductDetailPage() {
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [showAllReviews, setShowAllReviews] = useState(false);
     const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+    
+    // Review Form State
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState("");
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
     const allImages = React.useMemo(() => {
         if (!product) return [];
@@ -525,6 +531,69 @@ export default function ProductDetailPage() {
                         <Text style={styles.viewAllText}>Show Less</Text>
                     </Pressable>
                 )}
+            </View>
+        );
+    };
+
+    const renderReviewForm = () => {
+        if (!user) return null; // Only logged-in users can review
+
+        const submitReview = async () => {
+            if (!product) return;
+            try {
+                setIsSubmittingReview(true);
+                const res = await reviewsAPI.createReview({
+                    productId: product.uid,
+                    rating: reviewRating,
+                    comment: reviewComment
+                });
+                
+                if (res.data?.success) {
+                    Alert.alert("Success", "Review submitted successfully!");
+                    setReviewComment("");
+                    setReviewRating(5);
+                    // Optionally refresh reviews here
+                } else {
+                    Alert.alert("Error", "Failed to submit review.");
+                }
+            } catch (err: any) {
+                Alert.alert("Error", err.response?.data?.message || "Failed to submit review.");
+            } finally {
+                setIsSubmittingReview(false);
+            }
+        };
+
+        return (
+            <View style={[styles.sectionContainer, { marginTop: 0 }]}>
+                <Text style={styles.sectionTitle}>Write a Review</Text>
+                <View style={styles.reviewForm}>
+                    <Text style={{ fontFamily: 'Quicksand', marginBottom: 8, color: theme.colors.textSecondary }}>Rating</Text>
+                    <View style={[styles.starsRow, { marginBottom: 16 }]}>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <Pressable key={i} onPress={() => setReviewRating(i)}>
+                                <Ionicons name={i <= reviewRating ? 'star' : 'star-outline'} size={32} color={theme.colors.starGold} />
+                            </Pressable>
+                        ))}
+                    </View>
+                    
+                    <TextInput
+                        style={styles.reviewInput}
+                        placeholder="Share your thoughts about this product..."
+                        value={reviewComment}
+                        onChangeText={setReviewComment}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                    />
+                    
+                    <Pressable 
+                        style={[styles.primaryButton, isSubmittingReview && { opacity: 0.7 }, { alignSelf: 'flex-start', marginTop: 16 }]}
+                        onPress={submitReview}
+                        disabled={isSubmittingReview}
+                    >
+                        {isSubmittingReview ? <ActivityIndicator color="white" /> : <Text style={styles.primaryButtonText}>Submit Review</Text>}
+                    </Pressable>
+                </View>
             </View>
         );
     };
@@ -1048,8 +1117,9 @@ export default function ProductDetailPage() {
                     )}
 
                     {/* Customer Reviews */}
-                    <View style={{ marginTop: 16 }}>
+                    <View style={{ width: '100%', maxWidth: 1200, alignSelf: 'center', marginTop: 32 }}>
                         {renderReviews()}
+                        {renderReviewForm()}
                     </View>
                 </View>
 
@@ -1711,5 +1781,35 @@ const styles = StyleSheet.create({
         top: 8,
         right: 8,
         zIndex: 10,
+    },
+    reviewForm: {
+        backgroundColor: theme.colors.surface,
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    reviewInput: {
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: 8,
+        padding: 12,
+        fontFamily: 'Quicksand',
+        fontSize: 14,
+        minHeight: 100,
+        backgroundColor: 'white',
+    },
+    primaryButton: {
+        backgroundColor: theme.colors.primary,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    primaryButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });

@@ -9,48 +9,21 @@ import { router, Stack, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ProductCardSkeleton from '@/components/product/ProductCardSkeleton';
 
 export default function WishlistPage() {
     const { user } = useAuth();
-    const { wishlistedProductIds, refreshWishlist } = useWishlist();
+    const { wishlistedProductIds, wishlistProducts } = useWishlist();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
 
     const [items, setItems] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // No longer loading from network on mount
 
-    const fetchWishlistItems = async () => {
-        if (!user?.uid) {
-            setLoading(false);
-            return;
-        }
-        try {
-            setLoading(true);
-            const res = await wishlistAPI.getWishlist(user.uid);
-            if (res.data?.wishlist?.items) {
-                const products = res.data.wishlist.items.map((item: any) => item.product);
-                setItems(products);
-            }
-        } catch (error) {
-            console.error('Failed to fetch wishlist items', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Fetch on focus (or when the user changes), but NOT on every wishlist toggle.
-    // Optimistic removal from the list is handled by the useEffect below.
-    useFocusEffect(
-        useCallback(() => {
-            fetchWishlistItems();
-        }, [user])
-    );
-
-    // Keep local items in sync with context: remove items that were un-wishlisted
-    // without triggering a network refetch (avoids the blink).
+    // Keep local items in sync with context, filtering by wishlistedProductIds for optimistic deletes
     React.useEffect(() => {
-        setItems(prev => prev.filter(p => wishlistedProductIds.has(p.uid)));
-    }, [wishlistedProductIds]);
+        setItems(wishlistProducts.filter(p => wishlistedProductIds.has(p.uid)));
+    }, [wishlistProducts, wishlistedProductIds]);
 
     // Calculate grid layout
     const containerWidth = Math.min(width, 1200);
@@ -74,37 +47,35 @@ export default function WishlistPage() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <Stack.Screen
-                options={{
-                    title: `Wishlist (${wishlistedProductIds.size})`,
-                    headerTitleStyle: { fontFamily: theme.typography.fontFamily },
-                    headerStyle: { backgroundColor: theme.colors.background }
-                }}
-            />
-
-            {loading && items.length === 0 ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
-                </View>
-            ) : items.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                    <View style={styles.iconContainer}>
-                        <Ionicons name="heart-outline" size={64} color={theme.colors.primaryLight} />
-                    </View>
-                    <Text style={styles.title}>Your wishlist is empty</Text>
-                    <Text style={styles.message}>
-                        Save items you love so you can easily find them later.
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Wishlist</Text>
+                    <Text style={styles.headerSubtitle}>
+                        {wishlistedProductIds.size} {wishlistedProductIds.size === 1 ? 'item' : 'items'} saved
                     </Text>
-                    <Pressable style={styles.shopBtn} onPress={() => router.push('/')}>
-                        <Text style={styles.shopBtnText}>Discover Products</Text>
-                    </Pressable>
                 </View>
-            ) : (
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <View style={styles.header}>
-                        <Text style={styles.headerTitle}>My Saved Items</Text>
+
+                {loading && items.length === 0 ? (
+                    <View style={[styles.grid, { gap, paddingHorizontal: theme.spacing.lg }]}>
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <ProductCardSkeleton key={i} style={{ width: itemWidth }} />
+                        ))}
                     </View>
-                    <View style={[styles.grid, { gap }]}>
+                ) : items.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <View style={styles.emptyIconContainer}>
+                            <Ionicons name="heart-outline" size={80} color={theme.colors.primaryLight} />
+                        </View>
+                        <Text style={styles.emptyTitle}>Your wishlist is empty</Text>
+                        <Text style={styles.emptyMessage}>
+                            Save items you love so you can easily find them later.
+                        </Text>
+                        <Pressable style={styles.shopBtn} onPress={() => router.push('/')}>
+                            <Text style={styles.shopBtnText}>Discover Products</Text>
+                        </Pressable>
+                    </View>
+                ) : (
+                    <View style={[styles.grid, { gap, paddingHorizontal: theme.spacing.lg }]}>
                         {items.map((product) => (
                             <ProductCard
                                 key={product.uid}
@@ -113,80 +84,95 @@ export default function WishlistPage() {
                             />
                         ))}
                     </View>
-                </ScrollView>
-            )}
+                )}
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
+    container: { flex: 1, backgroundColor: '#FAFAFA' },
     centerContainer: { flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' },
     scrollContent: {
         maxWidth: 1200,
         width: '100%',
         alignSelf: 'center',
-        padding: theme.spacing.lg,
         paddingBottom: 100,
     },
     header: {
-        marginBottom: theme.spacing.xl,
+        paddingHorizontal: theme.spacing.lg,
+        paddingTop: theme.spacing.md,
+        paddingBottom: theme.spacing.xl,
     },
     headerTitle: {
-        fontSize: theme.typography.sizes['2xl'],
-        fontFamily: theme.typography.fontFamily,
+        fontSize: 32,
+        fontFamily: 'Quicksand',
         fontWeight: 'bold',
         color: theme.colors.text,
+        marginBottom: 8,
+    },
+    headerSubtitle: {
+        fontSize: 16,
+        fontFamily: 'Quicksand',
+        color: theme.colors.textSecondary,
     },
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
     },
     emptyContainer: {
-        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         padding: theme.spacing['2xl'],
+        marginTop: 40,
     },
-    iconContainer: {
-        width: 120,
-        height: 120,
-        backgroundColor: theme.colors.subtle,
-        borderRadius: 60,
+    emptyIconContainer: {
+        width: 140,
+        height: 140,
+        backgroundColor: 'white',
+        borderRadius: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: theme.spacing.lg,
+        marginBottom: theme.spacing.xl,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 10,
     },
-    title: {
+    emptyTitle: {
         fontFamily: theme.typography.fontFamily,
-        fontSize: theme.typography.sizes.xl,
+        fontSize: 24,
         fontWeight: '700',
         color: theme.colors.text,
-        marginBottom: theme.spacing.sm,
+        marginBottom: theme.spacing.md,
     },
-    message: {
+    emptyMessage: {
         fontFamily: theme.typography.fontFamily,
-        fontSize: theme.typography.sizes.base,
-        color: theme.colors.textSecondary,
+        fontSize: 16,
+        color: theme.colors.textLight,
         textAlign: 'center',
-        marginBottom: theme.spacing.xl,
+        marginBottom: theme.spacing['2xl'],
         lineHeight: 24,
+        maxWidth: 300,
     },
     shopBtn: {
         backgroundColor: theme.colors.primary,
-        paddingHorizontal: theme.spacing.xl,
-        paddingVertical: theme.spacing.md,
+        paddingHorizontal: theme.spacing['2xl'],
+        paddingVertical: 16,
         borderRadius: theme.borderRadius.full,
-        shadowColor: theme.shadows.md.shadowColor,
-        shadowOffset: theme.shadows.md.shadowOffset,
-        shadowOpacity: theme.shadows.md.shadowOpacity,
-        shadowRadius: theme.shadows.md.shadowRadius,
-        elevation: theme.shadows.md.elevation,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+        transform: [{ scale: 1 }],
     },
     shopBtnText: {
         fontFamily: theme.typography.fontFamily,
-        fontSize: theme.typography.sizes.base,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '700',
         color: 'white',
+        letterSpacing: 0.5,
     },
 });

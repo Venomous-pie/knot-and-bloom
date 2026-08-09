@@ -66,7 +66,6 @@ const styles = StyleSheet.create({
         overflow: "hidden",
         borderWidth: 1,
         borderColor: theme.colors.border,
-        aspectRatio: 0.62, // Approximating the card aspect ratio so it mimics real size
     },
     skeletonContainer: {
         flex: 1,

@@ -155,7 +155,7 @@ export default function DeleteAccountPage() {
                     <View style={styles.infoBox}>
                         <Text style={styles.infoTitle}>What happens when your account is deleted?</Text>
                         <Text style={styles.infoItem}>• Your profile data will be permanently removed</Text>
-                        <Text style={styles.infoItem}>• Your saved addresses and payment methods will be deleted</Text>
+                        <Text style={styles.infoItem}>• Your saved addresses will be deleted</Text>
                         <Text style={styles.infoItem}>• Order history will be anonymized but kept for records</Text>
                         <Text style={styles.infoItem}>• You won't be able to recover your account</Text>
                     </View>

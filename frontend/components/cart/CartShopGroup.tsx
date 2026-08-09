@@ -44,7 +44,7 @@ export const CartShopGroup = ({
     const shopSubtotal = useMemo(() => {
         return items.reduce((sum, item) => {
             if (selectedItems.has(item.uid)) {
-                return sum + ((item.priceInfo?.finalPrice || item.price) * item.quantity);
+                return sum + ((item.priceInfo?.finalPrice || 0) * item.quantity);
             }
             return sum;
         }, 0);

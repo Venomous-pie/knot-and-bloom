@@ -1,5 +1,5 @@
 import Router from 'express';
-import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts, getRecommendedProducts, getSimilarProducts } from '../controllers/ProductController.js';
+import { getProductById, getProducts, postProduct, searchProducts, getCategoryCounts, getRecommendedProducts, getSimilarProducts, getRecentPurchases } from '../controllers/ProductController.js';
 import { DuplicateProductError, NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../error/errorHandler.js';
 import { generateProductDescription, generateProductSKU, generateVariantSKU, generateOptionValues } from '../services/GenerateService.js';
 import { getAdminProducts, updateProductStatus } from '../controllers/ProductController.js';
@@ -313,6 +313,22 @@ router.get('/category-counts', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch category counts',
+        });
+    }
+});
+
+router.get('/recent-purchases', async (req, res) => {
+    try {
+        const result = await getRecentPurchases();
+        return res.status(200).json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error fetching recent purchases:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch recent purchases'
         });
     }
 });

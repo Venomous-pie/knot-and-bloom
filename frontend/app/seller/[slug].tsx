@@ -21,9 +21,10 @@ import {
     ScrollView,
     TextInput,
     Modal,
-    Alert
+    Alert,
+    Linking
 } from "react-native";
-import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck, Camera, Pin, PinOff, Edit2, Save, Search, X } from "lucide-react-native";
+import { ArrowLeft, MapPin, Calendar, Star, Package, TrendingUp, CheckCircle, Heart, MessageCircle, Truck, RefreshCw, ShieldCheck, Camera, Pin, PinOff, Edit2, Save, Search, X, Clock, Zap } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { theme } from '@/constants/theme';
@@ -45,6 +46,10 @@ interface SellerProfileData {
     businessAddress?: string | null;
     totalSales?: number;
     rating?: number;
+    trustScore?: number;
+    responseRate?: number;
+    responseTimeHours?: number;
+    lastActiveAt?: string;
     pinnedProductIds?: number[];
     productCategories?: string[];
     salesChannels?: string[];
@@ -353,7 +358,13 @@ export default function SellerProfile() {
                             </Pressable>
                             <Pressable
                                 style={styles.actionButtonSecondary}
-                                onPress={() => { setComingSoonFeature('contact'); setShowComingSoonModal(true); }}
+                                onPress={() => {
+                                    if (seller.email) {
+                                        Linking.openURL(`mailto:${seller.email}`);
+                                    } else {
+                                        Alert.alert("Contact Info", "This seller has not provided an email address.");
+                                    }
+                                }}
                             >
                                 <MessageCircle size={16} color={theme.colors.primary} />
                                 <Text style={styles.actionButtonTextSecondary}>Contact</Text>
@@ -392,12 +403,51 @@ export default function SellerProfile() {
                     </View>
 
                     <View style={styles.statCard}>
+                        <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}>
+                            <ShieldCheck size={20} color="#567F4F" />
+                        </View>
+                        <View>
+                            <Text style={styles.statValue}>{seller.trustScore || 100}</Text>
+                            <Text style={styles.statLabel}>Trust Score</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.statCard}>
                         <View style={[styles.statIcon, { backgroundColor: '#FCE4EC' }]}>
                             <TrendingUp size={20} color={theme.colors.primary} />
                         </View>
                         <View>
                             <Text style={styles.statValue}>{seller.totalSales ? `${seller.totalSales}+` : 'New'}</Text>
                             <Text style={styles.statLabel}>Sales</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.statCard}>
+                        <View style={[styles.statIcon, { backgroundColor: '#E3F2FD' }]}>
+                            <Clock size={20} color="#1976D2" />
+                        </View>
+                        <View>
+                            <Text style={styles.statValue}>
+                                {seller.lastActiveAt ? (
+                                    (new Date().getTime() - new Date(seller.lastActiveAt).getTime()) < 24 * 60 * 60 * 1000 
+                                    ? 'Today' : 'Recently'
+                                ) : 'Active'}
+                            </Text>
+                            <Text style={styles.statLabel}>Active</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.statCard}>
+                        <View style={[styles.statIcon, { backgroundColor: '#FFF3E0' }]}>
+                            <Zap size={20} color="#FF9800" />
+                        </View>
+                        <View>
+                            <Text style={styles.statValue}>
+                                {seller.responseTimeHours 
+                                    ? (seller.responseTimeHours < 1 ? '<1h' : `${Math.round(seller.responseTimeHours)}h`) 
+                                    : '<1h'}
+                            </Text>
+                            <Text style={styles.statLabel}>Response</Text>
                         </View>
                     </View>
                 </View>
@@ -1295,8 +1345,8 @@ const styles = StyleSheet.create({
 
     // Reviews
     reviewsContainer: {
-        paddingTop: 40,
-        alignItems: 'center',
+        paddingVertical: 24,
+        paddingHorizontal: 16,
     },
     reviewsContainerDesktop: {
         maxWidth: 1024,
@@ -1323,7 +1373,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         width: '100%',
-        paddingHorizontal: 16,
         marginBottom: 20,
     },
     reviewsTitle: {
@@ -1352,7 +1401,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
-        width: '92%',
+        width: '100%',
         shadowColor: theme.colors.shadow,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,

@@ -134,8 +134,20 @@ export default function ProductCard({
     const hasDiscount = discountPct > 0;
     const totalStock = product.variants?.reduce((sum, v) => sum + v.stock, 0) ?? 0;
     const isAvailable = totalStock > 0;
-    const displayImage = product.image;
-    const imageList = product.images?.length ? product.images : (displayImage ? [displayImage] : []);
+    
+    const imageList = React.useMemo(() => {
+        const imgs: string[] = [];
+        if (product.image) imgs.push(product.image);
+        if (product.images) imgs.push(...product.images);
+        product.variants?.forEach(v => {
+            if (v.images && v.images.length > 0) {
+                imgs.push(...v.images);
+            }
+        });
+        const unique = Array.from(new Set(imgs));
+        return unique;
+    }, [product]);
+
     const sellerDisplay = product.seller?.name || 'Knot & Bloom';
     const isKnotAndBloom = sellerDisplay === 'Knot & Bloom';
 

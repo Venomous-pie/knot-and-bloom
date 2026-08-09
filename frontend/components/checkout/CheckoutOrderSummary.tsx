@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { theme } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
-type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'maribank' | 'card';
+type PaymentMethod = 'cod' | 'gcash' | 'paymaya' | 'maribank' | 'card' | 'qrph';
 
 export interface ShippingBreakdownItem {
     sellerName: string;

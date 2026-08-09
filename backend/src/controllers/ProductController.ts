@@ -1031,6 +1031,45 @@ export const getRecommendedProducts = async (userId?: number, searchDataStr?: st
     return finalRecommendations;
 };
 
+export const getRecentPurchases = async () => {
+    const cacheKey = `product:recent_purchases`;
+    const cached = await cache.get<any[]>(cacheKey);
+    if (cached) return cached;
+
+    // Find 10 most recent distinct products ordered
+    const recentItems = await prisma.orderItem.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: { productId: true },
+        take: 30, // fetch more to get distinct
+    });
+
+    const uniqueProductIds = [...new Set(recentItems.map(item => item.productId))].slice(0, 10);
+
+    if (uniqueProductIds.length === 0) {
+        return [];
+    }
+
+    const products = await prisma.product.findMany({
+        where: {
+            uid: { in: uniqueProductIds },
+            deletedAt: null,
+            status: ProductStatus.ACTIVE,
+        },
+        include: {
+            variants: true,
+            seller: { select: { name: true, slug: true, logo: true } }
+        }
+    });
+
+    // Reorder based on the uniqueProductIds order to maintain "recency"
+    const orderedProducts = products.sort((a, b) => 
+        uniqueProductIds.indexOf(a.uid) - uniqueProductIds.indexOf(b.uid)
+    );
+
+    await cache.set(cacheKey, orderedProducts, 60);
+    return orderedProducts;
+};
+
 export const getSimilarProducts = async (productId: string) => {
     const parsedId = parseInt(productId);
     if (isNaN(parsedId)) {

@@ -102,13 +102,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         onLoad: (draft) => {
             // Only load draft for fields that haven't been explicitly set by map/initialData
             setForm(prev => {
-                const merged = { ...draft };
+                const merged: Partial<AddressFormData> = { ...draft };
                 Object.keys(prev).forEach(key => {
                     const k = key as keyof AddressFormData;
                     // If prev has a truthy value, keep it (prioritize map data over draft)
                     if (prev[k]) merged[k] = prev[k] as any;
                 });
-                return merged;
+                return merged as AddressFormData;
             });
         },
     });

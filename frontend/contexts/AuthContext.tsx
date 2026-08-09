@@ -16,7 +16,7 @@ const getSafeRedirectUrl = (url: string | undefined): RelativePathString => {
     if (url && url.startsWith('/') && !url.startsWith('//')) {
         return url as RelativePathString;
     }
-    return '/';
+    return '/' as RelativePathString;
 };
 
 const AuthContext = createContext<AuthContextType>({

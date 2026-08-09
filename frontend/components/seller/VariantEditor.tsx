@@ -231,6 +231,8 @@ interface VariantEditorProps {
     variantErrors?: Record<string, string>;
     categories?: string[];
     productName?: string;
+    productOptions?: any[];
+    onProductOptionsChange?: (options: any[]) => void;
 }
 
 // VariantImagePicker replaced by ImageUploader in compact mode
@@ -248,6 +250,8 @@ export default function VariantEditor({
     variantErrors = {},
     categories = [],
     productName = '',
+    productOptions = [],
+    onProductOptionsChange = () => {},
 }: VariantEditorProps) {
     const { width } = useWindowDimensions();
     const mobile = isMobile(width);

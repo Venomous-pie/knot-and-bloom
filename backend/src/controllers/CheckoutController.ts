@@ -991,6 +991,12 @@ export async function createOrdersFromSession(
         where: { uid: { in: lockedPrices.map(item => item.itemUid) } },
     });
 
+    // Clear purchased wishlist items
+    const purchasedProductIds = [...new Set(lockedPrices.map(item => item.productId))];
+    await prisma.wishlistItem.deleteMany({
+        where: { wishlist: { userId: session.userId }, productId: { in: purchasedProductIds } }
+    });
+
     return createdOrderIds;
 }
 

@@ -47,6 +47,7 @@ interface Product {
     uploaded: string;
     updated: string;
     variants: ProductVariant[];
+    productOptions?: any[];
     status?: 'DRAFT' | 'PENDING' | 'ACTIVE' | 'SUSPENDED';
     sellerId?: number | null;
     seller?: {

@@ -6,4 +6,7 @@ export const reviewsAPI = {
     
     getReviewsByProduct: (productId: number, page = 1, limit = 10) => 
         apiClient.get(`/reviews/product/${productId}?page=${page}&limit=${limit}`),
+        
+    createReview: (data: { productId: number, rating: number, comment?: string }) =>
+        apiClient.post(`/reviews`, data),
 };

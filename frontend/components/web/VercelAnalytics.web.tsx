@@ -1,6 +1,6 @@
 import React from 'react';
-import { Analytics } from "@vercel/analytics/dist/react/index.js";
-import { SpeedInsights } from "@vercel/speed-insights/dist/react/index.js";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 export function VercelAnalytics() {
     return (

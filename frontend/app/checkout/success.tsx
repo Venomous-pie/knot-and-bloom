@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { productAPI } from '@/services/api';
 import { Product } from '@/types/products';
 import { useCart } from '@/contexts/CartContext';
+import { useWishlist } from '@/contexts/WishlistContext';
 
 export default function CheckoutSuccessPage() {
     const router = useRouter();
@@ -15,14 +16,16 @@ export default function CheckoutSuccessPage() {
     const insets = useSafeAreaInsets();
     const mobile = isMobile(width);
     const { refreshCart } = useCart();
+    const { refreshWishlist } = useWishlist();
 
     // State for recommendations
     const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Refresh cart count after successful checkout (items were removed on backend)
+        // Refresh cart count and wishlist after successful checkout (items were removed on backend)
         refreshCart();
+        refreshWishlist();
 
         const fetchRecommendations = async () => {
             try {

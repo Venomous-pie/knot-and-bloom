@@ -23,6 +23,7 @@ describe('VariantEditor', () => {
         baseSku: 'TEST-SKU',
         basePrice: '100',
         baseDiscount: '0',
+        onGenerateVariantSku: jest.fn(),
     };
 
     beforeEach(() => {

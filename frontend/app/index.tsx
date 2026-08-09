@@ -13,6 +13,7 @@ import { theme } from "@/constants/theme";
 
 // Import Home Components
 import HeroSection from "@/components/home/HeroSection";
+import RecentPurchasesSection from "@/components/home/RecentPurchasesSection";
 import CategoriesSection from "@/components/home/CategoriesSection";
 import BestsellersSection from "@/components/home/BestsellersSection";
 import NewArrivalsSection from "@/components/home/NewArrivalsSection";
@@ -33,6 +34,7 @@ export default function Index() {
       >
         <View style={styles.pageWrapper}>
           <HeroSection />
+          <RecentPurchasesSection />
           <RecommendationsSection />
           <CategoriesSection />
           <NewArrivalsSection />

@@ -32,6 +32,7 @@ import {
     Truck
 } from 'lucide-react-native';
 import { ProfilePageLayout } from '@/components/profile/ProfilePageLayout';
+import { OrderHistorySkeleton } from '@/components/profile/ProfileSkeleton';
 import { theme } from '@/constants/theme';
 
 /* Product item from JSON */
@@ -102,7 +103,7 @@ interface Tab {
 const TABS: Tab[] = [
     { key: 'all', label: 'All', statuses: [] },
     { key: 'to_pay', label: 'To Pay', statuses: ['PENDING'] },
-    { key: 'to_ship', label: 'To Ship', statuses: ['CONFIRMED', 'PROCESSING', 'IN_PRODUCTION', 'READY_TO_SHIP'] },
+    { key: 'to_ship', label: 'To Ship', statuses: ['PROCESSING', 'IN_PRODUCTION', 'READY_TO_SHIP'] },
     { key: 'to_receive', label: 'To Receive', statuses: ['SHIPPED'] },
     { key: 'completed', label: 'Completed', statuses: ['DELIVERED', 'COMPLETED'] },
     { key: 'cancelled', label: 'Cancelled', statuses: ['CANCELLED'] },
@@ -204,13 +205,11 @@ export default function OrderHistoryPage() {
 
     if (loading || authLoading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primaryLight} />
-            </View>
+            <ProfilePageLayout title="Order History">
+                <OrderHistorySkeleton />
+            </ProfilePageLayout>
         );
-    }
-
-    // Status color/label functions imported from @/utils/orderStatus
+    }// Status color/label functions imported from @/utils/orderStatus
 
 
     const copyToClipboard = async (text: string) => {
@@ -352,13 +351,8 @@ export default function OrderHistoryPage() {
         switch (order.status) {
             case 'PENDING':
                 return (
-                    <Pressable
-                        style={[styles.actionButton, styles.payAction]}
-                        onPress={() => handleQuickAction(order, 'pay')}
-                    >
-                        <Text style={styles.payActionText}>Pay Now</Text>
-                    </Pressable>
-                );
+                    <Text style={{color: theme.colors.info}}>Waiting for seller's approval...</Text>
+                )
             case 'SHIPPED':
                 return (
                     <View style={styles.actionRow}>
@@ -687,7 +681,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     tabBadgeTextActive: {
-        color: 'white',
+        color: theme.colors.primary,
     },
     contentContainer: {
         padding: 20,

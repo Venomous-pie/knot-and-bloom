@@ -193,7 +193,7 @@ export default function SellerProductForm() {
                         isLocalPickupAllowed: p.isLocalPickupAllowed ?? false,
                         localPickupInstructions: p.localPickupInstructions || '',
                         processingTime: p.processingTime || '',
-                        fulfillmentType: p.fulfillmentType || 'READY_TO_SHIP',
+                        fulfillmentType: (p.fulfillmentType as 'READY_TO_SHIP' | 'MADE_TO_ORDER') || 'READY_TO_SHIP',
                         isCustomOrderAllowed: p.isCustomOrderAllowed ?? false,
                         customOrderInstructions: p.customOrderInstructions || '',
                         careInstructions: p.careInstructions || '',
@@ -209,6 +209,9 @@ export default function SellerProductForm() {
                             sku: v.sku || '',
                             price: v.price ? String(v.price) : '',
                             discountPercentage: v.discountPercentage ? String(v.discountPercentage) : '',
+                            images: v.images || [],
+                            options: v.options || {},
+                            isEnabled: v.isEnabled ?? true,
                         }))
                         : [{ name: 'Default', stock: '0', sku: '', price: '', discountPercentage: '', images: [], options: {}, isEnabled: true }],
                     productOptions: p.productOptions && p.productOptions.length > 0 

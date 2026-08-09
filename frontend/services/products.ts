@@ -14,6 +14,8 @@ export const productAPI = {
             params: { searchData: searchDataStr }
         });
     },
+    getRecentPurchases: () =>
+        apiClient.get<{ success: boolean; data: Product[] }>('/products/recent-purchases'),
     getCategoryCounts: () =>
         apiClient.get<{ success: boolean; counts: Record<string, number> }>('/products/category-counts'),
 

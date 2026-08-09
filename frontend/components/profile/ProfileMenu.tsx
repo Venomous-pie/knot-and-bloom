@@ -306,13 +306,6 @@ export const ProfileMenu: React.FC<ProfileMenuProps> = ({ style }) => {
                         onPress={() => router.push('/profile/account' as RelativePathString)}
                     />
                     <MenuItem
-                        icon={<CreditCard size={20} />}
-                        title="Payment Methods"
-                        subtitle="GCash, PayMaya, Bank"
-                        isActive={pathname === '/profile/account/payment-methods'}
-                        onPress={() => router.push('/profile/account/payment-methods' as RelativePathString)}
-                    />
-                    <MenuItem
                         icon={<MapPin size={20} />}
                         title="Addresses"
                         subtitle="Saved shipping addresses"

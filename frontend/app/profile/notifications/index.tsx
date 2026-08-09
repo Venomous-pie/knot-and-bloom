@@ -335,7 +335,6 @@ const styles = StyleSheet.create({
     emptyState: {
         alignItems: 'center',
         padding: 60,
-        marginTop: 20,
         backgroundColor: 'white',
         borderRadius: 16,
         shadowColor: "#000",
@@ -493,7 +492,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         borderRadius: 16,
         padding: 20,
-        marginTop: 24,
+        marginTop: 12,
         marginBottom: 40,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },

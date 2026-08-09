@@ -6,6 +6,7 @@ import { apiClient } from '@/services/api';
 import { ArrowLeft, Wallet, TrendingUp, History, DollarSign, CreditCard, ChevronLeft, ArrowUpCircle, Download, Info, Search, Calendar, Store } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import StatCard from '../../components/ui/StatCard';
+import Button from '../../components/ui/Button';
 
 const P       = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -485,14 +486,15 @@ export default function SellerEarnings() {
                                 Nothing to withdraw yet
                             </Text>
                         )}
-                        <TouchableOpacity
-                            style={[styles.withdrawBtn, (data?.balance.available || 0) <= 0 && { opacity: 0.5, backgroundColor: SUB, borderColor: SUB }]}
+                        <Button
+                            title="Withdraw"
+                            variant="primary"
                             onPress={() => setModalVisible(true)}
                             disabled={(data?.balance.available || 0) <= 0}
-                        >
-                            <ArrowUpCircle size={18} color="#FFF" />
-                            <Text style={styles.withdrawBtnText}>Withdraw</Text>
-                        </TouchableOpacity>
+                            icon={<ArrowUpCircle size={18} color="#FFF" />}
+                            style={{ borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, height: 'auto', backgroundColor: (data?.balance.available || 0) <= 0 ? SUB : P, borderColor: (data?.balance.available || 0) <= 0 ? SUB : P, shadowOpacity: 0, elevation: 0 }}
+                            textStyle={{ fontSize: 13 }}
+                        />
                     </View>
                 </View>
             </View>

@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import { loadEnv } from '../config/env.js';
+loadEnv();
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prismaUtils.js';
 import { Role, SellerStatus } from '../../generated/prisma/client.js';

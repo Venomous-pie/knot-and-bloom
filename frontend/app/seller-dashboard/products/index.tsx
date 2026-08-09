@@ -10,6 +10,7 @@ import StatCard from '../../../components/ui/StatCard';
 import { Package, Activity, AlertTriangle, ClipboardList, Download, Edit2, Trash2, Search, LayoutGrid, List, Filter, Clock, History, TrendingDown, TrendingUp, AlignJustify } from 'lucide-react-native';
 import { calculateOptimizationScore } from '../../../utils/optimizationScore';
 import { useDialog } from '../../../contexts/DialogContext';
+import Button from '../../../components/ui/Button';
 
 const P = '#B36979';
 const P_LIGHT = '#FDEEF1';
@@ -480,14 +481,19 @@ export default function SellerProducts() {
                         <Text style={styles.dateTxt}>Manage your catalog, inventory, and product listings.</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <TouchableOpacity style={styles.exportBtn} onPress={exportToCSV}>
-                            <Download size={18} color={TEXT} />
-                            {isDesktop && <Text style={styles.exportBtnText}>Export CSV</Text>}
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/seller-dashboard/products/form')}>
-                            <Ionicons name="add" size={20} color="#FFF" />
-                            <Text style={styles.addBtnText}>Add Product</Text>
-                        </TouchableOpacity>
+                        <Button 
+                            title={isDesktop ? "Export CSV" : ""}
+                            icon={<Download size={18} color={TEXT} />}
+                            variant="outline"
+                            onPress={exportToCSV}
+                            style={{ borderColor: BORDER, backgroundColor: CARD }}
+                            textStyle={{ color: TEXT }}
+                        />
+                        <Button 
+                            title="Add Product"
+                            icon={<Ionicons name="add" size={20} color="#FFF" />}
+                            onPress={() => router.push('/seller-dashboard/products/form')}
+                        />
                     </View>
                 </View>
             </View>
@@ -687,10 +693,6 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', maxWidth: 1280, width: '100%', alignSelf: 'center' },
     title: { fontSize: 24, fontWeight: '700', color: TEXT, fontFamily: 'Quicksand' },
     dateTxt: { fontSize: 13, color: SUB, marginTop: 4, fontFamily: 'Quicksand' },
-    addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: P, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
-    addBtnText: { color: '#FFF', fontWeight: '700', marginLeft: 6, fontFamily: 'Quicksand' },
-    exportBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: CARD, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: BORDER },
-    exportBtnText: { color: TEXT, fontWeight: '700', marginLeft: 6, fontFamily: 'Quicksand' },
     statRow: { gap: 16, marginBottom: 24, zIndex: 100, overflow: 'visible' },
 
     filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },

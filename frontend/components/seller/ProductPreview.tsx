@@ -242,6 +242,7 @@ export default function ProductPreview({
                             color: theme.colors.text,
                             fontFamily: 'Quicksand',
                             lineHeight: s.nameFont * 1.25,
+                            minHeight: s.nameFont * 1.25 * 2, // Force consistent height regardless of 1 or 2 lines
                         }} numberOfLines={2}>
                             {name || 'Product Name'}
                         </Text>

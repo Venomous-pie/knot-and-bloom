@@ -153,7 +153,7 @@ export default function ProductCard({
                 fadeAnim.setValue(0);
                 Animated.timing(fadeAnim, {
                     toValue: 1,
-                    duration: 600,
+                    duration: 800,
                     useNativeDriver: true
                 }).start();
             }, 3500); // cycle every 3.5s automatically
@@ -417,6 +417,7 @@ export default function ProductCard({
                         color: theme.colors.text,
                         fontFamily: "Quicksand",
                         lineHeight: s.nameFont * 1.25,
+                        minHeight: s.nameFont * 1.25 * 2, // Force consistent height regardless of 1 or 2 lines
                     }} numberOfLines={2}>
                         {product.name}
                     </Text>

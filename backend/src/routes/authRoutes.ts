@@ -50,11 +50,11 @@ router.get(
                 role: user.role as Role,
             };
 
-            // Generate JWT token
+            // Generate JWT access token (short-lived: 15 minutes)
             const token = jwt.sign(
                 payload,
                 process.env.JWT_SECRET!,
-                { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
+                { expiresIn: '15m' }
             );
 
             // Generate Refresh Token for long-lived session
@@ -164,7 +164,8 @@ router.post('/refresh', async (req, res) => {
             ...(payload.sellerStatus && { sellerStatus: payload.sellerStatus as any }),
         };
 
-        const newAccessToken = jwt.sign(accessPayload, process.env.JWT_SECRET!, { expiresIn: '7d' });
+        // Issue a new short-lived access token (15 minutes)
+        const newAccessToken = jwt.sign(accessPayload, process.env.JWT_SECRET!, { expiresIn: '15m' });
 
         // Issue a new rotated refresh token
         const newRefreshToken = await RefreshTokenService.generate({

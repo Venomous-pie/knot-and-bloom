@@ -17,6 +17,7 @@ import {
 import Tooltip from '../../components/ui/Tooltip';
 import StatCard from '../../components/ui/StatCard';
 import ModalPortal from '../../components/ui/ModalPortal';
+import Button from '../../components/ui/Button';
 import * as Clipboard from 'expo-clipboard';
 
 const TouchableOpacity = React.forwardRef(({ style, activeOpacity = 0.5, onPress, ...props }: any, ref: any) => (
@@ -185,10 +186,14 @@ export default function SellerDashboardHome() {
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {!stats && !loading && (
-                    <TouchableOpacity style={s.smallRetryBtn} onPress={() => refetch()}>
-                        <RefreshCw size={14} color={P} />
-                        <Text style={s.smallRetryTxt}>Retry</Text>
-                    </TouchableOpacity>
+                    <Button
+                        title="Retry"
+                        variant="outline"
+                        onPress={() => refetch()}
+                        icon={<RefreshCw size={14} color={P} />}
+                        style={{ height: 32, paddingHorizontal: 12, borderRadius: 16 }}
+                        textStyle={{ fontSize: 13 }}
+                    />
                 )}
                 <TouchableOpacity style={s.bellBtn} onPress={() => router.push('/seller-dashboard/notifications' as any)}>
                     <Bell size={19} color={TEXT} />
@@ -225,9 +230,13 @@ export default function SellerDashboardHome() {
                         <Text style={s.actionBannerTxt}>You have {totalAlerts} items needing your attention across {alertTypes} categories.</Text>
                     </View>
                 </View>
-                <TouchableOpacity style={s.actionBannerBtn} onPress={() => router.push('/seller-dashboard/orders' as any)}>
-                    <Text style={s.actionBannerBtnTxt}>View Tasks</Text>
-                </TouchableOpacity>
+                <Button
+                    title="View Tasks"
+                    variant="outline"
+                    onPress={() => router.push('/seller-dashboard/orders' as any)}
+                    style={{ backgroundColor: CARD, borderColor: 'transparent', height: 36, paddingHorizontal: 16 }}
+                    textStyle={{ color: TEXT }}
+                />
             </View>
         );
     } else if (alertTypes === 1) {
@@ -242,9 +251,13 @@ export default function SellerDashboardHome() {
                         <Text style={s.actionBannerTxt}>{singleAlertDesc}</Text>
                     </View>
                 </View>
-                <TouchableOpacity style={s.actionBannerBtn} onPress={() => router.push(singleAlertPath as any)}>
-                    <Text style={s.actionBannerBtnTxt}>View</Text>
-                </TouchableOpacity>
+                <Button
+                    title="View"
+                    variant="outline"
+                    onPress={() => router.push(singleAlertPath as any)}
+                    style={{ backgroundColor: CARD, borderColor: 'transparent', height: 36, paddingHorizontal: 16 }}
+                    textStyle={{ color: TEXT }}
+                />
             </View>
         );
     }

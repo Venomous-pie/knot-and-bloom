@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import { loadEnv } from '../config/env.js';
+loadEnv();
 import fs from 'fs';
 import path from 'path';
 

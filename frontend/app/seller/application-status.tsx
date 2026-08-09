@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Clock, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, FileText, Info } from "lucide-react-native";
 import { theme } from '@/constants/theme';
+import Button from '@/components/ui/Button';
 
 export default function ApplicationStatusPage() {
     const { user, loading: authLoading, refreshUser } = useAuth();
@@ -81,24 +82,23 @@ export default function ApplicationStatusPage() {
                         Are you sure you want to cancel your seller application? This action cannot be undone.
                     </Text>
                     <View style={styles.modalActions}>
-                        <Pressable
-                            style={styles.modalCancelBtn}
+                        <Button
+                            title="No, Keep It"
+                            variant="outline"
                             onPress={() => setCancelModalVisible(false)}
                             disabled={isCancelling}
-                        >
-                            <Text style={styles.modalCancelBtnText}>No, Keep It</Text>
-                        </Pressable>
-                        <Pressable
-                            style={styles.modalConfirmBtn}
+                            style={{ flex: 1, backgroundColor: theme.colors.background, borderColor: theme.colors.border, height: 'auto', paddingVertical: 14 }}
+                            textStyle={{ color: theme.colors.textSecondary, fontSize: 15 }}
+                        />
+                        <Button
+                            title="Yes, Cancel"
+                            variant="danger"
                             onPress={confirmCancel}
                             disabled={isCancelling}
-                        >
-                            {isCancelling ? (
-                                <ActivityIndicator color="white" size="small" />
-                            ) : (
-                                <Text style={styles.modalConfirmBtnText}>Yes, Cancel</Text>
-                            )}
-                        </Pressable>
+                            loading={isCancelling}
+                            style={{ flex: 1, backgroundColor: theme.colors.error, height: 'auto', paddingVertical: 14 }}
+                            textStyle={{ fontSize: 15 }}
+                        />
                     </View>
                 </View>
             </View>
@@ -121,32 +121,22 @@ export default function ApplicationStatusPage() {
                         </Text>
 
                         <View style={styles.buttonContainer}>
-                            <Pressable
-                                style={({ pressed, hovered }: any) => [
-                                    styles.primaryBtn,
-                                    hovered && { backgroundColor: theme.colors.primary },
-                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-                                ]}
+                            <Button
+                                title="Refresh Status"
+                                variant="primary"
                                 onPress={handleRefresh}
                                 disabled={refreshing}
-                            >
-                                {refreshing ? (
-                                    <ActivityIndicator color="white" size="small" />
-                                ) : (
-                                    <Text style={styles.primaryBtnText}>Refresh Status</Text>
-                                )}
-                            </Pressable>
+                                loading={refreshing}
+                                style={{ flex: 1, height: 'auto', paddingVertical: 14 }}
+                            />
 
-                            <Pressable
-                                style={({ pressed, hovered }: any) => [
-                                    styles.destructiveBtn,
-                                    hovered && { backgroundColor: theme.colors.subtle },
-                                    pressed && { backgroundColor: theme.colors.background }
-                                ]}
+                            <Button
+                                title="Cancel Application"
+                                variant="outline"
                                 onPress={() => setCancelModalVisible(true)}
-                            >
-                                <Text style={styles.destructiveBtnText}>Cancel Application</Text>
-                            </Pressable>
+                                style={{ flex: 1, height: 'auto', paddingVertical: 14, borderColor: theme.colors.border }}
+                                textStyle={{ color: theme.colors.textSecondary, fontWeight: '600', fontSize: 14 }}
+                            />
                         </View>
                     </View>
                 );
@@ -165,17 +155,14 @@ export default function ApplicationStatusPage() {
                         </Text>
 
                         <View style={[styles.buttonContainer, { marginTop: 24 }]}>
-                            <Pressable
-                                style={({ pressed, hovered }: any) => [
-                                    styles.primaryBtn,
-                                    hovered && { backgroundColor: theme.colors.primary },
-                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-                                ]}
+                            <Button
+                                title="Go to Seller Dashboard"
+                                variant="primary"
                                 onPress={() => router.push("/seller-dashboard/" as RelativePathString)}
-                            >
-                                <Text style={styles.primaryBtnText}>Go to Seller Dashboard</Text>
-                                <ArrowRight size={18} color="white" />
-                            </Pressable>
+                                icon={<ArrowRight size={18} color="white" />}
+                                iconPosition="right"
+                                style={{ flex: 1, height: 'auto', paddingVertical: 14 }}
+                            />
                         </View>
                     </View>
                 );
@@ -200,27 +187,20 @@ export default function ApplicationStatusPage() {
                         </View>
 
                         <View style={styles.buttonContainer}>
-                            <Pressable
-                                style={({ pressed, hovered }: any) => [
-                                    styles.primaryBtn,
-                                    hovered && { backgroundColor: theme.colors.primary },
-                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-                                ]}
+                            <Button
+                                title="Update Application"
+                                variant="primary"
                                 onPress={() => router.push("/seller/apply" as RelativePathString)}
-                            >
-                                <Text style={styles.primaryBtnText}>Update Application</Text>
-                            </Pressable>
+                                style={{ flex: 1, height: 'auto', paddingVertical: 14 }}
+                            />
 
-                            <Pressable
-                                style={({ pressed, hovered }: any) => [
-                                    styles.destructiveBtn,
-                                    hovered && { backgroundColor: theme.colors.subtle },
-                                    pressed && { backgroundColor: theme.colors.background }
-                                ]}
+                            <Button
+                                title="Cancel Application"
+                                variant="outline"
                                 onPress={() => setCancelModalVisible(true)}
-                            >
-                                <Text style={styles.destructiveBtnText}>Cancel Application</Text>
-                            </Pressable>
+                                style={{ flex: 1, height: 'auto', paddingVertical: 14, borderColor: theme.colors.border }}
+                                textStyle={{ color: theme.colors.textSecondary, fontWeight: '600', fontSize: 14 }}
+                            />
                         </View>
                     </View >
                 );
@@ -238,17 +218,14 @@ export default function ApplicationStatusPage() {
                         </Text>
 
                         <View style={[styles.buttonContainer, { marginTop: 24 }]}>
-                            <Pressable
-                                style={({ pressed, hovered }: any) => [
-                                    styles.primaryBtn,
-                                    hovered && { backgroundColor: theme.colors.primary },
-                                    pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
-                                ]}
+                            <Button
+                                title="Apply Now"
+                                variant="primary"
                                 onPress={() => router.push("/seller/apply" as RelativePathString)}
-                            >
-                                <Text style={styles.primaryBtnText}>Apply Now</Text>
-                                <ArrowRight size={18} color="white" />
-                            </Pressable>
+                                icon={<ArrowRight size={18} color="white" />}
+                                iconPosition="right"
+                                style={{ flex: 1, height: 'auto', paddingVertical: 14 }}
+                            />
                         </View>
                     </View>
                 );

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import * as ExpoSplashScreen from 'expo-splash-screen';
 import {
     Animated,
     Dimensions,
@@ -49,12 +50,12 @@ function Petal({ delay, startX, size, color }: PetalProps) {
                         Animated.timing(opac, { toValue: 0, duration: 500, useNativeDriver: false }),
                     ]),
                     Animated.loop(Animated.sequence([
-                        Animated.timing(rot, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-                        Animated.timing(rot, { toValue: -1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+                        Animated.timing(rot, { toValue: 1, duration: 2200, easing: Easing.ease, useNativeDriver: false }),
+                        Animated.timing(rot, { toValue: -1, duration: 2200, easing: Easing.ease, useNativeDriver: false }),
                     ])),
                     Animated.loop(Animated.sequence([
-                        Animated.timing(swayX, { toValue: 14, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-                        Animated.timing(swayX, { toValue: -14, duration: 1600, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+                        Animated.timing(swayX, { toValue: 14, duration: 1600, easing: Easing.ease, useNativeDriver: false }),
+                        Animated.timing(swayX, { toValue: -14, duration: 1600, easing: Easing.ease, useNativeDriver: false }),
                     ])),
                 ]),
             ]).start(() => run());
@@ -95,7 +96,11 @@ const PETALS: PetalProps[] = [
 ];
 
 // ─── Main splash ─────────────────────────────────────────────────────────────
-export default function SplashScreen() {
+interface SplashScreenProps {
+    onAnimationComplete?: () => void;
+}
+
+export default function SplashScreen({ onAnimationComplete }: SplashScreenProps) {
     // Logo
     const logoScale   = useRef(new Animated.Value(0.55)).current;
     const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -120,10 +125,12 @@ export default function SplashScreen() {
     const footerOpacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        ExpoSplashScreen.hideAsync();
+
         // ── Logo & ring entrance ─────────────────────────────────────────
         Animated.parallel([
             Animated.spring(logoScale, { toValue: 1, tension: 55, friction: 8, useNativeDriver: false }),
-            Animated.timing(logoOpacity, { toValue: 1, duration: 700, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+            Animated.timing(logoOpacity, { toValue: 1, duration: 700, easing: Easing.ease, useNativeDriver: false }),
             Animated.timing(ringOpacity, { toValue: 0.55, duration: 900, useNativeDriver: false }),
         ]).start();
 
@@ -131,7 +138,7 @@ export default function SplashScreen() {
         setTimeout(() => {
             Animated.parallel([
                 Animated.timing(titleOpacity, { toValue: 1, duration: 500, useNativeDriver: false }),
-                Animated.timing(titleY, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+                Animated.timing(titleY, { toValue: 0, duration: 500, easing: Easing.ease, useNativeDriver: false }),
             ]).start();
         }, 350);
 
@@ -139,14 +146,14 @@ export default function SplashScreen() {
         setTimeout(() => {
             Animated.parallel([
                 Animated.timing(taglineOpacity, { toValue: 1, duration: 500, useNativeDriver: false }),
-                Animated.timing(taglineY, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+                Animated.timing(taglineY, { toValue: 0, duration: 500, easing: Easing.ease, useNativeDriver: false }),
             ]).start();
         }, 550);
 
         // ── Progress bar ─────────────────────────────────────────────────
         setTimeout(() => {
             Animated.timing(barOpacity, { toValue: 1, duration: 300, useNativeDriver: false }).start();
-            Animated.timing(barWidth, { toValue: 180, duration: 2800, easing: Easing.out(Easing.ease), useNativeDriver: false }).start();
+            Animated.timing(barWidth, { toValue: 180, duration: 2800, easing: Easing.ease, useNativeDriver: false }).start();
             Animated.loop(
                 Animated.timing(shimmerX, { toValue: 240, duration: 1100, easing: Easing.linear, useNativeDriver: false })
             ).start();
@@ -156,8 +163,8 @@ export default function SplashScreen() {
         setTimeout(() => {
             Animated.loop(
                 Animated.sequence([
-                    Animated.timing(logoFloat, { toValue: -7, duration: 2100, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
-                    Animated.timing(logoFloat, { toValue: 7, duration: 2100, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+                    Animated.timing(logoFloat, { toValue: -7, duration: 2100, easing: Easing.ease, useNativeDriver: false }),
+                    Animated.timing(logoFloat, { toValue: 7, duration: 2100, easing: Easing.ease, useNativeDriver: false }),
                 ])
             ).start();
         }, 700);
@@ -167,8 +174,8 @@ export default function SplashScreen() {
             Animated.loop(
                 Animated.sequence([
                     Animated.parallel([
-                        Animated.timing(ringScale, { toValue: 1.22, duration: 1900, easing: Easing.out(Easing.ease), useNativeDriver: false }),
-                        Animated.timing(ringOpacity, { toValue: 0, duration: 1900, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+                        Animated.timing(ringScale, { toValue: 1.22, duration: 1900, easing: Easing.ease, useNativeDriver: false }),
+                        Animated.timing(ringOpacity, { toValue: 0, duration: 1900, easing: Easing.ease, useNativeDriver: false }),
                     ]),
                     Animated.parallel([
                         Animated.timing(ringScale, { toValue: 1, duration: 0, useNativeDriver: false }),
@@ -182,6 +189,15 @@ export default function SplashScreen() {
         setTimeout(() => {
             Animated.timing(footerOpacity, { toValue: 1, duration: 600, useNativeDriver: false }).start();
         }, 900);
+
+        const totalAnimationDuration = 1500;
+        const timer = setTimeout(() => {
+            if (onAnimationComplete) {
+                onAnimationComplete();
+            }
+        }, totalAnimationDuration);
+
+        return () => clearTimeout(timer);
     }, []);
 
     return (
@@ -207,7 +223,7 @@ export default function SplashScreen() {
 
                 {/* Brand name */}
                 <Animated.Text style={[styles.brandName, { opacity: titleOpacity, transform: [{ translateY: titleY }] }]}>
-                    Knot&Bloom
+                    Knot<Text style={{ color: SECONDARY }}>&Bloom</Text>
                 </Animated.Text>
 
                 {/* Tagline */}

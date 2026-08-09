@@ -44,6 +44,9 @@ interface SellerProfile {
     idNumber?: string | null;
     kycFlagged?: boolean;
     hasSeenWelcomeModal: boolean;
+    autoAcceptOrders?: boolean;
+    maxConcurrentOrders?: number;
+    maxProcessingBacklog?: number;
     rating?: number | null;
     totalSales?: number;
     totalOrders?: number;

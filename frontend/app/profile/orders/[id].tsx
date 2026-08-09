@@ -90,7 +90,7 @@ export default function OrderDetailsPage() {
   const { user, loading: authLoading } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1024;
-  const { socket } = useSocketContext(); // Access socket from context
+  const { on } = useSocketContext();
   const router = useRouter();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItemSnapshot[]>([]);
@@ -113,7 +113,7 @@ export default function OrderDetailsPage() {
 
   // Real-time Status Updates
   useEffect(() => {
-    if (!socket || !order) return;
+    if (!order) return;
 
     const handleStatusUpdate = (data: any) => {
       if (data.orderId === order.uid) {
@@ -123,12 +123,12 @@ export default function OrderDetailsPage() {
       }
     };
 
-    socket.on("order:status:updated", handleStatusUpdate);
+    const unsubscribe = on("order_timeline_created", handleStatusUpdate);
 
     return () => {
-      socket.off("order:status:updated", handleStatusUpdate);
+      unsubscribe();
     };
-  }, [socket, order?.uid]);
+  }, [on, order?.uid]);
 
   const fetchOrder = async () => {
     try {

@@ -173,21 +173,19 @@ export default function GlobalHeaderUI({ setIsMenuOpen, activeMenu, setActiveMen
         }
     }, [user]);
 
-    const { socket } = useSocketContext();
+    const { on } = useSocketContext();
 
     useEffect(() => {
-        if (!socket) return;
-
         const handleNewNotification = (data?: any) => {
             fetchNotifications();
         };
 
-        socket.on('notification:new', handleNewNotification);
+        const unsubscribe = on('notification_created', handleNewNotification);
 
         return () => {
-            socket.off('notification:new', handleNewNotification);
+            unsubscribe();
         };
-    }, [socket]);
+    }, [on]);
 
 
     const expandedAnim = useRef(new Animated.Value(0)).current;

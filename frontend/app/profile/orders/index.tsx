@@ -1,7 +1,7 @@
 import { orderAPI, cartAPI } from '@/services/api';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getStatusColor, getStatusBgColor, getStatusLabel } from '@/utils/orderStatus';
+import StatusBadge from '@/components/ui/StatusBadge';
 import * as Clipboard from 'expo-clipboard';
 import { RelativePathString, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -537,11 +537,7 @@ export default function OrderHistoryPage() {
                                                     <Text style={styles.paidBadgeText}>PAID</Text>
                                                 </View>
                                             )}
-                                            <View style={[styles.statusBadge, { backgroundColor: getStatusBgColor(order.status) }]}>
-                                                <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
-                                                    {getStatusLabel(order.status)}
-                                                </Text>
-                                            </View>
+                                            <StatusBadge status={order.status} style={{ marginLeft: 8 }} />
                                         </View>
                                     </View>
 
@@ -595,7 +591,7 @@ export default function OrderHistoryPage() {
                                     {/* Estimated Date (for processing orders) */}
                                     {(order.status === 'CONFIRMED' || order.status === 'PROCESSING' || order.status === 'IN_PRODUCTION') && order.estimatedCompletionDate && (
                                         <View style={styles.estimateRow}>
-                                            <Clock size={14} color="#2196F3" />
+                                            <Clock size={14} color={theme.colors.textSecondary} />
                                             <Text style={styles.estimateText}>
                                                 Est. Ready: {new Date(order.estimatedCompletionDate).toLocaleDateString()}
                                             </Text>
@@ -845,7 +841,7 @@ const styles = StyleSheet.create({
     },
     estimateText: {
         fontSize: 12,
-        color: '#2196F3',
+        color: theme.colors.textSecondary,
         fontWeight: '500',
     },
     footer: {
@@ -867,7 +863,7 @@ const styles = StyleSheet.create({
     totalPrice: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: theme.colors.primary,
+        color: theme.colors.text,
     },
     statusRow: {
         flexDirection: 'row',
@@ -875,7 +871,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     paidBadge: {
-        backgroundColor: '#E8F5E9',
+        backgroundColor: theme.colors.subtle,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
@@ -883,7 +879,7 @@ const styles = StyleSheet.create({
     paidBadgeText: {
         fontSize: 11,
         fontWeight: 'bold',
-        color: theme.colors.success,
+        color: theme.colors.textSecondary,
     },
     footerRight: {
         flexDirection: 'row',
@@ -913,7 +909,7 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     payAction: {
-        backgroundColor: theme.colors.badgeTrending,
+        backgroundColor: theme.colors.text,
     },
     payActionText: {
         color: 'white',
@@ -931,7 +927,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     confirmAction: {
-        backgroundColor: theme.colors.success,
+        backgroundColor: theme.colors.text,
     },
     confirmActionText: {
         color: 'white',

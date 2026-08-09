@@ -52,17 +52,17 @@ export const theme = {
 
     // Order Status
     statusColors: {
-      PENDING: { fg: "#8D6E63", bg: "#EFEBE9" }, // Soft Brown
-      CONFIRMED: { fg: "#5C6BC0", bg: "#E8EAF6" }, // Soft Indigo
-      IN_PRODUCTION: { fg: "#7E57C2", bg: "#EDE7F6" }, // Soft Deep Purple
-      READY_TO_SHIP: { fg: "#26A69A", bg: "#E0F2F1" }, // Soft Teal
-      SHIPPED: { fg: "#7E57C2", bg: "#EDE7F6" },
-      DELIVERED: { fg: "#66BB6A", bg: "#E8F5E9" }, // Soft Green
-      COMPLETED: { fg: "#66BB6A", bg: "#E8F5E9" },
-      CANCELLED: { fg: "#EF5350", bg: "#FFEBEE" }, // Soft Red
-      REFUNDED: { fg: "#FF7043", bg: "#FBE9E7" }, // Soft Orange
-      DISPUTED: { fg: "#FFA726", bg: "#FFF3E0" }, // Soft Amber
-      DEFAULT: { fg: "#78909C", bg: "#ECEFF1" }, // Blue Grey
+      PENDING: { fg: "#4B5563", bg: "#F3F4F6" },
+      CONFIRMED: { fg: "#4B5563", bg: "#F3F4F6" },
+      IN_PRODUCTION: { fg: "#4B5563", bg: "#F3F4F6" },
+      READY_TO_SHIP: { fg: "#4B5563", bg: "#F3F4F6" },
+      SHIPPED: { fg: "#4B5563", bg: "#F3F4F6" },
+      DELIVERED: { fg: "#4B5563", bg: "#F3F4F6" },
+      COMPLETED: { fg: "#4B5563", bg: "#F3F4F6" },
+      CANCELLED: { fg: "#4B5563", bg: "#F3F4F6" },
+      REFUNDED: { fg: "#4B5563", bg: "#F3F4F6" },
+      DISPUTED: { fg: "#4B5563", bg: "#F3F4F6" },
+      DEFAULT: { fg: "#4B5563", bg: "#F3F4F6" },
     },
   },
 

@@ -44,7 +44,8 @@ function ComposedProviders({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fonts);
-  const [isReady, setIsReady] = useState(false);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [animationFinished, setAnimationFinished] = useState(false);
 
   useEffect(() => {
     async function prepare() {
@@ -63,7 +64,7 @@ export default function RootLayout() {
       } catch (e) {
         console.warn(e);
       } finally {
-        setIsReady(true);
+        setAssetsLoaded(true);
       }
     }
 
@@ -71,19 +72,14 @@ export default function RootLayout() {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    // Intentionally empty. We hide the native splash screen earlier 
-    // to show our CustomSplashScreen. This callback remains if we ever
-    // need to run logic when the root view paints.
-  }, [fontsLoaded, isReady]);
+  }, [fontsLoaded, assetsLoaded, animationFinished]);
 
-  if (!fontsLoaded || !isReady) {
+  const isAppReady = assetsLoaded && animationFinished && fontsLoaded;
+
+  if (!isAppReady) {
     if (fontsLoaded) {
-      // 1. Fonts are ready. Hide the native splash screen immediately.
-      // 2. Render our <CustomSplashScreen /> which uses those fonts while we wait for assets.
-      SplashScreen.hideAsync();
-      return <CustomSplashScreen />;
+      return <CustomSplashScreen onAnimationComplete={() => setAnimationFinished(true)} />;
     }
-    // If fonts are NOT loaded yet, keep the native splash visible (return null)
     return null;
   }
 

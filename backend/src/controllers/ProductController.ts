@@ -391,38 +391,21 @@ export const getCategoryCounts = async () => {
     const cacheKey = `product:categories`;
     const cached = await cache.get<Record<string, number>>(cacheKey);
     if (cached) return cached;
-    const baseFilter: any = {
-        deletedAt: null,
-        status: ProductStatus.ACTIVE,
-        AND: [
-            {
-                OR: [
-                    { sellerId: null },
-                    {
-                        seller: {
-                            status: SellerStatus.ACTIVE
-                        }
-                    }
-                ]
-            }
-        ]
-    };
 
-    const products = await prisma.product.findMany({
-        where: baseFilter,
-        select: { categories: true }
-    });
+    const rawCounts = await prisma.$queryRaw<{ category: string; count: number }[]>`
+        SELECT unnest(p.categories) as category, count(*)::int as count
+        FROM "Product" p
+        LEFT JOIN "Seller" s ON p."sellerId" = s.uid
+        WHERE p."deletedAt" IS NULL
+          AND p.status = 'ACTIVE'
+          AND (p."sellerId" IS NULL OR s.status = 'ACTIVE')
+        GROUP BY category
+    `;
 
     const counts: Record<string, number> = {};
-    products.forEach(p => {
-        if (p.categories) {
-            p.categories.forEach(c => {
-                counts[c] = (counts[c] || 0) + 1;
-            });
-        }
-    });
+    rawCounts.forEach(r => { counts[r.category] = r.count; });
 
-    await cache.set(cacheKey, counts, 120); // Cache for 2 minutes
+    await cache.set(cacheKey, counts, 120);
     return counts;
 };
 
@@ -583,17 +566,19 @@ export const getProductById = async (productId: string) => {
         where: { uid: parsedId },
         include: {
             variants: true,
-            seller: { select: { 
-                uid: true, 
-                name: true, 
-                slug: true, 
-                logo: true,
-                status: true,
-                freeShippingEnabled: true,
-                freeShippingThreshold: true,
-                meetUpPoint: true,
-                selfDeliveryEnabled: true
-            } }
+            seller: {
+                select: {
+                    uid: true,
+                    name: true,
+                    slug: true,
+                    logo: true,
+                    status: true,
+                    freeShippingEnabled: true,
+                    freeShippingThreshold: true,
+                    meetUpPoint: true,
+                    selfDeliveryEnabled: true
+                }
+            }
         }
     });
 
@@ -741,7 +726,7 @@ export const updateProduct = async (productId: string, input: unknown, user?: Au
         await tx.productOption.deleteMany({
             where: { productId: parsedId }
         });
-        
+
         const createdOptionsMap: Record<string, Record<string, number>> = {};
         if (parsedInput.productOptions && parsedInput.productOptions.length > 0) {
             for (let i = 0; i < parsedInput.productOptions.length; i++) {
@@ -884,7 +869,7 @@ export const deleteProduct = async (productId: string, user?: AuthPayload) => {
 
     await cache.deletePattern('product:');
     return result;
-}; 
+};
 import { SearchDataSchema, calculateRelevanceScore, calculateSimilarityScore } from '../utils/recommendationEngine.js';
 
 export const getRecommendedProducts = async (userId?: number, searchDataStr?: string) => {
@@ -904,39 +889,21 @@ export const getRecommendedProducts = async (userId?: number, searchDataStr?: st
         }
     }
 
-    // 2. Fetch past purchase categories and purchased item IDs
     let purchaseCategories: string[] = [];
     let purchasedProductIds: number[] = [];
 
     if (userId) {
-        const orders = await prisma.order.findMany({
-            where: { userId: userId },
-            select: { products: true }
+        const orderItems = await prisma.orderItem.findMany({
+            where: { order: { userId } },
+            select: { productId: true, product: { select: { categories: true } } }
         });
-        
-        for (const order of orders) {
-            try {
-                // products is a JSON string of order items (or similar structure depending on schema)
-                // Let's get the purchased product IDs from OrderItem if it exists in schema
-                const orderItems = await prisma.orderItem.findMany({
-                    where: { orderId: { in: orders.map((o: any) => o.uid) } },
-                    include: { product: true }
-                });
-                
-                for (const item of orderItems) {
-                    if (item.productId) purchasedProductIds.push(item.productId);
-                    if (item.product?.categories) {
-                        purchaseCategories.push(...item.product.categories);
-                    }
-                }
-                break; // orderItems fetch got all of them at once
-            } catch (e) {
-                // Fallback if structure is different
-                console.error("Error fetching order items for recommendations", e);
-            }
+
+        for (const item of orderItems) {
+            if (item.productId) purchasedProductIds.push(item.productId);
+            if (item.product?.categories) purchaseCategories.push(...item.product.categories);
         }
     }
-    
+
     // Deduplicate
     purchaseCategories = [...new Set(purchaseCategories)];
     purchasedProductIds = [...new Set(purchasedProductIds)];
@@ -953,13 +920,26 @@ export const getRecommendedProducts = async (userId?: number, searchDataStr?: st
     if (cached) return cached;
 
     // 4. Fetch Products
-    // We only fetch ACTIVE products that are in stock
+    const searchTokens: string[] = searchData.map((s: any) => s.query).filter(Boolean);
+
+    const candidateWhere: any = {
+        status: ProductStatus.ACTIVE,
+        deletedAt: null,
+        ...(purchasedProductIds.length > 0 ? { uid: { notIn: purchasedProductIds } } : {})
+    };
+
+    const orConditions = [
+        ...(purchaseCategories.length > 0 ? [{ categories: { hasSome: purchaseCategories } }] : []),
+        ...(searchTokens.length > 0 ? [{ tags: { hasSome: searchTokens } }, { categories: { hasSome: searchTokens } }] : [])
+    ];
+    if (orConditions.length > 0) {
+        candidateWhere.OR = orConditions;
+    }
+
     const products = await prisma.product.findMany({
-        where: {
-            status: ProductStatus.ACTIVE,
-            deletedAt: null,
-            ...(purchasedProductIds.length > 0 ? { uid: { notIn: purchasedProductIds } } : {})
-        },
+        where: candidateWhere,
+        take: 200,
+        orderBy: { uploaded: 'desc' },
         select: {
             uid: true,
             name: true,
@@ -1062,7 +1042,7 @@ export const getRecentPurchases = async () => {
     });
 
     // Reorder based on the uniqueProductIds order to maintain "recency"
-    const orderedProducts = products.sort((a, b) => 
+    const orderedProducts = products.sort((a, b) =>
         uniqueProductIds.indexOf(a.uid) - uniqueProductIds.indexOf(b.uid)
     );
 
@@ -1095,16 +1075,20 @@ export const getSimilarProducts = async (productId: string) => {
     const targetCategories = targetProduct.categories || [];
     const targetTags = targetProduct.tags || [];
 
+    const orConditions = [
+        ...(targetCategories.length > 0 ? [{ categories: { hasSome: targetCategories } }] : []),
+        ...(targetTags.length > 0 ? [{ tags: { hasSome: targetTags } }] : []),
+    ];
+
     const candidates = await prisma.product.findMany({
         where: {
             status: ProductStatus.ACTIVE,
             deletedAt: null,
             uid: { not: parsedId },
-            OR: [
-                targetCategories.length > 0 ? { categories: { hasSome: targetCategories } } : {},
-                targetTags.length > 0 ? { tags: { hasSome: targetTags } } : {},
-            ]
+            ...(orConditions.length > 0 ? { OR: orConditions } : {}),
         },
+        take: 150,
+        orderBy: { uploaded: 'desc' },
         select: {
             uid: true,
             name: true,
@@ -1165,7 +1149,7 @@ export const getSimilarProducts = async (productId: string) => {
     if (similarProducts.length < 10 && targetCategories.length > 0) {
         const needed = 10 - similarProducts.length;
         const existingIds = new Set([parsedId, ...similarProducts.map(p => p.uid)]);
-        
+
         const fallbackPadding = await prisma.product.findMany({
             where: {
                 status: ProductStatus.ACTIVE,

@@ -51,14 +51,14 @@ model Seller {
   hasSeenWelcomeModal   Boolean             @default(false)
   userId                Int                 @unique
   approvedAt            DateTime?
-  availableBalance      Decimal             @default(0)
+  availableBalance      Decimal             @default(0) @db.Decimal(12, 2)
   businessAddress       String?
   businessType          String?
-  commissionRate        Decimal             @default(0.05)
+  commissionRate        Decimal             @default(0.05) @db.Decimal(5, 4)
   createdAt             DateTime            @default(now())
   description           String?
   freeShippingEnabled   Boolean             @default(false)
-  freeShippingThreshold Decimal             @default(0)
+  freeShippingThreshold Decimal             @default(0) @db.Decimal(12, 2)
   hasPriorExperience    Boolean             @default(false)
   idNumber              String?
   idPhotos              String[]            @default([])
@@ -68,10 +68,10 @@ model Seller {
   legalName             String?
   meetUpPoint           String?
   monthlyOrders         String?
-  pendingBalance        Decimal             @default(0)
+  pendingBalance        Decimal             @default(0) @db.Decimal(12, 2)
   portfolioLink         String?
   productCategories     String[]            @default([])
-  rating                Decimal?
+  rating                Decimal?            @db.Decimal(2, 1)
   rejectionReason       String?
   salesChannels         String[]            @default([])
   sampleItems           String[]            @default([])
@@ -83,8 +83,8 @@ model Seller {
   termsAccepted         Boolean             @default(false)
   termsAcceptedAt       DateTime?
   totalOrders           Int                 @default(0)
-  totalSales            Decimal             @default(0)
-  totalWithdrawn        Decimal             @default(0)
+  totalSales            Decimal             @default(0) @db.Decimal(14, 2)
+  totalWithdrawn        Decimal             @default(0) @db.Decimal(14, 2)
   updatedAt             DateTime            @updatedAt
   vehicleType           VehicleType         @default(NONE)
   autoAcceptOrders      Boolean             @default(true)
@@ -97,14 +97,13 @@ model Seller {
   reviews               Review[]
   user                  User                @relation(fields: [userId], references: [uid], onDelete: Cascade)
   withdrawalRequests    WithdrawalRequest[]
-  
-  // Computed Metrics
-  trustScore            Int                 @default(100)
-  responseRate          Decimal             @default(100)
-  responseTimeHours     Decimal             @default(1)
-  lastActiveAt          DateTime            @default(now())
-  
-  followers             UserFollow[]
+
+  trustScore        Int      @default(100)
+  responseRate      Decimal  @default(100) @db.Decimal(5, 2)
+  responseTimeHours Decimal  @default(1) @db.Decimal(6, 2)
+  lastActiveAt      DateTime @default(now())
+
+  followers UserFollow[]
 
   @@index([userId, hasSeenWelcomeModal])
 }
@@ -114,8 +113,8 @@ model UserFollow {
   sellerId  Int
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [uid], onDelete: Cascade)
-  seller    Seller   @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  seller Seller @relation(fields: [sellerId], references: [uid], onDelete: Cascade)
 
   @@id([userId, sellerId])
 }
@@ -124,8 +123,8 @@ model Product {
   uid                     Int              @id @default(autoincrement())
   name                    String
   sku                     String           @unique
-  basePrice               Decimal
-  discountedPrice         Decimal?
+  basePrice               Decimal          @db.Decimal(10, 2)
+  discountedPrice         Decimal?         @db.Decimal(10, 2)
   image                   String?
   description             String?
   uploaded                DateTime         @default(now())
@@ -156,7 +155,7 @@ model Product {
   maxOrderQty             Int?
   minOrderQty             Int?
   processingTime          String?
-  shippingFeeOverride     Decimal?
+  shippingFeeOverride     Decimal?         @db.Decimal(10, 2)
   videoUrl                String?
   cartItems               CartItem[]
   orderItems              OrderItem[]
@@ -177,9 +176,9 @@ model ProductVariant {
   name               String
   sku                String               @unique
   stock              Int                  @default(0)
-  price              Decimal?
+  price              Decimal?             @db.Decimal(10, 2)
   discountPercentage Int?
-  discountedPrice    Decimal?
+  discountedPrice    Decimal?             @db.Decimal(10, 2)
   soldCount          Int                  @default(0)
   images             String[]
   isEnabled          Boolean              @default(true)
@@ -213,8 +212,8 @@ model CartItem {
 model Order {
   uid                     Int             @id @default(autoincrement())
   products                String
-  discount                Decimal?
-  total                   Decimal
+  discount                Decimal?        @db.Decimal(10, 2)
+  total                   Decimal         @db.Decimal(10, 2)
   uploaded                DateTime        @default(now())
   updated                 DateTime        @updatedAt
   idempotencyKey          String?         @unique
@@ -233,16 +232,16 @@ model Order {
   gatewayMethod           String?
   gatewayRef              String?
   paymentStatus           PaymentStatus   @default(PENDING)
-  platformFee             Decimal         @default(0)
+  platformFee             Decimal         @default(0) @db.Decimal(10, 2)
   proofPhotos             String?
   referenceNumber         String?         @unique
   rejectionReason         String?
   reminderStage           Int             @default(0)
-  sellerEarnings          Decimal         @default(0)
+  sellerEarnings          Decimal         @default(0) @db.Decimal(10, 2)
   shippingAddressSnapshot String?
-  shippingFee             Decimal         @default(0)
+  shippingFee             Decimal         @default(0) @db.Decimal(10, 2)
   shippingMethod          String?
-  subtotal                Decimal         @default(0)
+  subtotal                Decimal         @default(0) @db.Decimal(10, 2)
   userId                  Int
   progressImages          String[]
   progressImagesRequested Boolean         @default(false)
@@ -255,26 +254,26 @@ model Order {
 }
 
 model CheckoutSession {
-  uid               Int            @id @default(autoincrement())
-  cartSnapshot      String
-  lockedPrices      String
-  totalAmount       Decimal
-  status            CheckoutStatus @default(INITIATED)
-  expiresAt         DateTime
-  idempotencyKey    String         @unique
-  shippingSnapshot  String?        // JSON: { shippingAddress, choices } — stored before PayMongo redirect
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  userId            Int
-  user              User           @relation(fields: [userId], references: [uid])
-  payments          Payment[]
+  uid              Int            @id @default(autoincrement())
+  cartSnapshot     String
+  lockedPrices     String
+  totalAmount      Decimal        @db.Decimal(10, 2)
+  status           CheckoutStatus @default(INITIATED)
+  expiresAt        DateTime
+  idempotencyKey   String         @unique
+  shippingSnapshot String? 
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  userId           Int
+  user             User           @relation(fields: [userId], references: [uid])
+  payments         Payment[]
 }
 
 model Payment {
   uid               Int             @id @default(autoincrement())
   orderId           Int?
   checkoutSessionId Int
-  amount            Decimal
+  amount            Decimal         @db.Decimal(10, 2)
   method            String
   gatewayMethod     String?
   status            PaymentStatus   @default(PENDING)
@@ -312,7 +311,7 @@ model OrderItem {
   productId        Int
   sellerId         Int?
   quantity         Int
-  price            Decimal
+  price            Decimal   @db.Decimal(10, 2)
   status           String    @default("pending_payment")
   trackingNumber   String?
   shippingProvider String?
@@ -443,7 +442,7 @@ model OrderTimeline {
 model WithdrawalRequest {
   uid       Int              @id @default(autoincrement())
   sellerId  Int
-  amount    Decimal
+  amount    Decimal          @default(0) @db.Decimal(12, 2)
   status    WithdrawalStatus @default(PENDING)
   method    String
   details   String?
@@ -505,8 +504,8 @@ model OrderShipment {
   sellerId         Int
   fulfillmentType  ShipmentType
   zoneTier         Int
-  shippingFee      Decimal
-  computedFuelCost Decimal        @default(0)
+  shippingFee      Decimal        @db.Decimal(10, 2)
+  computedFuelCost Decimal        @default(0) @db.Decimal(10, 2)
   meetUpSnapshot   String?
   status           ShipmentStatus @default(PENDING)
   createdAt        DateTime       @default(now())

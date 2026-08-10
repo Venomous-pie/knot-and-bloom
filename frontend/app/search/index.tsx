@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { productAPI } from '@/services/api';
 import { Product } from '@/types/products';
 import SearchBarDropdown from '@/components/ui/SearchResults';
+import { Ionicons } from '@expo/vector-icons';
 
 export interface SearchHistoryItem {
     term: string;
@@ -184,9 +185,11 @@ export default function SearchPage() {
                         </Text>
 
                         {(searchQuery && products.length === 0) ? (
-                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
-                                <Search size={48} color={theme.colors.subtle} />
-                                <Text style={{ marginTop: 10, color: theme.colors.textLight }}>No products found</Text>
+                            <View style={styles.emptyContainer}>
+                                <View style={styles.emptyIconContainer}>
+                                    <Ionicons name="search" size={64} color={theme.colors.primary} />
+                                </View>
+                                <Text style={styles.emptyTitle}>No products found</Text>
                             </View>
                         ) : (
                             <SearchBarDropdown
@@ -251,5 +254,31 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.subtle,
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 60,
+    },
+    emptyIconContainer: {
+        width: 100,
+        height: 100,
+        backgroundColor: 'white',
+        borderRadius: 50,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: theme.spacing.xl,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    emptyTitle: {
+        fontFamily: theme.typography.fontFamily,
+        fontSize: 20,
+        fontWeight: '700',
+        color: theme.colors.text,
+        marginBottom: theme.spacing.md,
     },
 });

@@ -74,32 +74,32 @@ const updateNotificationSettings = async (userId: number, input: unknown) => {
 const getNotifications = async (userId: number, options?: { unreadOnly?: boolean; limit?: number; offset?: number; excludeType?: string }) => {
     const { unreadOnly = false, limit = 50, offset = 0, excludeType } = options || {};
 
-    const notifications = await prisma.notification.findMany({
-        where: {
-            userId: userId,
-            ...(unreadOnly && { isRead: false }),
-            ...(excludeType && { type: { not: excludeType } })
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-        skip: offset,
-    });
-
-    const totalCount = await prisma.notification.count({
-        where: {
-            userId: userId,
-            ...(unreadOnly && { isRead: false }),
-            ...(excludeType && { type: { not: excludeType } })
-        }
-    });
-
-    const unreadCount = await prisma.notification.count({
-        where: { 
-            userId: userId, 
-            isRead: false,
-            ...(excludeType && { type: { not: excludeType } })
-        }
-    });
+    const [notifications, totalCount, unreadCount] = await Promise.all([
+        prisma.notification.findMany({
+            where: {
+                userId: userId,
+                ...(unreadOnly && { isRead: false }),
+                ...(excludeType && { type: { not: excludeType } })
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset,
+        }),
+        prisma.notification.count({
+            where: {
+                userId: userId,
+                ...(unreadOnly && { isRead: false }),
+                ...(excludeType && { type: { not: excludeType } })
+            }
+        }),
+        prisma.notification.count({
+            where: { 
+                userId: userId, 
+                isRead: false,
+                ...(excludeType && { type: { not: excludeType } })
+            }
+        })
+    ]);
 
     return { notifications, totalCount, unreadCount };
 };

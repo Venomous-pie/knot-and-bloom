@@ -17,6 +17,7 @@ import { productAPI } from '@/services/api';
 import { Product } from "@/types/products";
 import { normalizeSearchQuery } from "@/utils/searchUtils";
 import { categoryTitles, CATEGORY_REGISTRY } from "@/constants/categories";
+import { Ionicons } from '@expo/vector-icons';
 
 type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'bestselling';
 
@@ -207,7 +208,9 @@ export default function SearchResultsPage() {
                     </View>
                 ) : products.length === 0 ? (
                     <View style={styles.emptyContainer}>
-                        <Search size={64} color={theme.colors.subtle} style={{ marginBottom: 16 }} />
+                        <View style={styles.emptyIconContainer}>
+                            <Ionicons name="search" size={80} color={theme.colors.primary} />
+                        </View>
                         <Text style={styles.emptyTitle}>No results found</Text>
                         <Text style={styles.emptySubtitle}>We couldn't find anything matching "{q}".</Text>
 
@@ -361,31 +364,55 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 20,
+        padding: theme.spacing['2xl'],
+    },
+    emptyIconContainer: {
+        width: 140,
+        height: 140,
+        backgroundColor: 'white',
+        borderRadius: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: theme.spacing.xl,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 10,
     },
     emptyTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontFamily: theme.typography.fontFamily,
+        fontSize: 24,
+        fontWeight: '700',
         color: theme.colors.text,
-        marginBottom: 8,
-        fontFamily: 'Quicksand',
+        marginBottom: theme.spacing.md,
     },
     emptySubtitle: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
+        fontFamily: theme.typography.fontFamily,
+        fontSize: 16,
+        color: theme.colors.textLight,
         textAlign: 'center',
-        marginBottom: 24,
+        marginBottom: theme.spacing['2xl'],
+        lineHeight: 24,
+        maxWidth: 300,
     },
     browseButton: {
         backgroundColor: theme.colors.primary,
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
+        paddingHorizontal: theme.spacing['2xl'],
+        paddingVertical: 16,
+        borderRadius: theme.borderRadius.full,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
     },
     browseButtonText: {
+        fontFamily: theme.typography.fontFamily,
+        fontSize: 16,
+        fontWeight: '700',
         color: 'white',
-        fontWeight: 'bold',
-        fontSize: 14,
+        letterSpacing: 0.5,
     },
     errorText: {
         fontSize: 16,

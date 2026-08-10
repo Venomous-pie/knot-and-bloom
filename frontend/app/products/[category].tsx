@@ -22,6 +22,7 @@ import ProductCardSkeleton from "@/components/product/ProductCardSkeleton";
 import { productAPI } from '@/services/api';
 import { useWishlist } from "@/contexts/WishlistContext";
 import { UNIVERSAL_TAGS } from '@/constants/tagSuggestions';
+import { Ionicons } from '@expo/vector-icons';
 
 type SortOption = 'newest' | 'price_asc' | 'price_desc' | 'bestselling';
 
@@ -222,7 +223,13 @@ export default function ProductCategoryPage() {
         if (products.length === 0) {
             return (
                 <View style={styles.centerContent}>
-                    <Text style={styles.emptyText}>No products found in this category.</Text>
+                    <View style={styles.emptyIconContainer}>
+                        <Ionicons name="search" size={80} color={theme.colors.primary} />
+                    </View>
+                    <Text style={styles.emptyTitle}>No products found</Text>
+                    <Text style={styles.emptyText}>
+                        Try adjusting your filters or search for something else.
+                    </Text>
                 </View>
             );
         }
@@ -596,10 +603,35 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: theme.spacing['2xl'],
     },
+    emptyIconContainer: {
+        width: 140,
+        height: 140,
+        backgroundColor: 'white',
+        borderRadius: 70,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: theme.spacing.xl,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    emptyTitle: {
+        fontFamily: theme.typography.fontFamily,
+        fontSize: 24,
+        fontWeight: '700',
+        color: theme.colors.text,
+        marginBottom: theme.spacing.md,
+    },
     emptyText: {
-        fontSize: theme.typography.sizes.base,
+        fontFamily: theme.typography.fontFamily,
+        fontSize: 16,
         color: theme.colors.textLight,
         textAlign: 'center',
+        marginBottom: theme.spacing['2xl'],
+        lineHeight: 24,
+        maxWidth: 300,
     },
     footer: {
         paddingTop: theme.spacing.xl,

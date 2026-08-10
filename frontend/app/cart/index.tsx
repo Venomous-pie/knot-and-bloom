@@ -35,7 +35,7 @@ interface ShopGroup {
 
 export default function CartPage() {
     const { user } = useAuth();
-    const { refreshCart, cartItems: globalCartItems } = useCart();
+    const { refreshCart, cartItems: globalCartItems, setCartCount } = useCart();
     const { width } = useWindowDimensions();
     const isDesktop = width >= 768;
 
@@ -154,8 +154,11 @@ export default function CartPage() {
     const handleQuantityChange = useCallback((item: CartItemType, newQty: number) => {
         if (newQty < 1) return;
 
+        const diff = newQty - (pendingQuantities.current.get(item.uid) ?? item.quantity);
+
         // Immediately update UI (optimistic)
         setCartItems(prev => prev.map(i => i.uid === item.uid ? { ...i, quantity: newQty } : i));
+        setCartCount((prev: number) => Math.max(0, prev + diff));
 
         // Track pending quantity
         pendingQuantities.current.set(item.uid, newQty);
@@ -177,15 +180,21 @@ export default function CartPage() {
     }, [syncQuantityToServer]);
 
     const handleRemoveItem = async (itemId: number) => {
+        const itemToRemove = cartItems.find(i => i.uid === itemId);
+        const qtyToRemove = itemToRemove ? itemToRemove.quantity : 0;
+
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         const oldItems = [...cartItems];
         setCartItems(prev => prev.filter(i => i.uid !== itemId));
         setSelectedItems(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+        setCartCount(prev => Math.max(0, prev - qtyToRemove));
+
         try {
             await cartAPI.removeFromCart(itemId);
             await refreshCart();
         } catch {
             setCartItems(oldItems);
+            setCartCount(prev => prev + qtyToRemove);
             Alert.alert("Error", "Failed to remove item");
         }
     };

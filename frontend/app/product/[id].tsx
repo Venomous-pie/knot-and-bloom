@@ -96,7 +96,7 @@ export default function ProductDetailPage() {
     const displayImage = selectedImage || product?.image || null;
 
     const { user } = useAuth();
-    const { refreshCart, cartItems } = useCart();
+    const { refreshCart, cartItems, setCartCount } = useCart();
     const { triggerCartAnimation } = useCartAnimation();
     const { wishlistedProductIds, toggleWishlist } = useWishlist();
     const buttonRef = useRef<View>(null);
@@ -242,13 +242,18 @@ export default function ProductDetailPage() {
             );
 
             if (isNewItem) {
-                // Optimistic UI updates removed since we rely on server truth and loading states
+                // Not doing full cartItems update here, but we can instantly increment the badge
             }
+
+            // Optimistically update badge count
+            setCartCount((prev: number) => prev + quantity);
 
             cartAPI.addToCart(user.uid, product.uid, quantity, selectedVariant).then(response => {
                 refreshCart();
             }).catch(error => {
                 console.error("❌ API Failed:", error);
+                // Revert optimistic update
+                setCartCount((prev: number) => Math.max(0, prev - quantity));
                 Alert.alert("Error", "Failed to add item to cart. Please try again.");
             });
 

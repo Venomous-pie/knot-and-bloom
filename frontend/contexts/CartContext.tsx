@@ -9,6 +9,7 @@ interface CartContextType {
     isLoading: boolean;
     error: Error | null;
     refreshCart: () => Promise<void>;
+    setCartCount: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const CartContext = createContext<CartContextType>({
@@ -17,6 +18,7 @@ const CartContext = createContext<CartContextType>({
     isLoading: true, // Start in loading state until first fetch completes
     error: null,
     refreshCart: async () => { },
+    setCartCount: () => { },
 });
 
 export const useCart = () => useContext(CartContext);
@@ -96,7 +98,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         isLoading,
         error,
         refreshCart,
-    }), [cartCount, cartItems, isLoading, error, refreshCart]);
+        setCartCount,
+    }), [cartCount, cartItems, isLoading, error, refreshCart, setCartCount]);
 
     return (
         <CartContext.Provider value={value}>

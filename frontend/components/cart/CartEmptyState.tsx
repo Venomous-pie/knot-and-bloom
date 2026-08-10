@@ -8,7 +8,7 @@ export const CartEmptyState = () => {
     return (
         <View style={styles.container}>
             <View style={styles.iconContainer}>
-                <Ionicons name="cart-outline" size={64} color={theme.colors.primaryLight} />
+                <Ionicons name="cart" size={80} color={theme.colors.primary} />
             </View>
             <Text style={styles.title}>Your cart is empty</Text>
             <Text style={styles.message}>
@@ -30,40 +30,51 @@ const styles = StyleSheet.create({
         padding: theme.spacing['2xl'],
     },
     iconContainer: {
-        width: 120,
-        height: 120,
-        backgroundColor: theme.colors.subtle,
-        borderRadius: 60,
+        width: 140,
+        height: 140,
+        backgroundColor: 'white',
+        borderRadius: 70,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: theme.spacing.lg,
+        marginBottom: theme.spacing.xl,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.08,
+        shadowRadius: 20,
+        elevation: 10,
     },
     title: {
         fontFamily: theme.typography.fontFamily,
-        fontSize: theme.typography.sizes.xl,
+        fontSize: 24,
         fontWeight: '700',
         color: theme.colors.text,
-        marginBottom: theme.spacing.sm,
+        marginBottom: theme.spacing.md,
     },
     message: {
         fontFamily: theme.typography.fontFamily,
-        fontSize: theme.typography.sizes.base,
-        color: theme.colors.textSecondary,
+        fontSize: 16,
+        color: theme.colors.textLight,
         textAlign: 'center',
-        marginBottom: theme.spacing.xl,
+        marginBottom: theme.spacing['2xl'],
         lineHeight: 24,
+        maxWidth: 300,
     },
     shopBtn: {
         backgroundColor: theme.colors.primary,
-        paddingHorizontal: theme.spacing.xl,
-        paddingVertical: theme.spacing.md,
+        paddingHorizontal: theme.spacing['2xl'],
+        paddingVertical: 16,
         borderRadius: theme.borderRadius.full,
-        ...theme.shadows.md,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
     },
     shopBtnText: {
         fontFamily: theme.typography.fontFamily,
-        fontSize: theme.typography.sizes.base,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '700',
         color: 'white',
+        letterSpacing: 0.5,
     },
 });

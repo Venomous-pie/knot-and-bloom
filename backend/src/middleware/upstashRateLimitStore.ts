@@ -24,23 +24,21 @@ export class UpstashRateLimitStore implements Store {
     public async increment(key: string): Promise<ClientRateLimitInfo> {
         const redisKey = `${this.prefix}${key}`;
         
-        // Execute INCR. If the key doesn't exist, it is created and set to 1.
-        const totalHits = await this.redis.incr(redisKey);
+        const p = this.redis.pipeline();
+        p.incr(redisKey);
+        p.pttl(redisKey);
+        
+        const results = await p.exec();
+        const totalHits = results[0] as number;
+        const pttl = results[1] as number;
         
         let resetTimeMs = this.windowMs;
         
-        // If this is the first hit (key was just created), set the TTL
-        if (totalHits === 1) {
+        // If this is the first hit (key was just created) or TTL was lost, set the TTL
+        if (totalHits === 1 || pttl === -1) {
              await this.redis.pexpire(redisKey, this.windowMs);
-        } else {
-             // Fetch remaining time to calculate resetTime
-             const pttl = await this.redis.pttl(redisKey);
-             if (pttl > 0) {
-                 resetTimeMs = pttl;
-             } else if (pttl === -1) {
-                 // Fallback if TTL was somehow lost
-                 await this.redis.pexpire(redisKey, this.windowMs);
-             }
+        } else if (pttl > 0) {
+             resetTimeMs = pttl;
         }
 
         return {

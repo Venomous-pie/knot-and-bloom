@@ -57,6 +57,7 @@ export default function StorefrontSkeleton() {
                             <View style={styles.statCard} />
                             <View style={styles.statCard} />
                             <View style={styles.statCard} />
+                            <View style={styles.statCard} />
                         </View>
                     </View>
                 </View>
@@ -187,17 +188,18 @@ const styles = StyleSheet.create({
     },
     statsRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         width: '100%',
         maxWidth: 800,
-        justifyContent: 'space-between',
-        gap: theme.spacing.md,
+        gap: 12,
         marginTop: 32,
     },
     statCard: {
         flex: 1,
+        minWidth: 150,
         height: 80,
         backgroundColor: '#F1F5F9',
-        borderRadius: theme.borderRadius.lg,
+        borderRadius: 16,
     },
     tabsContainer: {
         flexDirection: 'row',

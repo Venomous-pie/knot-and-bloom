@@ -88,6 +88,9 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
         try {
             const res = await wishlistAPI.toggleWishlistItem(user.uid, productId);
             if (res.data?.success) {
+                if (!wasWishlisted) {
+                    refreshWishlist();
+                }
                 return true;
             } else {
                 throw new Error("Toggle failed");
@@ -108,7 +111,7 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
         } finally {
             pendingTogglesRef.current.delete(productId);
         }
-    }, [user?.uid]);
+    }, [user?.uid, refreshWishlist]);
 
     useEffect(() => {
         if (!user?.uid) {

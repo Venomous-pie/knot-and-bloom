@@ -47,9 +47,9 @@ export default function WishlistPage() {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <Stack.Screen options={{ title: 'Wishlist', headerTitleAlign: 'center' }} />
+            <ScrollView contentContainerStyle={[styles.scrollContent, items.length === 0 && { flexGrow: 1 }]} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Wishlist</Text>
                     <Text style={styles.headerSubtitle}>
                         {wishlistedProductIds.size} {wishlistedProductIds.size === 1 ? 'item' : 'items'} saved
                     </Text>
@@ -64,7 +64,7 @@ export default function WishlistPage() {
                 ) : items.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <View style={styles.emptyIconContainer}>
-                            <Ionicons name="heart-outline" size={80} color={theme.colors.primaryLight} />
+                            <Ionicons name="heart" size={80} color={theme.colors.primary} />
                         </View>
                         <Text style={styles.emptyTitle}>Your wishlist is empty</Text>
                         <Text style={styles.emptyMessage}>
@@ -121,10 +121,10 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     emptyContainer: {
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         padding: theme.spacing['2xl'],
-        marginTop: 40,
     },
     emptyIconContainer: {
         width: 140,

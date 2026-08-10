@@ -422,34 +422,7 @@ export default function SellerProfile() {
                         </View>
                     </View>
 
-                    <View style={styles.statCard}>
-                        <View style={[styles.statIcon, { backgroundColor: '#E3F2FD' }]}>
-                            <Clock size={20} color="#1976D2" />
-                        </View>
-                        <View>
-                            <Text style={styles.statValue}>
-                                {seller.lastActiveAt ? (
-                                    (new Date().getTime() - new Date(seller.lastActiveAt).getTime()) < 24 * 60 * 60 * 1000 
-                                    ? 'Today' : 'Recently'
-                                ) : 'Active'}
-                            </Text>
-                            <Text style={styles.statLabel}>Active</Text>
-                        </View>
-                    </View>
 
-                    <View style={styles.statCard}>
-                        <View style={[styles.statIcon, { backgroundColor: '#FFF3E0' }]}>
-                            <Zap size={20} color="#FF9800" />
-                        </View>
-                        <View>
-                            <Text style={styles.statValue}>
-                                {seller.responseTimeHours 
-                                    ? (seller.responseTimeHours < 1 ? '<1h' : `${Math.round(seller.responseTimeHours)}h`) 
-                                    : '<1h'}
-                            </Text>
-                            <Text style={styles.statLabel}>Response</Text>
-                        </View>
-                    </View>
                 </View>
 
                 {/* Tabs */}
@@ -605,6 +578,31 @@ export default function SellerProfile() {
                         </View>
                     </View>
                 )}
+
+                <View style={styles.policyItem}>
+                    <Clock size={18} color={theme.colors.textSecondary} />
+                    <View style={styles.policyTextContainer}>
+                        <Text style={styles.policyTitle}>Last Active</Text>
+                        <Text style={styles.policyDesc}>
+                            {seller.lastActiveAt ? (
+                                (new Date().getTime() - new Date(seller.lastActiveAt).getTime()) < 24 * 60 * 60 * 1000 
+                                ? 'Today' : 'Recently'
+                            ) : 'Active'}
+                        </Text>
+                    </View>
+                </View>
+
+                <View style={styles.policyItem}>
+                    <Zap size={18} color={theme.colors.textSecondary} />
+                    <View style={styles.policyTextContainer}>
+                        <Text style={styles.policyTitle}>Typical Response Time</Text>
+                        <Text style={styles.policyDesc}>
+                            {seller.responseTimeHours 
+                                ? (seller.responseTimeHours < 1 ? '< 1 hour' : `About ${Math.round(seller.responseTimeHours)} hours`) 
+                                : '< 1 hour'}
+                        </Text>
+                    </View>
+                </View>
 
                 {seller.hasPriorExperience && (
                     <View style={styles.policyItem}>
@@ -1141,11 +1139,13 @@ const styles = StyleSheet.create({
     // Stats
     statsGrid: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 12,
         marginBottom: 24,
     },
     statCard: {
         flex: 1,
+        minWidth: 150,
         backgroundColor: 'white',
         borderRadius: 16,
         padding: 16,

@@ -133,7 +133,7 @@ export const createReview = async (req: any, res: Response) => {
                 rating,
                 comment
             }
-        });
+        } as any);
 
         // Update product review count/average asynchronously (can be done here or in a hook)
         const allReviews = await prisma.review.aggregate({

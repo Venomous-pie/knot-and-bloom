@@ -728,11 +728,11 @@ export default function SellerApplyPage() {
                 <TextInput
                     style={[styles.input, focusedField === 'phoneNumber' && styles.inputFocused, errors.phoneNumber && styles.inputError]}
                     value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    placeholder="e.g. 0912 345 6789"
+                    onChangeText={(text) => setPhoneNumber(text.replace(/[^0-9]/g, ''))}
+                    placeholder="e.g. 09123456789"
                     placeholderTextColor={theme.colors.textLight}
                     selectionColor={theme.colors.primary}
-                    keyboardType="phone-pad"
+                    keyboardType="numeric"
                     onFocus={() => setFocusedField('phoneNumber')}
                     onBlur={() => setFocusedField(null)}
                 />
